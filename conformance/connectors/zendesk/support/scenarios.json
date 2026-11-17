@@ -7312,6 +7312,3287 @@
       ],
       "name": "createUser-uncertain-cap",
       "operation": "createUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{\"organizations\":[{\"id\":1201,\"name\":\"Acme\",\"external_id\":\"acme-1\",\"domain_names\":[\"acme.example.com\"],\"tags\":[\"customer\"],\"group_id\":9,\"shared_tickets\":true,\"shared_comments\":true}],\"meta\":{\"has_more\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "organizations": [
+            {
+              "domainNames": [
+                "acme.example.com"
+              ],
+              "externalId": "acme-1",
+              "groupId": 9,
+              "id": 1201,
+              "name": "Acme",
+              "sharedComments": true,
+              "sharedTickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listOrganizations-success",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listOrganizations-rate-limit",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000303",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listOrganizations-service-unavailable",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000304",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listOrganizations-server-error",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000305",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listOrganizations-transport",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000306",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "nextCursor": "",
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listOrganizations-rejected",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000307",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listOrganizations-invalid-response",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000308",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "organizations": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101
+      },
+      "name": "listOrganizations-defect",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000309",
+      "exchanges": [
+        {
+          "body": "{\"count\":{\"value\":2,\"refreshed_at\":\"2026-01-01T00:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/count",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "counted",
+        "failureKind": "",
+        "output": {
+          "count": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "countOrganizations-success",
+      "operation": "countOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000310",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/count",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "countOrganizations-rate-limit",
+      "operation": "countOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000311",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/count",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "countOrganizations-service-unavailable",
+      "operation": "countOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000312",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/count",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "countOrganizations-server-error",
+      "operation": "countOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000313",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/count",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "countOrganizations-transport",
+      "operation": "countOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000314",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/count",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "countOrganizations-rejected",
+      "operation": "countOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000315",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/count",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "countOrganizations-invalid-response",
+      "operation": "countOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000316",
+      "exchanges": [
+        {
+          "body": "{\"organization\":{\"id\":1201,\"name\":\"Acme\",\"external_id\":\"acme-1\",\"domain_names\":[\"acme.example.com\"],\"tags\":[\"customer\"],\"group_id\":9,\"shared_tickets\":true,\"shared_comments\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "organization": {
+            "domainNames": [
+              "acme.example.com"
+            ],
+            "externalId": "acme-1",
+            "groupId": 9,
+            "id": 1201,
+            "name": "Acme",
+            "sharedComments": true,
+            "sharedTickets": true,
+            "tags": [
+              "customer"
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganization-success",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000317",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganization-rate-limit",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000318",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganization-service-unavailable",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000319",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganization-server-error",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000320",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganization-transport",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000321",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganization-rejected",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000322",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganization-not-found",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000323",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganization-invalid-response",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000324",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 0
+      },
+      "name": "getOrganization-defect",
+      "operation": "getOrganization"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000325",
+      "exchanges": [
+        {
+          "body": "{\"organization_related\":{\"tickets_count\":12,\"users_count\":4}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "ticketsCount": 12,
+          "usersCount": 4
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganizationRelated-success",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000326",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganizationRelated-rate-limit",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000327",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganizationRelated-service-unavailable",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000328",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganizationRelated-server-error",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000329",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganizationRelated-transport",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000330",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "ticketsCount": 0,
+          "usersCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganizationRelated-rejected",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000331",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "ticketsCount": 0,
+          "usersCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganizationRelated-not-found",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000332",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/1201/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "ticketsCount": 0,
+          "usersCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "getOrganizationRelated-invalid-response",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000333",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "ticketsCount": 0,
+          "usersCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organizationId": 0
+      },
+      "name": "getOrganizationRelated-defect",
+      "operation": "getOrganizationRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000334",
+      "exchanges": [
+        {
+          "body": "{\"organizations\":[{\"id\":1201,\"name\":\"Acme\",\"external_id\":\"acme-1\",\"domain_names\":[\"acme.example.com\"],\"tags\":[\"customer\"],\"group_id\":9,\"shared_tickets\":true,\"shared_comments\":true}],\"meta\":{\"has_more\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "",
+          "organizations": [
+            {
+              "domainNames": [
+                "acme.example.com"
+              ],
+              "externalId": "acme-1",
+              "groupId": 9,
+              "id": 1201,
+              "name": "Acme",
+              "sharedComments": true,
+              "sharedTickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2,
+        "userId": 7701
+      },
+      "name": "listUserOrganizations-success",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000335",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2,
+        "userId": 7701
+      },
+      "name": "listUserOrganizations-rate-limit",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000336",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2,
+        "userId": 7701
+      },
+      "name": "listUserOrganizations-service-unavailable",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000337",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2,
+        "userId": 7701
+      },
+      "name": "listUserOrganizations-server-error",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000338",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2,
+        "userId": 7701
+      },
+      "name": "listUserOrganizations-transport",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000339",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "nextCursor": "",
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2,
+        "userId": 7701
+      },
+      "name": "listUserOrganizations-rejected",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000340",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextCursor": "",
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2,
+        "userId": 7701
+      },
+      "name": "listUserOrganizations-not-found",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000341",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/organizations",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2,
+        "userId": 7701
+      },
+      "name": "listUserOrganizations-invalid-response",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000342",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "organizations": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "userId": 0
+      },
+      "name": "listUserOrganizations-defect",
+      "operation": "listUserOrganizations"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000343",
+      "exchanges": [
+        {
+          "body": "{\"user_related\":{\"assigned_tickets\":5,\"requested_tickets\":10,\"ccd_tickets\":3,\"organization_subscriptions\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "assignedTickets": 5,
+          "ccdTickets": 3,
+          "organizationSubscriptions": 1,
+          "requestedTickets": 10
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUserRelated-success",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000344",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUserRelated-rate-limit",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000345",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUserRelated-service-unavailable",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000346",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUserRelated-server-error",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000347",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUserRelated-transport",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000348",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "assignedTickets": 0,
+          "ccdTickets": 0,
+          "organizationSubscriptions": 0,
+          "requestedTickets": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUserRelated-rejected",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000349",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "assignedTickets": 0,
+          "ccdTickets": 0,
+          "organizationSubscriptions": 0,
+          "requestedTickets": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUserRelated-not-found",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000350",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/7701/related",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "assignedTickets": 0,
+          "ccdTickets": 0,
+          "organizationSubscriptions": 0,
+          "requestedTickets": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 7701
+      },
+      "name": "getUserRelated-invalid-response",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000351",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "assignedTickets": 0,
+          "ccdTickets": 0,
+          "organizationSubscriptions": 0,
+          "requestedTickets": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userId": 0
+      },
+      "name": "getUserRelated-defect",
+      "operation": "getUserRelated"
+    },
+    {
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [
+        {
+          "body": "{\"organization\":{\"id\":1201,\"name\":\"Acme\",\"external_id\":\"acme-1\",\"domain_names\":[\"acme.example.com\"],\"tags\":[\"customer\"],\"group_id\":9,\"shared_tickets\":true,\"shared_comments\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+          "providerId": "1201",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "organization": {
+            "domainNames": [
+              "acme.example.com"
+            ],
+            "externalId": "acme-1",
+            "groupId": 9,
+            "id": 1201,
+            "name": "Acme",
+            "sharedComments": true,
+            "sharedTickets": true,
+            "tags": [
+              "customer"
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "externalId": "acme-1",
+        "name": "Acme"
+      },
+      "name": "createOrganization-success",
+      "operation": "createOrganization"
+    },
+    {
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "externalId": "acme-1",
+        "name": "Acme"
+      },
+      "name": "createOrganization-rate-limit",
+      "operation": "createOrganization"
+    },
+    {
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "externalId": "acme-1",
+        "name": "Acme"
+      },
+      "name": "createOrganization-service-unavailable",
+      "operation": "createOrganization"
+    },
+    {
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "externalId": "acme-1",
+        "name": "Acme"
+      },
+      "name": "createOrganization-server-error",
+      "operation": "createOrganization"
+    },
+    {
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "externalId": "acme-1",
+        "name": "Acme"
+      },
+      "name": "createOrganization-transport",
+      "operation": "createOrganization"
+    },
+    {
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "externalId": "acme-1",
+        "name": "Acme"
+      },
+      "name": "createOrganization-rejected",
+      "operation": "createOrganization"
+    },
+    {
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "externalId": "acme-1",
+        "name": ""
+      },
+      "name": "createOrganization-defect",
+      "operation": "createOrganization"
+    },
+    {
+      "callId": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "exchanges": [
+        {
+          "body": "{\"organization\":{\"id\":1201,\"name\":\"Acme\",\"external_id\":\"acme-1\",\"domain_names\":[\"acme.example.com\"],\"tags\":[\"customer\"],\"group_id\":9,\"shared_tickets\":true,\"shared_comments\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/1201",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "group_id": 9,
+              "name": "Acme",
+              "shared_comments": true,
+              "shared_tickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "organization": {
+            "domainNames": [
+              "acme.example.com"
+            ],
+            "externalId": "acme-1",
+            "groupId": 9,
+            "id": 1201,
+            "name": "Acme",
+            "sharedComments": true,
+            "sharedTickets": true,
+            "tags": [
+              "customer"
+            ]
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "groupId": 9,
+        "name": "Acme",
+        "organizationId": 1201,
+        "sharedComments": true,
+        "sharedTickets": true,
+        "tags": [
+          "customer"
+        ]
+      },
+      "name": "updateOrganization-success",
+      "operation": "updateOrganization"
+    },
+    {
+      "callId": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/1201",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "group_id": 9,
+              "name": "Acme",
+              "shared_comments": true,
+              "shared_tickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "groupId": 9,
+        "name": "Acme",
+        "organizationId": 1201,
+        "sharedComments": true,
+        "sharedTickets": true,
+        "tags": [
+          "customer"
+        ]
+      },
+      "name": "updateOrganization-rate-limit",
+      "operation": "updateOrganization"
+    },
+    {
+      "callId": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/1201",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "group_id": 9,
+              "name": "Acme",
+              "shared_comments": true,
+              "shared_tickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "groupId": 9,
+        "name": "Acme",
+        "organizationId": 1201,
+        "sharedComments": true,
+        "sharedTickets": true,
+        "tags": [
+          "customer"
+        ]
+      },
+      "name": "updateOrganization-service-unavailable",
+      "operation": "updateOrganization"
+    },
+    {
+      "callId": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/1201",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "group_id": 9,
+              "name": "Acme",
+              "shared_comments": true,
+              "shared_tickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "groupId": 9,
+        "name": "Acme",
+        "organizationId": 1201,
+        "sharedComments": true,
+        "sharedTickets": true,
+        "tags": [
+          "customer"
+        ]
+      },
+      "name": "updateOrganization-server-error",
+      "operation": "updateOrganization"
+    },
+    {
+      "callId": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/1201",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "group_id": 9,
+              "name": "Acme",
+              "shared_comments": true,
+              "shared_tickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "groupId": 9,
+        "name": "Acme",
+        "organizationId": 1201,
+        "sharedComments": true,
+        "sharedTickets": true,
+        "tags": [
+          "customer"
+        ]
+      },
+      "name": "updateOrganization-transport",
+      "operation": "updateOrganization"
+    },
+    {
+      "callId": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/1201",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "group_id": 9,
+              "name": "Acme",
+              "shared_comments": true,
+              "shared_tickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "groupId": 9,
+        "name": "Acme",
+        "organizationId": 1201,
+        "sharedComments": true,
+        "sharedTickets": true,
+        "tags": [
+          "customer"
+        ]
+      },
+      "name": "updateOrganization-rejected",
+      "operation": "updateOrganization"
+    },
+    {
+      "callId": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/1201",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "group_id": 9,
+              "name": "Acme",
+              "shared_comments": true,
+              "shared_tickets": true,
+              "tags": [
+                "customer"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "groupId": 9,
+        "name": "Acme",
+        "organizationId": 1201,
+        "sharedComments": true,
+        "sharedTickets": true,
+        "tags": [
+          "customer"
+        ]
+      },
+      "name": "updateOrganization-not-found",
+      "operation": "updateOrganization"
+    },
+    {
+      "callId": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25134493-55f8-5ec1-b9f9-3b703982f411",
+      "input": {
+        "organizationId": 0
+      },
+      "name": "updateOrganization-defect",
+      "operation": "updateOrganization"
+    },
+    {
+      "callId": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "organizationId": 1201
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "deleteOrganization-success",
+      "operation": "deleteOrganization"
+    },
+    {
+      "callId": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "deleteOrganization-rate-limit",
+      "operation": "deleteOrganization"
+    },
+    {
+      "callId": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "deleteOrganization-service-unavailable",
+      "operation": "deleteOrganization"
+    },
+    {
+      "callId": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "deleteOrganization-server-error",
+      "operation": "deleteOrganization"
+    },
+    {
+      "callId": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "deleteOrganization-transport",
+      "operation": "deleteOrganization"
+    },
+    {
+      "callId": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "organizationId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "deleteOrganization-rejected",
+      "operation": "deleteOrganization"
+    },
+    {
+      "callId": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/organizations/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "organizationId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "input": {
+        "organizationId": 1201
+      },
+      "name": "deleteOrganization-not-found",
+      "operation": "deleteOrganization"
+    },
+    {
+      "callId": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "organizationId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "760dfa2b-caff-5cfa-9086-af5120e7e6c4",
+      "input": {
+        "organizationId": 0
+      },
+      "name": "deleteOrganization-defect",
+      "operation": "deleteOrganization"
+    },
+    {
+      "attempts": 3,
+      "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"organizations\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/search",
+          "query": {
+            "external_id": [
+              "acme-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        },
+        {
+          "body": "{\"organizations\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/search",
+          "query": {
+            "external_id": [
+              "acme-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/organizations",
+          "requestBody": {
+            "organization": {
+              "domain_names": [
+                "acme.example.com"
+              ],
+              "external_id": "acme-1",
+              "name": "Acme"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "organization": {
+            "id": 0,
+            "name": "",
+            "sharedComments": false,
+            "sharedTickets": false
+          }
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+      "input": {
+        "domainNames": [
+          "acme.example.com"
+        ],
+        "externalId": "acme-1",
+        "name": "Acme"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "bf1216b3-f943-59f9-b7f8-bbafe122e140",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createOrganization-uncertain-cap",
+      "operation": "createOrganization"
     }
   ],
   "schemaVersion": 1

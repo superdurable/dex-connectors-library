@@ -295,6 +295,189 @@ spec:
           default: true
           description: A sample end user is deleted.
           output: {userId: 7701}
+    - name: listOrganizations
+      goName: ListOrganizations
+      inputType: ListOrganizationsInput
+      outputType: ListOrganizationsOutput
+      kind: query
+      description: List one cursor page of organizations visible to the connection's agent.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Zendesk returned one organization page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Page input or credentials are invalid., optional: true}
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample organizations are listed.
+          pages:
+            - {organizations: [{id: 1201, name: Acme, externalId: acme-1}], nextCursor: cursor-1}
+            - {organizations: [{id: 1202, name: Northwind, externalId: northwind-1}], nextCursor: cursor-2}
+            - {organizations: [], nextCursor: ""}
+    - name: countOrganizations
+      goName: CountOrganizations
+      inputType: CountOrganizationsInput
+      outputType: CountOrganizationsOutput
+      kind: query
+      description: Read Zendesk's approximate organization count.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: counted, goName: Counted, description: Zendesk returned the approximate count.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the count., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Credentials or connector configuration are invalid., optional: true}
+      mocks:
+        - name: countedDefault
+          branch: counted
+          default: true
+          description: A sample account has two organizations.
+          output: {count: 2}
+    - name: getOrganization
+      goName: GetOrganization
+      inputType: GetOrganizationInput
+      outputType: GetOrganizationOutput
+      kind: query
+      description: Read one organization by its numeric Zendesk ID.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Zendesk returned the organization.}
+        - {id: notFound, goName: NotFound, description: The organization does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Organization ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample organization is read.
+          output: {organization: {id: 1201, name: Acme, externalId: acme-1}}
+    - name: getOrganizationRelated
+      goName: GetOrganizationRelated
+      inputType: GetOrganizationRelatedInput
+      outputType: GetOrganizationRelatedOutput
+      kind: query
+      description: Read ticket and user counts related to one organization.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Zendesk returned organization-related counts.}
+        - {id: notFound, goName: NotFound, description: The organization does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Organization ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample organization has related tickets and users.
+          output: {ticketsCount: 12, usersCount: 4}
+    - name: listUserOrganizations
+      goName: ListUserOrganizations
+      inputType: ListUserOrganizationsInput
+      outputType: ListUserOrganizationsOutput
+      kind: query
+      description: List one cursor page of organizations associated with a user.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Zendesk returned one organization page for the user.}
+        - {id: notFound, goName: NotFound, description: The user does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: User ID or page input is invalid., optional: true}
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample user belongs to organizations.
+          pages:
+            - {organizations: [{id: 1201, name: Acme, externalId: acme-1}], nextCursor: cursor-1}
+            - {organizations: [{id: 1202, name: Northwind, externalId: northwind-1}], nextCursor: cursor-2}
+            - {organizations: [], nextCursor: ""}
+    - name: getUserRelated
+      goName: GetUserRelated
+      inputType: GetUserRelatedInput
+      outputType: GetUserRelatedOutput
+      kind: query
+      description: Read ticket and subscription counts related to one user.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Zendesk returned user-related counts.}
+        - {id: notFound, goName: NotFound, description: The user does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample user has related tickets.
+          output: {assignedTickets: 5, requestedTickets: 10, ccdTickets: 3, organizationSubscriptions: 1}
+    - name: createOrganization
+      goName: CreateOrganization
+      inputType: CreateOrganizationInput
+      outputType: CreateOrganizationOutput
+      kind: mutation
+      description: Create an organization with an account-unique external ID for exact retry read-back.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Zendesk created or confirmed this organization.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk conclusively rejected the create., optional: true}
+        - {id: defect, goName: Defect, description: Organization input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create may have succeeded but could not be confirmed., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample organization is created.
+          output: {organization: {id: 1201, name: Acme, externalId: acme-1}}
+    - name: updateOrganization
+      goName: UpdateOrganization
+      inputType: UpdateOrganizationInput
+      outputType: UpdateOrganizationOutput
+      kind: mutation
+      description: Replace selected organization fields by numeric ID.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Zendesk returned the updated organization.}
+        - {id: notFound, goName: NotFound, description: The organization does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Organization input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample organization is updated.
+          output: {organization: {id: 1201, name: Acme, externalId: acme-1}}
+    - name: deleteOrganization
+      goName: DeleteOrganization
+      inputType: DeleteOrganizationInput
+      outputType: DeleteOrganizationOutput
+      kind: mutation
+      description: Delete one organization by numeric ID.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Zendesk accepted the organization deletion.}
+        - {id: notFound, goName: NotFound, description: The organization does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Organization ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample organization is deleted.
+          output: {organizationId: 1201}
     - name: searchTickets
       goName: SearchTickets
       inputType: SearchTicketsInput

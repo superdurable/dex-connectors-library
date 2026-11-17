@@ -51,6 +51,15 @@ type Operations interface {
 	CreateUser() sdkgo.Mutation[CreateUserInput, CreateUserOutput]
 	UpdateUser() sdkgo.Mutation[UpdateUserInput, UpdateUserOutput]
 	DeleteUser() sdkgo.Mutation[DeleteUserInput, DeleteUserOutput]
+	ListOrganizations() sdkgo.Query[ListOrganizationsInput, ListOrganizationsOutput]
+	CountOrganizations() sdkgo.Query[CountOrganizationsInput, CountOrganizationsOutput]
+	GetOrganization() sdkgo.Query[GetOrganizationInput, GetOrganizationOutput]
+	GetOrganizationRelated() sdkgo.Query[GetOrganizationRelatedInput, GetOrganizationRelatedOutput]
+	ListUserOrganizations() sdkgo.Query[ListUserOrganizationsInput, ListUserOrganizationsOutput]
+	GetUserRelated() sdkgo.Query[GetUserRelatedInput, GetUserRelatedOutput]
+	CreateOrganization() sdkgo.Mutation[CreateOrganizationInput, CreateOrganizationOutput]
+	UpdateOrganization() sdkgo.Mutation[UpdateOrganizationInput, UpdateOrganizationOutput]
+	DeleteOrganization() sdkgo.Mutation[DeleteOrganizationInput, DeleteOrganizationOutput]
 	SearchTickets() sdkgo.Query[SearchTicketsInput, SearchTicketsOutput]
 	GetTicket() sdkgo.Query[GetTicketInput, TicketDetails]
 	CreateTicket() sdkgo.Mutation[CreateTicketInput, CreateTicketOutput]
@@ -91,6 +100,33 @@ func (operations clientOperations) UpdateUser() sdkgo.Mutation[UpdateUserInput, 
 }
 func (operations clientOperations) DeleteUser() sdkgo.Mutation[DeleteUserInput, DeleteUserOutput] {
 	return operations.client.DeleteUser()
+}
+func (operations clientOperations) ListOrganizations() sdkgo.Query[ListOrganizationsInput, ListOrganizationsOutput] {
+	return operations.client.ListOrganizations()
+}
+func (operations clientOperations) CountOrganizations() sdkgo.Query[CountOrganizationsInput, CountOrganizationsOutput] {
+	return operations.client.CountOrganizations()
+}
+func (operations clientOperations) GetOrganization() sdkgo.Query[GetOrganizationInput, GetOrganizationOutput] {
+	return operations.client.GetOrganization()
+}
+func (operations clientOperations) GetOrganizationRelated() sdkgo.Query[GetOrganizationRelatedInput, GetOrganizationRelatedOutput] {
+	return operations.client.GetOrganizationRelated()
+}
+func (operations clientOperations) ListUserOrganizations() sdkgo.Query[ListUserOrganizationsInput, ListUserOrganizationsOutput] {
+	return operations.client.ListUserOrganizations()
+}
+func (operations clientOperations) GetUserRelated() sdkgo.Query[GetUserRelatedInput, GetUserRelatedOutput] {
+	return operations.client.GetUserRelated()
+}
+func (operations clientOperations) CreateOrganization() sdkgo.Mutation[CreateOrganizationInput, CreateOrganizationOutput] {
+	return operations.client.CreateOrganization()
+}
+func (operations clientOperations) UpdateOrganization() sdkgo.Mutation[UpdateOrganizationInput, UpdateOrganizationOutput] {
+	return operations.client.UpdateOrganization()
+}
+func (operations clientOperations) DeleteOrganization() sdkgo.Mutation[DeleteOrganizationInput, DeleteOrganizationOutput] {
+	return operations.client.DeleteOrganization()
 }
 func (operations clientOperations) SearchTickets() sdkgo.Query[SearchTicketsInput, SearchTicketsOutput] {
 	return operations.client.SearchTickets()
@@ -1088,6 +1124,676 @@ func NewDeleteUserStep[IN any](config DeleteUserStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListOrganizationsBranchListed sdkgo.BranchID = "listed"
+const ListOrganizationsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListOrganizationsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListOrganizationsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListOrganizationsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listOrganizations"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListOrganizationsBranchListed, Description: "Zendesk returned one organization page."},
+		{ID: ListOrganizationsBranchProviderRejected, Description: "Zendesk rejected the list.", Optional: true},
+		{ID: ListOrganizationsBranchInvalidResponse, Description: "Zendesk returned malformed or oversized JSON.", Optional: true},
+		{ID: ListOrganizationsBranchDefect, Description: "Page input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListOrganizationsResult = sdkgo.QueryResult[ListOrganizationsOutput]
+
+type ListOrganizationsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=zendesk-support"`
+	operationID                    struct{}                                                   `connector:"operationId=listOrganizations"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListOrganizationsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListOrganizationsResult]                      `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListOrganizationsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListOrganizationsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListOrganizationsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListOrganizationsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListOrganizationsStep[IN any](config ListOrganizationsStepConfig[IN]) sdkgo.QueryStep[IN, ListOrganizationsInput, ListOrganizationsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListOrganizationsInput, ListOrganizationsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListOrganizations(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListOrganizationsResult] {
+			branches := make([]sdkgo.BranchTarget[ListOrganizationsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListOrganizationsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListOrganizationsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListOrganizationsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListOrganizationsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CountOrganizationsBranchCounted sdkgo.BranchID = "counted"
+const CountOrganizationsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CountOrganizationsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CountOrganizationsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CountOrganizationsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "countOrganizations"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CountOrganizationsBranchCounted, Description: "Zendesk returned the approximate count."},
+		{ID: CountOrganizationsBranchProviderRejected, Description: "Zendesk rejected the count.", Optional: true},
+		{ID: CountOrganizationsBranchInvalidResponse, Description: "Zendesk returned malformed or oversized JSON.", Optional: true},
+		{ID: CountOrganizationsBranchDefect, Description: "Credentials or connector configuration are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CountOrganizationsResult = sdkgo.QueryResult[CountOrganizationsOutput]
+
+type CountOrganizationsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                    `connector:"connectorId=zendesk-support"`
+	operationID                    struct{}                                                    `connector:"operationId=countOrganizations"`
+	StepType                       string                                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                     Connection                                                  `connector:"connection"`
+	ConnectionName                 string                                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) CountOrganizationsInput                            `connector:"mapToOperationInput"`
+	Counted                        sdkgo.Target[CountOrganizationsResult]                      `connector:"branch=counted"`
+	ProviderRejected               sdkgo.Target[CountOrganizationsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[CountOrganizationsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[CountOrganizationsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CountOrganizationsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewCountOrganizationsStep[IN any](config CountOrganizationsStepConfig[IN]) sdkgo.QueryStep[IN, CountOrganizationsInput, CountOrganizationsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, CountOrganizationsInput, CountOrganizationsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CountOrganizations(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CountOrganizationsResult] {
+			branches := make([]sdkgo.BranchTarget[CountOrganizationsResult], 0, 4)
+			if config.Counted.HasStep() {
+				branches = append(branches, config.Counted.BranchTarget(CountOrganizationsBranchCounted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CountOrganizationsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CountOrganizationsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CountOrganizationsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetOrganizationBranchFound sdkgo.BranchID = "found"
+const GetOrganizationBranchNotFound sdkgo.BranchID = "notFound"
+const GetOrganizationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetOrganizationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetOrganizationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetOrganizationDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getOrganization"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetOrganizationBranchFound, Description: "Zendesk returned the organization."},
+		{ID: GetOrganizationBranchNotFound, Description: "The organization does not exist.", Optional: true},
+		{ID: GetOrganizationBranchProviderRejected, Description: "Zendesk rejected the read.", Optional: true},
+		{ID: GetOrganizationBranchInvalidResponse, Description: "Zendesk returned malformed or oversized JSON.", Optional: true},
+		{ID: GetOrganizationBranchDefect, Description: "Organization ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetOrganizationResult = sdkgo.QueryResult[GetOrganizationOutput]
+
+type GetOrganizationStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                 `connector:"connectorId=zendesk-support"`
+	operationID                    struct{}                                                 `connector:"operationId=getOrganization"`
+	StepType                       string                                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                     Connection                                               `connector:"connection"`
+	ConnectionName                 string                                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetOrganizationInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetOrganizationResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetOrganizationResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetOrganizationResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetOrganizationResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetOrganizationResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetOrganizationOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetOrganizationStep[IN any](config GetOrganizationStepConfig[IN]) sdkgo.QueryStep[IN, GetOrganizationInput, GetOrganizationOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetOrganizationInput, GetOrganizationOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetOrganization(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetOrganizationResult] {
+			branches := make([]sdkgo.BranchTarget[GetOrganizationResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetOrganizationBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetOrganizationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetOrganizationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetOrganizationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetOrganizationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetOrganizationRelatedBranchFound sdkgo.BranchID = "found"
+const GetOrganizationRelatedBranchNotFound sdkgo.BranchID = "notFound"
+const GetOrganizationRelatedBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetOrganizationRelatedBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetOrganizationRelatedBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetOrganizationRelatedDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getOrganizationRelated"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetOrganizationRelatedBranchFound, Description: "Zendesk returned organization-related counts."},
+		{ID: GetOrganizationRelatedBranchNotFound, Description: "The organization does not exist.", Optional: true},
+		{ID: GetOrganizationRelatedBranchProviderRejected, Description: "Zendesk rejected the read.", Optional: true},
+		{ID: GetOrganizationRelatedBranchInvalidResponse, Description: "Zendesk returned malformed or oversized JSON.", Optional: true},
+		{ID: GetOrganizationRelatedBranchDefect, Description: "Organization ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetOrganizationRelatedResult = sdkgo.QueryResult[GetOrganizationRelatedOutput]
+
+type GetOrganizationRelatedStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                        `connector:"connectorId=zendesk-support"`
+	operationID                    struct{}                                                        `connector:"operationId=getOrganizationRelated"`
+	StepType                       string                                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                     Connection                                                      `connector:"connection"`
+	ConnectionName                 string                                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetOrganizationRelatedInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetOrganizationRelatedResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetOrganizationRelatedResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetOrganizationRelatedResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetOrganizationRelatedResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetOrganizationRelatedResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetOrganizationRelatedOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetOrganizationRelatedStep[IN any](config GetOrganizationRelatedStepConfig[IN]) sdkgo.QueryStep[IN, GetOrganizationRelatedInput, GetOrganizationRelatedOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetOrganizationRelatedInput, GetOrganizationRelatedOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetOrganizationRelated(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetOrganizationRelatedResult] {
+			branches := make([]sdkgo.BranchTarget[GetOrganizationRelatedResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetOrganizationRelatedBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetOrganizationRelatedBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetOrganizationRelatedBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetOrganizationRelatedBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetOrganizationRelatedBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListUserOrganizationsBranchListed sdkgo.BranchID = "listed"
+const ListUserOrganizationsBranchNotFound sdkgo.BranchID = "notFound"
+const ListUserOrganizationsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListUserOrganizationsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListUserOrganizationsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListUserOrganizationsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listUserOrganizations"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListUserOrganizationsBranchListed, Description: "Zendesk returned one organization page for the user."},
+		{ID: ListUserOrganizationsBranchNotFound, Description: "The user does not exist.", Optional: true},
+		{ID: ListUserOrganizationsBranchProviderRejected, Description: "Zendesk rejected the list.", Optional: true},
+		{ID: ListUserOrganizationsBranchInvalidResponse, Description: "Zendesk returned malformed or oversized JSON.", Optional: true},
+		{ID: ListUserOrganizationsBranchDefect, Description: "User ID or page input is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListUserOrganizationsResult = sdkgo.QueryResult[ListUserOrganizationsOutput]
+
+type ListUserOrganizationsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                       `connector:"connectorId=zendesk-support"`
+	operationID                    struct{}                                                       `connector:"operationId=listUserOrganizations"`
+	StepType                       string                                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                     Connection                                                     `connector:"connection"`
+	ConnectionName                 string                                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListUserOrganizationsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListUserOrganizationsResult]                      `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListUserOrganizationsResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListUserOrganizationsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListUserOrganizationsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListUserOrganizationsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListUserOrganizationsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+}
+
+func NewListUserOrganizationsStep[IN any](config ListUserOrganizationsStepConfig[IN]) sdkgo.QueryStep[IN, ListUserOrganizationsInput, ListUserOrganizationsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListUserOrganizationsInput, ListUserOrganizationsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListUserOrganizations(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListUserOrganizationsResult] {
+			branches := make([]sdkgo.BranchTarget[ListUserOrganizationsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListUserOrganizationsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListUserOrganizationsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListUserOrganizationsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListUserOrganizationsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListUserOrganizationsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetUserRelatedBranchFound sdkgo.BranchID = "found"
+const GetUserRelatedBranchNotFound sdkgo.BranchID = "notFound"
+const GetUserRelatedBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserRelatedBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserRelatedBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserRelatedDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUserRelated"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserRelatedBranchFound, Description: "Zendesk returned user-related counts."},
+		{ID: GetUserRelatedBranchNotFound, Description: "The user does not exist.", Optional: true},
+		{ID: GetUserRelatedBranchProviderRejected, Description: "Zendesk rejected the read.", Optional: true},
+		{ID: GetUserRelatedBranchInvalidResponse, Description: "Zendesk returned malformed or oversized JSON.", Optional: true},
+		{ID: GetUserRelatedBranchDefect, Description: "User ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserRelatedResult = sdkgo.QueryResult[GetUserRelatedOutput]
+
+type GetUserRelatedStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=zendesk-support"`
+	operationID                    struct{}                                                `connector:"operationId=getUserRelated"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserRelatedInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserRelatedResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetUserRelatedResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetUserRelatedResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserRelatedResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserRelatedResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetUserRelatedOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserRelatedStep[IN any](config GetUserRelatedStepConfig[IN]) sdkgo.QueryStep[IN, GetUserRelatedInput, GetUserRelatedOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserRelatedInput, GetUserRelatedOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUserRelated(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserRelatedResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserRelatedResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserRelatedBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetUserRelatedBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserRelatedBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserRelatedBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserRelatedBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateOrganizationBranchCreated sdkgo.BranchID = "created"
+const CreateOrganizationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateOrganizationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateOrganizationBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateOrganizationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createOrganization"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateOrganizationBranchCreated, Description: "Zendesk created or confirmed this organization."},
+		{ID: CreateOrganizationBranchProviderRejected, Description: "Zendesk conclusively rejected the create.", Optional: true},
+		{ID: CreateOrganizationBranchDefect, Description: "Organization input or credentials are invalid.", Optional: true},
+		{ID: CreateOrganizationBranchUncertain, Description: "The create may have succeeded but could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateOrganizationResult = sdkgo.MutationResult[CreateOrganizationOutput]
+
+type CreateOrganizationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=zendesk-support"`
+	operationID                       struct{}                                                       `connector:"operationId=createOrganization"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateOrganizationInput                               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateOrganizationResult]                         `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateOrganizationResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateOrganizationResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateOrganizationResult]                         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateOrganizationOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateOrganizationStep[IN any](config CreateOrganizationStepConfig[IN]) sdkgo.MutationStep[IN, CreateOrganizationInput, CreateOrganizationOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateOrganizationInput, CreateOrganizationOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateOrganization(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateOrganizationResult] {
+			branches := make([]sdkgo.BranchTarget[CreateOrganizationResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateOrganizationBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateOrganizationBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateOrganizationBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateOrganizationBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateOrganizationBranchUpdated sdkgo.BranchID = "updated"
+const UpdateOrganizationBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateOrganizationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateOrganizationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateOrganizationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateOrganization"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateOrganizationBranchUpdated, Description: "Zendesk returned the updated organization."},
+		{ID: UpdateOrganizationBranchNotFound, Description: "The organization does not exist.", Optional: true},
+		{ID: UpdateOrganizationBranchProviderRejected, Description: "Zendesk rejected the update.", Optional: true},
+		{ID: UpdateOrganizationBranchDefect, Description: "Organization input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateOrganizationResult = sdkgo.MutationResult[UpdateOrganizationOutput]
+
+type UpdateOrganizationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=zendesk-support"`
+	operationID                       struct{}                                                       `connector:"operationId=updateOrganization"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateOrganizationInput                               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateOrganizationResult]                         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateOrganizationResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateOrganizationResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateOrganizationResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateOrganizationOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateOrganizationStep[IN any](config UpdateOrganizationStepConfig[IN]) sdkgo.MutationStep[IN, UpdateOrganizationInput, UpdateOrganizationOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateOrganizationInput, UpdateOrganizationOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateOrganization(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateOrganizationResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateOrganizationResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateOrganizationBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateOrganizationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateOrganizationBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateOrganizationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteOrganizationBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteOrganizationBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteOrganizationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteOrganizationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteOrganizationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteOrganization"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteOrganizationBranchDeleted, Description: "Zendesk accepted the organization deletion."},
+		{ID: DeleteOrganizationBranchNotFound, Description: "The organization does not exist.", Optional: true},
+		{ID: DeleteOrganizationBranchProviderRejected, Description: "Zendesk rejected the deletion.", Optional: true},
+		{ID: DeleteOrganizationBranchDefect, Description: "Organization ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteOrganizationResult = sdkgo.MutationResult[DeleteOrganizationOutput]
+
+type DeleteOrganizationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=zendesk-support"`
+	operationID                       struct{}                                                       `connector:"operationId=deleteOrganization"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteOrganizationInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteOrganizationResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteOrganizationResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteOrganizationResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteOrganizationResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteOrganizationOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteOrganizationStep[IN any](config DeleteOrganizationStepConfig[IN]) sdkgo.MutationStep[IN, DeleteOrganizationInput, DeleteOrganizationOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteOrganizationInput, DeleteOrganizationOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteOrganization(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteOrganizationResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteOrganizationResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteOrganizationBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteOrganizationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteOrganizationBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteOrganizationBranchDefect))
 			}
 			return branches
 		}(),

@@ -29,6 +29,15 @@ type Mock struct {
 	createUser             *connectormock.Mutation[support.CreateUserInput, support.CreateUserOutput]
 	updateUser             *connectormock.Mutation[support.UpdateUserInput, support.UpdateUserOutput]
 	deleteUser             *connectormock.Mutation[support.DeleteUserInput, support.DeleteUserOutput]
+	listOrganizations      *connectormock.Query[support.ListOrganizationsInput, support.ListOrganizationsOutput]
+	countOrganizations     *connectormock.Query[support.CountOrganizationsInput, support.CountOrganizationsOutput]
+	getOrganization        *connectormock.Query[support.GetOrganizationInput, support.GetOrganizationOutput]
+	getOrganizationRelated *connectormock.Query[support.GetOrganizationRelatedInput, support.GetOrganizationRelatedOutput]
+	listUserOrganizations  *connectormock.Query[support.ListUserOrganizationsInput, support.ListUserOrganizationsOutput]
+	getUserRelated         *connectormock.Query[support.GetUserRelatedInput, support.GetUserRelatedOutput]
+	createOrganization     *connectormock.Mutation[support.CreateOrganizationInput, support.CreateOrganizationOutput]
+	updateOrganization     *connectormock.Mutation[support.UpdateOrganizationInput, support.UpdateOrganizationOutput]
+	deleteOrganization     *connectormock.Mutation[support.DeleteOrganizationInput, support.DeleteOrganizationOutput]
 	searchTickets          *connectormock.Query[support.SearchTicketsInput, support.SearchTicketsOutput]
 	getTicket              *connectormock.Query[support.GetTicketInput, support.TicketDetails]
 	createTicket           *connectormock.Mutation[support.CreateTicketInput, support.CreateTicketOutput]
@@ -51,6 +60,15 @@ func New(t testing.TB, connectionName string) *Mock {
 		createUser:             connectormock.NewMutation[support.CreateUserInput, support.CreateUserOutput](t, support.CreateUserDefinition),
 		updateUser:             connectormock.NewMutation[support.UpdateUserInput, support.UpdateUserOutput](t, support.UpdateUserDefinition),
 		deleteUser:             connectormock.NewMutation[support.DeleteUserInput, support.DeleteUserOutput](t, support.DeleteUserDefinition),
+		listOrganizations:      connectormock.NewQuery[support.ListOrganizationsInput, support.ListOrganizationsOutput](t, support.ListOrganizationsDefinition),
+		countOrganizations:     connectormock.NewQuery[support.CountOrganizationsInput, support.CountOrganizationsOutput](t, support.CountOrganizationsDefinition),
+		getOrganization:        connectormock.NewQuery[support.GetOrganizationInput, support.GetOrganizationOutput](t, support.GetOrganizationDefinition),
+		getOrganizationRelated: connectormock.NewQuery[support.GetOrganizationRelatedInput, support.GetOrganizationRelatedOutput](t, support.GetOrganizationRelatedDefinition),
+		listUserOrganizations:  connectormock.NewQuery[support.ListUserOrganizationsInput, support.ListUserOrganizationsOutput](t, support.ListUserOrganizationsDefinition),
+		getUserRelated:         connectormock.NewQuery[support.GetUserRelatedInput, support.GetUserRelatedOutput](t, support.GetUserRelatedDefinition),
+		createOrganization:     connectormock.NewMutation[support.CreateOrganizationInput, support.CreateOrganizationOutput](t, support.CreateOrganizationDefinition),
+		updateOrganization:     connectormock.NewMutation[support.UpdateOrganizationInput, support.UpdateOrganizationOutput](t, support.UpdateOrganizationDefinition),
+		deleteOrganization:     connectormock.NewMutation[support.DeleteOrganizationInput, support.DeleteOrganizationOutput](t, support.DeleteOrganizationDefinition),
 		searchTickets:          connectormock.NewQuery[support.SearchTicketsInput, support.SearchTicketsOutput](t, support.SearchTicketsDefinition),
 		getTicket:              connectormock.NewQuery[support.GetTicketInput, support.TicketDetails](t, support.GetTicketDefinition),
 		createTicket:           connectormock.NewMutation[support.CreateTicketInput, support.CreateTicketOutput](t, support.CreateTicketDefinition),
@@ -67,6 +85,15 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createUser.Default(CreateUserDefault())
 	mock.updateUser.Default(UpdateUserDefault())
 	mock.deleteUser.Default(DeleteUserDefault())
+	mock.listOrganizations.Default(ListOrganizationsDefault())
+	mock.countOrganizations.Default(CountOrganizationsDefault())
+	mock.getOrganization.Default(GetOrganizationDefault())
+	mock.getOrganizationRelated.Default(GetOrganizationRelatedDefault())
+	mock.listUserOrganizations.Default(ListUserOrganizationsDefault())
+	mock.getUserRelated.Default(GetUserRelatedDefault())
+	mock.createOrganization.Default(CreateOrganizationDefault())
+	mock.updateOrganization.Default(UpdateOrganizationDefault())
+	mock.deleteOrganization.Default(DeleteOrganizationDefault())
 	mock.searchTickets.Default(SearchTicketsDefault())
 	mock.getTicket.Default(GetTicketDefault())
 	mock.createTicket.Default(CreateTicketDefault())
@@ -137,6 +164,51 @@ func (mock *Mock) DeleteUser() *connectormock.Mutation[support.DeleteUserInput, 
 	return mock.deleteUser
 }
 
+// ListOrganizations returns the listOrganizations script.
+func (mock *Mock) ListOrganizations() *connectormock.Query[support.ListOrganizationsInput, support.ListOrganizationsOutput] {
+	return mock.listOrganizations
+}
+
+// CountOrganizations returns the countOrganizations script.
+func (mock *Mock) CountOrganizations() *connectormock.Query[support.CountOrganizationsInput, support.CountOrganizationsOutput] {
+	return mock.countOrganizations
+}
+
+// GetOrganization returns the getOrganization script.
+func (mock *Mock) GetOrganization() *connectormock.Query[support.GetOrganizationInput, support.GetOrganizationOutput] {
+	return mock.getOrganization
+}
+
+// GetOrganizationRelated returns the getOrganizationRelated script.
+func (mock *Mock) GetOrganizationRelated() *connectormock.Query[support.GetOrganizationRelatedInput, support.GetOrganizationRelatedOutput] {
+	return mock.getOrganizationRelated
+}
+
+// ListUserOrganizations returns the listUserOrganizations script.
+func (mock *Mock) ListUserOrganizations() *connectormock.Query[support.ListUserOrganizationsInput, support.ListUserOrganizationsOutput] {
+	return mock.listUserOrganizations
+}
+
+// GetUserRelated returns the getUserRelated script.
+func (mock *Mock) GetUserRelated() *connectormock.Query[support.GetUserRelatedInput, support.GetUserRelatedOutput] {
+	return mock.getUserRelated
+}
+
+// CreateOrganization returns the createOrganization script.
+func (mock *Mock) CreateOrganization() *connectormock.Mutation[support.CreateOrganizationInput, support.CreateOrganizationOutput] {
+	return mock.createOrganization
+}
+
+// UpdateOrganization returns the updateOrganization script.
+func (mock *Mock) UpdateOrganization() *connectormock.Mutation[support.UpdateOrganizationInput, support.UpdateOrganizationOutput] {
+	return mock.updateOrganization
+}
+
+// DeleteOrganization returns the deleteOrganization script.
+func (mock *Mock) DeleteOrganization() *connectormock.Mutation[support.DeleteOrganizationInput, support.DeleteOrganizationOutput] {
+	return mock.deleteOrganization
+}
+
 // SearchTickets returns the searchTickets script.
 func (mock *Mock) SearchTickets() *connectormock.Query[support.SearchTicketsInput, support.SearchTicketsOutput] {
 	return mock.searchTickets
@@ -191,6 +263,33 @@ func (operations mockOperations) UpdateUser() sdkgo.Mutation[support.UpdateUserI
 }
 func (operations mockOperations) DeleteUser() sdkgo.Mutation[support.DeleteUserInput, support.DeleteUserOutput] {
 	return operations.mock.deleteUser
+}
+func (operations mockOperations) ListOrganizations() sdkgo.Query[support.ListOrganizationsInput, support.ListOrganizationsOutput] {
+	return operations.mock.listOrganizations
+}
+func (operations mockOperations) CountOrganizations() sdkgo.Query[support.CountOrganizationsInput, support.CountOrganizationsOutput] {
+	return operations.mock.countOrganizations
+}
+func (operations mockOperations) GetOrganization() sdkgo.Query[support.GetOrganizationInput, support.GetOrganizationOutput] {
+	return operations.mock.getOrganization
+}
+func (operations mockOperations) GetOrganizationRelated() sdkgo.Query[support.GetOrganizationRelatedInput, support.GetOrganizationRelatedOutput] {
+	return operations.mock.getOrganizationRelated
+}
+func (operations mockOperations) ListUserOrganizations() sdkgo.Query[support.ListUserOrganizationsInput, support.ListUserOrganizationsOutput] {
+	return operations.mock.listUserOrganizations
+}
+func (operations mockOperations) GetUserRelated() sdkgo.Query[support.GetUserRelatedInput, support.GetUserRelatedOutput] {
+	return operations.mock.getUserRelated
+}
+func (operations mockOperations) CreateOrganization() sdkgo.Mutation[support.CreateOrganizationInput, support.CreateOrganizationOutput] {
+	return operations.mock.createOrganization
+}
+func (operations mockOperations) UpdateOrganization() sdkgo.Mutation[support.UpdateOrganizationInput, support.UpdateOrganizationOutput] {
+	return operations.mock.updateOrganization
+}
+func (operations mockOperations) DeleteOrganization() sdkgo.Mutation[support.DeleteOrganizationInput, support.DeleteOrganizationOutput] {
+	return operations.mock.deleteOrganization
 }
 func (operations mockOperations) SearchTickets() sdkgo.Query[support.SearchTicketsInput, support.SearchTicketsOutput] {
 	return operations.mock.searchTickets
@@ -625,6 +724,360 @@ func DeleteUserDeletedDefault() connectormock.Case[support.DeleteUserOutput] {
 // DeleteUserDefault is the manifest default, deletedDefault, which New installs.
 func DeleteUserDefault() connectormock.Case[support.DeleteUserOutput] {
 	return DeleteUserDeletedDefault()
+}
+
+// ListOrganizationsListed selects the listed branch: Zendesk returned one organization page.
+func ListOrganizationsListed(value support.ListOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListOrganizationsOutput] {
+	return connectormock.Branch(support.ListOrganizationsBranchListed, value, failure)
+}
+
+// ListOrganizationsProviderRejected selects the providerRejected branch: Zendesk rejected the list.
+func ListOrganizationsProviderRejected(value support.ListOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListOrganizationsOutput] {
+	return connectormock.Branch(support.ListOrganizationsBranchProviderRejected, value, failure)
+}
+
+// ListOrganizationsInvalidResponse selects the invalidResponse branch: Zendesk returned malformed or oversized JSON.
+func ListOrganizationsInvalidResponse(value support.ListOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListOrganizationsOutput] {
+	return connectormock.Branch(support.ListOrganizationsBranchInvalidResponse, value, failure)
+}
+
+// ListOrganizationsDefect selects the defect branch: Page input or credentials are invalid.
+func ListOrganizationsDefect(value support.ListOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListOrganizationsOutput] {
+	return connectormock.Branch(support.ListOrganizationsBranchDefect, value, failure)
+}
+
+// ListOrganizationsRetry asks Dex to retry the listOrganizations Step, after the delay when it is positive.
+func ListOrganizationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.ListOrganizationsOutput] {
+	return connectormock.Retry[support.ListOrganizationsOutput](failure, after)
+}
+
+// ListOrganizationsListedDefault is the manifest mock listedDefault: Sample organizations are listed.
+func ListOrganizationsListedDefault() connectormock.Case[support.ListOrganizationsOutput] {
+	pages := []support.ListOrganizationsOutput{
+		connectormock.MustDecodeOutput[support.ListOrganizationsOutput](`{"organizations":[{"id":1201,"name":"Acme","externalId":"acme-1"}],"nextCursor":"cursor-1"}`),
+		connectormock.MustDecodeOutput[support.ListOrganizationsOutput](`{"organizations":[{"id":1202,"name":"Northwind","externalId":"northwind-1"}],"nextCursor":"cursor-2"}`),
+		connectormock.MustDecodeOutput[support.ListOrganizationsOutput](`{"organizations":[],"nextCursor":""}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[support.ListOrganizationsInput]("cursor", "nextCursor", pages)
+	return connectormock.Paged(support.ListOrganizationsBranchListed, pageNumber, pages...)
+}
+
+// ListOrganizationsDefault is the manifest default, listedDefault, which New installs.
+func ListOrganizationsDefault() connectormock.Case[support.ListOrganizationsOutput] {
+	return ListOrganizationsListedDefault()
+}
+
+// CountOrganizationsCounted selects the counted branch: Zendesk returned the approximate count.
+func CountOrganizationsCounted(value support.CountOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.CountOrganizationsOutput] {
+	return connectormock.Branch(support.CountOrganizationsBranchCounted, value, failure)
+}
+
+// CountOrganizationsProviderRejected selects the providerRejected branch: Zendesk rejected the count.
+func CountOrganizationsProviderRejected(value support.CountOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.CountOrganizationsOutput] {
+	return connectormock.Branch(support.CountOrganizationsBranchProviderRejected, value, failure)
+}
+
+// CountOrganizationsInvalidResponse selects the invalidResponse branch: Zendesk returned malformed or oversized JSON.
+func CountOrganizationsInvalidResponse(value support.CountOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.CountOrganizationsOutput] {
+	return connectormock.Branch(support.CountOrganizationsBranchInvalidResponse, value, failure)
+}
+
+// CountOrganizationsDefect selects the defect branch: Credentials or connector configuration are invalid.
+func CountOrganizationsDefect(value support.CountOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.CountOrganizationsOutput] {
+	return connectormock.Branch(support.CountOrganizationsBranchDefect, value, failure)
+}
+
+// CountOrganizationsRetry asks Dex to retry the countOrganizations Step, after the delay when it is positive.
+func CountOrganizationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.CountOrganizationsOutput] {
+	return connectormock.Retry[support.CountOrganizationsOutput](failure, after)
+}
+
+// CountOrganizationsCountedDefault is the manifest mock countedDefault: A sample account has two organizations.
+func CountOrganizationsCountedDefault() connectormock.Case[support.CountOrganizationsOutput] {
+	value := connectormock.MustDecodeOutput[support.CountOrganizationsOutput](`{"count":2}`)
+	return connectormock.Branch(support.CountOrganizationsBranchCounted, value, nil)
+}
+
+// CountOrganizationsDefault is the manifest default, countedDefault, which New installs.
+func CountOrganizationsDefault() connectormock.Case[support.CountOrganizationsOutput] {
+	return CountOrganizationsCountedDefault()
+}
+
+// GetOrganizationFound selects the found branch: Zendesk returned the organization.
+func GetOrganizationFound(value support.GetOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationOutput] {
+	return connectormock.Branch(support.GetOrganizationBranchFound, value, failure)
+}
+
+// GetOrganizationNotFound selects the notFound branch: The organization does not exist.
+func GetOrganizationNotFound(value support.GetOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationOutput] {
+	return connectormock.Branch(support.GetOrganizationBranchNotFound, value, failure)
+}
+
+// GetOrganizationProviderRejected selects the providerRejected branch: Zendesk rejected the read.
+func GetOrganizationProviderRejected(value support.GetOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationOutput] {
+	return connectormock.Branch(support.GetOrganizationBranchProviderRejected, value, failure)
+}
+
+// GetOrganizationInvalidResponse selects the invalidResponse branch: Zendesk returned malformed or oversized JSON.
+func GetOrganizationInvalidResponse(value support.GetOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationOutput] {
+	return connectormock.Branch(support.GetOrganizationBranchInvalidResponse, value, failure)
+}
+
+// GetOrganizationDefect selects the defect branch: Organization ID or credentials are invalid.
+func GetOrganizationDefect(value support.GetOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationOutput] {
+	return connectormock.Branch(support.GetOrganizationBranchDefect, value, failure)
+}
+
+// GetOrganizationRetry asks Dex to retry the getOrganization Step, after the delay when it is positive.
+func GetOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.GetOrganizationOutput] {
+	return connectormock.Retry[support.GetOrganizationOutput](failure, after)
+}
+
+// GetOrganizationFoundDefault is the manifest mock foundDefault: A sample organization is read.
+func GetOrganizationFoundDefault() connectormock.Case[support.GetOrganizationOutput] {
+	value := connectormock.MustDecodeOutput[support.GetOrganizationOutput](`{"organization":{"id":1201,"name":"Acme","externalId":"acme-1"}}`)
+	return connectormock.Branch(support.GetOrganizationBranchFound, value, nil)
+}
+
+// GetOrganizationDefault is the manifest default, foundDefault, which New installs.
+func GetOrganizationDefault() connectormock.Case[support.GetOrganizationOutput] {
+	return GetOrganizationFoundDefault()
+}
+
+// GetOrganizationRelatedFound selects the found branch: Zendesk returned organization-related counts.
+func GetOrganizationRelatedFound(value support.GetOrganizationRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationRelatedOutput] {
+	return connectormock.Branch(support.GetOrganizationRelatedBranchFound, value, failure)
+}
+
+// GetOrganizationRelatedNotFound selects the notFound branch: The organization does not exist.
+func GetOrganizationRelatedNotFound(value support.GetOrganizationRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationRelatedOutput] {
+	return connectormock.Branch(support.GetOrganizationRelatedBranchNotFound, value, failure)
+}
+
+// GetOrganizationRelatedProviderRejected selects the providerRejected branch: Zendesk rejected the read.
+func GetOrganizationRelatedProviderRejected(value support.GetOrganizationRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationRelatedOutput] {
+	return connectormock.Branch(support.GetOrganizationRelatedBranchProviderRejected, value, failure)
+}
+
+// GetOrganizationRelatedInvalidResponse selects the invalidResponse branch: Zendesk returned malformed or oversized JSON.
+func GetOrganizationRelatedInvalidResponse(value support.GetOrganizationRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationRelatedOutput] {
+	return connectormock.Branch(support.GetOrganizationRelatedBranchInvalidResponse, value, failure)
+}
+
+// GetOrganizationRelatedDefect selects the defect branch: Organization ID or credentials are invalid.
+func GetOrganizationRelatedDefect(value support.GetOrganizationRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetOrganizationRelatedOutput] {
+	return connectormock.Branch(support.GetOrganizationRelatedBranchDefect, value, failure)
+}
+
+// GetOrganizationRelatedRetry asks Dex to retry the getOrganizationRelated Step, after the delay when it is positive.
+func GetOrganizationRelatedRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.GetOrganizationRelatedOutput] {
+	return connectormock.Retry[support.GetOrganizationRelatedOutput](failure, after)
+}
+
+// GetOrganizationRelatedFoundDefault is the manifest mock foundDefault: A sample organization has related tickets and users.
+func GetOrganizationRelatedFoundDefault() connectormock.Case[support.GetOrganizationRelatedOutput] {
+	value := connectormock.MustDecodeOutput[support.GetOrganizationRelatedOutput](`{"ticketsCount":12,"usersCount":4}`)
+	return connectormock.Branch(support.GetOrganizationRelatedBranchFound, value, nil)
+}
+
+// GetOrganizationRelatedDefault is the manifest default, foundDefault, which New installs.
+func GetOrganizationRelatedDefault() connectormock.Case[support.GetOrganizationRelatedOutput] {
+	return GetOrganizationRelatedFoundDefault()
+}
+
+// ListUserOrganizationsListed selects the listed branch: Zendesk returned one organization page for the user.
+func ListUserOrganizationsListed(value support.ListUserOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListUserOrganizationsOutput] {
+	return connectormock.Branch(support.ListUserOrganizationsBranchListed, value, failure)
+}
+
+// ListUserOrganizationsNotFound selects the notFound branch: The user does not exist.
+func ListUserOrganizationsNotFound(value support.ListUserOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListUserOrganizationsOutput] {
+	return connectormock.Branch(support.ListUserOrganizationsBranchNotFound, value, failure)
+}
+
+// ListUserOrganizationsProviderRejected selects the providerRejected branch: Zendesk rejected the list.
+func ListUserOrganizationsProviderRejected(value support.ListUserOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListUserOrganizationsOutput] {
+	return connectormock.Branch(support.ListUserOrganizationsBranchProviderRejected, value, failure)
+}
+
+// ListUserOrganizationsInvalidResponse selects the invalidResponse branch: Zendesk returned malformed or oversized JSON.
+func ListUserOrganizationsInvalidResponse(value support.ListUserOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListUserOrganizationsOutput] {
+	return connectormock.Branch(support.ListUserOrganizationsBranchInvalidResponse, value, failure)
+}
+
+// ListUserOrganizationsDefect selects the defect branch: User ID or page input is invalid.
+func ListUserOrganizationsDefect(value support.ListUserOrganizationsOutput, failure *sdkgo.Failure) connectormock.Case[support.ListUserOrganizationsOutput] {
+	return connectormock.Branch(support.ListUserOrganizationsBranchDefect, value, failure)
+}
+
+// ListUserOrganizationsRetry asks Dex to retry the listUserOrganizations Step, after the delay when it is positive.
+func ListUserOrganizationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.ListUserOrganizationsOutput] {
+	return connectormock.Retry[support.ListUserOrganizationsOutput](failure, after)
+}
+
+// ListUserOrganizationsListedDefault is the manifest mock listedDefault: A sample user belongs to organizations.
+func ListUserOrganizationsListedDefault() connectormock.Case[support.ListUserOrganizationsOutput] {
+	pages := []support.ListUserOrganizationsOutput{
+		connectormock.MustDecodeOutput[support.ListUserOrganizationsOutput](`{"organizations":[{"id":1201,"name":"Acme","externalId":"acme-1"}],"nextCursor":"cursor-1"}`),
+		connectormock.MustDecodeOutput[support.ListUserOrganizationsOutput](`{"organizations":[{"id":1202,"name":"Northwind","externalId":"northwind-1"}],"nextCursor":"cursor-2"}`),
+		connectormock.MustDecodeOutput[support.ListUserOrganizationsOutput](`{"organizations":[],"nextCursor":""}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[support.ListUserOrganizationsInput]("cursor", "nextCursor", pages)
+	return connectormock.Paged(support.ListUserOrganizationsBranchListed, pageNumber, pages...)
+}
+
+// ListUserOrganizationsDefault is the manifest default, listedDefault, which New installs.
+func ListUserOrganizationsDefault() connectormock.Case[support.ListUserOrganizationsOutput] {
+	return ListUserOrganizationsListedDefault()
+}
+
+// GetUserRelatedFound selects the found branch: Zendesk returned user-related counts.
+func GetUserRelatedFound(value support.GetUserRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetUserRelatedOutput] {
+	return connectormock.Branch(support.GetUserRelatedBranchFound, value, failure)
+}
+
+// GetUserRelatedNotFound selects the notFound branch: The user does not exist.
+func GetUserRelatedNotFound(value support.GetUserRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetUserRelatedOutput] {
+	return connectormock.Branch(support.GetUserRelatedBranchNotFound, value, failure)
+}
+
+// GetUserRelatedProviderRejected selects the providerRejected branch: Zendesk rejected the read.
+func GetUserRelatedProviderRejected(value support.GetUserRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetUserRelatedOutput] {
+	return connectormock.Branch(support.GetUserRelatedBranchProviderRejected, value, failure)
+}
+
+// GetUserRelatedInvalidResponse selects the invalidResponse branch: Zendesk returned malformed or oversized JSON.
+func GetUserRelatedInvalidResponse(value support.GetUserRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetUserRelatedOutput] {
+	return connectormock.Branch(support.GetUserRelatedBranchInvalidResponse, value, failure)
+}
+
+// GetUserRelatedDefect selects the defect branch: User ID or credentials are invalid.
+func GetUserRelatedDefect(value support.GetUserRelatedOutput, failure *sdkgo.Failure) connectormock.Case[support.GetUserRelatedOutput] {
+	return connectormock.Branch(support.GetUserRelatedBranchDefect, value, failure)
+}
+
+// GetUserRelatedRetry asks Dex to retry the getUserRelated Step, after the delay when it is positive.
+func GetUserRelatedRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.GetUserRelatedOutput] {
+	return connectormock.Retry[support.GetUserRelatedOutput](failure, after)
+}
+
+// GetUserRelatedFoundDefault is the manifest mock foundDefault: A sample user has related tickets.
+func GetUserRelatedFoundDefault() connectormock.Case[support.GetUserRelatedOutput] {
+	value := connectormock.MustDecodeOutput[support.GetUserRelatedOutput](`{"assignedTickets":5,"requestedTickets":10,"ccdTickets":3,"organizationSubscriptions":1}`)
+	return connectormock.Branch(support.GetUserRelatedBranchFound, value, nil)
+}
+
+// GetUserRelatedDefault is the manifest default, foundDefault, which New installs.
+func GetUserRelatedDefault() connectormock.Case[support.GetUserRelatedOutput] {
+	return GetUserRelatedFoundDefault()
+}
+
+// CreateOrganizationCreated selects the created branch: Zendesk created or confirmed this organization.
+func CreateOrganizationCreated(value support.CreateOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.CreateOrganizationOutput] {
+	return connectormock.Branch(support.CreateOrganizationBranchCreated, value, failure)
+}
+
+// CreateOrganizationProviderRejected selects the providerRejected branch: Zendesk conclusively rejected the create.
+func CreateOrganizationProviderRejected(value support.CreateOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.CreateOrganizationOutput] {
+	return connectormock.Branch(support.CreateOrganizationBranchProviderRejected, value, failure)
+}
+
+// CreateOrganizationDefect selects the defect branch: Organization input or credentials are invalid.
+func CreateOrganizationDefect(value support.CreateOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.CreateOrganizationOutput] {
+	return connectormock.Branch(support.CreateOrganizationBranchDefect, value, failure)
+}
+
+// CreateOrganizationUncertain returns an uncertain createOrganization outcome.
+func CreateOrganizationUncertain(value support.CreateOrganizationOutput, failure sdkgo.Failure) connectormock.Case[support.CreateOrganizationOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOrganizationRetry asks Dex to retry the createOrganization Step, after the delay when it is positive.
+func CreateOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.CreateOrganizationOutput] {
+	return connectormock.Retry[support.CreateOrganizationOutput](failure, after)
+}
+
+// CreateOrganizationCreatedDefault is the manifest mock createdDefault: A sample organization is created.
+func CreateOrganizationCreatedDefault() connectormock.Case[support.CreateOrganizationOutput] {
+	value := connectormock.MustDecodeOutput[support.CreateOrganizationOutput](`{"organization":{"id":1201,"name":"Acme","externalId":"acme-1"}}`)
+	return connectormock.Branch(support.CreateOrganizationBranchCreated, value, nil)
+}
+
+// CreateOrganizationDefault is the manifest default, createdDefault, which New installs.
+func CreateOrganizationDefault() connectormock.Case[support.CreateOrganizationOutput] {
+	return CreateOrganizationCreatedDefault()
+}
+
+// UpdateOrganizationUpdated selects the updated branch: Zendesk returned the updated organization.
+func UpdateOrganizationUpdated(value support.UpdateOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateOrganizationOutput] {
+	return connectormock.Branch(support.UpdateOrganizationBranchUpdated, value, failure)
+}
+
+// UpdateOrganizationNotFound selects the notFound branch: The organization does not exist.
+func UpdateOrganizationNotFound(value support.UpdateOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateOrganizationOutput] {
+	return connectormock.Branch(support.UpdateOrganizationBranchNotFound, value, failure)
+}
+
+// UpdateOrganizationProviderRejected selects the providerRejected branch: Zendesk rejected the update.
+func UpdateOrganizationProviderRejected(value support.UpdateOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateOrganizationOutput] {
+	return connectormock.Branch(support.UpdateOrganizationBranchProviderRejected, value, failure)
+}
+
+// UpdateOrganizationDefect selects the defect branch: Organization input or credentials are invalid.
+func UpdateOrganizationDefect(value support.UpdateOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.UpdateOrganizationOutput] {
+	return connectormock.Branch(support.UpdateOrganizationBranchDefect, value, failure)
+}
+
+// UpdateOrganizationRetry asks Dex to retry the updateOrganization Step, after the delay when it is positive.
+func UpdateOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.UpdateOrganizationOutput] {
+	return connectormock.Retry[support.UpdateOrganizationOutput](failure, after)
+}
+
+// UpdateOrganizationUpdatedDefault is the manifest mock updatedDefault: A sample organization is updated.
+func UpdateOrganizationUpdatedDefault() connectormock.Case[support.UpdateOrganizationOutput] {
+	value := connectormock.MustDecodeOutput[support.UpdateOrganizationOutput](`{"organization":{"id":1201,"name":"Acme","externalId":"acme-1"}}`)
+	return connectormock.Branch(support.UpdateOrganizationBranchUpdated, value, nil)
+}
+
+// UpdateOrganizationDefault is the manifest default, updatedDefault, which New installs.
+func UpdateOrganizationDefault() connectormock.Case[support.UpdateOrganizationOutput] {
+	return UpdateOrganizationUpdatedDefault()
+}
+
+// DeleteOrganizationDeleted selects the deleted branch: Zendesk accepted the organization deletion.
+func DeleteOrganizationDeleted(value support.DeleteOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.DeleteOrganizationOutput] {
+	return connectormock.Branch(support.DeleteOrganizationBranchDeleted, value, failure)
+}
+
+// DeleteOrganizationNotFound selects the notFound branch: The organization does not exist.
+func DeleteOrganizationNotFound(value support.DeleteOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.DeleteOrganizationOutput] {
+	return connectormock.Branch(support.DeleteOrganizationBranchNotFound, value, failure)
+}
+
+// DeleteOrganizationProviderRejected selects the providerRejected branch: Zendesk rejected the deletion.
+func DeleteOrganizationProviderRejected(value support.DeleteOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.DeleteOrganizationOutput] {
+	return connectormock.Branch(support.DeleteOrganizationBranchProviderRejected, value, failure)
+}
+
+// DeleteOrganizationDefect selects the defect branch: Organization ID or credentials are invalid.
+func DeleteOrganizationDefect(value support.DeleteOrganizationOutput, failure *sdkgo.Failure) connectormock.Case[support.DeleteOrganizationOutput] {
+	return connectormock.Branch(support.DeleteOrganizationBranchDefect, value, failure)
+}
+
+// DeleteOrganizationRetry asks Dex to retry the deleteOrganization Step, after the delay when it is positive.
+func DeleteOrganizationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[support.DeleteOrganizationOutput] {
+	return connectormock.Retry[support.DeleteOrganizationOutput](failure, after)
+}
+
+// DeleteOrganizationDeletedDefault is the manifest mock deletedDefault: A sample organization is deleted.
+func DeleteOrganizationDeletedDefault() connectormock.Case[support.DeleteOrganizationOutput] {
+	value := connectormock.MustDecodeOutput[support.DeleteOrganizationOutput](`{"organizationId":1201}`)
+	return connectormock.Branch(support.DeleteOrganizationBranchDeleted, value, nil)
+}
+
+// DeleteOrganizationDefault is the manifest default, deletedDefault, which New installs.
+func DeleteOrganizationDefault() connectormock.Case[support.DeleteOrganizationOutput] {
+	return DeleteOrganizationDeletedDefault()
 }
 
 // SearchTicketsSearched selects the searched branch: One page of matching tickets was returned; it may be empty.

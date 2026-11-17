@@ -30,6 +30,8 @@ const (
 	FollowUpNote = "The customer contacted us again about this issue. Message recorded by Dex:"
 
 	recordCustomerIssueStepType     = "RecordCustomerIssue"
+	countOrganizationsStepType      = "CountOrganizations"
+	continueRequesterSearchStepType = "ContinueRequesterSearch"
 	searchRequesterUserStepType     = "SearchRequesterUser"
 	continueTicketListingStepType   = "ContinueTicketListing"
 	listVisibleTicketsStepType      = "ListVisibleTickets"
@@ -142,6 +144,13 @@ func (*Flow) GetFlowType() string { return FlowType }
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordCustomerIssue{}),
+		dex.DefineStep(support.NewCountOrganizationsStep(support.CountOrganizationsStepConfig[CustomerIssue]{
+			StepType: countOrganizationsStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "zendesk", GroupLabel: "Zendesk Support", Explanation: "Read the approximate organization count for this support account."},
+			Connection:  flow.connection, MapToOperationInput: func(CustomerIssue) support.CountOrganizationsInput { return support.CountOrganizationsInput{} },
+			Counted: sdkgo.GoTo(continueRequesterSearch{}),
+		})),
+		dex.DefineStep(continueRequesterSearch{}),
 		dex.DefineStep(support.NewSearchUsersStep(support.SearchUsersStepConfig[CustomerIssue]{
 			StepType: searchRequesterUserStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "zendesk", GroupLabel: "Zendesk Support", Explanation: "Look up the requester before reading their ticket history."},
@@ -346,6 +355,22 @@ func (recordCustomerIssue) Execute(ctx dex.Context, input Input) (*dex.StepDecis
 		return dex.ForceFail(err.Error()), nil
 	}
 	if err := customerIssueAttribute.Set(ctx, issue); err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[CustomerIssue](countOrganizationsStepType), issue), nil
+}
+
+// dex:group group-id:issue group-label:"Customer issue"
+// dex:explanation text:"Continue requester lookup after reading the support account organization count."
+type continueRequesterSearch struct {
+	dex.StepDefaultsNoWaitFor[support.CountOrganizationsResult]
+}
+
+func (continueRequesterSearch) GetStepType() string { return continueRequesterSearchStepType }
+
+func (continueRequesterSearch) Execute(ctx dex.Context, _ support.CountOrganizationsResult) (*dex.StepDecision, error) {
+	issue, err := customerIssueAttribute.Get(ctx)
+	if err != nil {
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[CustomerIssue](searchRequesterUserStepType), issue), nil

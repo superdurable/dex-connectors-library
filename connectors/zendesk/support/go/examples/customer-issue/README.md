@@ -5,7 +5,7 @@ every Zendesk Support operation:
 
 1. `RecordCustomerIssue` validates the requester email, subject, message, and
    issue tag and records the issue;
-2. `SearchRequesterUser` calls `support.NewSearchUsersStep` for the requester; `ListVisibleTickets` calls `support.NewListTicketsStep` to read a ticket page, then `FindUnsolvedIssueTicket` calls `support.NewSearchTicketsStep` for the
+2. `CountOrganizations` calls `support.NewCountOrganizationsStep` for account context; `SearchRequesterUser` calls `support.NewSearchUsersStep` for the requester; `ListVisibleTickets` calls `support.NewListTicketsStep` to read a ticket page, then `FindUnsolvedIssueTicket` calls `support.NewSearchTicketsStep` for the
    customer's `new`, `open`, `pending`, and `hold` tickets that carry the issue
    tag, and `ChooseIssueTicket` picks the most recently updated one;
 3. `ReadCandidateTicket` calls `support.NewGetTicketStep`, and

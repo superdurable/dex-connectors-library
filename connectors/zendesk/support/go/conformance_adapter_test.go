@@ -59,5 +59,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.CreateUser(), zendeskConnection, scenario.CallID),
 		"updateUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateUser(), zendeskConnection, scenario.CallID),
 		"deleteUser":             newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteUser(), zendeskConnection, scenario.CallID),
+		"listOrganizations":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListOrganizations(), zendeskConnection),
+		"countOrganizations":     newConformanceQueryInvocation(t, scenario.Input, context, client.CountOrganizations(), zendeskConnection),
+		"getOrganization":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetOrganization(), zendeskConnection),
+		"getOrganizationRelated": newConformanceQueryInvocation(t, scenario.Input, context, client.GetOrganizationRelated(), zendeskConnection),
+		"listUserOrganizations":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListUserOrganizations(), zendeskConnection),
+		"getUserRelated":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetUserRelated(), zendeskConnection),
+		"createOrganization":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateOrganization(), zendeskConnection, scenario.CallID),
+		"updateOrganization":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateOrganization(), zendeskConnection, scenario.CallID),
+		"deleteOrganization":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteOrganization(), zendeskConnection, scenario.CallID),
 	}}
 }

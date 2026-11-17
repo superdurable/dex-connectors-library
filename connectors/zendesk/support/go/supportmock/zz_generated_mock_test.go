@@ -84,6 +84,58 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[support.DeleteUserOutput](`{"userId":7701}`)
 			return err
 		}},
+		{name: "listOrganizations/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListOrganizationsOutput](`{"organizations":[{"id":1201,"name":"Acme","externalId":"acme-1"}],"nextCursor":"cursor-1"}`)
+			return err
+		}},
+		{name: "listOrganizations/listedDefault/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListOrganizationsOutput](`{"organizations":[{"id":1202,"name":"Northwind","externalId":"northwind-1"}],"nextCursor":"cursor-2"}`)
+			return err
+		}},
+		{name: "listOrganizations/listedDefault/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListOrganizationsOutput](`{"organizations":[],"nextCursor":""}`)
+			return err
+		}},
+		{name: "countOrganizations/countedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.CountOrganizationsOutput](`{"count":2}`)
+			return err
+		}},
+		{name: "getOrganization/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.GetOrganizationOutput](`{"organization":{"id":1201,"name":"Acme","externalId":"acme-1"}}`)
+			return err
+		}},
+		{name: "getOrganizationRelated/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.GetOrganizationRelatedOutput](`{"ticketsCount":12,"usersCount":4}`)
+			return err
+		}},
+		{name: "listUserOrganizations/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListUserOrganizationsOutput](`{"organizations":[{"id":1201,"name":"Acme","externalId":"acme-1"}],"nextCursor":"cursor-1"}`)
+			return err
+		}},
+		{name: "listUserOrganizations/listedDefault/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListUserOrganizationsOutput](`{"organizations":[{"id":1202,"name":"Northwind","externalId":"northwind-1"}],"nextCursor":"cursor-2"}`)
+			return err
+		}},
+		{name: "listUserOrganizations/listedDefault/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListUserOrganizationsOutput](`{"organizations":[],"nextCursor":""}`)
+			return err
+		}},
+		{name: "getUserRelated/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.GetUserRelatedOutput](`{"assignedTickets":5,"requestedTickets":10,"ccdTickets":3,"organizationSubscriptions":1}`)
+			return err
+		}},
+		{name: "createOrganization/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.CreateOrganizationOutput](`{"organization":{"id":1201,"name":"Acme","externalId":"acme-1"}}`)
+			return err
+		}},
+		{name: "updateOrganization/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.UpdateOrganizationOutput](`{"organization":{"id":1201,"name":"Acme","externalId":"acme-1"}}`)
+			return err
+		}},
+		{name: "deleteOrganization/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.DeleteOrganizationOutput](`{"organizationId":1201}`)
+			return err
+		}},
 		{name: "searchTickets/customerIssueTickets/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35435,"agentUrl":"https://acme.zendesk.com/agent/tickets/35435","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-20T08:00:00Z","updatedAt":"2026-10-21T08:00:00Z"},{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}],"nextCursor":"cursor-1"}`)
 			return err
@@ -154,6 +206,33 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteUser().Definition().Operation.OperationID != "deleteUser" {
 		t.Errorf("deleteUser mock has another definition")
+	}
+	if mock.ListOrganizations().Definition().Operation.OperationID != "listOrganizations" {
+		t.Errorf("listOrganizations mock has another definition")
+	}
+	if mock.CountOrganizations().Definition().Operation.OperationID != "countOrganizations" {
+		t.Errorf("countOrganizations mock has another definition")
+	}
+	if mock.GetOrganization().Definition().Operation.OperationID != "getOrganization" {
+		t.Errorf("getOrganization mock has another definition")
+	}
+	if mock.GetOrganizationRelated().Definition().Operation.OperationID != "getOrganizationRelated" {
+		t.Errorf("getOrganizationRelated mock has another definition")
+	}
+	if mock.ListUserOrganizations().Definition().Operation.OperationID != "listUserOrganizations" {
+		t.Errorf("listUserOrganizations mock has another definition")
+	}
+	if mock.GetUserRelated().Definition().Operation.OperationID != "getUserRelated" {
+		t.Errorf("getUserRelated mock has another definition")
+	}
+	if mock.CreateOrganization().Definition().Operation.OperationID != "createOrganization" {
+		t.Errorf("createOrganization mock has another definition")
+	}
+	if mock.UpdateOrganization().Definition().Operation.OperationID != "updateOrganization" {
+		t.Errorf("updateOrganization mock has another definition")
+	}
+	if mock.DeleteOrganization().Definition().Operation.OperationID != "deleteOrganization" {
+		t.Errorf("deleteOrganization mock has another definition")
 	}
 	if mock.SearchTickets().Definition().Operation.OperationID != "searchTickets" {
 		t.Errorf("searchTickets mock has another definition")
