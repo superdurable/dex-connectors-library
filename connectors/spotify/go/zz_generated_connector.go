@@ -43,11 +43,23 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListUserPlaylists() sdkgo.Query[ListUserPlaylistsInput, PlaylistSummaryPage]
+	SearchPlaylists() sdkgo.Query[SearchPlaylistsInput, PlaylistSummaryPage]
+	GetPlaylist() sdkgo.Query[GetPlaylistInput, PlaylistSummary]
 	ListPlaylistTracks() sdkgo.Query[ListPlaylistTracksInput, PlaylistTrackPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListUserPlaylists() sdkgo.Query[ListUserPlaylistsInput, PlaylistSummaryPage] {
+	return operations.client.ListUserPlaylists()
+}
+func (operations clientOperations) SearchPlaylists() sdkgo.Query[SearchPlaylistsInput, PlaylistSummaryPage] {
+	return operations.client.SearchPlaylists()
+}
+func (operations clientOperations) GetPlaylist() sdkgo.Query[GetPlaylistInput, PlaylistSummary] {
+	return operations.client.GetPlaylist()
+}
 func (operations clientOperations) ListPlaylistTracks() sdkgo.Query[ListPlaylistTracksInput, PlaylistTrackPage] {
 	return operations.client.ListPlaylistTracks()
 }
@@ -238,6 +250,273 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListUserPlaylistsBranchListed sdkgo.BranchID = "listed"
+const ListUserPlaylistsBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const ListUserPlaylistsBranchAccessDenied sdkgo.BranchID = "accessDenied"
+const ListUserPlaylistsBranchNotFound sdkgo.BranchID = "notFound"
+const ListUserPlaylistsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListUserPlaylistsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListUserPlaylistsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListUserPlaylistsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listUserPlaylists"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListUserPlaylistsBranchListed, Description: "The playlist page was loaded."},
+		{ID: ListUserPlaylistsBranchAuthorizationRevoked, Description: "The Spotify OAuth grant is invalid or revoked.", Optional: true},
+		{ID: ListUserPlaylistsBranchAccessDenied, Description: "The user cannot read this playlist collection.", Optional: true},
+		{ID: ListUserPlaylistsBranchNotFound, Description: "Spotify could not find this user.", Optional: true},
+		{ID: ListUserPlaylistsBranchProviderRejected, Description: "Spotify conclusively rejected the request.", Optional: true},
+		{ID: ListUserPlaylistsBranchInvalidResponse, Description: "Spotify returned invalid or oversized playlist metadata.", Optional: true},
+		{ID: ListUserPlaylistsBranchDefect, Description: "The user ID, page settings, or local connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListUserPlaylistsResult = sdkgo.QueryResult[PlaylistSummaryPage]
+
+type ListUserPlaylistsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=spotify"`
+	operationID                    struct{}                                               `connector:"operationId=listUserPlaylists"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListUserPlaylistsInput                        `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListUserPlaylistsResult]                  `connector:"branch=listed"`
+	AuthorizationRevoked           sdkgo.Target[ListUserPlaylistsResult]                  `connector:"branch=authorizationRevoked,optional"`
+	AccessDenied                   sdkgo.Target[ListUserPlaylistsResult]                  `connector:"branch=accessDenied,optional"`
+	NotFound                       sdkgo.Target[ListUserPlaylistsResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListUserPlaylistsResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListUserPlaylistsResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListUserPlaylistsResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PlaylistSummaryPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListUserPlaylistsStep[IN any](config ListUserPlaylistsStepConfig[IN]) sdkgo.QueryStep[IN, ListUserPlaylistsInput, PlaylistSummaryPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("spotify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListUserPlaylistsInput, PlaylistSummaryPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListUserPlaylists(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListUserPlaylistsResult] {
+			branches := make([]sdkgo.BranchTarget[ListUserPlaylistsResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListUserPlaylistsBranchListed))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(ListUserPlaylistsBranchAuthorizationRevoked))
+			}
+			if config.AccessDenied.HasStep() {
+				branches = append(branches, config.AccessDenied.BranchTarget(ListUserPlaylistsBranchAccessDenied))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListUserPlaylistsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListUserPlaylistsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListUserPlaylistsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListUserPlaylistsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchPlaylistsBranchListed sdkgo.BranchID = "listed"
+const SearchPlaylistsBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const SearchPlaylistsBranchAccessDenied sdkgo.BranchID = "accessDenied"
+const SearchPlaylistsBranchNotFound sdkgo.BranchID = "notFound"
+const SearchPlaylistsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchPlaylistsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchPlaylistsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchPlaylistsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchPlaylists"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchPlaylistsBranchListed, Description: "The search result page was loaded."},
+		{ID: SearchPlaylistsBranchAuthorizationRevoked, Description: "The Spotify OAuth grant is invalid or revoked.", Optional: true},
+		{ID: SearchPlaylistsBranchAccessDenied, Description: "Spotify denied this search.", Optional: true},
+		{ID: SearchPlaylistsBranchNotFound, Description: "Spotify could not resolve this search.", Optional: true},
+		{ID: SearchPlaylistsBranchProviderRejected, Description: "Spotify conclusively rejected the search.", Optional: true},
+		{ID: SearchPlaylistsBranchInvalidResponse, Description: "Spotify returned invalid or oversized search results.", Optional: true},
+		{ID: SearchPlaylistsBranchDefect, Description: "The query, page settings, or local connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchPlaylistsResult = sdkgo.QueryResult[PlaylistSummaryPage]
+
+type SearchPlaylistsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=spotify"`
+	operationID                    struct{}                                               `connector:"operationId=searchPlaylists"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchPlaylistsInput                          `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[SearchPlaylistsResult]                    `connector:"branch=listed"`
+	AuthorizationRevoked           sdkgo.Target[SearchPlaylistsResult]                    `connector:"branch=authorizationRevoked,optional"`
+	AccessDenied                   sdkgo.Target[SearchPlaylistsResult]                    `connector:"branch=accessDenied,optional"`
+	NotFound                       sdkgo.Target[SearchPlaylistsResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[SearchPlaylistsResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchPlaylistsResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchPlaylistsResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PlaylistSummaryPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewSearchPlaylistsStep[IN any](config SearchPlaylistsStepConfig[IN]) sdkgo.QueryStep[IN, SearchPlaylistsInput, PlaylistSummaryPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("spotify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchPlaylistsInput, PlaylistSummaryPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchPlaylists(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchPlaylistsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchPlaylistsResult], 0, 7)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(SearchPlaylistsBranchListed))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(SearchPlaylistsBranchAuthorizationRevoked))
+			}
+			if config.AccessDenied.HasStep() {
+				branches = append(branches, config.AccessDenied.BranchTarget(SearchPlaylistsBranchAccessDenied))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SearchPlaylistsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchPlaylistsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchPlaylistsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchPlaylistsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPlaylistBranchFound sdkgo.BranchID = "found"
+const GetPlaylistBranchAuthorizationRevoked sdkgo.BranchID = "authorizationRevoked"
+const GetPlaylistBranchAccessDenied sdkgo.BranchID = "accessDenied"
+const GetPlaylistBranchNotFound sdkgo.BranchID = "notFound"
+const GetPlaylistBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPlaylistBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPlaylistBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPlaylistDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPlaylist"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPlaylistBranchFound, Description: "The playlist metadata was loaded."},
+		{ID: GetPlaylistBranchAuthorizationRevoked, Description: "The Spotify OAuth grant is invalid or revoked.", Optional: true},
+		{ID: GetPlaylistBranchAccessDenied, Description: "The user cannot access this playlist.", Optional: true},
+		{ID: GetPlaylistBranchNotFound, Description: "Spotify could not find this playlist.", Optional: true},
+		{ID: GetPlaylistBranchProviderRejected, Description: "Spotify conclusively rejected the request.", Optional: true},
+		{ID: GetPlaylistBranchInvalidResponse, Description: "Spotify returned invalid or oversized playlist metadata.", Optional: true},
+		{ID: GetPlaylistBranchDefect, Description: "The playlist ID or local connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPlaylistResult = sdkgo.QueryResult[PlaylistSummary]
+
+type GetPlaylistStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=spotify"`
+	operationID                    struct{}                                           `connector:"operationId=getPlaylist"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPlaylistInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPlaylistResult]                    `connector:"branch=found"`
+	AuthorizationRevoked           sdkgo.Target[GetPlaylistResult]                    `connector:"branch=authorizationRevoked,optional"`
+	AccessDenied                   sdkgo.Target[GetPlaylistResult]                    `connector:"branch=accessDenied,optional"`
+	NotFound                       sdkgo.Target[GetPlaylistResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPlaylistResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPlaylistResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPlaylistResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PlaylistSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetPlaylistStep[IN any](config GetPlaylistStepConfig[IN]) sdkgo.QueryStep[IN, GetPlaylistInput, PlaylistSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("spotify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPlaylistInput, PlaylistSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPlaylist(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPlaylistResult] {
+			branches := make([]sdkgo.BranchTarget[GetPlaylistResult], 0, 7)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPlaylistBranchFound))
+			}
+			if config.AuthorizationRevoked.HasStep() {
+				branches = append(branches, config.AuthorizationRevoked.BranchTarget(GetPlaylistBranchAuthorizationRevoked))
+			}
+			if config.AccessDenied.HasStep() {
+				branches = append(branches, config.AccessDenied.BranchTarget(GetPlaylistBranchAccessDenied))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPlaylistBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPlaylistBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPlaylistBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPlaylistBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListPlaylistTracksBranchListed sdkgo.BranchID = "listed"

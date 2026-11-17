@@ -20,6 +20,8 @@ const (
 	ConnectionName = "spotify-playlist-reader"
 
 	listPlaylistTracksStepType     = "ListPlaylistTracks"
+	getPlaylistStepType            = "GetPlaylist"
+	continueAfterGetPlaylistType   = "ContinueAfterGetPlaylist"
 	recordPlaylistRequestStepType  = "RecordPlaylistRequest"
 	completePlaylistTracksStepType = "CompletePlaylistTracks"
 )
@@ -27,6 +29,7 @@ const (
 var (
 	playlistRequestAttribute = dex.DefineAttribute[Input]("spotify-playlist-tracks-request")
 	playlistPageAttribute    = dex.DefineAttribute[spotify.PlaylistTrackPage]("spotify-playlist-tracks-page")
+	playlistSummaryAttribute = dex.DefineAttribute[spotify.PlaylistSummary]("spotify-playlist-summary")
 )
 
 // Input is the typed playlist page request entered in Dex Web Start Flow.
@@ -59,6 +62,16 @@ func (*Flow) GetFlowType() string { return FlowType }
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
 		dex.DefineStartStep(recordPlaylistRequest{}),
+		dex.DefineStep(spotify.NewGetPlaylistStep(spotify.GetPlaylistStepConfig[Input]{
+			StepType: getPlaylistStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{
+				GroupID: "spotify", GroupLabel: "Spotify",
+				Explanation: "Read the playlist owner and snapshot before loading its tracks.",
+			},
+			Connection: flow.connection, MapToOperationInput: flow.MapToGetPlaylistInput,
+			Found: sdkgo.GoTo(continueAfterGetPlaylist{}),
+		})),
+		dex.DefineStep(continueAfterGetPlaylist{}),
 		dex.DefineStep(spotify.NewListPlaylistTracksStep(spotify.ListPlaylistTracksStepConfig[Input]{
 			StepType: listPlaylistTracksStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -82,21 +95,23 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 
 // GetPersistenceSchema registers the playlist request and result page Attributes.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{playlistRequestAttribute, playlistPageAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{playlistRequestAttribute, playlistSummaryAttribute, playlistPageAttribute}}
 }
 
 // GetDexSummary returns the playlist request and loaded page for the Dex Web run list.
 //
 // dex:field attribute-key:spotify-playlist-tracks-request value-type:json editable:false description:"Spotify playlist page request"
 // dex:field attribute-key:spotify-playlist-tracks-page value-type:json editable:false description:"Loaded Spotify playlist track page"
+// dex:field attribute-key:spotify-playlist-summary value-type:json editable:false description:"Spotify playlist identity and snapshot"
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	request, page, err := playlistInspection(ctx)
+	request, summary, page, err := playlistInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &dex.RPCResult[map[string]any]{Output: map[string]any{
 		"spotify-playlist-tracks-request": request,
 		"spotify-playlist-tracks-page":    page,
+		"spotify-playlist-summary":        summary,
 	}}, nil
 }
 
@@ -104,14 +119,16 @@ func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[stri
 //
 // dex:field attribute-key:spotify-playlist-tracks-request value-type:json editable:false description:"Spotify playlist page request"
 // dex:field attribute-key:spotify-playlist-tracks-page value-type:json editable:false description:"Tracks, pagination, and Spotify attribution links"
+// dex:field attribute-key:spotify-playlist-summary value-type:json editable:false description:"Spotify playlist identity and snapshot"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	request, page, err := playlistInspection(ctx)
+	request, summary, page, err := playlistInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &dex.RPCResult[map[string]any]{Output: map[string]any{
 		"spotify-playlist-tracks-request": request,
 		"spotify-playlist-tracks-page":    page,
+		"spotify-playlist-summary":        summary,
 	}}, nil
 }
 
@@ -122,16 +139,25 @@ func (*Flow) MapToListPlaylistTracksInput(input Input) spotify.ListPlaylistTrack
 	}
 }
 
-func playlistInspection(ctx dex.Context) (Input, spotify.PlaylistTrackPage, error) {
+// MapToGetPlaylistInput maps the Flow input to the playlist metadata Query.
+func (*Flow) MapToGetPlaylistInput(input Input) spotify.GetPlaylistInput {
+	return spotify.GetPlaylistInput{PlaylistID: input.PlaylistID}
+}
+
+func playlistInspection(ctx dex.Context) (Input, spotify.PlaylistSummary, spotify.PlaylistTrackPage, error) {
 	request, err := optionalAttribute(ctx, playlistRequestAttribute)
 	if err != nil {
-		return Input{}, spotify.PlaylistTrackPage{}, err
+		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, err
+	}
+	summary, err := optionalAttribute(ctx, playlistSummaryAttribute)
+	if err != nil {
+		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, err
 	}
 	page, err := optionalAttribute(ctx, playlistPageAttribute)
 	if err != nil {
-		return Input{}, spotify.PlaylistTrackPage{}, err
+		return Input{}, spotify.PlaylistSummary{}, spotify.PlaylistTrackPage{}, err
 	}
-	return request, page, nil
+	return request, summary, page, nil
 }
 
 func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, error) {
@@ -161,7 +187,26 @@ func (recordPlaylistRequest) Execute(ctx dex.Context, input Input) (*dex.StepDec
 	if err := playlistRequestAttribute.Set(ctx, input); err != nil {
 		return nil, err
 	}
-	return dex.GoTo(sdkgo.StepRef[Input](listPlaylistTracksStepType), input), nil
+	return dex.GoTo(sdkgo.StepRef[Input](getPlaylistStepType), input), nil
+}
+
+// dex:group group-id:spotify group-label:"Spotify"
+// dex:explanation text:"Persist the Spotify playlist metadata and load its tracks."
+type continueAfterGetPlaylist struct {
+	dex.StepDefaultsNoWaitFor[spotify.GetPlaylistResult]
+}
+
+func (continueAfterGetPlaylist) GetStepType() string { return continueAfterGetPlaylistType }
+
+func (continueAfterGetPlaylist) Execute(ctx dex.Context, result spotify.GetPlaylistResult) (*dex.StepDecision, error) {
+	if err := playlistSummaryAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
+	request, err := playlistRequestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[Input](listPlaylistTracksStepType), request), nil
 }
 
 // dex:group group-id:spotify group-label:"Spotify"

@@ -19,6 +19,11 @@ func TestMapToListPlaylistTracksInputPreservesThePageRequest(t *testing.T) {
 	}, NewFlow(spotify.Connection{}).MapToListPlaylistTracksInput(input))
 }
 
+func TestMapToGetPlaylistInputPreservesPlaylistIdentity(t *testing.T) {
+	input := Input{PlaylistID: "3cEYpjA9oz9GiPac4AsH4n"}
+	require.Equal(t, spotify.GetPlaylistInput{PlaylistID: input.PlaylistID}, NewFlow(spotify.Connection{}).MapToGetPlaylistInput(input))
+}
+
 // TestStartFlowIdentitiesMatchTheFlowDefinition keeps registered types equal to the dexcli visualize names.
 func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, FlowType, dex.GetFinalFlowType(NewFlow(spotify.Connection{})))

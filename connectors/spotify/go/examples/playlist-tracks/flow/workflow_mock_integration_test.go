@@ -29,6 +29,11 @@ func TestPlaylistTracksUsesMockWithRealDex(t *testing.T) {
 	require.Len(t, page.Tracks, 1)
 	require.Equal(t, 0, page.Tracks[0].Position)
 
+	playlistCalls := mock.GetPlaylist().Calls()
+	require.Len(t, playlistCalls, 1)
+	require.Equal(t, spotify.GetPlaylistInput{PlaylistID: input.PlaylistID}, playlistCalls[0].Input)
+	require.Equal(t, spotify.GetPlaylistBranchFound, playlistCalls[0].Branch)
+
 	calls := mock.ListPlaylistTracks().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, spotify.ListPlaylistTracksInput{PlaylistID: "3cEYpjA9oz9GiPac4AsH4n", Limit: 2}, calls[0].Input)

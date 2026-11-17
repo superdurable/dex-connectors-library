@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: spotify
   displayName: Spotify
-  description: List bounded pages of tracks from playlists owned by or shared with the authenticated Spotify user.
+  description: Read playlists and bounded pages of their tracks for the authenticated Spotify user.
   company: Spotify
   categories: [data-search]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: spotify
   languages:
@@ -94,6 +94,86 @@ spec:
         exactScopes: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, access_denied]
   operations:
+    - name: listUserPlaylists
+      goName: ListUserPlaylists
+      inputType: ListUserPlaylistsInput
+      outputType: PlaylistSummaryPage
+      kind: query
+      description: List one bounded page of playlists for a Spotify user, or the current user when userId is blank.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: The playlist page was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: The user cannot read this playlist collection., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not find this user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized playlist metadata., optional: true}
+        - {id: defect, goName: Defect, description: "The user ID, page settings, or local connection is invalid.", optional: true}
+      pagination: {inputField: offset, nextField: nextOffset}
+      mocks:
+        - name: sampleUserPlaylists
+          branch: listed
+          default: true
+          description: The authenticated user has three sample playlists across three pages.
+          pages:
+            - {playlists: [{id: 3cEYpjA9oz9GiPac4AsH4n, name: Example One, ownerUserId: sample-user, spotifyUrl: https://open.spotify.com/playlist/3cEYpjA9oz9GiPac4AsH4n, snapshotId: sample-snapshot-1, public: true}], limit: 1, offset: 0, total: 3, nextOffset: 1}
+            - {playlists: [{id: 4iV5W9uYEdYUVa79Axb7Rh, name: Example Two, ownerUserId: sample-user, spotifyUrl: https://open.spotify.com/playlist/4iV5W9uYEdYUVa79Axb7Rh, snapshotId: sample-snapshot-2, public: true}], limit: 1, offset: 1, total: 3, nextOffset: 2}
+            - {playlists: [{id: 7ouMYWpwJ422jRcDASZB7P, name: Example Three, ownerUserId: sample-user, spotifyUrl: https://open.spotify.com/playlist/7ouMYWpwJ422jRcDASZB7P, snapshotId: sample-snapshot-3, public: true}], limit: 1, offset: 2, total: 3}
+    - name: searchPlaylists
+      goName: SearchPlaylists
+      inputType: SearchPlaylistsInput
+      outputType: PlaylistSummaryPage
+      kind: query
+      description: Search Spotify's playlist catalog by a nonempty text query and return one bounded result page.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: The search result page was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: Spotify denied this search., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not resolve this search., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized search results., optional: true}
+        - {id: defect, goName: Defect, description: "The query, page settings, or local connection is invalid.", optional: true}
+      pagination: {inputField: offset, nextField: nextOffset}
+      mocks:
+        - name: samplePlaylistSearch
+          branch: listed
+          default: true
+          description: The playlist catalog has three matching sample playlists across three pages.
+          pages:
+            - {playlists: [{id: 3cEYpjA9oz9GiPac4AsH4n, name: Example One, ownerUserId: sample-user, spotifyUrl: https://open.spotify.com/playlist/3cEYpjA9oz9GiPac4AsH4n, snapshotId: sample-snapshot-1, public: true}], limit: 1, offset: 0, total: 3, nextOffset: 1}
+            - {playlists: [{id: 4iV5W9uYEdYUVa79Axb7Rh, name: Example Two, ownerUserId: sample-user, spotifyUrl: https://open.spotify.com/playlist/4iV5W9uYEdYUVa79Axb7Rh, snapshotId: sample-snapshot-2, public: true}], limit: 1, offset: 1, total: 3, nextOffset: 2}
+            - {playlists: [{id: 7ouMYWpwJ422jRcDASZB7P, name: Example Three, ownerUserId: sample-user, spotifyUrl: https://open.spotify.com/playlist/7ouMYWpwJ422jRcDASZB7P, snapshotId: sample-snapshot-3, public: true}], limit: 1, offset: 2, total: 3}
+    - name: getPlaylist
+      goName: GetPlaylist
+      inputType: GetPlaylistInput
+      outputType: PlaylistSummary
+      kind: query
+      description: Read a playlist's identity, owner, name, description, visibility, and snapshot.
+      idempotency: none
+      authorization: required
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      branches:
+        - {id: found, goName: Found, description: The playlist metadata was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: The user cannot access this playlist., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not find this playlist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized playlist metadata., optional: true}
+        - {id: defect, goName: Defect, description: The playlist ID or local connection is invalid., optional: true}
+      mocks:
+        - name: samplePlaylist
+          branch: found
+          default: true
+          description: A public example playlist is available to the current user.
+          output: {id: 3cEYpjA9oz9GiPac4AsH4n, name: Example Playlist, ownerUserId: sample-user, spotifyUrl: https://open.spotify.com/playlist/3cEYpjA9oz9GiPac4AsH4n, snapshotId: sample-snapshot, public: true}
     - name: listPlaylistTracks
       goName: ListPlaylistTracks
       inputType: ListPlaylistTracksInput

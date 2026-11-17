@@ -23,6 +23,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"listUserPlaylists": newConformanceQueryInvocation(t, scenario.Input, testsupport.NewDexContext("spotify-conformance", "list-user-playlists"), client.ListUserPlaylists(), conformanceConnection),
+		"searchPlaylists": newConformanceQueryInvocation(t, scenario.Input, testsupport.NewDexContext("spotify-conformance", "search-playlists"), client.SearchPlaylists(), conformanceConnection),
+		"getPlaylist": newConformanceQueryInvocation(t, scenario.Input, testsupport.NewDexContext("spotify-conformance", "get-playlist"), client.GetPlaylist(), conformanceConnection),
 		"listPlaylistTracks": newConformanceQueryInvocation(t, scenario.Input, testsupport.NewDexContext("spotify-conformance", "list-playlist-tracks"), client.ListPlaylistTracks(), conformanceConnection),
 	}}
 }

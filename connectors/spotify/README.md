@@ -1,6 +1,6 @@
 # Spotify Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/spotify/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/spotify/go@v0.25.0`.
 
 The Python port is `dex-connector-spotify==0.2.0`. Its generated
 `new_project_connection` binds the same `listPlaylistTracks` Query and Spotify
@@ -12,6 +12,8 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/spotify`.
 
 The Python and TypeScript packages offer `listPlaylistTracks` to Dex agent
 hosts as a read-only tool.
+
+The Go connector reads playlist metadata with `getPlaylist`, lists a user's playlists with `listUserPlaylists`, searches playlists with `searchPlaylists`, and lists one bounded page of tracks with `listPlaylistTracks`. `getPlaylist` returns the owner ID, name, description, Spotify link, visibility, and snapshot ID. The new operations are safe Queries and use the existing `playlist-read-private` grant. `listUserPlaylists` accepts a Spotify user ID or leaves it blank to list the current user's playlists. `searchPlaylists` accepts a nonempty text query and an optional two-letter market. Both return one page with `nextOffset` for continuation.
 
 The Spotify connector lists one bounded page of tracks from a playlist through
 Spotify's official [Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)
@@ -40,11 +42,12 @@ connector asks once for a refresh, which project storage performs only when the
 recorded expiry has passed, and then retries the request once; otherwise the
 401 selects `authorizationRevoked`.
 
-The operation has these branches:
+Both operations have these terminal branches; their happy paths are `found` for `getPlaylist` and `listed` for `listPlaylistTracks`:
 
 | Branch | Meaning |
 | --- | --- |
 | `listed` | One bounded page was loaded. |
+| `found` | Playlist metadata was loaded. |
 | `authorizationRevoked` | The access token is invalid or revoked. |
 | `accessDenied` | Spotify does not allow this user to read the playlist items. |
 | `notFound` | Spotify did not find the playlist. |
