@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getEvent/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.EventSummary](`{"id":"ev_123456","eventType":"subscription_created","occurredAt":1702645601}`)
+			return err
+		}},
+		{name: "listEvents/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.EventPage](`{"events":[{"id":"ev_123456","eventType":"subscription_created","occurredAt":1702645601}],"nextOffset":"next-page"}`)
+			return err
+		}},
+		{name: "listSubscriptions/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.SubscriptionPage](`{"subscriptions":[{"id":"sub_123456","status":"active","currencyCode":"USD"}],"nextOffset":"next-page"}`)
+			return err
+		}},
+		{name: "getCustomer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.CustomerIdentity](`{"id":"customer-1","email":"member@example.com"}`)
+			return err
+		}},
+		{name: "listCustomers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.CustomerPage](`{"customers":[{"id":"customer-1","email":"member@example.com"}],"nextOffset":"next-page"}`)
+			return err
+		}},
+		{name: "getInvoice/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.InvoiceStatus](`{"id":"invoice-1","status":"paid","currencyCode":"USD","total":1000}`)
+			return err
+		}},
+		{name: "listInvoices/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[chargebee.InvoicePage](`{"invoices":[{"id":"invoice-1","status":"paid","currencyCode":"USD","total":1000}],"nextOffset":"next-page"}`)
+			return err
+		}},
 		{name: "getSubscription/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[chargebee.SubscriptionStatus](`{"id":"sub_123456","status":"active","currencyCode":"USD"}`)
 			return err
@@ -30,6 +58,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetEvent().Definition().Operation.OperationID != "getEvent" {
+		t.Errorf("getEvent mock has another definition")
+	}
+	if mock.ListEvents().Definition().Operation.OperationID != "listEvents" {
+		t.Errorf("listEvents mock has another definition")
+	}
+	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
+		t.Errorf("listSubscriptions mock has another definition")
+	}
+	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
+		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.ListCustomers().Definition().Operation.OperationID != "listCustomers" {
+		t.Errorf("listCustomers mock has another definition")
+	}
+	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
+		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
+	}
 	if mock.GetSubscription().Definition().Operation.OperationID != "getSubscription" {
 		t.Errorf("getSubscription mock has another definition")
 	}

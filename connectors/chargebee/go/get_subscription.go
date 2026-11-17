@@ -105,7 +105,7 @@ func decodeSubscription(body []byte, requestedSubscriptionID string) (Subscripti
 	if err := json.Unmarshal(body, &wire); err != nil {
 		return SubscriptionStatus{}, err
 	}
-	if wire.Subscription.ID != requestedSubscriptionID || len(wire.Subscription.CurrencyCode) != 3 || strings.TrimSpace(wire.Subscription.Status) == "" {
+	if wire.Subscription.ID == "" || requestedSubscriptionID != "" && wire.Subscription.ID != requestedSubscriptionID || len(wire.Subscription.CurrencyCode) != 3 || strings.TrimSpace(wire.Subscription.Status) == "" {
 		return SubscriptionStatus{}, fmt.Errorf("subscription identity, currency, or status missing")
 	}
 	return SubscriptionStatus{ID: wire.Subscription.ID, CurrencyCode: wire.Subscription.CurrencyCode, Status: wire.Subscription.Status}, nil

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: buffer
   displayName: Buffer
-  description: Read one connected Buffer channel by ID.
+  description: Discover Buffer organizations and channels, create ideas, and manage text posts.
   company: Buffer
   categories: [social-media, marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: buffer
   languages:
@@ -33,7 +33,7 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one channel query as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        description: Maximum duration of one GraphQL request as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
@@ -55,6 +55,227 @@ spec:
         - Sign in to Buffer, open Settings > API, create an API key, and copy the full secret into Dex Web apiKey. Blank prevents calls. The key can access all organizations and channels in the account; rotate it from the same page.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. In Buffer Settings > API use the GraphQL API to query account organizations and channels, then pass a channel's opaque ID as channelId; blank is invalid.
   operations:
+    - name: createIdea
+      goName: CreateIdea
+      inputType: CreateIdeaInput
+      outputType: IdeaProfile
+      kind: mutation
+      description: Create a text idea in one organization.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Buffer created the idea.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the idea., optional: true}
+        - {id: uncertain, goName: Uncertain, description: An idea may have been created but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample Buffer idea.
+          output: {id: idea-1, title: Sample idea, text: Sample text}
+    - name: listIdeas
+      goName: ListIdeas
+      inputType: ListIdeasInput
+      outputType: IdeasPage
+      kind: query
+      description: List one page of idea IDs, titles, and text in an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Buffer returned one idea page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer rejected idea listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned an invalid idea page., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample idea page.
+          output: {ideas: [{id: idea-1, title: Sample idea, text: Sample text}], endCursor: cursor-1, hasNextPage: false}
+    - name: listOrganizations
+      goName: ListOrganizations
+      inputType: ListOrganizationsInput
+      outputType: OrganizationsList
+      kind: query
+      description: List organization IDs and names available to the API key.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Buffer completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample Buffer result.
+          output: {organizations: [{id: org-1, name: Example Organization}]}
+    - name: listChannels
+      goName: ListChannels
+      inputType: ListChannelsInput
+      outputType: ChannelsList
+      kind: query
+      description: List channel IDs, names, and services for an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Buffer completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample Buffer result.
+          output: {channels: [{id: channel-1, name: Example Channel, service: instagram}]}
+    - name: getPost
+      goName: GetPost
+      inputType: GetPostInput
+      outputType: PostProfile
+      kind: query
+      description: Read one post's ID, text, and channel ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Buffer completed the operation.}
+        - {id: notFound, goName: NotFound, description: Buffer did not find the post., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample Buffer result.
+          output: {id: post-1, text: Sample post, channelId: channel-1}
+    - name: listPosts
+      goName: ListPosts
+      inputType: ListPostsInput
+      outputType: PostsList
+      kind: query
+      description: List a page of post IDs and text for an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Buffer completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample Buffer result.
+          output: {posts: [{id: post-1, text: Sample post, channelId: channel-1}], endCursor: cursor-1, hasNextPage: false}
+    - name: createPost
+      goName: CreatePost
+      inputType: CreatePostInput
+      outputType: PostProfile
+      kind: mutation
+      description: Add a text post to one channel queue.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Buffer completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A post may have been created but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample Buffer result.
+          output: {id: post-1, text: Sample post, channelId: channel-1}
+    - name: createScheduledPost
+      goName: CreateScheduledPost
+      inputType: CreateScheduledPostInput
+      outputType: PostProfile
+      kind: mutation
+      description: Create a text post scheduled for a specific UTC time.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Buffer scheduled the post.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the post., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A scheduled post may have been created but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample scheduled post.
+          output: {id: post-2, text: Scheduled post, channelId: channel-1}
+    - name: publishPostNow
+      goName: PublishPostNow
+      inputType: PublishPostNowInput
+      outputType: PostProfile
+      kind: mutation
+      description: Create a text post for immediate publishing.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Buffer accepted the post for immediate publishing.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the post., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A post may have been published but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample immediately published post.
+          output: {id: post-3, text: Published post, channelId: channel-1}
+    - name: editPost
+      goName: EditPost
+      inputType: EditPostInput
+      outputType: PostProfile
+      kind: mutation
+      description: Replace one queued post's text.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Buffer completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample Buffer result.
+          output: {id: post-1, text: Updated post, channelId: channel-1}
+    - name: deletePost
+      goName: DeletePost
+      inputType: DeletePostInput
+      outputType: PostDeleteResult
+      kind: mutation
+      description: Delete one Buffer post by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Buffer completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample Buffer result.
+          output: {id: post-1}
     - name: getChannel
       goName: GetChannel
       inputType: GetChannelInput

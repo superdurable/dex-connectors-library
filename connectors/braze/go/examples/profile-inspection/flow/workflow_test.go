@@ -12,10 +12,12 @@ import (
 )
 
 func TestProfileInspectionFlowIdentityAndMapping(t *testing.T) {
-	input := braze.GetUserProfileInput{}
-	require.Equal(t, input, MapToOperationInput(input))
+	input := Request{}
+	providerInput := braze.GetUserProfileInput{}
+	require.Equal(t, providerInput, MapToOperationInput(providerInput))
 	require.Equal(t, FlowType, dex.GetFinalFlowType(NewFlow(braze.Connection{})))
-	require.Equal(t, "StartGetUserProfile", dex.GetFinalStepType[braze.GetUserProfileInput](startRequest{}))
+	require.Equal(t, "CallListCampaigns", listCampaignsStepType)
+	require.Equal(t, "StartGetUserProfile", dex.GetFinalStepType[Request](startRequest{}))
 	wait, err := startRequest{}.WaitFor(nil, input)
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

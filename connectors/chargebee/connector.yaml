@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: chargebee
   displayName: Chargebee
-  description: Read selected Chargebee subscription status through the v2 API.
+  description: Read Chargebee subscriptions, customers, invoices, and events through the v2 API.
   company: Chargebee
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: chargebee
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow subscription reads.
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow responses.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete subscription response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large subscription metadata.
+        description: Maximum complete API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large list pages.
         default: 1048576
   auth:
     type: apiKey
@@ -55,6 +55,149 @@ spec:
         - Sign in to the Chargebee Test or Live site, open Settings > Configure Chargebee > API Keys and Webhooks > API Keys > Add API Key, select Read-Only, name the key, and copy the complete opaque secret into Dex Web api_key. Blank is invalid. Rotate it on the same page.
         - Copy the site's subdomain from its Chargebee console and enter the full non-secret https://{site}.chargebee.com/api/v2 into baseUrl; blank is invalid. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret subscription ID in Subscriptions or an API response and pass it as subscriptionId; blank is invalid.
   operations:
+    - name: getEvent
+      goName: GetEvent
+      inputType: GetEventInput
+      outputType: EventSummary
+      kind: query
+      description: Read recent event ID, type, and time without event content.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Chargebee returned the event.}
+        - {id: notFound, goName: NotFound, description: Chargebee did not find a recent event., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Chargebee rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Chargebee returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample event summary.
+          output: {id: ev_123456, eventType: subscription_created, occurredAt: 1702645601}
+    - name: listEvents
+      goName: ListEvents
+      inputType: ListEventsInput
+      outputType: EventPage
+      kind: query
+      description: List event IDs, types, and times in one page without event content.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Chargebee returned an event page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Chargebee rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Chargebee returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample event page.
+          output: {events: [{id: ev_123456, eventType: subscription_created, occurredAt: 1702645601}], nextOffset: next-page}
+    - name: listSubscriptions
+      goName: ListSubscriptions
+      inputType: ListSubscriptionsInput
+      outputType: SubscriptionPage
+      kind: query
+      description: List subscription IDs, statuses, and currencies in one page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Chargebee returned a subscription page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Chargebee rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Chargebee returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample subscription page.
+          output: {subscriptions: [{id: sub_123456, status: active, currencyCode: USD}], nextOffset: next-page}
+    - name: getCustomer
+      goName: GetCustomer
+      inputType: GetCustomerInput
+      outputType: CustomerIdentity
+      kind: query
+      description: Read a customer's ID and email without payment data.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Chargebee returned the customer.}
+        - {id: notFound, goName: NotFound, description: Chargebee did not find the customer., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Chargebee rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Chargebee returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample customer identity.
+          output: {id: customer-1, email: member@example.com}
+    - name: listCustomers
+      goName: ListCustomers
+      inputType: ListCustomersInput
+      outputType: CustomerPage
+      kind: query
+      description: List customer IDs and email addresses in one page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Chargebee returned a customer page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Chargebee rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Chargebee returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample customer page.
+          output: {customers: [{id: customer-1, email: member@example.com}], nextOffset: next-page}
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: InvoiceStatus
+      kind: query
+      description: Read invoice ID, status, currency, and total without payment details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Chargebee returned the invoice.}
+        - {id: notFound, goName: NotFound, description: Chargebee did not find the invoice., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Chargebee rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Chargebee returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample invoice status.
+          output: {id: invoice-1, status: paid, currencyCode: USD, total: 1000}
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoicePage
+      kind: query
+      description: List invoice status and total in one page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Chargebee returned an invoice page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Chargebee rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Chargebee returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample invoice page.
+          output: {invoices: [{id: invoice-1, status: paid, currencyCode: USD, total: 1000}], nextOffset: next-page}
     - name: getSubscription
       goName: GetSubscription
       inputType: GetSubscriptionInput

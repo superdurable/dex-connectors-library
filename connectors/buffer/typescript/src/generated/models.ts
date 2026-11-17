@@ -10,7 +10,7 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Buffer GraphQL HTTPS endpoint. Blank uses the displayed production URL; override only for a trusted test gateway. Do not append a path or credentials. */
   baseUrl?: string;
-  /** Maximum duration of one channel query as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
+  /** Maximum duration of one GraphQL request as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
   timeoutMs?: number;
   /** Maximum complete GraphQL JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses. */
   maxResponseBytes?: number;

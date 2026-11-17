@@ -51,7 +51,7 @@ func TestContactSyncUsesMockWithRealDex(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	flowID := "brevo-contact-sync-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	_, err = client.StartFlow(ctx, flow, flowID, Request{Email: "member@meridian.example", FirstName: "Meridian"}, dex.StartFlowOptions{})
+	_, err = client.StartFlow(ctx, flow, flowID, Request{Email: "member@meridian.example", FirstName: "Meridian", SenderID: 1, SenderName: "Support", AttributeName: "CUSTOMER_TIER", AttributeOptions: []string{"Gold", "Silver"}, EmailSenderAddress: "sender@example.com", EmailSenderName: "Support", EmailSubject: "Welcome", EmailText: "Hello"}, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
@@ -60,4 +60,29 @@ func TestContactSyncUsesMockWithRealDex(t *testing.T) {
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, "member@meridian.example", calls[0].Input.Email)
+	require.Len(t, mock.ListAttributes().Calls(), 1)
+	require.Len(t, mock.UpdateSender().Calls(), 1)
+	require.Equal(t, int64(1), mock.UpdateSender().Calls()[0].Input.ID)
+	require.Len(t, mock.UpdateAttribute().Calls(), 1)
+	require.Equal(t, "CUSTOMER_TIER", mock.UpdateAttribute().Calls()[0].Input.Name)
+	require.Len(t, mock.SendEmail().Calls(), 1)
+	require.Equal(t, "member@meridian.example", mock.SendEmail().Calls()[0].Input.ToEmail)
+
+	templateFlowID := flowID + "-template"
+	_, err = client.StartFlow(ctx, flow, templateFlowID, Request{Email: "member@meridian.example", FirstName: "Meridian", EmailTemplateID: 42, EmailTemplateParams: map[string]string{"FIRSTNAME": "Meridian"}}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	templateResult, err := client.WaitForFlow(ctx, templateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, templateResult.Status, templateResult.ErrorMessage)
+	require.Len(t, mock.SendTemplateEmail().Calls(), 1)
+	require.Equal(t, int64(42), mock.SendTemplateEmail().Calls()[0].Input.TemplateID)
+
+	strictFlowID := flowID + "-strict"
+	_, err = client.StartFlow(ctx, flow, strictFlowID, Request{Email: "member@meridian.example", FirstName: "Meridian", StrictCreate: true}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	strictResult, err := client.WaitForFlow(ctx, strictFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, strictResult.Status, strictResult.ErrorMessage)
+	require.Len(t, mock.CreateContact().Calls(), 1)
+	require.Equal(t, "member@meridian.example", mock.CreateContact().Calls()[0].Input.Email)
 }

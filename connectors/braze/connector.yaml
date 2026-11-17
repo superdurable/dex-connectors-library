@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: braze
   displayName: Braze
-  description: Read selected Braze user profile fields by external ID.
+  description: Manage Braze users, discover marketing objects, and trigger targeted campaign or Canvas sends.
   company: Braze
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: braze
   languages:
@@ -48,14 +48,154 @@ spec:
         goName: RESTAPIKey
         type: secretString
         required: true
-        description: Secret REST API key from Braze Dashboard > Settings > APIs and Identifiers > API Keys. Create or select a key with users.export.ids permission, copy its value into this secret field; blank prevents calls. Dex sends it only as a Bearer token.
+        description: Secret REST API key from Braze Dashboard > Settings > APIs and Identifiers > API Keys. Select permissions for the operations you use; targeted sends also require campaigns.trigger.send or canvas.trigger.send. Blank prevents calls. Dex sends it only as a Bearer token.
     guide:
       startURL: https://www.braze.com/docs/api/basics
       steps:
-        - Sign in to your Braze Dashboard and open Settings > APIs and Identifiers > API Keys. Create a REST API key with users.export.ids permission or select an existing key with that permission; copy its secret value into rest_api_key. Restrict and revoke it on that page.
+        - Sign in to your Braze Dashboard and open Settings > APIs and Identifiers > API Keys. Create or select a REST API key with users.export.ids, users.track, users.delete, campaigns.list, canvas.list, segments.list, campaigns.trigger.send, or canvas.trigger.send permissions for the operations you use; copy its secret value into rest_api_key. Restrict and revoke it on that page.
         - On the same API Keys page, find the account REST Endpoint and enter its complete HTTPS URL in baseUrl. Each Braze account has its own endpoint. Leave timeout and maxResponseBytes blank for their displayed defaults.
         - Find an external user ID in Braze Dashboard > Audience > Search Users or your application's user ID records. Enter that non-secret ID as externalId; blank is invalid. The query exports only external_id, braze_id, first_name, last_name, and email.
   operations:
+    - name: triggerCampaignSend
+      goName: TriggerCampaignSend
+      inputType: TriggerCampaignSendInput
+      outputType: TargetedSendResult
+      kind: mutation
+      description: Trigger an API-enabled campaign for one existing external user ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Braze accepted the targeted campaign dispatch.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the dispatch., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The campaign may have been dispatched after the send cap., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample campaign dispatch.
+          output: {dispatchId: sample-dispatch-1}
+    - name: triggerCanvasSend
+      goName: TriggerCanvasSend
+      inputType: TriggerCanvasSendInput
+      outputType: TargetedSendResult
+      kind: mutation
+      description: Trigger an API-enabled Canvas for one existing external user ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Braze accepted the targeted Canvas dispatch.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the dispatch., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The Canvas may have been dispatched after the send cap., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample Canvas dispatch.
+          output: {dispatchId: sample-dispatch-2}
+    - name: updateUserProfile
+      goName: UpdateUserProfile
+      inputType: UpdateUserProfileInput
+      outputType: UserWriteResult
+      kind: mutation
+      description: Set selected absolute profile attributes for an external user ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: accepted, goName: Accepted, description: Braze queued the profile update.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braze returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: acceptedDefault
+          branch: accepted
+          default: true
+          description: Braze queued the profile update.
+          output: {externalId: sample-user-1}
+    - name: deleteUserProfile
+      goName: DeleteUserProfile
+      inputType: DeleteUserProfileInput
+      outputType: UserDeleteResult
+      kind: mutation
+      description: Queue deletion of one profile by external user ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Braze queued the user deletion.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braze returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Braze queued the deletion.
+          output: {externalId: sample-user-1, deleted: 1}
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: CampaignsList
+      kind: query
+      description: List one page of campaign IDs and names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Braze returned campaign identities.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braze returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample campaign page is returned.
+          output: {campaigns: [{id: sample-campaign-1, name: Sample campaign}]}
+    - name: listCanvases
+      goName: ListCanvases
+      inputType: ListCanvasesInput
+      outputType: CanvasesList
+      kind: query
+      description: List one page of Canvas IDs and names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Braze returned Canvas identities.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braze returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample Canvas page is returned.
+          output: {canvases: [{id: sample-canvas-1, name: Sample Canvas}]}
+    - name: listSegments
+      goName: ListSegments
+      inputType: ListSegmentsInput
+      outputType: SegmentsList
+      kind: query
+      description: List one page of segment IDs, names, and analytics tracking settings.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Braze returned segment identities.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braze returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample segment page is returned.
+          output: {segments: [{id: sample-segment-1, name: Sample segment, analyticsTrackingEnabled: true}]}
     - name: getUserProfile
       goName: GetUserProfile
       inputType: GetUserProfileInput

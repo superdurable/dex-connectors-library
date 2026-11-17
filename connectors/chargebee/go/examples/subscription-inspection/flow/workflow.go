@@ -18,6 +18,8 @@ const (
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "chargebee"
 	operationStepType = "CallGetSubscription"
+	listStepType      = "CallListSubscriptions"
+	eventStepType     = "CallListEvents"
 )
 
 var subscriptionAttribute = dex.DefineAttribute[chargebee.SubscriptionStatus]("chargebee-subscription")
@@ -45,7 +47,23 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Chargebee", Explanation: "Read a subscription from Chargebee."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Found:               sdkgo.GoTo(completeResult{}),
+			Found:               sdkgo.GoTo(saveSubscriptionAndList{}),
+		})),
+		dex.DefineStep(saveSubscriptionAndList{}),
+		dex.DefineStep(chargebee.NewListSubscriptionsStep(chargebee.ListSubscriptionsStepConfig[chargebee.ListSubscriptionsInput]{
+			StepType: listStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Chargebee", Explanation: "List one page of subscriptions visible to the read-only key."},
+			Connection:          flow.connection,
+			MapToOperationInput: mapListInput,
+			Listed:              sdkgo.GoTo(listEvents{}),
+		})),
+		dex.DefineStep(listEvents{}),
+		dex.DefineStep(chargebee.NewListEventsStep(chargebee.ListEventsStepConfig[chargebee.ListEventsInput]{
+			StepType: eventStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Chargebee", Explanation: "List event summaries without event content."},
+			Connection:          flow.connection,
+			MapToOperationInput: mapEventListInput,
+			Listed:              sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
 	}
@@ -102,18 +120,50 @@ func (startRequest) Execute(_ dex.Context, input chargebee.GetSubscriptionInput)
 	return dex.GoTo(sdkgo.StepRef[chargebee.GetSubscriptionInput](operationStepType), input), nil
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:group group-id:provider group-label:"Chargebee"
+// dex:explanation text:"Store the selected subscription before listing the first page."
+type saveSubscriptionAndList struct {
 	dex.StepDefaultsNoWaitFor[chargebee.GetSubscriptionResult]
 }
 
-func (completeResult) GetStepType() string { return "CompleteGetSubscription" }
-func (completeResult) Execute(ctx dex.Context, result chargebee.GetSubscriptionResult) (*dex.StepDecision, error) {
+func (saveSubscriptionAndList) GetStepType() string { return "SaveSubscriptionAndList" }
+func (saveSubscriptionAndList) Execute(ctx dex.Context, result chargebee.GetSubscriptionResult) (*dex.StepDecision, error) {
 	if err := subscriptionAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(result.Value), nil
+	return dex.GoTo(sdkgo.StepRef[chargebee.ListSubscriptionsInput](listStepType), chargebee.ListSubscriptionsInput{}), nil
+}
+
+func mapListInput(input chargebee.ListSubscriptionsInput) chargebee.ListSubscriptionsInput {
+	return input
+}
+
+// dex:group group-id:provider group-label:"Chargebee"
+// dex:explanation text:"Read a page of event summaries after inspecting subscriptions."
+type listEvents struct {
+	dex.StepDefaultsNoWaitFor[chargebee.ListSubscriptionsResult]
+}
+
+func (listEvents) GetStepType() string { return "ListEvents" }
+func (listEvents) Execute(_ dex.Context, _ chargebee.ListSubscriptionsResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[chargebee.ListEventsInput](eventStepType), chargebee.ListEventsInput{}), nil
+}
+
+func mapEventListInput(input chargebee.ListEventsInput) chargebee.ListEventsInput { return input }
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete after reading event summaries."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[chargebee.ListEventsResult]
+}
+
+func (completeResult) GetStepType() string { return "CompleteGetSubscription" }
+func (completeResult) Execute(ctx dex.Context, _ chargebee.ListEventsResult) (*dex.StepDecision, error) {
+	subscription, err := subscriptionAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(subscription), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

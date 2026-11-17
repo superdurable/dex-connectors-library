@@ -68,6 +68,14 @@ type providerResponse struct {
 }
 
 func (client *Client) post(call sdkgo.Call, path string, payload []byte) providerResponse {
+	return client.request(call, http.MethodPost, path, payload)
+}
+
+func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string, payload []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -76,7 +84,7 @@ func (client *Client) post(call sdkgo.Call, path string, payload []byte) provide
 	if !providerhttp.IsHeaderSafeCredential(apiKey) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
