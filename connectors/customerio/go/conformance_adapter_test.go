@@ -40,14 +40,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"getCustomersByEmail": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomersByEmail(), reference),
-		"getCampaign":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaign(), reference),
-		"listCampaigns":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
-		"getCampaignMetrics":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaignMetrics(), reference),
-		"upsertCustomer":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertCustomer(), reference, scenario.CallID),
-		"deleteCustomer":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCustomer(), reference, scenario.CallID),
-		"trackCustomerEvent":  newConformanceMutationInvocation(t, scenario.Input, context, client.TrackCustomerEvent(), reference, scenario.CallID),
-		"trackAnonymousEvent": newConformanceMutationInvocation(t, scenario.Input, context, client.TrackAnonymousEvent(), reference, scenario.CallID),
+		"getCustomersByEmail":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomersByEmail(), reference),
+		"getCampaign":                newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaign(), reference),
+		"listCampaigns":              newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
+		"getCampaignMetrics":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaignMetrics(), reference),
+		"upsertCustomer":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertCustomer(), reference, scenario.CallID),
+		"deleteCustomer":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCustomer(), reference, scenario.CallID),
+		"trackCustomerEvent":         newConformanceMutationInvocation(t, scenario.Input, context, client.TrackCustomerEvent(), reference, scenario.CallID),
+		"trackAnonymousEvent":        newConformanceMutationInvocation(t, scenario.Input, context, client.TrackAnonymousEvent(), reference, scenario.CallID),
+		"addCustomersToSegment":      newConformanceMutationInvocation(t, scenario.Input, context, client.AddCustomersToSegment(), reference, scenario.CallID),
+		"removeCustomersFromSegment": newConformanceMutationInvocation(t, scenario.Input, context, client.RemoveCustomersFromSegment(), reference, scenario.CallID),
 	}}
 }
 

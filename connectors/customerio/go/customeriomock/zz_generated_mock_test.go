@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "addCustomersToSegment/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.SegmentMembershipOutput](`{"segmentID":7,"customerIDs":["customer-123"]}`)
+			return err
+		}},
+		{name: "removeCustomersFromSegment/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[customerio.SegmentMembershipOutput](`{"segmentID":7,"customerIDs":["customer-123"]}`)
+			return err
+		}},
 		{name: "trackCustomerEvent/trackedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[customerio.TrackEventOutput](`{"name":"purchased","subjectID":"customer-123"}`)
 			return err
@@ -58,6 +66,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.AddCustomersToSegment().Definition().Operation.OperationID != "addCustomersToSegment" {
+		t.Errorf("addCustomersToSegment mock has another definition")
+	}
+	if mock.RemoveCustomersFromSegment().Definition().Operation.OperationID != "removeCustomersFromSegment" {
+		t.Errorf("removeCustomersFromSegment mock has another definition")
+	}
 	if mock.TrackCustomerEvent().Definition().Operation.OperationID != "trackCustomerEvent" {
 		t.Errorf("trackCustomerEvent mock has another definition")
 	}

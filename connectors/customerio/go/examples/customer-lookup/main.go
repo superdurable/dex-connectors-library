@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{customerlookup.NewFlow(connection), customerlookup.NewCampaignInspectionFlow(connection), customerlookup.NewCampaignsSearchFlow(connection), customerlookup.NewCampaignMetricsFlow(connection), customerlookup.NewCustomerUpsertFlow(connection), customerlookup.NewCustomerDeletionFlow(connection), customerlookup.NewCustomerEventFlow(connection), customerlookup.NewAnonymousEventFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{customerlookup.NewFlow(connection), customerlookup.NewCampaignInspectionFlow(connection), customerlookup.NewCampaignsSearchFlow(connection), customerlookup.NewCampaignMetricsFlow(connection), customerlookup.NewCustomerUpsertFlow(connection), customerlookup.NewCustomerDeletionFlow(connection), customerlookup.NewCustomerEventFlow(connection), customerlookup.NewAnonymousEventFlow(connection), customerlookup.NewSegmentAdditionFlow(connection), customerlookup.NewSegmentRemovalFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Customerio worker inspection Flow: %w", err)
 	}

@@ -43,6 +43,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	AddCustomersToSegment() sdkgo.Mutation[AddCustomersToSegmentInput, SegmentMembershipOutput]
+	RemoveCustomersFromSegment() sdkgo.Mutation[RemoveCustomersFromSegmentInput, SegmentMembershipOutput]
 	TrackCustomerEvent() sdkgo.Mutation[TrackCustomerEventInput, TrackEventOutput]
 	TrackAnonymousEvent() sdkgo.Mutation[TrackAnonymousEventInput, TrackEventOutput]
 	UpsertCustomer() sdkgo.Mutation[UpsertCustomerInput, CustomerWriteOutput]
@@ -55,6 +57,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) AddCustomersToSegment() sdkgo.Mutation[AddCustomersToSegmentInput, SegmentMembershipOutput] {
+	return operations.client.AddCustomersToSegment()
+}
+func (operations clientOperations) RemoveCustomersFromSegment() sdkgo.Mutation[RemoveCustomersFromSegmentInput, SegmentMembershipOutput] {
+	return operations.client.RemoveCustomersFromSegment()
+}
 func (operations clientOperations) TrackCustomerEvent() sdkgo.Mutation[TrackCustomerEventInput, TrackEventOutput] {
 	return operations.client.TrackCustomerEvent()
 }
@@ -229,6 +237,138 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential privateKey is required")
 	}
 	return nil
+}
+
+const AddCustomersToSegmentBranchAdded sdkgo.BranchID = "added"
+const AddCustomersToSegmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AddCustomersToSegmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AddCustomersToSegmentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addCustomersToSegment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AddCustomersToSegmentBranchAdded, Description: "Customer.io accepted the segment membership additions."},
+		{ID: AddCustomersToSegmentBranchProviderRejected, Description: "Customer.io rejected the membership request.", Optional: true},
+		{ID: AddCustomersToSegmentBranchDefect, Description: "Input or Track credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type AddCustomersToSegmentResult = sdkgo.MutationResult[SegmentMembershipOutput]
+
+type AddCustomersToSegmentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                      `connector:"connectorId=customerio"`
+	operationID                       struct{}                                                      `connector:"operationId=addCustomersToSegment"`
+	StepType                          string                                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                        Connection                                                    `connector:"connection"`
+	ConnectionName                    string                                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) AddCustomersToSegmentInput                           `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[AddCustomersToSegmentResult]                     `connector:"branch=added"`
+	ProviderRejected                  sdkgo.Target[AddCustomersToSegmentResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[AddCustomersToSegmentResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SegmentMembershipOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewAddCustomersToSegmentStep[IN any](config AddCustomersToSegmentStepConfig[IN]) sdkgo.MutationStep[IN, AddCustomersToSegmentInput, SegmentMembershipOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddCustomersToSegmentInput, SegmentMembershipOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AddCustomersToSegment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AddCustomersToSegmentResult] {
+			branches := make([]sdkgo.BranchTarget[AddCustomersToSegmentResult], 0, 3)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(AddCustomersToSegmentBranchAdded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AddCustomersToSegmentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AddCustomersToSegmentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RemoveCustomersFromSegmentBranchRemoved sdkgo.BranchID = "removed"
+const RemoveCustomersFromSegmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RemoveCustomersFromSegmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RemoveCustomersFromSegmentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "removeCustomersFromSegment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RemoveCustomersFromSegmentBranchRemoved, Description: "Customer.io accepted the segment membership removals."},
+		{ID: RemoveCustomersFromSegmentBranchProviderRejected, Description: "Customer.io rejected the membership request.", Optional: true},
+		{ID: RemoveCustomersFromSegmentBranchDefect, Description: "Input or Track credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RemoveCustomersFromSegmentResult = sdkgo.MutationResult[SegmentMembershipOutput]
+
+type RemoveCustomersFromSegmentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                      `connector:"connectorId=customerio"`
+	operationID                       struct{}                                                      `connector:"operationId=removeCustomersFromSegment"`
+	StepType                          string                                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                        Connection                                                    `connector:"connection"`
+	ConnectionName                    string                                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) RemoveCustomersFromSegmentInput                      `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[RemoveCustomersFromSegmentResult]                `connector:"branch=removed"`
+	ProviderRejected                  sdkgo.Target[RemoveCustomersFromSegmentResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RemoveCustomersFromSegmentResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SegmentMembershipOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewRemoveCustomersFromSegmentStep[IN any](config RemoveCustomersFromSegmentStepConfig[IN]) sdkgo.MutationStep[IN, RemoveCustomersFromSegmentInput, SegmentMembershipOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("customerio connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RemoveCustomersFromSegmentInput, SegmentMembershipOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RemoveCustomersFromSegment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RemoveCustomersFromSegmentResult] {
+			branches := make([]sdkgo.BranchTarget[RemoveCustomersFromSegmentResult], 0, 3)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(RemoveCustomersFromSegmentBranchRemoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RemoveCustomersFromSegmentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RemoveCustomersFromSegmentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const TrackCustomerEventBranchTracked sdkgo.BranchID = "tracked"

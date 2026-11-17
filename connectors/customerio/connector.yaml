@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: customerio
   displayName: Customer.io
-  description: Look up customers and campaigns through the App API, and manage customers and events through the Track API.
+  description: Look up customers and campaigns through the App API, and manage customers, events, and manual segments through the Track API.
   company: Customer.io
   categories: [marketing]
   version: v0.2.0
@@ -66,9 +66,47 @@ spec:
       startURL: https://fly.customer.io
       steps:
         - In Customer.io open Settings > API Credentials > App API and create or select a private key with profile and campaign read access. Copy the complete sk_ value into secret privateKey; an existing App API key also works. Blank prevents calls. Do not put the key in Flow input.
-        - For customer and event writes, open Settings > API Credentials > Track API Keys. Copy the non-secret Site ID and create or select a secret Track API key for this workspace; enter both in trackingSiteId and trackingApiKey. Blank either field disables Track writes. Track API credentials are distinct from the App API privateKey and must match this workspace.
+        - For customer, event, and manual segment writes, open Settings > API Credentials > Track API Keys. Copy the non-secret Site ID and create or select a secret Track API key for this workspace; enter both in trackingSiteId and trackingApiKey. Blank either field disables Track writes. Track API credentials are distinct from the App API privateKey and must match this workspace.
         - Leave baseUrl and trackingBaseUrl blank for US-region defaults, or use https://api-eu.customer.io and https://track-eu.customer.io for an EU workspace. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret customer email on the workspace People page, then pass its full email address as email; blank is invalid.
   operations:
+    - name: addCustomersToSegment
+      goName: AddCustomersToSegment
+      inputType: AddCustomersToSegmentInput
+      outputType: SegmentMembershipOutput
+      kind: mutation
+      description: Add up to 1000 identified people to an existing manual segment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: added, goName: Added, description: Customer.io accepted the segment membership additions.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the membership request., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+      mocks:
+        - name: addedDefault
+          branch: added
+          default: true
+          description: One sample person is added to a manual segment.
+          output: {segmentID: 7, customerIDs: [customer-123]}
+    - name: removeCustomersFromSegment
+      goName: RemoveCustomersFromSegment
+      inputType: RemoveCustomersFromSegmentInput
+      outputType: SegmentMembershipOutput
+      kind: mutation
+      description: Remove up to 1000 identified people from an existing manual segment.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: Customer.io accepted the segment membership removals.}
+        - {id: providerRejected, goName: ProviderRejected, description: Customer.io rejected the membership request., optional: true}
+        - {id: defect, goName: Defect, description: Input or Track credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: One sample person is removed from a manual segment.
+          output: {segmentID: 7, customerIDs: [customer-123]}
     - name: trackCustomerEvent
       goName: TrackCustomerEvent
       inputType: TrackCustomerEventInput

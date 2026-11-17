@@ -134,15 +134,15 @@ func (client *Client) sendTrackRequest(requestContext context.Context, credentia
 }
 
 func validCustomerIdentifier(identifier string) bool {
-	return identifier != "" && len(identifier) <= 256 && utf8.ValidString(identifier) && strings.TrimSpace(identifier) == identifier && !strings.ContainsAny(identifier, "\r\n\t")
+	return identifier != "" && len(identifier) <= 150 && utf8.ValidString(identifier) && strings.TrimSpace(identifier) == identifier && !strings.ContainsAny(identifier, "\r\n\t")
 }
 
 func validCustomerAttributes(attributes map[string]any) bool {
-	if len(attributes) == 0 || len(attributes) > 100 {
+	if len(attributes) == 0 || len(attributes) > 300 {
 		return false
 	}
 	for name := range attributes {
-		if name == "" || len(name) > 128 || !utf8.ValidString(name) || strings.TrimSpace(name) != name || strings.ContainsAny(name, "\r\n\t") {
+		if name == "" || len(name) > 150 || !utf8.ValidString(name) || strings.TrimSpace(name) != name || strings.ContainsAny(name, "\r\n\t") {
 			return false
 		}
 	}
