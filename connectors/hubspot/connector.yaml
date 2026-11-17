@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: hubspot
   displayName: HubSpot
-  description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals, and receive each created or changed record.
+  description: Search, read, create, upsert, update, and archive HubSpot CRM contacts, companies, and deals, and receive each created or changed record.
   company: HubSpot
   categories: [crm-sales, marketing]
-  version: v0.25.0
+  version: v0.26.0
 spec:
   provider: hubspot
   languages:
@@ -302,3 +302,48 @@ spec:
           branch: providerRejected
           description: HubSpot rejects an invalid deal stage.
           failure: {kind: VALIDATION, message: HubSpot rejected the deal stage update.}
+    - name: createObject
+      goName: CreateObject
+      inputType: CreateObjectInput
+      outputType: CRMObject
+      kind: mutation
+      description: Create one HubSpot contact, company, or deal from CRM properties.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: HubSpot created the CRM record.}
+        - {id: conflict, goName: Conflict, description: A unique property conflicts with an existing record., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: HubSpot conclusively rejected the create., optional: true}
+        - {id: defect, goName: Defect, description: The local input or connection is invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A bounded create could not be confirmed after its send cap., optional: true}
+      execution:
+        repeatOnUnknown: limited
+        maxSends: 3
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: createdDeal
+          branch: created
+          description: HubSpot created a new sales deal.
+          default: true
+          output: {objectType: deals, id: "9100", properties: {dealname: New consulting project, dealstage: appointmentscheduled, pipeline: default}, createdAt: "2026-10-25T10:05:00Z", updatedAt: "2026-10-25T10:05:00Z"}
+    - name: deleteObject
+      goName: DeleteObject
+      inputType: DeleteObjectInput
+      outputType: DeletedObject
+      kind: mutation
+      description: Archive one HubSpot contact, company, or deal by record ID.
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: The record is archived or was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: HubSpot conclusively rejected the archive., optional: true}
+        - {id: defect, goName: Defect, description: The local input or connection is invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: archivedDeal
+          branch: deleted
+          description: HubSpot archived the selected deal.
+          default: true
+          output: {objectType: deals, objectId: "9100"}

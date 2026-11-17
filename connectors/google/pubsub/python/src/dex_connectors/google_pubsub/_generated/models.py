@@ -32,6 +32,8 @@ setattr(ListTopicsInput, '__module__', 'dex_connectors.google_pubsub.models')
 class Topic:
     # Name has the form projects/{project-id}/topics/{topic-id}.
     name: str = ''
+    # Labels are the topic's provider labels when returned.
+    labels: dict[str, str] = _dataclass_field(default_factory=dict, metadata={'dex_json_omit_default': True})
 
 
 setattr(Topic, '__module__', 'dex_connectors.google_pubsub.models')

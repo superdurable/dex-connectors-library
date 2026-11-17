@@ -225,6 +225,16 @@ func (client *Client) UpdateObject() UpdateObjectOperation {
 	return UpdateObjectOperation{client: client}
 }
 
+// CreateObject returns the CRM record create Mutation bound to this client.
+func (client *Client) CreateObject() CreateObjectOperation {
+	return CreateObjectOperation{client: client}
+}
+
+// DeleteObject returns the CRM record archive Mutation bound to this client.
+func (client *Client) DeleteObject() DeleteObjectOperation {
+	return DeleteObjectOperation{client: client}
+}
+
 // exchange sends one request under the Step context of call.
 func (client *Client) exchange(call sdkgo.Call, operation string, request providerRequest, objectID string) (providerResponse, *providerOutcome) {
 	return client.exchangeWithContext(call.Context, call, operation, request, objectID)

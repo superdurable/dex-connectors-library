@@ -68,7 +68,7 @@ func runWorker(ctx context.Context, logger *slog.Logger, project *projectconfig.
 		return err
 	}
 	flow := generatesummary.NewFlow(connection, summaryModel)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, generatesummary.NewStoreInventoryFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Gemini summary Flow: %w", err)
 	}

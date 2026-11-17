@@ -15,6 +15,8 @@ This example runs one Flow from Dex Web **Start Flow**:
 5. `ConfirmPlaylistItem` calls `youtube.NewListPlaylistItemsStep` filtered to
    the video, and `CurationConfirmed` completes with `isConfirmed`.
 
+The same Worker registers `PlaylistInspectionFlow`. It accepts a playlist ID, calls `youtube.NewGetPlaylistStep` on the static `youtube-readonly` connection, and completes with the playlist title, description, and privacy setting. Run `dexcli visualize ./examples/playlist-curator/flow/playlist_inspection.go --schema-version 2.0 --lint app --json --out /tmp/youtube-playlist-inspection` to validate its FDG. With a local Dex service at `127.0.0.1:9440`, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:9440 GOWORK=off go test -tags=integration ./examples/playlist-curator/flow -run '^TestPlaylistInspectionUsesYouTubeMockWithRealDex$' -count=1` to exercise the checked-in mock through a real Worker and Client.
+
 Every read Step uses the `youtube-readonly` connection (method
 `google-oauth-readonly`, scope `youtube.readonly`); only `AddToPlaylist` uses
 the `youtube` connection (method `google-oauth-manage`, scope `youtube`). An
@@ -49,7 +51,7 @@ mkdir -p /tmp/youtube-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/youtube/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/youtube/go \
-  --version v0.4.0 --tag connectors/google/youtube/go/v0.4.0 \
+  --version v0.5.0 --tag connectors/google/youtube/go/v0.5.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/youtube-release/connector-release.json \
   --digest-output /tmp/youtube-release/connector-release.json.sha256

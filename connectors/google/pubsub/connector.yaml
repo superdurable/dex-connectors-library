@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-pubsub
   displayName: Google Cloud Pub/Sub
-  description: Discover Pub/Sub topics in one Google Cloud project.
+  description: Manage Google Cloud Pub/Sub topics and subscriptions, publish messages, and consume pull subscriptions.
   company: Google
   categories: [developer-tools]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   languages:
     python:
@@ -37,7 +37,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large topic pages.
+        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large topic, subscription, or pull pages.
         default: 2097152
   auth:
     type: oauth2
@@ -71,6 +71,9 @@ spec:
         - In Google Auth Platform > Branding and Audience, configure consent and add test users if an External app remains in Testing. Under Data Access add the displayed pubsub scope for topic discovery.
         - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize with offline access.
         - Supply the project ID from Pub/Sub > Topics to listTopics. It returns full topic names and nextPageToken; pass the latter for the next page.
+        - For subscriptions, open Pub/Sub > Subscriptions in the same project. Supply the full projects/{project}/subscriptions/{subscription} name to read, update, or delete; createSubscription also needs a full topic name from Pub/Sub > Topics. Labels are non-secret key-value metadata; an empty label map clears them during an update. Leave the acknowledgement deadline at zero for Google's default, or set 10 through 600 seconds for a pull subscription.
+        - For publishMessage, select a topic in Pub/Sub > Topics and use its full resource name; supply non-secret UTF-8 text or attributes, then use the returned message ID. Pub/Sub has no wire idempotency key, so a retry after an unknown outcome may publish a duplicate; the connector caps possible sends at three.
+        - For pullMessages, select a pull subscription in Pub/Sub > Subscriptions and use its full name with maxMessages from 1 through 1000. It returns base64 data and temporary ack IDs. Pass those IDs to acknowledgeMessages for the same subscription before its acknowledgement deadline; blank IDs are invalid.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
@@ -90,6 +93,201 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: publishMessage
+      goName: PublishMessage
+      inputType: PublishMessageInput
+      outputType: PublishedMessage
+      kind: mutation
+      description: Publish one text message to a topic.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: published, goName: Published, description: Pub/Sub accepted the message.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the message., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Local message input or credentials are invalid., optional: true}
+      mocks:
+        - {name: publishedDefault, branch: published, default: true, description: Pub/Sub accepted the example message., output: {messageId: '1234567890'}}
+    - name: pullMessages
+      goName: PullMessages
+      inputType: PullMessagesInput
+      outputType: PulledMessages
+      kind: query
+      description: Pull a bounded batch of messages from a subscription.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: pulled, goName: Pulled, description: Pub/Sub returned the available messages.}
+        - {id: notFound, goName: NotFound, description: The subscription does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the pull., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed pull JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local pull input or credentials are invalid., optional: true}
+      mocks:
+        - {name: pulledDefault, branch: pulled, default: true, description: One message is available., output: {receivedMessages: [{ackId: sample-ack-id, message: {messageId: '1234567890', data: ZXZlbnQ=}}]}}
+    - name: acknowledgeMessages
+      goName: AcknowledgeMessages
+      inputType: AcknowledgeMessagesInput
+      outputType: AcknowledgedMessages
+      kind: mutation
+      description: Acknowledge a bounded set of pulled messages.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: acknowledged, goName: Acknowledged, description: Pub/Sub acknowledged the message IDs.}
+        - {id: notFound, goName: NotFound, description: The subscription does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the acknowledgement., optional: true}
+        - {id: defect, goName: Defect, description: Local acknowledgement input or credentials are invalid., optional: true}
+      mocks:
+        - {name: acknowledgedDefault, branch: acknowledged, default: true, description: Pub/Sub acknowledged one message., output: {acknowledgedCount: 1}}
+    - name: listSubscriptions
+      goName: ListSubscriptions
+      inputType: ListSubscriptionsInput
+      outputType: SubscriptionsPage
+      kind: query
+      description: List one page of subscriptions in a Google Cloud project.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Pub/Sub returned the subscription page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed subscription JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local project input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One pull subscription is visible., output: {subscriptions: [{name: projects/sample-project/subscriptions/events-reader, topic: projects/sample-project/topics/events, ackDeadlineSeconds: 10}], nextPageToken: ''}}
+    - name: getSubscription
+      goName: GetSubscription
+      inputType: GetSubscriptionInput
+      outputType: Subscription
+      kind: query
+      description: Read one subscription configuration.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Pub/Sub returned the subscription.}
+        - {id: notFound, goName: NotFound, description: The subscription does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed subscription JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local subscription name or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: The pull subscription exists., output: {name: projects/sample-project/subscriptions/events-reader, topic: projects/sample-project/topics/events, ackDeadlineSeconds: 10}}
+    - name: createSubscription
+      goName: CreateSubscription
+      inputType: CreateSubscriptionInput
+      outputType: Subscription
+      kind: mutation
+      description: Create a pull subscription at a stable resource name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Pub/Sub created or confirmed the subscription.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the create., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed subscription JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local subscription input or credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Pub/Sub created the pull subscription., output: {name: projects/sample-project/subscriptions/events-reader, topic: projects/sample-project/topics/events, ackDeadlineSeconds: 10}}
+    - name: updateSubscriptionLabels
+      goName: UpdateSubscriptionLabels
+      inputType: UpdateSubscriptionLabelsInput
+      outputType: Subscription
+      kind: mutation
+      description: Replace all labels on a subscription.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Pub/Sub replaced the subscription labels.}
+        - {id: notFound, goName: NotFound, description: The subscription does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed subscription JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local subscription input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Pub/Sub replaced the labels., output: {name: projects/sample-project/subscriptions/events-reader, topic: projects/sample-project/topics/events, ackDeadlineSeconds: 10, labels: {team: operations}}}
+    - name: deleteSubscription
+      goName: DeleteSubscription
+      inputType: DeleteSubscriptionInput
+      outputType: DeletedSubscription
+      kind: mutation
+      description: Delete a subscription by its full resource name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Pub/Sub deleted the subscription or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: Local subscription name or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Pub/Sub deleted the pull subscription., output: {name: projects/sample-project/subscriptions/events-reader}}
+    - name: getTopic
+      goName: GetTopic
+      inputType: GetTopicInput
+      outputType: Topic
+      kind: query
+      description: Read a Pub/Sub topic by its full resource name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Pub/Sub returned the topic.}
+        - {id: notFound, goName: NotFound, description: No topic has that name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed or oversized topic JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local topic name or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: An events topic exists., output: {name: projects/sample-project/topics/events, labels: {team: operations}}}
+    - name: createTopic
+      goName: CreateTopic
+      inputType: CreateTopicInput
+      outputType: Topic
+      kind: mutation
+      description: Create a topic at a caller-chosen stable resource name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Pub/Sub created the topic or a retry confirmed it exists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the create., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed topic JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local topic name, labels, or credentials are invalid.", optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Pub/Sub created an events topic., output: {name: projects/sample-project/topics/events, labels: {team: operations}}}
+    - name: updateTopicLabels
+      goName: UpdateTopicLabels
+      inputType: UpdateTopicLabelsInput
+      outputType: Topic
+      kind: mutation
+      description: Replace a topic's labels absolutely with a Pub/Sub update mask.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Pub/Sub replaced the topic labels.}
+        - {id: notFound, goName: NotFound, description: The topic does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed topic JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local topic name, labels, or credentials are invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Pub/Sub replaced the topic labels., output: {name: projects/sample-project/topics/events, labels: {team: operations}}}
+    - name: deleteTopic
+      goName: DeleteTopic
+      inputType: DeleteTopicInput
+      outputType: DeletedTopic
+      kind: mutation
+      description: Delete a topic by its full resource name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Pub/Sub deleted the topic or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: Local topic name or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Pub/Sub deleted the events topic., output: {name: projects/sample-project/topics/events}}
     - name: listTopics
       goName: ListTopics
       inputType: ListTopicsInput

@@ -565,7 +565,7 @@ func newHarnessForConnection(t *testing.T, connection hubspot.Connection) *leadQ
 	t.Helper()
 	flow, err := NewFlow(connection, &integrationSettings)
 	require.NoError(t, err)
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, NewRecordLifecycleFlow(connection)})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)

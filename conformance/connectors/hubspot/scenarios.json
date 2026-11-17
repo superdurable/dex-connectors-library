@@ -2114,6 +2114,903 @@
       },
       "name": "searchObjects-empty-page",
       "operation": "searchObjects"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"9100\",\"properties\":{\"dealname\":\"New consulting project\",\"dealstage\":\"appointmentscheduled\",\"pipeline\":\"default\"},\"createdAt\":\"2026-10-25T10:05:00Z\",\"updatedAt\":\"2026-10-25T10:05:00Z\",\"archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals",
+          "requestBody": {
+            "properties": {
+              "dealname": "New consulting project",
+              "dealstage": "appointmentscheduled",
+              "pipeline": "default"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "providerId": "9100",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "archived": false,
+          "createdAt": "2026-10-25T10:05:00Z",
+          "id": "9100",
+          "objectType": "deals",
+          "properties": {
+            "dealname": "New consulting project",
+            "dealstage": "appointmentscheduled",
+            "pipeline": "default"
+          },
+          "updatedAt": "2026-10-25T10:05:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-success",
+      "operation": "createObject"
+    },
+    {
+      "callId": "18662c81-e225-5f7f-a222-099286ba7439",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/crm/objects/2026-09/deals/9100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "objectId": "9100",
+          "objectType": "deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18662c81-e225-5f7f-a222-099286ba7439",
+      "input": {
+        "objectId": "9100",
+        "objectType": "deals"
+      },
+      "name": "deleteObject-success",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals",
+          "requestBody": {
+            "properties": {
+              "dealname": "New consulting project",
+              "dealstage": "appointmentscheduled",
+              "pipeline": "default"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-conflict",
+      "operation": "createObject"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals",
+          "requestBody": {
+            "properties": {
+              "dealname": "New consulting project",
+              "dealstage": "appointmentscheduled",
+              "pipeline": "default"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-rejected",
+      "operation": "createObject"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals",
+          "requestBody": {
+            "properties": {
+              "dealname": "New consulting project",
+              "dealstage": "appointmentscheduled",
+              "pipeline": "default"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-rate-limit",
+      "operation": "createObject"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals",
+          "requestBody": {
+            "properties": {
+              "dealname": "New consulting project",
+              "dealstage": "appointmentscheduled",
+              "pipeline": "default"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-unavailable",
+      "operation": "createObject"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals",
+          "requestBody": {
+            "properties": {
+              "dealname": "New consulting project",
+              "dealstage": "appointmentscheduled",
+              "pipeline": "default"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-server-error",
+      "operation": "createObject"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals",
+          "requestBody": {
+            "properties": {
+              "dealname": "New consulting project",
+              "dealstage": "appointmentscheduled",
+              "pipeline": "default"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-transport",
+      "operation": "createObject"
+    },
+    {
+      "callId": "18662c81-e225-5f7f-a222-099286ba7439",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/crm/objects/2026-09/deals/9100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "objectId": "9100",
+          "objectType": "deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18662c81-e225-5f7f-a222-099286ba7439",
+      "input": {
+        "objectId": "9100",
+        "objectType": "deals"
+      },
+      "name": "deleteObject-already-absent",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "18662c81-e225-5f7f-a222-099286ba7439",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/crm/objects/2026-09/deals/9100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "objectId": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18662c81-e225-5f7f-a222-099286ba7439",
+      "input": {
+        "objectId": "9100",
+        "objectType": "deals"
+      },
+      "name": "deleteObject-rejected",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "18662c81-e225-5f7f-a222-099286ba7439",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/crm/objects/2026-09/deals/9100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18662c81-e225-5f7f-a222-099286ba7439",
+      "input": {
+        "objectId": "9100",
+        "objectType": "deals"
+      },
+      "name": "deleteObject-rate-limit",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "18662c81-e225-5f7f-a222-099286ba7439",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/crm/objects/2026-09/deals/9100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18662c81-e225-5f7f-a222-099286ba7439",
+      "input": {
+        "objectId": "9100",
+        "objectType": "deals"
+      },
+      "name": "deleteObject-unavailable",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "18662c81-e225-5f7f-a222-099286ba7439",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/crm/objects/2026-09/deals/9100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18662c81-e225-5f7f-a222-099286ba7439",
+      "input": {
+        "objectId": "9100",
+        "objectType": "deals"
+      },
+      "name": "deleteObject-server-error",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "18662c81-e225-5f7f-a222-099286ba7439",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/crm/objects/2026-09/deals/9100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18662c81-e225-5f7f-a222-099286ba7439",
+      "input": {
+        "objectId": "9100",
+        "objectType": "deals"
+      },
+      "name": "deleteObject-transport",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-send-cap-uncertain",
+      "operation": "createObject",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "unsupported",
+        "properties": {
+          "dealname": "New consulting project"
+        }
+      },
+      "name": "createObject-defect",
+      "operation": "createObject"
+    },
+    {
+      "callId": "18662c81-e225-5f7f-a222-099286ba7439",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectId": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18662c81-e225-5f7f-a222-099286ba7439",
+      "input": {
+        "objectId": "not-an-id",
+        "objectType": "deals"
+      },
+      "name": "deleteObject-defect",
+      "operation": "deleteObject"
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"9100\",\"properties\":{\"dealname\":\"New consulting project\",\"dealstage\":\"appointmentscheduled\",\"pipeline\":\"default\"},\"createdAt\":\"2026-10-25T10:05:00Z\",\"updatedAt\":\"2026-10-25T10:05:00Z\",\"archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/deals/9100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "archived": false,
+          "createdAt": "2026-10-25T10:05:00Z",
+          "id": "9100",
+          "objectType": "deals",
+          "properties": {
+            "dealname": "New consulting project",
+            "dealstage": "appointmentscheduled",
+            "pipeline": "default"
+          },
+          "updatedAt": "2026-10-25T10:05:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-readback-success",
+      "operation": "createObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "providerId": "9100",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"9100\",\"properties\":{\"dealname\":\"New consulting project\",\"dealstage\":\"appointmentscheduled\",\"pipeline\":\"default\"},\"createdAt\":\"2026-10-25T10:05:00Z\",\"updatedAt\":\"2026-10-25T10:05:00Z\",\"archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals",
+          "requestBody": {
+            "properties": {
+              "dealname": "New consulting project",
+              "dealstage": "appointmentscheduled",
+              "pipeline": "default"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "providerId": "9100",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "archived": false,
+          "createdAt": "2026-10-25T10:05:00Z",
+          "id": "9100",
+          "objectType": "deals",
+          "properties": {
+            "dealname": "New consulting project",
+            "dealstage": "appointmentscheduled",
+            "pipeline": "default"
+          },
+          "updatedAt": "2026-10-25T10:05:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+      "input": {
+        "objectType": "deals",
+        "properties": {
+          "dealname": "New consulting project",
+          "dealstage": "appointmentscheduled",
+          "pipeline": "default"
+        }
+      },
+      "name": "createObject-resend-after-unknown",
+      "operation": "createObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "f06ce07c-34ab-52ca-8066-cb3505f97abe",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

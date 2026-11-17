@@ -674,6 +674,2460 @@
       },
       "name": "getContact-transportFailure",
       "operation": "getContact"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "[{\"LEAD_ID\":1201,\"FIRST_NAME\":\"Ada\",\"LAST_NAME\":\"Lovelace\",\"EMAIL\":\"ada@example.com\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads",
+          "query": {
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "records": [
+            {
+              "fields": {
+                "EMAIL": "ada@example.com",
+                "FIRST_NAME": "Ada",
+                "LAST_NAME": "Lovelace",
+                "LEAD_ID": 1201
+              },
+              "id": 1201,
+              "recordType": "leads"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "listRecords-success",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{\"LEAD_ID\":1201,\"FIRST_NAME\":\"Ada\",\"LAST_NAME\":\"Lovelace\",\"EMAIL\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace",
+            "LEAD_ID": 1201
+          },
+          "id": 1201,
+          "recordType": "leads"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "getRecord-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "[{\"LEAD_ID\":1201,\"FIRST_NAME\":\"Ada\",\"LAST_NAME\":\"Lovelace\",\"EMAIL\":\"ada@example.com\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/Search",
+          "query": {
+            "field_name": [
+              "EMAIL"
+            ],
+            "field_value": [
+              "ada@example.com"
+            ],
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "records": [
+            {
+              "fields": {
+                "EMAIL": "ada@example.com",
+                "FIRST_NAME": "Ada",
+                "LAST_NAME": "Lovelace",
+                "LEAD_ID": 1201
+              },
+              "id": 1201,
+              "recordType": "leads"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldName": "EMAIL",
+        "fieldValue": "ada@example.com",
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "searchRecords-success",
+      "operation": "searchRecords"
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [
+        {
+          "body": "{\"LEAD_ID\":1201,\"FIRST_NAME\":\"Ada\",\"LAST_NAME\":\"Lovelace\",\"EMAIL\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Leads",
+          "requestBody": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "providerId": "1201",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "fields": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace",
+            "LEAD_ID": 1201
+          },
+          "id": 1201,
+          "recordType": "leads"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-success",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "exchanges": [
+        {
+          "body": "{\"LEAD_ID\":1201,\"FIRST_NAME\":\"Ada\",\"LAST_NAME\":\"Byron\",\"EMAIL\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Leads",
+          "requestBody": {
+            "LAST_NAME": "Byron",
+            "LEAD_ID": 1201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Byron",
+            "LEAD_ID": 1201
+          },
+          "id": 1201,
+          "recordType": "leads"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "input": {
+        "fields": {
+          "LAST_NAME": "Byron"
+        },
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "updateRecord-success",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "0a120567-ab57-59e2-823b-958b707df505",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 1201,
+          "recordType": "leads"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a120567-ab57-59e2-823b-958b707df505",
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "deleteRecord-success",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads",
+          "query": {
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "listRecords-rate-limit",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads",
+          "query": {
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "listRecords-server-error",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads",
+          "query": {
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "listRecords-transport",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads",
+          "query": {
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "listRecords-rejected",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "not json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads",
+          "query": {
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "listRecords-invalid-response",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "recordType": "invalid",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "listRecords-defect",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "getRecord-rate-limit",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "getRecord-server-error",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "getRecord-transport",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "getRecord-rejected",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "not json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "getRecord-invalid-response",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "getRecord-not-found",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1201,
+        "recordType": "invalid"
+      },
+      "name": "getRecord-defect",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/Search",
+          "query": {
+            "field_name": [
+              "EMAIL"
+            ],
+            "field_value": [
+              "ada@example.com"
+            ],
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldName": "EMAIL",
+        "fieldValue": "ada@example.com",
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "searchRecords-rate-limit",
+      "operation": "searchRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/Search",
+          "query": {
+            "field_name": [
+              "EMAIL"
+            ],
+            "field_value": [
+              "ada@example.com"
+            ],
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldName": "EMAIL",
+        "fieldValue": "ada@example.com",
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "searchRecords-server-error",
+      "operation": "searchRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/Search",
+          "query": {
+            "field_name": [
+              "EMAIL"
+            ],
+            "field_value": [
+              "ada@example.com"
+            ],
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldName": "EMAIL",
+        "fieldValue": "ada@example.com",
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "searchRecords-transport",
+      "operation": "searchRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/Search",
+          "query": {
+            "field_name": [
+              "EMAIL"
+            ],
+            "field_value": [
+              "ada@example.com"
+            ],
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldName": "EMAIL",
+        "fieldValue": "ada@example.com",
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "searchRecords-rejected",
+      "operation": "searchRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "not json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/Search",
+          "query": {
+            "field_name": [
+              "EMAIL"
+            ],
+            "field_value": [
+              "ada@example.com"
+            ],
+            "skip": [
+              "5"
+            ],
+            "top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldName": "EMAIL",
+        "fieldValue": "ada@example.com",
+        "recordType": "leads",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "searchRecords-invalid-response",
+      "operation": "searchRecords"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldName": "EMAIL",
+        "fieldValue": "ada@example.com",
+        "recordType": "invalid",
+        "skip": 5,
+        "top": 20
+      },
+      "name": "searchRecords-defect",
+      "operation": "searchRecords"
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Leads",
+          "requestBody": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-rate-limit",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Leads",
+          "requestBody": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-server-error",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Leads",
+          "requestBody": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-transport",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Leads",
+          "requestBody": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-rejected",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Leads",
+          "requestBody": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-unavailable",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "invalid"
+      },
+      "name": "createRecord-defect",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Leads",
+          "requestBody": {
+            "LAST_NAME": "Byron",
+            "LEAD_ID": 1201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "input": {
+        "fields": {
+          "LAST_NAME": "Byron"
+        },
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "updateRecord-rate-limit",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Leads",
+          "requestBody": {
+            "LAST_NAME": "Byron",
+            "LEAD_ID": 1201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "input": {
+        "fields": {
+          "LAST_NAME": "Byron"
+        },
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "updateRecord-server-error",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Leads",
+          "requestBody": {
+            "LAST_NAME": "Byron",
+            "LEAD_ID": 1201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "input": {
+        "fields": {
+          "LAST_NAME": "Byron"
+        },
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "updateRecord-transport",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Leads",
+          "requestBody": {
+            "LAST_NAME": "Byron",
+            "LEAD_ID": 1201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "input": {
+        "fields": {
+          "LAST_NAME": "Byron"
+        },
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "updateRecord-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "exchanges": [
+        {
+          "body": "not json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Leads",
+          "requestBody": {
+            "LAST_NAME": "Byron",
+            "LEAD_ID": 1201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "input": {
+        "fields": {
+          "LAST_NAME": "Byron"
+        },
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "updateRecord-invalid-response",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Leads",
+          "requestBody": {
+            "LAST_NAME": "Byron",
+            "LEAD_ID": 1201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "input": {
+        "fields": {
+          "LAST_NAME": "Byron"
+        },
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "updateRecord-not-found",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4b679d2-98c4-5f66-82b3-da6b0e4603fa",
+      "input": {
+        "fields": {
+          "LAST_NAME": "Byron"
+        },
+        "id": 1201,
+        "recordType": "invalid"
+      },
+      "name": "updateRecord-defect",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "0a120567-ab57-59e2-823b-958b707df505",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a120567-ab57-59e2-823b-958b707df505",
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "deleteRecord-rate-limit",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "0a120567-ab57-59e2-823b-958b707df505",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a120567-ab57-59e2-823b-958b707df505",
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "deleteRecord-server-error",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "0a120567-ab57-59e2-823b-958b707df505",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a120567-ab57-59e2-823b-958b707df505",
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "deleteRecord-transport",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "0a120567-ab57-59e2-823b-958b707df505",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a120567-ab57-59e2-823b-958b707df505",
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "deleteRecord-rejected",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "0a120567-ab57-59e2-823b-958b707df505",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 1201,
+          "recordType": "leads"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a120567-ab57-59e2-823b-958b707df505",
+      "input": {
+        "id": 1201,
+        "recordType": "leads"
+      },
+      "name": "deleteRecord-already-absent",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "0a120567-ab57-59e2-823b-958b707df505",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a120567-ab57-59e2-823b-958b707df505",
+      "input": {
+        "id": 1201,
+        "recordType": "invalid"
+      },
+      "name": "deleteRecord-defect",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "fields": {},
+          "id": 0,
+          "recordType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-send-cap-uncertain",
+      "operation": "createRecord",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [
+        {
+          "body": "{\"LEAD_ID\":1201,\"FIRST_NAME\":\"Ada\",\"LAST_NAME\":\"Lovelace\",\"EMAIL\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Leads/1201",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace",
+            "LEAD_ID": 1201
+          },
+          "id": 1201,
+          "recordType": "leads"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-readback-success",
+      "operation": "createRecord",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "providerId": "1201",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "exchanges": [
+        {
+          "body": "{\"LEAD_ID\":1201,\"FIRST_NAME\":\"Ada\",\"LAST_NAME\":\"Lovelace\",\"EMAIL\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Leads",
+          "requestBody": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "providerId": "1201",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "fields": {
+            "EMAIL": "ada@example.com",
+            "FIRST_NAME": "Ada",
+            "LAST_NAME": "Lovelace",
+            "LEAD_ID": 1201
+          },
+          "id": 1201,
+          "recordType": "leads"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+      "input": {
+        "fields": {
+          "EMAIL": "ada@example.com",
+          "FIRST_NAME": "Ada",
+          "LAST_NAME": "Lovelace"
+        },
+        "recordType": "leads"
+      },
+      "name": "createRecord-resend-after-unknown",
+      "operation": "createRecord",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "75a4bdac-b20d-579b-9ac9-4a2c56d3ba6c",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{\"CONTACT_ID\":1300,\"FIRST_NAME\":\"Ada\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts/1300",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "CONTACT_ID": 1300,
+            "FIRST_NAME": "Ada"
+          },
+          "id": 1300,
+          "recordType": "contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1300,
+        "recordType": "contacts"
+      },
+      "name": "getRecord-contacts-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{\"ORGANISATION_ID\":1301,\"ORGANISATION_NAME\":\"Analytical Engines\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Organisations/1301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "ORGANISATION_ID": 1301,
+            "ORGANISATION_NAME": "Analytical Engines"
+          },
+          "id": 1301,
+          "recordType": "organisations"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1301,
+        "recordType": "organisations"
+      },
+      "name": "getRecord-organisations-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{\"OPPORTUNITY_ID\":1302,\"OPPORTUNITY_NAME\":\"Expansion\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Opportunities/1302",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "OPPORTUNITY_ID": 1302,
+            "OPPORTUNITY_NAME": "Expansion"
+          },
+          "id": 1302,
+          "recordType": "opportunities"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1302,
+        "recordType": "opportunities"
+      },
+      "name": "getRecord-opportunities-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{\"PROJECT_ID\":1303,\"PROJECT_NAME\":\"Delivery\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Projects/1303",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "PROJECT_ID": 1303,
+            "PROJECT_NAME": "Delivery"
+          },
+          "id": 1303,
+          "recordType": "projects"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1303,
+        "recordType": "projects"
+      },
+      "name": "getRecord-projects-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "new-operation-call",
+      "exchanges": [
+        {
+          "body": "{\"TASK_ID\":1304,\"TITLE\":\"Follow up\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Tasks/1304",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "TASK_ID": 1304,
+            "TITLE": "Follow up"
+          },
+          "id": 1304,
+          "recordType": "tasks"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 1304,
+        "recordType": "tasks"
+      },
+      "name": "getRecord-tasks-success",
+      "operation": "getRecord"
     }
   ],
   "schemaVersion": 1

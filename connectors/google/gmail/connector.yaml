@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: gmail
   displayName: Gmail
-  description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
+  description: Start and update Dex Flows from received Gmail messages, search messages and threads, inspect labels, and send or reply to email.
   company: Google
   categories: [communication]
-  version: v0.27.0
+  version: v0.28.0
 spec:
   provider: google
   languages:
@@ -201,6 +201,83 @@ spec:
       configurationType: ReplyReceivedTriggerConfiguration
       description: Receive a matching reply in an existing Gmail thread.
   operations:
+    - name: listMessages
+      goName: ListMessages
+      inputType: ListMessagesInput
+      outputType: MessagesPage
+      kind: query
+      description: Search and page Gmail message identities using the mailbox query syntax.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Gmail returned the selected message page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned malformed or oversized message list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local search input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One message matches the search., output: {messages: [{id: 18c0a1b2c3d4e5f6, threadId: 18c0a1b2c3d4e5f0}], nextPageToken: '', resultSizeEstimate: 1}}
+    - name: listThreads
+      goName: ListThreads
+      inputType: ListThreadsInput
+      outputType: ThreadsPage
+      kind: query
+      description: Search and page Gmail thread identities.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Gmail returned the selected thread page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the thread search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned malformed or oversized thread list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local thread search input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One thread matches the search., output: {threads: [{id: 18c0a1b2c3d4e5f0, snippet: Customer question}], nextPageToken: '', resultSizeEstimate: 1}}
+    - name: getThread
+      goName: GetThread
+      inputType: GetThreadInput
+      outputType: Thread
+      kind: query
+      description: Read one Gmail thread and decode its messages.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Gmail returned the thread and its messages.}
+        - {id: notFound, goName: NotFound, description: No thread has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the thread read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned malformed or oversized thread JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local thread ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: A thread contains one customer message., output: {id: 18c0a1b2c3d4e5f0, snippet: Customer question, messages: [{messageId: 18c0a1b2c3d4e5f6, threadId: 18c0a1b2c3d4e5f0, from: ada@example.com, subject: Question, receivedAt: '2026-03-04T09:15:00Z'}]}}
+    - name: listLabels
+      goName: ListLabels
+      inputType: ListLabelsInput
+      outputType: LabelsList
+      kind: query
+      description: List labels visible in the connected Gmail mailbox.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Gmail returned its labels.}
+        - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the label list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned malformed or oversized label JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Inbox and one user label are visible., output: {labels: [{id: INBOX, name: INBOX, type: system}, {id: Label_1, name: Customers, type: user}]}}
+    - name: getLabel
+      goName: GetLabel
+      inputType: GetLabelInput
+      outputType: Label
+      kind: query
+      description: Read one Gmail label and its message and thread counts.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Gmail returned the label.}
+        - {id: notFound, goName: NotFound, description: No label has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the label read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gmail returned malformed or oversized label JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local label ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: A customer label has one message., output: {id: Label_1, name: Customers, type: user, messagesTotal: 1, messagesUnread: 1, threadsTotal: 1, threadsUnread: 1}}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput

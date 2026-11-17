@@ -24,7 +24,8 @@ import (
 func TestSitesUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := searchconsolemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	analyticsFlow := NewAnalyticsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, analyticsFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,14 @@ func TestSitesUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "sc-domain:example.com", output.Sites[0].SiteURL)
 	require.Equal(t, "siteOwner", output.Sites[0].PermissionLevel)
 	require.Len(t, mock.ListSites().Calls(), 1)
+	analyticsFlowID := "google-search-console-analytics-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, analyticsFlow, analyticsFlowID, searchconsole.QuerySearchAnalyticsInput{SiteURL: "sc-domain:example.com", StartDate: "2026-11-01", EndDate: "2026-11-07", Dimensions: []string{"query"}, RowLimit: 10}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	analyticsResult, err := client.WaitForFlow(ctx, analyticsFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, analyticsResult.Status, analyticsResult.ErrorMessage)
+	var analytics searchconsole.SearchAnalyticsResult
+	require.NoError(t, analyticsResult.DecodeSingleOutput(&analytics))
+	require.Equal(t, float64(5), analytics.Rows[0].Clicks)
+	require.Len(t, mock.QuerySearchAnalytics().Calls(), 1)
 }

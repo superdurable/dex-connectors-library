@@ -84,11 +84,12 @@ class Client:
             raise ValueError("Google Sheets configuration and credential provider are required")
         defaults = Config()
         config = Config(
-            config.endpoint or defaults.endpoint,
-            config.max_response_bytes or defaults.max_response_bytes,
-            config.max_rows or defaults.max_rows,
-            config.poll_interval_seconds or defaults.poll_interval_seconds,
-            config.poll_page_size or defaults.poll_page_size,
+            drive_base_url=config.drive_base_url or defaults.drive_base_url,
+            endpoint=config.endpoint or defaults.endpoint,
+            max_response_bytes=config.max_response_bytes or defaults.max_response_bytes,
+            max_rows=config.max_rows or defaults.max_rows,
+            poll_interval_seconds=config.poll_interval_seconds or defaults.poll_interval_seconds,
+            poll_page_size=config.poll_page_size or defaults.poll_page_size,
         )
         endpoint = urlsplit(config.endpoint)
         if not endpoint.scheme or not endpoint.hostname:

@@ -43,11 +43,59 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	PublishMessage() sdkgo.Mutation[PublishMessageInput, PublishedMessage]
+	PullMessages() sdkgo.Query[PullMessagesInput, PulledMessages]
+	AcknowledgeMessages() sdkgo.Mutation[AcknowledgeMessagesInput, AcknowledgedMessages]
+	ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionsPage]
+	GetSubscription() sdkgo.Query[GetSubscriptionInput, Subscription]
+	CreateSubscription() sdkgo.Mutation[CreateSubscriptionInput, Subscription]
+	UpdateSubscriptionLabels() sdkgo.Mutation[UpdateSubscriptionLabelsInput, Subscription]
+	DeleteSubscription() sdkgo.Mutation[DeleteSubscriptionInput, DeletedSubscription]
+	GetTopic() sdkgo.Query[GetTopicInput, Topic]
+	CreateTopic() sdkgo.Mutation[CreateTopicInput, Topic]
+	UpdateTopicLabels() sdkgo.Mutation[UpdateTopicLabelsInput, Topic]
+	DeleteTopic() sdkgo.Mutation[DeleteTopicInput, DeletedTopic]
 	ListTopics() sdkgo.Query[ListTopicsInput, TopicsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) PublishMessage() sdkgo.Mutation[PublishMessageInput, PublishedMessage] {
+	return operations.client.PublishMessage()
+}
+func (operations clientOperations) PullMessages() sdkgo.Query[PullMessagesInput, PulledMessages] {
+	return operations.client.PullMessages()
+}
+func (operations clientOperations) AcknowledgeMessages() sdkgo.Mutation[AcknowledgeMessagesInput, AcknowledgedMessages] {
+	return operations.client.AcknowledgeMessages()
+}
+func (operations clientOperations) ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionsPage] {
+	return operations.client.ListSubscriptions()
+}
+func (operations clientOperations) GetSubscription() sdkgo.Query[GetSubscriptionInput, Subscription] {
+	return operations.client.GetSubscription()
+}
+func (operations clientOperations) CreateSubscription() sdkgo.Mutation[CreateSubscriptionInput, Subscription] {
+	return operations.client.CreateSubscription()
+}
+func (operations clientOperations) UpdateSubscriptionLabels() sdkgo.Mutation[UpdateSubscriptionLabelsInput, Subscription] {
+	return operations.client.UpdateSubscriptionLabels()
+}
+func (operations clientOperations) DeleteSubscription() sdkgo.Mutation[DeleteSubscriptionInput, DeletedSubscription] {
+	return operations.client.DeleteSubscription()
+}
+func (operations clientOperations) GetTopic() sdkgo.Query[GetTopicInput, Topic] {
+	return operations.client.GetTopic()
+}
+func (operations clientOperations) CreateTopic() sdkgo.Mutation[CreateTopicInput, Topic] {
+	return operations.client.CreateTopic()
+}
+func (operations clientOperations) UpdateTopicLabels() sdkgo.Mutation[UpdateTopicLabelsInput, Topic] {
+	return operations.client.UpdateTopicLabels()
+}
+func (operations clientOperations) DeleteTopic() sdkgo.Mutation[DeleteTopicInput, DeletedTopic] {
+	return operations.client.DeleteTopic()
+}
 func (operations clientOperations) ListTopics() sdkgo.Query[ListTopicsInput, TopicsPage] {
 	return operations.client.ListTopics()
 }
@@ -250,6 +298,888 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const PublishMessageBranchPublished sdkgo.BranchID = "published"
+const PublishMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PublishMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishMessageBranchPublished, Description: "Pub/Sub accepted the message."},
+		{ID: PublishMessageBranchProviderRejected, Description: "Pub/Sub conclusively rejected the message.", Optional: true},
+		{ID: PublishMessageBranchUncertain, Description: "The send cap was reached without confirmation.", Optional: true},
+		{ID: PublishMessageBranchDefect, Description: "Local message input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type PublishMessageResult = sdkgo.MutationResult[PublishedMessage]
+
+type PublishMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                               `connector:"operationId=publishMessage"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) PublishMessageInput                           `connector:"mapToOperationInput"`
+	Published                         sdkgo.Target[PublishMessageResult]                     `connector:"branch=published"`
+	ProviderRejected                  sdkgo.Target[PublishMessageResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[PublishMessageResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PublishMessageResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PublishedMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewPublishMessageStep[IN any](config PublishMessageStepConfig[IN]) sdkgo.MutationStep[IN, PublishMessageInput, PublishedMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishMessageInput, PublishedMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishMessageResult] {
+			branches := make([]sdkgo.BranchTarget[PublishMessageResult], 0, 4)
+			if config.Published.HasStep() {
+				branches = append(branches, config.Published.BranchTarget(PublishMessageBranchPublished))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PublishMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const PullMessagesBranchPulled sdkgo.BranchID = "pulled"
+const PullMessagesBranchNotFound sdkgo.BranchID = "notFound"
+const PullMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PullMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PullMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PullMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "pullMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PullMessagesBranchPulled, Description: "Pub/Sub returned the available messages."},
+		{ID: PullMessagesBranchNotFound, Description: "The subscription does not exist.", Optional: true},
+		{ID: PullMessagesBranchProviderRejected, Description: "Pub/Sub conclusively rejected the pull.", Optional: true},
+		{ID: PullMessagesBranchInvalidResponse, Description: "Pub/Sub returned malformed pull JSON.", Optional: true},
+		{ID: PullMessagesBranchDefect, Description: "Local pull input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type PullMessagesResult = sdkgo.QueryResult[PulledMessages]
+
+type PullMessagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=google-pubsub"`
+	operationID                    struct{}                                          `connector:"operationId=pullMessages"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) PullMessagesInput                        `connector:"mapToOperationInput"`
+	Pulled                         sdkgo.Target[PullMessagesResult]                  `connector:"branch=pulled"`
+	NotFound                       sdkgo.Target[PullMessagesResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[PullMessagesResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[PullMessagesResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[PullMessagesResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PulledMessages]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewPullMessagesStep[IN any](config PullMessagesStepConfig[IN]) sdkgo.QueryStep[IN, PullMessagesInput, PulledMessages] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, PullMessagesInput, PulledMessages]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PullMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PullMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[PullMessagesResult], 0, 5)
+			if config.Pulled.HasStep() {
+				branches = append(branches, config.Pulled.BranchTarget(PullMessagesBranchPulled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(PullMessagesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PullMessagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PullMessagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PullMessagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AcknowledgeMessagesBranchAcknowledged sdkgo.BranchID = "acknowledged"
+const AcknowledgeMessagesBranchNotFound sdkgo.BranchID = "notFound"
+const AcknowledgeMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AcknowledgeMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AcknowledgeMessagesDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "acknowledgeMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AcknowledgeMessagesBranchAcknowledged, Description: "Pub/Sub acknowledged the message IDs."},
+		{ID: AcknowledgeMessagesBranchNotFound, Description: "The subscription does not exist.", Optional: true},
+		{ID: AcknowledgeMessagesBranchProviderRejected, Description: "Pub/Sub conclusively rejected the acknowledgement.", Optional: true},
+		{ID: AcknowledgeMessagesBranchDefect, Description: "Local acknowledgement input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type AcknowledgeMessagesResult = sdkgo.MutationResult[AcknowledgedMessages]
+
+type AcknowledgeMessagesStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                                   `connector:"operationId=acknowledgeMessages"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) AcknowledgeMessagesInput                          `connector:"mapToOperationInput"`
+	Acknowledged                      sdkgo.Target[AcknowledgeMessagesResult]                    `connector:"branch=acknowledged"`
+	NotFound                          sdkgo.Target[AcknowledgeMessagesResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[AcknowledgeMessagesResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[AcknowledgeMessagesResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AcknowledgedMessages]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewAcknowledgeMessagesStep[IN any](config AcknowledgeMessagesStepConfig[IN]) sdkgo.MutationStep[IN, AcknowledgeMessagesInput, AcknowledgedMessages] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AcknowledgeMessagesInput, AcknowledgedMessages]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AcknowledgeMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AcknowledgeMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[AcknowledgeMessagesResult], 0, 4)
+			if config.Acknowledged.HasStep() {
+				branches = append(branches, config.Acknowledged.BranchTarget(AcknowledgeMessagesBranchAcknowledged))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(AcknowledgeMessagesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AcknowledgeMessagesBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AcknowledgeMessagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSubscriptionsBranchListed sdkgo.BranchID = "listed"
+const ListSubscriptionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscriptionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscriptionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscriptionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscriptions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscriptionsBranchListed, Description: "Pub/Sub returned the subscription page."},
+		{ID: ListSubscriptionsBranchProviderRejected, Description: "Pub/Sub conclusively rejected the read.", Optional: true},
+		{ID: ListSubscriptionsBranchInvalidResponse, Description: "Pub/Sub returned malformed subscription JSON.", Optional: true},
+		{ID: ListSubscriptionsBranchDefect, Description: "Local project input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscriptionsResult = sdkgo.QueryResult[SubscriptionsPage]
+
+type ListSubscriptionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=google-pubsub"`
+	operationID                    struct{}                                             `connector:"operationId=listSubscriptions"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubscriptionsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSubscriptionsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSubscriptionsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscriptionsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscriptionsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscriptionsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscriptionsStep[IN any](config ListSubscriptionsStepConfig[IN]) sdkgo.QueryStep[IN, ListSubscriptionsInput, SubscriptionsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscriptionsInput, SubscriptionsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscriptions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscriptionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscriptionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSubscriptionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscriptionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscriptionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscriptionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSubscriptionBranchFound sdkgo.BranchID = "found"
+const GetSubscriptionBranchNotFound sdkgo.BranchID = "notFound"
+const GetSubscriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSubscriptionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSubscriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSubscriptionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSubscription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSubscriptionBranchFound, Description: "Pub/Sub returned the subscription."},
+		{ID: GetSubscriptionBranchNotFound, Description: "The subscription does not exist.", Optional: true},
+		{ID: GetSubscriptionBranchProviderRejected, Description: "Pub/Sub conclusively rejected the read.", Optional: true},
+		{ID: GetSubscriptionBranchInvalidResponse, Description: "Pub/Sub returned malformed subscription JSON.", Optional: true},
+		{ID: GetSubscriptionBranchDefect, Description: "Local subscription name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSubscriptionResult = sdkgo.QueryResult[Subscription]
+
+type GetSubscriptionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=google-pubsub"`
+	operationID                    struct{}                                        `connector:"operationId=getSubscription"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSubscriptionInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSubscriptionResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSubscriptionResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSubscriptionResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSubscriptionResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSubscriptionResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Subscription]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetSubscriptionStep[IN any](config GetSubscriptionStepConfig[IN]) sdkgo.QueryStep[IN, GetSubscriptionInput, Subscription] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSubscriptionInput, Subscription]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSubscription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSubscriptionResult] {
+			branches := make([]sdkgo.BranchTarget[GetSubscriptionResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSubscriptionBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSubscriptionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSubscriptionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSubscriptionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSubscriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateSubscriptionBranchCreated sdkgo.BranchID = "created"
+const CreateSubscriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSubscriptionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateSubscriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateSubscriptionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSubscription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSubscriptionBranchCreated, Description: "Pub/Sub created or confirmed the subscription."},
+		{ID: CreateSubscriptionBranchProviderRejected, Description: "Pub/Sub conclusively rejected the create.", Optional: true},
+		{ID: CreateSubscriptionBranchInvalidResponse, Description: "Pub/Sub returned malformed subscription JSON.", Optional: true},
+		{ID: CreateSubscriptionBranchDefect, Description: "Local subscription input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateSubscriptionResult = sdkgo.MutationResult[Subscription]
+
+type CreateSubscriptionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                           `connector:"operationId=createSubscription"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSubscriptionInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSubscriptionResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSubscriptionResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateSubscriptionResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateSubscriptionResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Subscription]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewCreateSubscriptionStep[IN any](config CreateSubscriptionStepConfig[IN]) sdkgo.MutationStep[IN, CreateSubscriptionInput, Subscription] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSubscriptionInput, Subscription]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateSubscription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSubscriptionResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSubscriptionResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSubscriptionBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSubscriptionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateSubscriptionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSubscriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateSubscriptionLabelsBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSubscriptionLabelsBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSubscriptionLabelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSubscriptionLabelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateSubscriptionLabelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSubscriptionLabelsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSubscriptionLabels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSubscriptionLabelsBranchUpdated, Description: "Pub/Sub replaced the subscription labels."},
+		{ID: UpdateSubscriptionLabelsBranchNotFound, Description: "The subscription does not exist.", Optional: true},
+		{ID: UpdateSubscriptionLabelsBranchProviderRejected, Description: "Pub/Sub conclusively rejected the update.", Optional: true},
+		{ID: UpdateSubscriptionLabelsBranchInvalidResponse, Description: "Pub/Sub returned malformed subscription JSON.", Optional: true},
+		{ID: UpdateSubscriptionLabelsBranchDefect, Description: "Local subscription input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSubscriptionLabelsResult = sdkgo.MutationResult[Subscription]
+
+type UpdateSubscriptionLabelsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                           `connector:"operationId=updateSubscriptionLabels"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSubscriptionLabelsInput             `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSubscriptionLabelsResult]       `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSubscriptionLabelsResult]       `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSubscriptionLabelsResult]       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateSubscriptionLabelsResult]       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateSubscriptionLabelsResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Subscription]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSubscriptionLabelsStep[IN any](config UpdateSubscriptionLabelsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSubscriptionLabelsInput, Subscription] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSubscriptionLabelsInput, Subscription]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSubscriptionLabels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSubscriptionLabelsResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSubscriptionLabelsResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSubscriptionLabelsBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSubscriptionLabelsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSubscriptionLabelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateSubscriptionLabelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSubscriptionLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSubscriptionBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSubscriptionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSubscriptionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSubscriptionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSubscription"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSubscriptionBranchDeleted, Description: "Pub/Sub deleted the subscription or it was already absent."},
+		{ID: DeleteSubscriptionBranchProviderRejected, Description: "Pub/Sub conclusively rejected the delete.", Optional: true},
+		{ID: DeleteSubscriptionBranchDefect, Description: "Local subscription name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSubscriptionResult = sdkgo.MutationResult[DeletedSubscription]
+
+type DeleteSubscriptionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteSubscription"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSubscriptionInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSubscriptionResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteSubscriptionResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteSubscriptionResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedSubscription]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSubscriptionStep[IN any](config DeleteSubscriptionStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSubscriptionInput, DeletedSubscription] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSubscriptionInput, DeletedSubscription]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSubscription(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSubscriptionResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSubscriptionResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSubscriptionBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSubscriptionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSubscriptionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTopicBranchFound sdkgo.BranchID = "found"
+const GetTopicBranchNotFound sdkgo.BranchID = "notFound"
+const GetTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTopicBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTopicDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTopicBranchFound, Description: "Pub/Sub returned the topic."},
+		{ID: GetTopicBranchNotFound, Description: "No topic has that name.", Optional: true},
+		{ID: GetTopicBranchProviderRejected, Description: "Pub/Sub conclusively rejected the read.", Optional: true},
+		{ID: GetTopicBranchInvalidResponse, Description: "Pub/Sub returned malformed or oversized topic JSON.", Optional: true},
+		{ID: GetTopicBranchDefect, Description: "Local topic name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTopicResult = sdkgo.QueryResult[Topic]
+
+type GetTopicStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=google-pubsub"`
+	operationID                    struct{}                                 `connector:"operationId=getTopic"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTopicInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTopicResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTopicResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTopicResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTopicResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTopicResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Topic]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetTopicStep[IN any](config GetTopicStepConfig[IN]) sdkgo.QueryStep[IN, GetTopicInput, Topic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTopicInput, Topic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTopicResult] {
+			branches := make([]sdkgo.BranchTarget[GetTopicResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTopicBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTopicBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTopicBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTopicBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTopicBranchCreated sdkgo.BranchID = "created"
+const CreateTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTopicBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTopicDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTopicBranchCreated, Description: "Pub/Sub created the topic or a retry confirmed it exists."},
+		{ID: CreateTopicBranchProviderRejected, Description: "Pub/Sub conclusively rejected the create.", Optional: true},
+		{ID: CreateTopicBranchInvalidResponse, Description: "Pub/Sub returned malformed topic JSON.", Optional: true},
+		{ID: CreateTopicBranchDefect, Description: "Local topic name, labels, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CreateTopicResult = sdkgo.MutationResult[Topic]
+
+type CreateTopicStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                    `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                    `connector:"operationId=createTopic"`
+	StepType                          string                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                        Connection                                  `connector:"connection"`
+	ConnectionName                    string                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTopicInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTopicResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTopicResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateTopicResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateTopicResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Topic]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewCreateTopicStep[IN any](config CreateTopicStepConfig[IN]) sdkgo.MutationStep[IN, CreateTopicInput, Topic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTopicInput, Topic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTopicResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTopicResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTopicBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTopicBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateTopicBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateTopicLabelsBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTopicLabelsBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTopicLabelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTopicLabelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTopicLabelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTopicLabelsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTopicLabels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTopicLabelsBranchUpdated, Description: "Pub/Sub replaced the topic labels."},
+		{ID: UpdateTopicLabelsBranchNotFound, Description: "The topic does not exist.", Optional: true},
+		{ID: UpdateTopicLabelsBranchProviderRejected, Description: "Pub/Sub conclusively rejected the update.", Optional: true},
+		{ID: UpdateTopicLabelsBranchInvalidResponse, Description: "Pub/Sub returned malformed topic JSON.", Optional: true},
+		{ID: UpdateTopicLabelsBranchDefect, Description: "Local topic name, labels, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTopicLabelsResult = sdkgo.MutationResult[Topic]
+
+type UpdateTopicLabelsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                    `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                    `connector:"operationId=updateTopicLabels"`
+	StepType                          string                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                        Connection                                  `connector:"connection"`
+	ConnectionName                    string                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTopicLabelsInput             `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Topic]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTopicLabelsStep[IN any](config UpdateTopicLabelsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTopicLabelsInput, Topic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTopicLabelsInput, Topic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTopicLabels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTopicLabelsResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTopicLabelsResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTopicLabelsBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTopicLabelsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTopicLabelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTopicLabelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTopicLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTopicBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTopicDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTopicBranchDeleted, Description: "Pub/Sub deleted the topic or it was already absent."},
+		{ID: DeleteTopicBranchProviderRejected, Description: "Pub/Sub conclusively rejected the delete.", Optional: true},
+		{ID: DeleteTopicBranchDefect, Description: "Local topic name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTopicResult = sdkgo.MutationResult[DeletedTopic]
+
+type DeleteTopicStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                           `connector:"operationId=deleteTopic"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteTopicInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTopicResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteTopicResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteTopicResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedTopic]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTopicStep[IN any](config DeleteTopicStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTopicInput, DeletedTopic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteTopicInput, DeletedTopic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTopicResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTopicResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTopicBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTopicBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListTopicsBranchListed sdkgo.BranchID = "listed"

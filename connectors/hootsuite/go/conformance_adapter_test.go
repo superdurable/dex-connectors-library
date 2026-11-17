@@ -28,6 +28,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"getMessage": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetMessage(), reference),
+		"deleteMessage": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteMessage(), reference, scenario.CallID),
 		"listSocialProfiles": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSocialProfiles(), reference),
 		"listScheduledPosts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListScheduledPosts(), reference),
 		"schedulePost": newConformanceMutationInvocation(t, scenario.Input,

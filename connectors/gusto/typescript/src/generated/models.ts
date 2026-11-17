@@ -14,7 +14,7 @@ export interface Config {
   baseUrl?: string;
   /** Maximum duration of one Gusto request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete Gusto JSON response in bytes. Blank uses the displayed default; increase only for an unusually large employee record. */
+  /** Maximum complete Gusto JSON response in bytes. Blank uses the displayed default; increase only for an unusually large employee page. */
   maxResponseBytes?: number;
 }
 

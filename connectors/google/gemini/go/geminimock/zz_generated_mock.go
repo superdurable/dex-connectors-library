@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted gemini connection. Script each operation through its accessor.
 type Mock struct {
-	connection      gemini.Connection
-	generateContent *connectormock.Query[gemini.GenerateContentRequest, gemini.GenerateContentResponse]
+	connection            gemini.Connection
+	listFileSearchStores  *connectormock.Query[gemini.ListFileSearchStoresInput, gemini.FileSearchStoresPage]
+	getFileSearchStore    *connectormock.Query[gemini.GetFileSearchStoreInput, gemini.FileSearchStore]
+	createFileSearchStore *connectormock.Mutation[gemini.CreateFileSearchStoreInput, gemini.FileSearchStore]
+	deleteFileSearchStore *connectormock.Mutation[gemini.DeleteFileSearchStoreInput, gemini.DeleteFileSearchStoreOutput]
+	generateContent       *connectormock.Query[gemini.GenerateContentRequest, gemini.GenerateContentResponse]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +30,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		generateContent: connectormock.NewQuery[gemini.GenerateContentRequest, gemini.GenerateContentResponse](t, gemini.GenerateContentDefinition, connectormock.WithRequestCheck[gemini.GenerateContentRequest, gemini.GenerateContentResponse](gemini.ValidateGenerateContentMockRequest), connectormock.WithAnswerCheck[gemini.GenerateContentRequest, gemini.GenerateContentResponse](gemini.GenerateContentBranchGenerated, gemini.ValidateGenerateContentMockAnswer)),
+		listFileSearchStores:  connectormock.NewQuery[gemini.ListFileSearchStoresInput, gemini.FileSearchStoresPage](t, gemini.ListFileSearchStoresDefinition),
+		getFileSearchStore:    connectormock.NewQuery[gemini.GetFileSearchStoreInput, gemini.FileSearchStore](t, gemini.GetFileSearchStoreDefinition),
+		createFileSearchStore: connectormock.NewMutation[gemini.CreateFileSearchStoreInput, gemini.FileSearchStore](t, gemini.CreateFileSearchStoreDefinition),
+		deleteFileSearchStore: connectormock.NewMutation[gemini.DeleteFileSearchStoreInput, gemini.DeleteFileSearchStoreOutput](t, gemini.DeleteFileSearchStoreDefinition),
+		generateContent:       connectormock.NewQuery[gemini.GenerateContentRequest, gemini.GenerateContentResponse](t, gemini.GenerateContentDefinition, connectormock.WithRequestCheck[gemini.GenerateContentRequest, gemini.GenerateContentResponse](gemini.ValidateGenerateContentMockRequest), connectormock.WithAnswerCheck[gemini.GenerateContentRequest, gemini.GenerateContentResponse](gemini.GenerateContentBranchGenerated, gemini.ValidateGenerateContentMockAnswer)),
 	}
+	mock.listFileSearchStores.Default(ListFileSearchStoresDefault())
+	mock.getFileSearchStore.Default(GetFileSearchStoreDefault())
+	mock.createFileSearchStore.Default(CreateFileSearchStoreDefault())
+	mock.deleteFileSearchStore.Default(DeleteFileSearchStoreDefault())
 	mock.generateContent.Default(GenerateContentDefault())
 	connection, err := gemini.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google", Name: connectionName})
 	if err != nil {
@@ -40,6 +52,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() gemini.Connection { return mock.connection }
 
+// ListFileSearchStores returns the listFileSearchStores script.
+func (mock *Mock) ListFileSearchStores() *connectormock.Query[gemini.ListFileSearchStoresInput, gemini.FileSearchStoresPage] {
+	return mock.listFileSearchStores
+}
+
+// GetFileSearchStore returns the getFileSearchStore script.
+func (mock *Mock) GetFileSearchStore() *connectormock.Query[gemini.GetFileSearchStoreInput, gemini.FileSearchStore] {
+	return mock.getFileSearchStore
+}
+
+// CreateFileSearchStore returns the createFileSearchStore script.
+func (mock *Mock) CreateFileSearchStore() *connectormock.Mutation[gemini.CreateFileSearchStoreInput, gemini.FileSearchStore] {
+	return mock.createFileSearchStore
+}
+
+// DeleteFileSearchStore returns the deleteFileSearchStore script.
+func (mock *Mock) DeleteFileSearchStore() *connectormock.Mutation[gemini.DeleteFileSearchStoreInput, gemini.DeleteFileSearchStoreOutput] {
+	return mock.deleteFileSearchStore
+}
+
 // GenerateContent returns the generateContent script.
 func (mock *Mock) GenerateContent() *connectormock.Query[gemini.GenerateContentRequest, gemini.GenerateContentResponse] {
 	return mock.generateContent
@@ -47,8 +79,164 @@ func (mock *Mock) GenerateContent() *connectormock.Query[gemini.GenerateContentR
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListFileSearchStores() sdkgo.Query[gemini.ListFileSearchStoresInput, gemini.FileSearchStoresPage] {
+	return operations.mock.listFileSearchStores
+}
+func (operations mockOperations) GetFileSearchStore() sdkgo.Query[gemini.GetFileSearchStoreInput, gemini.FileSearchStore] {
+	return operations.mock.getFileSearchStore
+}
+func (operations mockOperations) CreateFileSearchStore() sdkgo.Mutation[gemini.CreateFileSearchStoreInput, gemini.FileSearchStore] {
+	return operations.mock.createFileSearchStore
+}
+func (operations mockOperations) DeleteFileSearchStore() sdkgo.Mutation[gemini.DeleteFileSearchStoreInput, gemini.DeleteFileSearchStoreOutput] {
+	return operations.mock.deleteFileSearchStore
+}
 func (operations mockOperations) GenerateContent() sdkgo.Query[gemini.GenerateContentRequest, gemini.GenerateContentResponse] {
 	return operations.mock.generateContent
+}
+
+// ListFileSearchStoresListed selects the listed branch: Gemini returned the requested File Search stores page.
+func ListFileSearchStoresListed(value gemini.FileSearchStoresPage, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStoresPage] {
+	return connectormock.Branch(gemini.ListFileSearchStoresBranchListed, value, failure)
+}
+
+// ListFileSearchStoresProviderRejected selects the providerRejected branch: Gemini conclusively rejected the listing.
+func ListFileSearchStoresProviderRejected(value gemini.FileSearchStoresPage, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStoresPage] {
+	return connectormock.Branch(gemini.ListFileSearchStoresBranchProviderRejected, value, failure)
+}
+
+// ListFileSearchStoresInvalidResponse selects the invalidResponse branch: Gemini returned malformed or oversized store JSON.
+func ListFileSearchStoresInvalidResponse(value gemini.FileSearchStoresPage, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStoresPage] {
+	return connectormock.Branch(gemini.ListFileSearchStoresBranchInvalidResponse, value, failure)
+}
+
+// ListFileSearchStoresDefect selects the defect branch: Local page input or credentials are invalid.
+func ListFileSearchStoresDefect(value gemini.FileSearchStoresPage, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStoresPage] {
+	return connectormock.Branch(gemini.ListFileSearchStoresBranchDefect, value, failure)
+}
+
+// ListFileSearchStoresRetry asks Dex to retry the listFileSearchStores Step, after the delay when it is positive.
+func ListFileSearchStoresRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gemini.FileSearchStoresPage] {
+	return connectormock.Retry[gemini.FileSearchStoresPage](failure, after)
+}
+
+// ListFileSearchStoresListedDefault is the manifest mock listedDefault: One File Search store is visible.
+func ListFileSearchStoresListedDefault() connectormock.Case[gemini.FileSearchStoresPage] {
+	value := connectormock.MustDecodeOutput[gemini.FileSearchStoresPage](`{"fileSearchStores":[{"name":"fileSearchStores/team-docs-abc123def456","displayName":"Team docs"}],"nextPageToken":""}`)
+	return connectormock.Branch(gemini.ListFileSearchStoresBranchListed, value, nil)
+}
+
+// ListFileSearchStoresDefault is the manifest default, listedDefault, which New installs.
+func ListFileSearchStoresDefault() connectormock.Case[gemini.FileSearchStoresPage] {
+	return ListFileSearchStoresListedDefault()
+}
+
+// GetFileSearchStoreFound selects the found branch: Gemini returned the store.
+func GetFileSearchStoreFound(value gemini.FileSearchStore, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Branch(gemini.GetFileSearchStoreBranchFound, value, failure)
+}
+
+// GetFileSearchStoreNotFound selects the notFound branch: No store has that name.
+func GetFileSearchStoreNotFound(value gemini.FileSearchStore, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Branch(gemini.GetFileSearchStoreBranchNotFound, value, failure)
+}
+
+// GetFileSearchStoreProviderRejected selects the providerRejected branch: Gemini conclusively rejected the read.
+func GetFileSearchStoreProviderRejected(value gemini.FileSearchStore, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Branch(gemini.GetFileSearchStoreBranchProviderRejected, value, failure)
+}
+
+// GetFileSearchStoreInvalidResponse selects the invalidResponse branch: Gemini returned malformed or oversized store JSON.
+func GetFileSearchStoreInvalidResponse(value gemini.FileSearchStore, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Branch(gemini.GetFileSearchStoreBranchInvalidResponse, value, failure)
+}
+
+// GetFileSearchStoreDefect selects the defect branch: Local store name or credentials are invalid.
+func GetFileSearchStoreDefect(value gemini.FileSearchStore, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Branch(gemini.GetFileSearchStoreBranchDefect, value, failure)
+}
+
+// GetFileSearchStoreRetry asks Dex to retry the getFileSearchStore Step, after the delay when it is positive.
+func GetFileSearchStoreRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Retry[gemini.FileSearchStore](failure, after)
+}
+
+// GetFileSearchStoreFoundDefault is the manifest mock foundDefault: The requested File Search store exists.
+func GetFileSearchStoreFoundDefault() connectormock.Case[gemini.FileSearchStore] {
+	value := connectormock.MustDecodeOutput[gemini.FileSearchStore](`{"name":"fileSearchStores/team-docs-abc123def456","displayName":"Team docs"}`)
+	return connectormock.Branch(gemini.GetFileSearchStoreBranchFound, value, nil)
+}
+
+// GetFileSearchStoreDefault is the manifest default, foundDefault, which New installs.
+func GetFileSearchStoreDefault() connectormock.Case[gemini.FileSearchStore] {
+	return GetFileSearchStoreFoundDefault()
+}
+
+// CreateFileSearchStoreCreated selects the created branch: Gemini created or read back the store.
+func CreateFileSearchStoreCreated(value gemini.FileSearchStore, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Branch(gemini.CreateFileSearchStoreBranchCreated, value, failure)
+}
+
+// CreateFileSearchStoreProviderRejected selects the providerRejected branch: Gemini conclusively rejected the create.
+func CreateFileSearchStoreProviderRejected(value gemini.FileSearchStore, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Branch(gemini.CreateFileSearchStoreBranchProviderRejected, value, failure)
+}
+
+// CreateFileSearchStoreUncertain returns an uncertain createFileSearchStore outcome.
+func CreateFileSearchStoreUncertain(value gemini.FileSearchStore, failure sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateFileSearchStoreDefect selects the defect branch: Local store input, credentials, or checkpoint are invalid.
+func CreateFileSearchStoreDefect(value gemini.FileSearchStore, failure *sdkgo.Failure) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Branch(gemini.CreateFileSearchStoreBranchDefect, value, failure)
+}
+
+// CreateFileSearchStoreRetry asks Dex to retry the createFileSearchStore Step, after the delay when it is positive.
+func CreateFileSearchStoreRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gemini.FileSearchStore] {
+	return connectormock.Retry[gemini.FileSearchStore](failure, after)
+}
+
+// CreateFileSearchStoreCreatedDefault is the manifest mock createdDefault: Gemini created the requested File Search store.
+func CreateFileSearchStoreCreatedDefault() connectormock.Case[gemini.FileSearchStore] {
+	value := connectormock.MustDecodeOutput[gemini.FileSearchStore](`{"name":"fileSearchStores/team-docs-abc123def456","displayName":"Team docs"}`)
+	return connectormock.Branch(gemini.CreateFileSearchStoreBranchCreated, value, nil)
+}
+
+// CreateFileSearchStoreDefault is the manifest default, createdDefault, which New installs.
+func CreateFileSearchStoreDefault() connectormock.Case[gemini.FileSearchStore] {
+	return CreateFileSearchStoreCreatedDefault()
+}
+
+// DeleteFileSearchStoreDeleted selects the deleted branch: Gemini deleted the store or it was already absent.
+func DeleteFileSearchStoreDeleted(value gemini.DeleteFileSearchStoreOutput, failure *sdkgo.Failure) connectormock.Case[gemini.DeleteFileSearchStoreOutput] {
+	return connectormock.Branch(gemini.DeleteFileSearchStoreBranchDeleted, value, failure)
+}
+
+// DeleteFileSearchStoreProviderRejected selects the providerRejected branch: Gemini conclusively rejected the delete.
+func DeleteFileSearchStoreProviderRejected(value gemini.DeleteFileSearchStoreOutput, failure *sdkgo.Failure) connectormock.Case[gemini.DeleteFileSearchStoreOutput] {
+	return connectormock.Branch(gemini.DeleteFileSearchStoreBranchProviderRejected, value, failure)
+}
+
+// DeleteFileSearchStoreDefect selects the defect branch: Local store name or credentials are invalid.
+func DeleteFileSearchStoreDefect(value gemini.DeleteFileSearchStoreOutput, failure *sdkgo.Failure) connectormock.Case[gemini.DeleteFileSearchStoreOutput] {
+	return connectormock.Branch(gemini.DeleteFileSearchStoreBranchDefect, value, failure)
+}
+
+// DeleteFileSearchStoreRetry asks Dex to retry the deleteFileSearchStore Step, after the delay when it is positive.
+func DeleteFileSearchStoreRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[gemini.DeleteFileSearchStoreOutput] {
+	return connectormock.Retry[gemini.DeleteFileSearchStoreOutput](failure, after)
+}
+
+// DeleteFileSearchStoreDeletedDefault is the manifest mock deletedDefault: Gemini deleted the requested File Search store.
+func DeleteFileSearchStoreDeletedDefault() connectormock.Case[gemini.DeleteFileSearchStoreOutput] {
+	value := connectormock.MustDecodeOutput[gemini.DeleteFileSearchStoreOutput](`{"name":"fileSearchStores/team-docs-abc123def456"}`)
+	return connectormock.Branch(gemini.DeleteFileSearchStoreBranchDeleted, value, nil)
+}
+
+// DeleteFileSearchStoreDefault is the manifest default, deletedDefault, which New installs.
+func DeleteFileSearchStoreDefault() connectormock.Case[gemini.DeleteFileSearchStoreOutput] {
+	return DeleteFileSearchStoreDeletedDefault()
 }
 
 // GenerateContentGenerated selects the generated branch: Gemini finished the first candidate normally and returned its text.

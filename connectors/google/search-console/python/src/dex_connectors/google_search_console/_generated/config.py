@@ -13,6 +13,7 @@ class Config:
     base_url: str = "https://www.googleapis.com"
     timeout_seconds: float = 15
     max_response_bytes: int = 1048576
+    inspection_base_url: str = "https://searchconsole.googleapis.com"
 
 setattr(Config, '__module__', 'dex_connectors.google_search_console.client')
 

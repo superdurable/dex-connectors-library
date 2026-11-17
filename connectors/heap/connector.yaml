@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: heap
   displayName: Heap
-  description: Set user properties through Heap's server-side API.
+  description: Track events and set user or account properties through Heap's server-side API.
   company: Heap
   categories: [analytics]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: heap
   languages:
@@ -28,13 +28,13 @@ spec:
       - name: baseUrl
         goName: BaseURL
         type: url
-        description: Heap server-side API HTTPS root. Blank uses the displayed US endpoint; for an EU project use https://c.eu.heap-api.com. Do not append /api/add_user_properties.
+        description: Heap server-side API HTTPS root. Blank uses the displayed US endpoint; for an EU project use https://c.eu.heap-api.com. Do not append an /api path.
         default: https://heapanalytics.com
       - name: appId
         goName: AppID
         type: string
         required: true
-        description: Non-secret numeric environment ID from https://heapanalytics.com > Projects > the Main Production environment; copy its app ID as decimal digits. Blank prevents requests.
+        description: Non-secret numeric environment ID from https://heapanalytics.com > Account > Manage > Projects > the chosen environment; copy its app ID as decimal digits. Blank prevents requests.
       - name: timeout
         goName: Timeout
         type: duration
@@ -50,6 +50,46 @@ spec:
     connectionKind: none
     fields: []
   operations:
+    - name: trackEvent
+      goName: TrackEvent
+      inputType: TrackEventInput
+      outputType: EventTracked
+      kind: mutation
+      description: Track a server-side event with Heap's provider idempotency key.
+      idempotency: required
+      authorization: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: tracked, goName: Tracked, description: Heap accepted the event.}
+        - {id: providerRejected, goName: ProviderRejected, description: Heap conclusively rejected the event., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Heap returned an oversized or unreadable confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Local event input or app ID is invalid., optional: true}
+      mocks:
+        - name: trackedDefault
+          branch: tracked
+          default: true
+          description: One sample event was tracked.
+          output: {accepted: true}
+    - name: setAccountProperties
+      goName: SetAccountProperties
+      inputType: SetAccountPropertiesInput
+      outputType: AccountPropertiesResult
+      kind: mutation
+      description: Overwrite selected properties for a Heap account.
+      idempotency: required
+      authorization: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: accepted, goName: Accepted, description: Heap accepted the account properties.}
+        - {id: providerRejected, goName: ProviderRejected, description: Heap conclusively rejected the account update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Heap returned an oversized or unreadable confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Local account input or app ID is invalid., optional: true}
+      mocks:
+        - name: acceptedDefault
+          branch: accepted
+          default: true
+          description: One sample account's plan was set.
+          output: {accepted: true}
     - name: setUserProperties
       goName: SetUserProperties
       inputType: SetUserPropertiesInput
