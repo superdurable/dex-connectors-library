@@ -127,6 +127,23 @@ export interface SendRequestOutput {
   /** IsBodyTruncated reports that the API sent more than maxBodyBytes bytes and the rest was dropped. */
   "bodyTruncated"?: boolean | undefined;
 }
+/** PostNonIdempotentInput describes one HTTP POST that must never be sent twice. */
+export interface PostNonIdempotentInput {
+  /** Path is the request path under the connection's apiBaseUrl. It starts with a single slash, may be
+   * percent-encoded, and carries no query, fragment, backslash, or .. segment. Set exactly one of Path and URL. */
+  "path"?: string | undefined;
+  /** URL is an absolute http or https URL with the scheme, host, and port of the connection's apiBaseUrl.
+   * Set exactly one of Path and URL. */
+  "url"?: string | undefined;
+  /** Query holds query parameters that are added to those already in URL. A name may repeat through several values. */
+  "query"?: { [key: string]: Array<string> | null } | undefined;
+  /** Headers holds extra request headers, such as Accept. Authorization, Cookie, Host, and the headers the
+   * transport owns select defect; the connector always sends Authorization: Bearer with the access token. */
+  "headers"?: { [key: string]: string } | undefined;
+  /** Body is the request body, sent as text and limited to the connection's maxBodyBytes. Content-Type
+   * defaults to application/json when Headers sets none. Blank sends an empty body. */
+  "body"?: string | undefined;
+}
 
 /** Runtime validator for SendRequestInput. */
 export const SendRequestInputSchema = z.strictObject({
@@ -147,3 +164,12 @@ export const SendRequestOutputSchema = z.strictObject({
   "bodyIsBase64": z.boolean().optional(),
   "bodyTruncated": z.boolean().optional(),
 }) satisfies z.ZodType<SendRequestOutput>;
+
+/** Runtime validator for PostNonIdempotentInput. */
+export const PostNonIdempotentInputSchema = z.strictObject({
+  "path": z.string().optional(),
+  "url": z.string().optional(),
+  "query": z.record(z.string(), z.array(z.string()).nullable()).optional(),
+  "headers": z.record(z.string(), z.string()).optional(),
+  "body": z.string().optional(),
+}) satisfies z.ZodType<PostNonIdempotentInput>;

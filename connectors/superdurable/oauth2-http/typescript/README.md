@@ -1,9 +1,9 @@
 # OAuth 2.0 HTTP TypeScript connector
 
-`@superdurable/connector-superdurable-oauth2-http` supplies `sendRequest` for Dex
-TypeScript Flows. `connector.yaml` generates its models, Step factory, mock,
-private and shared credential decoders, and OAuth refresh declaration. The
-package uses Connector SDK 0.7.0.
+`@superdurable/connector-superdurable-oauth2-http` supplies `sendRequest` and
+`postNonIdempotent` for Dex TypeScript Flows. `connector.yaml` generates its
+models, Step factories, mock, private and shared credential decoders, and OAuth
+refresh declaration. The package uses Connector SDK 0.12.0.
 
 Configure a Dex Web Connection with the authorization and token endpoints,
 scopes, and API base URL, then authorize it with the provider. The connector
@@ -20,10 +20,16 @@ persists no token. `requestTimeout` from the connection is converted from a
 Go duration to milliseconds; blank uses the manifest default.
 
 `newSendRequestStep` routes `completed` to the required destination. `rejected`,
-`uncertain`, and `defect` are optional and fail the Flow when unwired. GET,
-HEAD, and OPTIONS retry transport failures and 5xx responses. For other methods,
-an outcome that may have reached the API is uncertain unless the API returns
-408 or 429. Every request uses a bounded response body, and bearer credentials
+`uncertain`, and `defect` are optional and fail the Flow when unwired.
+`sendRequest` is repeat-safe: every method retries a lost answer, a 5xx, and
+any status other than a redirect or a definite refusal (400, 401, 403, 404,
+411, 413, 414, 415, or 422), and it never selects `uncertain`.
+
+`newPostNonIdempotentStep` sends one POST per Step execution under the
+Connector SDK single-dispatch fence with sync durability. A 429, a 503, a 401
+after a renewed token, and a POST that never left the process are retried; any
+other outcome that may follow a processed POST selects `uncertain` and is never
+sent again. Every request uses a bounded response body, and bearer credentials
 echoed by the provider are redacted from its output.
 
 Run `npm test`, `npm run typecheck`, and `npm run lint` from this directory.

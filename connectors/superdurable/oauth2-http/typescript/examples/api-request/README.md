@@ -18,6 +18,13 @@ npm run example:request:start -- examples/api-request/input.example.json
 The second command runs in another terminal and prints the bounded API
 answer. Edit `input.example.json` to a provider path such as `/userinfo`.
 
+Add `"orderBody"` to the input, such as `{"path": "/orders", "orderBody":
+"{\"item\":\"gear\"}"}`, to send that body once as a POST with
+`postNonIdempotent` instead of the GET. The `PostOrder` Step runs with sync
+durability; an answer that does not prove the API refused or ignored the POST,
+such as a lost connection or a 502, fails the Flow on the unwired `uncertain`
+branch instead of sending it again.
+
 Run the local real Dex integration test with a stand-in API:
 
 ```sh

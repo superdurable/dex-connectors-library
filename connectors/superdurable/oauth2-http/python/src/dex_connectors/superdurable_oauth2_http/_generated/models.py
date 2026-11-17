@@ -48,3 +48,25 @@ class SendRequestOutput:
 
 
 setattr(SendRequestOutput, '__module__', 'dex_connectors.superdurable_oauth2_http.models')
+
+
+# PostNonIdempotentInput describes one HTTP POST that must never be sent twice.
+@dataclass(frozen=True, slots=True)
+class PostNonIdempotentInput:
+    # Path is the request path under the connection's apiBaseUrl. It starts with a single slash, may be
+    # percent-encoded, and carries no query, fragment, backslash, or .. segment. Set exactly one of Path and URL.
+    path: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # URL is an absolute http or https URL with the scheme, host, and port of the connection's apiBaseUrl.
+    # Set exactly one of Path and URL.
+    url: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # Query holds query parameters that are added to those already in URL. A name may repeat through several values.
+    query: dict[str, tuple[str, ...]] = _dataclass_field(default_factory=dict, metadata={'dex_json_omit_default': True})
+    # Headers holds extra request headers, such as Accept. Authorization, Cookie, Host, and the headers the
+    # transport owns select defect; the connector always sends Authorization: Bearer with the access token.
+    headers: dict[str, str] = _dataclass_field(default_factory=dict, metadata={'dex_json_omit_default': True})
+    # Body is the request body, sent as text and limited to the connection's maxBodyBytes. Content-Type
+    # defaults to application/json when Headers sets none. Blank sends an empty body.
+    body: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(PostNonIdempotentInput, '__module__', 'dex_connectors.superdurable_oauth2_http.models')

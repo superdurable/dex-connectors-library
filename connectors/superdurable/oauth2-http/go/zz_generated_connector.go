@@ -55,12 +55,16 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	SendRequest() sdkgo.Mutation[SendRequestInput, SendRequestOutput]
+	PostNonIdempotent() sdkgo.Mutation[PostNonIdempotentInput, SendRequestOutput]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) SendRequest() sdkgo.Mutation[SendRequestInput, SendRequestOutput] {
 	return operations.client.SendRequest()
+}
+func (operations clientOperations) PostNonIdempotent() sdkgo.Mutation[PostNonIdempotentInput, SendRequestOutput] {
+	return operations.client.PostNonIdempotent()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -298,8 +302,8 @@ var SendRequestDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendRequest"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendRequestBranchCompleted, Description: "The API answered 2xx; the Result carries the status code and body."},
-		{ID: SendRequestBranchRejected, Description: "The API answered a redirect or a 4xx other than 408 and 429, or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.", Optional: true},
-		{ID: SendRequestBranchUncertain, Description: "The request may have reached the API, but a method that is not safe to repeat got no usable answer: the connection closed, timed out, or the API answered 5xx.", Optional: true},
+		{ID: SendRequestBranchRejected, Description: "The API answered a redirect or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.", Optional: true},
+		{ID: SendRequestBranchUncertain, Description: "Never selected: sendRequest repeats every unknown outcome until its retry policy runs out. The branch stays declared so applications that wired it keep compiling.", Optional: true},
 		{ID: SendRequestBranchDefect, Description: "The input or the connection settings are invalid, so no request was sent.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -307,6 +311,7 @@ var SendRequestDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type SendRequestResult = sdkgo.MutationResult[SendRequestOutput]
@@ -352,6 +357,78 @@ func NewSendRequestStep[IN any](config SendRequestStepConfig[IN]) sdkgo.Mutation
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SendRequestBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PostNonIdempotentBranchCompleted sdkgo.BranchID = "completed"
+const PostNonIdempotentBranchRejected sdkgo.BranchID = "rejected"
+const PostNonIdempotentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PostNonIdempotentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PostNonIdempotentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "postNonIdempotent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PostNonIdempotentBranchCompleted, Description: "The API answered 2xx; the Result carries the status code and body."},
+		{ID: PostNonIdempotentBranchRejected, Description: "The API refused the only POST of this Step execution with a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed before it was sent. The Result carries the status code, which is zero when no request was sent.", Optional: true},
+		{ID: PostNonIdempotentBranchUncertain, Description: "The POST may have reached the API, but no usable answer arrived: the connection closed or timed out, the API answered a redirect, a 5xx other than 503, or another status that does not prove a refusal, or an earlier attempt may have sent it. It is never sent again; check the API before acting.", Optional: true},
+		{ID: PostNonIdempotentBranchDefect, Description: "The input or the connection settings are invalid, so no request was sent.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownUnsafe,
+}
+
+type PostNonIdempotentResult = sdkgo.MutationResult[SendRequestOutput]
+
+type PostNonIdempotentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=oauth2-http"`
+	operationID                       struct{}                                                `connector:"operationId=postNonIdempotent"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) PostNonIdempotentInput                         `connector:"mapToOperationInput"`
+	Completed                         sdkgo.Target[PostNonIdempotentResult]                   `connector:"branch=completed"`
+	Rejected                          sdkgo.Target[PostNonIdempotentResult]                   `connector:"branch=rejected,optional"`
+	Uncertain                         sdkgo.Target[PostNonIdempotentResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PostNonIdempotentResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendRequestOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewPostNonIdempotentStep[IN any](config PostNonIdempotentStepConfig[IN]) sdkgo.MutationStep[IN, PostNonIdempotentInput, SendRequestOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("oauth2-http connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PostNonIdempotentInput, SendRequestOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PostNonIdempotent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PostNonIdempotentResult] {
+			branches := make([]sdkgo.BranchTarget[PostNonIdempotentResult], 0, 4)
+			if config.Completed.HasStep() {
+				branches = append(branches, config.Completed.BranchTarget(PostNonIdempotentBranchCompleted))
+			}
+			if config.Rejected.HasStep() {
+				branches = append(branches, config.Rejected.BranchTarget(PostNonIdempotentBranchRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PostNonIdempotentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PostNonIdempotentBranchDefect))
 			}
 			return branches
 		}(),

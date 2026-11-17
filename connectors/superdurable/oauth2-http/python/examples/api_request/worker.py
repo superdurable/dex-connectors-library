@@ -13,6 +13,7 @@ from dex_connectors.sdk.projectconfig import load_from_environment
 from dex_connectors.superdurable_oauth2_http import new_project_connection
 
 from .flow import CONNECTION_NAME, APIRequestFlow
+from .order_flow import OrderFlow
 
 
 async def run_worker() -> None:
@@ -21,7 +22,9 @@ async def run_worker() -> None:
     connection = new_project_connection(project, CONNECTION_NAME)
     cache = None
     try:
-        registry = dex.Registry([APIRequestFlow(connection)], allow_async_handlers=True)
+        registry = dex.Registry(
+            [APIRequestFlow(connection), OrderFlow(connection)], allow_async_handlers=True
+        )
         cache_directory = os.environ.get(
             "DEX_BLOB_CACHE_DIR", str(Path(tempfile.gettempdir()) / "dex-oauth2-http-python-blobs")
         )

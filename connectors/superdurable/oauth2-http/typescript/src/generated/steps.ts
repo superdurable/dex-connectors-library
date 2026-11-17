@@ -5,7 +5,7 @@
 import { goToBranch, newMutationStep, type Mutation, type MutationResult, type MutationStep, type MutationStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { SendRequestInput, SendRequestOutput } from './models.js';
+import type { SendRequestInput, SendRequestOutput, PostNonIdempotentInput } from './models.js';
 
 /** Configuration for the sendRequest connector Step. */
 export interface SendRequestStepConfig<StepInput, OperationInput = SendRequestInput, OperationOutput = SendRequestOutput> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -15,9 +15,9 @@ export interface SendRequestStepConfig<StepInput, OperationInput = SendRequestIn
   connectionName: string;
   /** The API answered 2xx; the Result carries the status code and body. */
   completed: StepTarget<MutationResult<OperationOutput>>;
-  /** The API answered a redirect or a 4xx other than 408 and 429, or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent. */
+  /** The API answered a redirect or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent. */
   rejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request may have reached the API, but a method that is not safe to repeat got no usable answer: the connection closed, timed out, or the API answered 5xx. */
+  /** Never selected: sendRequest repeats every unknown outcome until its retry policy runs out. The branch stays declared so applications that wired it keep compiling. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** The input or the connection settings are invalid, so no request was sent. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -28,6 +28,34 @@ export function newSendRequestStep<StepInput, OperationInput = SendRequestInput,
   const { connection, connectionName, completed, rejected, uncertain, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.sendRequest(), connection: connection.reference, branches: [
+    goToBranch("completed", completed),
+    ...(rejected ? [goToBranch("rejected", rejected)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the postNonIdempotent connector Step. */
+export interface PostNonIdempotentStepConfig<StepInput, OperationInput = PostNonIdempotentInput, OperationOutput = SendRequestOutput> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ postNonIdempotent(): Mutation<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** The API answered 2xx; the Result carries the status code and body. */
+  completed: StepTarget<MutationResult<OperationOutput>>;
+  /** The API refused the only POST of this Step execution with a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed before it was sent. The Result carries the status code, which is zero when no request was sent. */
+  rejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** The POST may have reached the API, but no usable answer arrived: the connection closed or timed out, the API answered a redirect, a 5xx other than 503, or another status that does not prove a refusal, or an earlier attempt may have sent it. It is never sent again; check the API before acting. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
+  /** The input or the connection settings are invalid, so no request was sent. */
+  defect?: StepTarget<MutationResult<OperationOutput>>;
+}
+
+/** Build the postNonIdempotent Step from a named connection. */
+export function newPostNonIdempotentStep<StepInput, OperationInput = PostNonIdempotentInput, OperationOutput = SendRequestOutput>(configuration: PostNonIdempotentStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, completed, rejected, uncertain, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.postNonIdempotent(), connection: connection.reference, branches: [
     goToBranch("completed", completed),
     ...(rejected ? [goToBranch("rejected", rejected)] : []),
     ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),

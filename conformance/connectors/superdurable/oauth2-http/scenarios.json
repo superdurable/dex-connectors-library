@@ -259,20 +259,16 @@
               "superdurable-dex-oauth2-http-connector/0.1"
             ]
           },
-          "status": 503
+          "status": 500
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
-        "output": {
-          "body": "failed",
-          "statusCode": 503
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
       "input": {
@@ -280,7 +276,7 @@
         "method": "POST",
         "path": "/items"
       },
-      "name": "sendRequest-server-error-unsafe",
+      "name": "sendRequest-server-error-post",
       "operation": "sendRequest"
     },
     {
@@ -380,15 +376,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
-        "output": {
-          "statusCode": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
       "input": {
@@ -687,6 +680,845 @@
       },
       "name": "sendRequest-malformed-existing-query-614",
       "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"conflict\"}",
+          "derivedKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/items/1",
+          "requestBody": {
+            "name": "item-1"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "body": "{\"name\":\"item-1\"}",
+        "idempotencyKeyHeader": "Idempotency-Key",
+        "method": "PUT",
+        "path": "/items/1"
+      },
+      "name": "sendRequest-conflict-retried",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"order-1\",\"status\":\"created\"}",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Request-Id": "req-order-1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "query": {
+            "notify": [
+              "false"
+            ]
+          },
+          "requestBody": {
+            "item": "gear",
+            "quantity": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "claimed"
+        },
+        "output": {
+          "body": "{\"id\":\"order-1\",\"status\":\"created\"}",
+          "contentType": "application/json",
+          "statusCode": 201
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\",\"quantity\":2}",
+        "headers": {
+          "Accept": "application/json"
+        },
+        "path": "/orders",
+        "query": {
+          "notify": [
+            "false"
+          ]
+        }
+      },
+      "name": "postNonIdempotent-completed",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "accepted",
+          "headers": {
+            "Content-Type": "text/plain"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payments",
+          "query": {
+            "account": [
+              "a-1"
+            ]
+          },
+          "requestBody": "pay 10",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "claimed"
+        },
+        "output": {
+          "body": "accepted",
+          "contentType": "text/plain",
+          "statusCode": 200
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "pay 10",
+        "headers": {
+          "Content-Type": "text/plain"
+        },
+        "url": "http://127.0.0.1:12345/v1/payments?account=a-1"
+      },
+      "name": "postNonIdempotent-completed-url",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid_order\"}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": ""
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "rejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "canResend"
+        },
+        "output": {
+          "body": "{\"error\":\"invalid_order\"}",
+          "contentType": "application/json",
+          "statusCode": 422
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-rejected",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "unauthorized",
+          "headers": {
+            "WWW-Authenticate": "Bearer error=\"invalid_token\""
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "rejected",
+        "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "canResend"
+        },
+        "output": {
+          "body": "unauthorized",
+          "statusCode": 401
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-authentication-rejected",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "attempts": 1,
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "slow down",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-rate-limited",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "attempts": 1,
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "maintenance",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-service-unavailable",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "attempts": 2,
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "slow down",
+          "headers": {
+            "Retry-After": "1"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":\"order-2\"}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "claimed"
+        },
+        "output": {
+          "body": "{\"id\":\"order-2\"}",
+          "contentType": "application/json",
+          "statusCode": 201
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+            "state": "canResend"
+          },
+          "retryAfterMs": 1000
+        }
+      ],
+      "name": "postNonIdempotent-rate-limited-then-completed",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "internal error",
+          "headers": {
+            "Content-Type": "text/plain"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "claimed"
+        },
+        "output": {
+          "body": "internal error",
+          "contentType": "text/plain",
+          "statusCode": 500
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-server-error-uncertain",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"conflict\"}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "claimed"
+        },
+        "output": {
+          "body": "{\"error\":\"conflict\"}",
+          "contentType": "application/json",
+          "statusCode": 409
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-conflict-uncertain",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "see other",
+          "headers": {
+            "Location": "http://127.0.0.1:12345/v1/orders/order-3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 303
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "claimed"
+        },
+        "output": {
+          "body": "see other",
+          "statusCode": 303
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-redirect-uncertain",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "attempts": 1,
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-transport-before",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "claimed"
+        },
+        "output": {
+          "statusCode": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-transport-after",
+      "operation": "postNonIdempotent"
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "statusCode": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-prior-claim-uncertain",
+      "operation": "postNonIdempotent",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"order-4\"}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders",
+          "requestBody": {
+            "item": "gear"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+          "state": "claimed"
+        },
+        "output": {
+          "body": "{\"id\":\"order-4\"}",
+          "contentType": "application/json",
+          "statusCode": 201
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "body": "{\"item\":\"gear\"}",
+        "path": "/orders"
+      },
+      "name": "postNonIdempotent-prior-can-resend-completed",
+      "operation": "postNonIdempotent",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+        "state": "canResend"
+      }
+    },
+    {
+      "callId": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "statusCode": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "659e7b4f-b114-59f6-98d1-17c1143ef228",
+      "input": {
+        "path": "orders"
+      },
+      "name": "postNonIdempotent-defect-invalid-path",
+      "operation": "postNonIdempotent"
     }
   ],
   "schemaVersion": 1

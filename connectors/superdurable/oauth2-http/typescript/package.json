@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-superdurable-oauth2-http",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OAuth 2.0 HTTP requests for Dex Flows",
   "repository": {
     "type": "git",
@@ -45,7 +45,7 @@
     "example:request:start": "npm run build && tsx examples/api-request/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
