@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: todoist
   displayName: Todoist
-  description: List, read, create, update, and delete Todoist tasks through typed Dex Steps.
+  description: List, read, create, update, reopen, and delete Todoist tasks through typed Dex Steps.
   company: Doist
   categories: [productivity, project-management]
-  version: v0.4.0
+  version: v0.5.0
 spec:
   provider: todoist
   languages:
@@ -52,11 +52,35 @@ spec:
     guide:
       startURL: https://app.todoist.com/app/settings/integrations/developer
       steps:
-        - Sign in to Todoist as the account whose tasks this connection should list, read, create, update, and delete.
+        - Sign in to Todoist as the account whose tasks this connection should list, read, create, update, reopen, and delete.
         - Open Settings > Integrations > Developer and copy the personal API token under API token. This secret grants access to that account; never put it in Flow input.
         - Paste the token without a Bearer prefix into api_token and save the connection. Leave the non-secret HTTP settings blank for their displayed defaults.
         - To revoke the token, use the API token replacement control on the same Developer settings page. Save the replacement here; credentials are resolved on each operation attempt without restarting the Worker.
   operations:
+    - name: reopenTask
+      goName: ReopenTask
+      inputType: ReopenTaskInput
+      outputType: ReopenedTask
+      kind: mutation
+      description: Restore one completed task to active status by immutable task ID.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: reopened, goName: Reopened, description: Todoist acknowledged reopening or a read-back found the task active.}
+        - {id: notFound, goName: NotFound, description: Todoist found no task with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Todoist definitively denied reopening., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: completedTaskReopened
+          branch: reopened
+          description: Restore completed-task to active status.
+          default: true
+          output: {taskId: completed-task}
+        - name: missingTask
+          branch: notFound
+          description: Todoist found no task to reopen.
+          failure: {kind: NOT_FOUND, message: "Todoist found no task with that ID."}
     - name: getTask
       goName: GetTask
       inputType: GetTaskInput

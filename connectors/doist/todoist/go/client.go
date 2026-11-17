@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package todoist lists, reads, creates, updates, and deletes tasks through typed Dex Steps.
-// See examples/task-crud for a runnable Flow using all five generated factories.
+// Package todoist lists, reads, creates, updates, reopens, and deletes tasks through typed Dex Steps.
+// See examples/task-crud for a runnable Flow using the generated factories.
 package todoist
 
 import (
@@ -317,6 +317,9 @@ func (client *Client) CreateTask() CreateTaskOperation { return CreateTaskOperat
 
 // DeleteTask returns this client's delete Mutation.
 func (client *Client) DeleteTask() DeleteTaskOperation { return DeleteTaskOperation{client} }
+
+// ReopenTask returns this client's task restoration Mutation.
+func (client *Client) ReopenTask() ReopenTaskOperation { return ReopenTaskOperation{client} }
 
 // Definition returns the generated list contract.
 func (ListTasksOperation) Definition() sdkgo.QueryDefinition { return ListTasksDefinition }

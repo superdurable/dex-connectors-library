@@ -1,10 +1,10 @@
 # Todoist Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go@v0.4.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go@v0.5.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/doist/todoist`.
 
-List, read, create, update, and delete tasks through typed Dex Steps using the
+List, read, create, update, reopen, and delete tasks through typed Dex Steps using the
 [Todoist API v1](https://developer.todoist.com/api/v1/).
 The module is `github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go`;
 the connector ID and provider are `todoist`.
@@ -16,12 +16,18 @@ the connector ID and provider are `todoist`.
 | `NewDeleteTaskStep` | Mutation | `DeleteTaskInput` | `deleted` | `alreadyAbsent`, `providerRejected`, `defect` |
 | `NewGetTaskStep` | Query | `GetTaskInput{TaskID}` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewUpdateTaskStep` | Mutation | `UpdateTaskInput{TaskID, Content?, Description?}` | `updated` | `notFound`, `providerRejected`, `defect` |
+| `NewReopenTaskStep` | Mutation | `ReopenTaskInput{TaskID}` | `reopened` | `notFound`, `providerRejected`, `defect` |
+
+`reopenTask` sends POST `/tasks/{task_id}/reopen` and accepts Todoist's JSON
+`null` success response. It restores a completed task and any completed
+ancestors. A repeated request targets the same task and converges on active
+status; the branch is `reopened` after Todoist acknowledges it.
 
 The [CRUD Flow](go/examples/task-crud/flow/workflow.go) defaults to read-only listing.
 Its explicit lifecycle mode creates its own task, reads it, updates specified fields,
 and reads back the confirmed update.
 Confirmed matching updates continue to paginated list verification, deletion,
-and a final not-found lookup. This single example covers all five operations.
+and a final not-found lookup. Its `reopen` mode restores a completed task by ID.
 The application opens its declared connection with `NewProjectConnection` after
 `projectconfig.LoadFromEnvironment`. Tests can construct `New` and
 `NewConnection`, with `WithHTTPClient` for a custom transport.

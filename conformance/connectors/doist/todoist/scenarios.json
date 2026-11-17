@@ -2,6 +2,300 @@
   "connector": "todoist",
   "scenarios": [
     {
+      "callId": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "exchanges": [
+        {
+          "body": "null",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/6XGgmFVcrG5RRjVr/reopen",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "reopened",
+        "failureKind": "",
+        "output": {
+          "taskId": "6XGgmFVcrG5RRjVr"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "input": {
+        "taskId": "6XGgmFVcrG5RRjVr"
+      },
+      "name": "reopenTask-success",
+      "operation": "reopenTask"
+    },
+    {
+      "callId": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/6XGgmFVcrG5RRjVr/reopen",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "input": {
+        "taskId": "6XGgmFVcrG5RRjVr"
+      },
+      "name": "reopenTask-not-found",
+      "operation": "reopenTask"
+    },
+    {
+      "callId": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/6XGgmFVcrG5RRjVr/reopen",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "taskId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "input": {
+        "taskId": "6XGgmFVcrG5RRjVr"
+      },
+      "name": "reopenTask-provider-rejected",
+      "operation": "reopenTask"
+    },
+    {
+      "callId": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "taskId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "input": {
+        "taskId": "../bad"
+      },
+      "name": "reopenTask-defect",
+      "operation": "reopenTask"
+    },
+    {
+      "callId": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/6XGgmFVcrG5RRjVr/reopen",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "input": {
+        "taskId": "6XGgmFVcrG5RRjVr"
+      },
+      "name": "reopenTask-rate-limit",
+      "operation": "reopenTask"
+    },
+    {
+      "callId": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/6XGgmFVcrG5RRjVr/reopen",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "input": {
+        "taskId": "6XGgmFVcrG5RRjVr"
+      },
+      "name": "reopenTask-unavailable",
+      "operation": "reopenTask"
+    },
+    {
+      "callId": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/6XGgmFVcrG5RRjVr/reopen",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "input": {
+        "taskId": "6XGgmFVcrG5RRjVr"
+      },
+      "name": "reopenTask-server-error",
+      "operation": "reopenTask"
+    },
+    {
+      "callId": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/tasks/6XGgmFVcrG5RRjVr/reopen",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer todoist-test-token-never-persist"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3b935a72-d554-59a9-b5db-7c2b89a5ab2f",
+      "input": {
+        "taskId": "6XGgmFVcrG5RRjVr"
+      },
+      "name": "reopenTask-transport",
+      "operation": "reopenTask"
+    },
+    {
       "callId": "66cc05d3-4277-59eb-afac-f794491d7ee9",
       "exchanges": [
         {

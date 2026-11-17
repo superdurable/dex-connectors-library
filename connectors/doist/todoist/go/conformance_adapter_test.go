@@ -21,10 +21,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getTask": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.GetTask(), testConnection),
+		"reopenTask":        newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.ReopenTask(), testConnection, scenario.CallID),
+		"getTask":           newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.GetTask(), testConnection),
 		"updateTaskContent": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.UpdateTask(), testConnection, scenario.CallID),
-		"listTasks": newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ListTasks(), testConnection),
-		"createTask": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.CreateTask(), testConnection, scenario.CallID),
-		"deleteTask": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.DeleteTask(), testConnection, scenario.CallID),
+		"listTasks":         newConformanceQueryInvocation(t, scenario.Input, providerContext{}, client.ListTasks(), testConnection),
+		"createTask":        newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.CreateTask(), testConnection, scenario.CallID),
+		"deleteTask":        newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.DeleteTask(), testConnection, scenario.CallID),
 	}}
 }

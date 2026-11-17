@@ -62,3 +62,20 @@ func TestTaskLifecycleUsesMockPagesAndVerifiesDeletionWithRealDex(t *testing.T) 
 	require.Len(t, deleteCalls, 1)
 	require.Equal(t, todoist.DeleteTaskInput{TaskID: "created-task"}, deleteCalls[0].Input)
 }
+
+func TestCompletedTaskReopensOnMockWithRealDex(t *testing.T) {
+	mock := todoistmock.New(t, ConnectionName)
+	flow, harness := newCRUDHarnessWithConnection(t, mock.Connection())
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	result := harness.runFlow(t, ctx, flow, "todoist-reopen-mock-"+strconv.FormatInt(time.Now().UnixNano(), 10), Request{Mode: "reopen", TaskID: "completed-task"})
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Equal(t, "reopened", outcome.Status)
+	require.Equal(t, "completed-task", outcome.ReopenedTaskID)
+	calls := mock.ReopenTask().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, todoist.ReopenTaskInput{TaskID: "completed-task"}, calls[0].Input)
+}
