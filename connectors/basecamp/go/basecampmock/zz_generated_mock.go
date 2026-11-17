@@ -17,12 +17,17 @@ import (
 
 // Mock is a scripted basecamp connection. Script each operation through its accessor.
 type Mock struct {
-	connection   basecamp.Connection
-	listProjects *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage]
-	getProject   *connectormock.Query[basecamp.GetProjectInput, basecamp.Project]
-	listTodos    *connectormock.Query[basecamp.ListTodosInput, basecamp.TodosPage]
-	getTodo      *connectormock.Query[basecamp.GetTodoInput, basecamp.Todo]
-	listAccounts *connectormock.Query[basecamp.ListAccountsInput, basecamp.AccountsPage]
+	connection       basecamp.Connection
+	createProject    *connectormock.Mutation[basecamp.CreateProjectInput, basecamp.Project]
+	updateProject    *connectormock.Mutation[basecamp.UpdateProjectInput, basecamp.Project]
+	archiveProject   *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
+	unarchiveProject *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
+	trashProject     *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
+	listProjects     *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage]
+	getProject       *connectormock.Query[basecamp.GetProjectInput, basecamp.Project]
+	listTodos        *connectormock.Query[basecamp.ListTodosInput, basecamp.TodosPage]
+	getTodo          *connectormock.Query[basecamp.GetTodoInput, basecamp.Todo]
+	listAccounts     *connectormock.Query[basecamp.ListAccountsInput, basecamp.AccountsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -30,12 +35,22 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listProjects: connectormock.NewQuery[basecamp.ListProjectsInput, basecamp.ProjectsPage](t, basecamp.ListProjectsDefinition),
-		getProject:   connectormock.NewQuery[basecamp.GetProjectInput, basecamp.Project](t, basecamp.GetProjectDefinition),
-		listTodos:    connectormock.NewQuery[basecamp.ListTodosInput, basecamp.TodosPage](t, basecamp.ListTodosDefinition),
-		getTodo:      connectormock.NewQuery[basecamp.GetTodoInput, basecamp.Todo](t, basecamp.GetTodoDefinition),
-		listAccounts: connectormock.NewQuery[basecamp.ListAccountsInput, basecamp.AccountsPage](t, basecamp.ListAccountsDefinition),
+		createProject:    connectormock.NewMutation[basecamp.CreateProjectInput, basecamp.Project](t, basecamp.CreateProjectDefinition),
+		updateProject:    connectormock.NewMutation[basecamp.UpdateProjectInput, basecamp.Project](t, basecamp.UpdateProjectDefinition),
+		archiveProject:   connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.ArchiveProjectDefinition),
+		unarchiveProject: connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.UnarchiveProjectDefinition),
+		trashProject:     connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.TrashProjectDefinition),
+		listProjects:     connectormock.NewQuery[basecamp.ListProjectsInput, basecamp.ProjectsPage](t, basecamp.ListProjectsDefinition),
+		getProject:       connectormock.NewQuery[basecamp.GetProjectInput, basecamp.Project](t, basecamp.GetProjectDefinition),
+		listTodos:        connectormock.NewQuery[basecamp.ListTodosInput, basecamp.TodosPage](t, basecamp.ListTodosDefinition),
+		getTodo:          connectormock.NewQuery[basecamp.GetTodoInput, basecamp.Todo](t, basecamp.GetTodoDefinition),
+		listAccounts:     connectormock.NewQuery[basecamp.ListAccountsInput, basecamp.AccountsPage](t, basecamp.ListAccountsDefinition),
 	}
+	mock.createProject.Default(CreateProjectDefault())
+	mock.updateProject.Default(UpdateProjectDefault())
+	mock.archiveProject.Default(ArchiveProjectDefault())
+	mock.unarchiveProject.Default(UnarchiveProjectDefault())
+	mock.trashProject.Default(TrashProjectDefault())
 	mock.listProjects.Default(ListProjectsDefault())
 	mock.getProject.Default(GetProjectDefault())
 	mock.listTodos.Default(ListTodosDefault())
@@ -51,6 +66,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() basecamp.Connection { return mock.connection }
+
+// CreateProject returns the createProject script.
+func (mock *Mock) CreateProject() *connectormock.Mutation[basecamp.CreateProjectInput, basecamp.Project] {
+	return mock.createProject
+}
+
+// UpdateProject returns the updateProject script.
+func (mock *Mock) UpdateProject() *connectormock.Mutation[basecamp.UpdateProjectInput, basecamp.Project] {
+	return mock.updateProject
+}
+
+// ArchiveProject returns the archiveProject script.
+func (mock *Mock) ArchiveProject() *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult] {
+	return mock.archiveProject
+}
+
+// UnarchiveProject returns the unarchiveProject script.
+func (mock *Mock) UnarchiveProject() *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult] {
+	return mock.unarchiveProject
+}
+
+// TrashProject returns the trashProject script.
+func (mock *Mock) TrashProject() *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult] {
+	return mock.trashProject
+}
 
 // ListProjects returns the listProjects script.
 func (mock *Mock) ListProjects() *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage] {
@@ -79,6 +119,21 @@ func (mock *Mock) ListAccounts() *connectormock.Query[basecamp.ListAccountsInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateProject() sdkgo.Mutation[basecamp.CreateProjectInput, basecamp.Project] {
+	return operations.mock.createProject
+}
+func (operations mockOperations) UpdateProject() sdkgo.Mutation[basecamp.UpdateProjectInput, basecamp.Project] {
+	return operations.mock.updateProject
+}
+func (operations mockOperations) ArchiveProject() sdkgo.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult] {
+	return operations.mock.archiveProject
+}
+func (operations mockOperations) UnarchiveProject() sdkgo.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult] {
+	return operations.mock.unarchiveProject
+}
+func (operations mockOperations) TrashProject() sdkgo.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult] {
+	return operations.mock.trashProject
+}
 func (operations mockOperations) ListProjects() sdkgo.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage] {
 	return operations.mock.listProjects
 }
@@ -93,6 +148,191 @@ func (operations mockOperations) GetTodo() sdkgo.Query[basecamp.GetTodoInput, ba
 }
 func (operations mockOperations) ListAccounts() sdkgo.Query[basecamp.ListAccountsInput, basecamp.AccountsPage] {
 	return operations.mock.listAccounts
+}
+
+// CreateProjectCreated selects the created branch: Basecamp created the project.
+func CreateProjectCreated(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.CreateProjectBranchCreated, value, failure)
+}
+
+// CreateProjectProviderRejected selects the providerRejected branch: Basecamp conclusively rejected creation.
+func CreateProjectProviderRejected(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.CreateProjectBranchProviderRejected, value, failure)
+}
+
+// CreateProjectDefect selects the defect branch: Project input or credentials are invalid.
+func CreateProjectDefect(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.CreateProjectBranchDefect, value, failure)
+}
+
+// CreateProjectUncertain returns an uncertain createProject outcome.
+func CreateProjectUncertain(value basecamp.Project, failure sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateProjectRetry asks Dex to retry the createProject Step, after the delay when it is positive.
+func CreateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.Project] {
+	return connectormock.Retry[basecamp.Project](failure, after)
+}
+
+// CreateProjectCreatedDefault is the manifest mock createdDefault: A project was created.
+func CreateProjectCreatedDefault() connectormock.Case[basecamp.Project] {
+	value := connectormock.MustDecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+	return connectormock.Branch(basecamp.CreateProjectBranchCreated, value, nil)
+}
+
+// CreateProjectDefault is the manifest default, createdDefault, which New installs.
+func CreateProjectDefault() connectormock.Case[basecamp.Project] {
+	return CreateProjectCreatedDefault()
+}
+
+// UpdateProjectUpdated selects the updated branch: Basecamp updated the project.
+func UpdateProjectUpdated(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.UpdateProjectBranchUpdated, value, failure)
+}
+
+// UpdateProjectNotFound selects the notFound branch: The project does not exist.
+func UpdateProjectNotFound(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.UpdateProjectBranchNotFound, value, failure)
+}
+
+// UpdateProjectProviderRejected selects the providerRejected branch: Basecamp conclusively rejected the update.
+func UpdateProjectProviderRejected(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.UpdateProjectBranchProviderRejected, value, failure)
+}
+
+// UpdateProjectInvalidResponse selects the invalidResponse branch: Basecamp returned unusable project JSON.
+func UpdateProjectInvalidResponse(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.UpdateProjectBranchInvalidResponse, value, failure)
+}
+
+// UpdateProjectDefect selects the defect branch: Project input or credentials are invalid.
+func UpdateProjectDefect(value basecamp.Project, failure *sdkgo.Failure) connectormock.Case[basecamp.Project] {
+	return connectormock.Branch(basecamp.UpdateProjectBranchDefect, value, failure)
+}
+
+// UpdateProjectRetry asks Dex to retry the updateProject Step, after the delay when it is positive.
+func UpdateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.Project] {
+	return connectormock.Retry[basecamp.Project](failure, after)
+}
+
+// UpdateProjectUpdatedDefault is the manifest mock updatedDefault: A project was updated.
+func UpdateProjectUpdatedDefault() connectormock.Case[basecamp.Project] {
+	value := connectormock.MustDecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+	return connectormock.Branch(basecamp.UpdateProjectBranchUpdated, value, nil)
+}
+
+// UpdateProjectDefault is the manifest default, updatedDefault, which New installs.
+func UpdateProjectDefault() connectormock.Case[basecamp.Project] {
+	return UpdateProjectUpdatedDefault()
+}
+
+// ArchiveProjectArchived selects the archived branch: Basecamp archived the project.
+func ArchiveProjectArchived(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.ArchiveProjectBranchArchived, value, failure)
+}
+
+// ArchiveProjectNotFound selects the notFound branch: The project does not exist.
+func ArchiveProjectNotFound(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.ArchiveProjectBranchNotFound, value, failure)
+}
+
+// ArchiveProjectProviderRejected selects the providerRejected branch: Basecamp conclusively rejected archiving.
+func ArchiveProjectProviderRejected(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.ArchiveProjectBranchProviderRejected, value, failure)
+}
+
+// ArchiveProjectDefect selects the defect branch: IDs or credentials are invalid.
+func ArchiveProjectDefect(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.ArchiveProjectBranchDefect, value, failure)
+}
+
+// ArchiveProjectRetry asks Dex to retry the archiveProject Step, after the delay when it is positive.
+func ArchiveProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Retry[basecamp.ProjectActionResult](failure, after)
+}
+
+// ArchiveProjectArchivedDefault is the manifest mock archivedDefault: A project was archived.
+func ArchiveProjectArchivedDefault() connectormock.Case[basecamp.ProjectActionResult] {
+	value := connectormock.MustDecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"archived"}`)
+	return connectormock.Branch(basecamp.ArchiveProjectBranchArchived, value, nil)
+}
+
+// ArchiveProjectDefault is the manifest default, archivedDefault, which New installs.
+func ArchiveProjectDefault() connectormock.Case[basecamp.ProjectActionResult] {
+	return ArchiveProjectArchivedDefault()
+}
+
+// UnarchiveProjectActive selects the active branch: Basecamp restored the project.
+func UnarchiveProjectActive(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.UnarchiveProjectBranchActive, value, failure)
+}
+
+// UnarchiveProjectNotFound selects the notFound branch: The project does not exist.
+func UnarchiveProjectNotFound(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.UnarchiveProjectBranchNotFound, value, failure)
+}
+
+// UnarchiveProjectProviderRejected selects the providerRejected branch: Basecamp conclusively rejected restoring.
+func UnarchiveProjectProviderRejected(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.UnarchiveProjectBranchProviderRejected, value, failure)
+}
+
+// UnarchiveProjectDefect selects the defect branch: IDs or credentials are invalid.
+func UnarchiveProjectDefect(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.UnarchiveProjectBranchDefect, value, failure)
+}
+
+// UnarchiveProjectRetry asks Dex to retry the unarchiveProject Step, after the delay when it is positive.
+func UnarchiveProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Retry[basecamp.ProjectActionResult](failure, after)
+}
+
+// UnarchiveProjectActiveDefault is the manifest mock activeDefault: A project is active.
+func UnarchiveProjectActiveDefault() connectormock.Case[basecamp.ProjectActionResult] {
+	value := connectormock.MustDecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"active"}`)
+	return connectormock.Branch(basecamp.UnarchiveProjectBranchActive, value, nil)
+}
+
+// UnarchiveProjectDefault is the manifest default, activeDefault, which New installs.
+func UnarchiveProjectDefault() connectormock.Case[basecamp.ProjectActionResult] {
+	return UnarchiveProjectActiveDefault()
+}
+
+// TrashProjectTrashed selects the trashed branch: Basecamp trashed the project.
+func TrashProjectTrashed(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.TrashProjectBranchTrashed, value, failure)
+}
+
+// TrashProjectNotFound selects the notFound branch: The project does not exist.
+func TrashProjectNotFound(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.TrashProjectBranchNotFound, value, failure)
+}
+
+// TrashProjectProviderRejected selects the providerRejected branch: Basecamp conclusively rejected trashing.
+func TrashProjectProviderRejected(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.TrashProjectBranchProviderRejected, value, failure)
+}
+
+// TrashProjectDefect selects the defect branch: IDs or credentials are invalid.
+func TrashProjectDefect(value basecamp.ProjectActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Branch(basecamp.TrashProjectBranchDefect, value, failure)
+}
+
+// TrashProjectRetry asks Dex to retry the trashProject Step, after the delay when it is positive.
+func TrashProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.ProjectActionResult] {
+	return connectormock.Retry[basecamp.ProjectActionResult](failure, after)
+}
+
+// TrashProjectTrashedDefault is the manifest mock trashedDefault: A project was trashed.
+func TrashProjectTrashedDefault() connectormock.Case[basecamp.ProjectActionResult] {
+	value := connectormock.MustDecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"trashed"}`)
+	return connectormock.Branch(basecamp.TrashProjectBranchTrashed, value, nil)
+}
+
+// TrashProjectDefault is the manifest default, trashedDefault, which New installs.
+func TrashProjectDefault() connectormock.Case[basecamp.ProjectActionResult] {
+	return TrashProjectTrashedDefault()
 }
 
 // ListProjectsListed selects the listed branch: Basecamp returned the projects.

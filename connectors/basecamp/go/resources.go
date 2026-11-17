@@ -228,10 +228,10 @@ func decodeProject(body []byte, expectedID string) (Project, error) {
 		ID   int64  `json:"id"`
 		Name string `json:"name"`
 	}
-	if err := json.Unmarshal(body, &record); err != nil || strconv.FormatInt(record.ID, 10) != expectedID || record.Name == "" {
+	if err := json.Unmarshal(body, &record); err != nil || record.ID <= 0 || (expectedID != "" && strconv.FormatInt(record.ID, 10) != expectedID) || record.Name == "" {
 		return Project{}, fmt.Errorf("project is invalid")
 	}
-	return Project{ID: expectedID, Name: record.Name}, nil
+	return Project{ID: strconv.FormatInt(record.ID, 10), Name: record.Name}, nil
 }
 
 func decodeTodos(body []byte) (TodosPage, error) {

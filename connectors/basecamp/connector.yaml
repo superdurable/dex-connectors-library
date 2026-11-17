@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: basecamp
   displayName: Basecamp
-  description: Read Basecamp accounts, projects, and to-dos.
+  description: Read and manage Basecamp projects and to-dos.
   company: Basecamp
   categories: [project-management]
   version: v0.3.0
@@ -72,10 +72,11 @@ spec:
     guide:
       startURL: https://launchpad.37signals.com/integrations
       steps:
-        - Sign in at https://launchpad.37signals.com/integrations and register or select an integration for the Basecamp account you will read.
+        - Sign in at https://launchpad.37signals.com/integrations and register or select an integration for the Basecamp account you will manage.
         - Register the exact OAuth Redirect URL displayed by Dex Web. Dex requests read scope; Launchpad uses account consent and may ignore that scope parameter.
         - Copy the Client ID and secret into Dex Web and authorize an identity with access to the desired accounts. Dex stores access and refresh tokens; do not paste them into fields.
-        - Leave baseUrl, apiBaseUrl, timeout, and maxResponseBytes blank for their displayed defaults. First list accounts, then use an account ID to read projects and to-dos.
+        - Leave baseUrl, apiBaseUrl, timeout, and maxResponseBytes blank for their displayed defaults. First list accounts, then use an account ID for projects and to-dos.
+        - For project changes, open https://3.basecamp.com > your account > Projects. Use the numeric account ID from listAccounts and project ID from a project's URL or listProjects. Supply a non-blank project name; description is non-secret text and blank clears it on update. Archive, restore, and trash use the selected project ID. Trashing may permanently delete a project on plans without an archive/trash period.
     oauth2:
       authorizationEndpoint: https://launchpad.37signals.com/authorization/new
       tokenEndpoint: https://launchpad.37signals.com/authorization/token
@@ -93,6 +94,87 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: createProject
+      goName: CreateProject
+      inputType: CreateProjectInput
+      outputType: Project
+      kind: mutation
+      description: Create a Basecamp project with a name and optional description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Basecamp created the project.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Project input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A project was created., output: {id: '123', name: Example Project}}
+    - name: updateProject
+      goName: UpdateProject
+      inputType: UpdateProjectInput
+      outputType: Project
+      kind: mutation
+      description: Replace a project's name and description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Basecamp updated the project.}
+        - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned unusable project JSON., optional: true}
+        - {id: defect, goName: Defect, description: Project input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A project was updated., output: {id: '123', name: Example Project}}
+    - name: archiveProject
+      goName: ArchiveProject
+      inputType: GetProjectInput
+      outputType: ProjectActionResult
+      kind: mutation
+      description: Archive a Basecamp project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Basecamp archived the project.}
+        - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected archiving., optional: true}
+        - {id: defect, goName: Defect, description: IDs or credentials are invalid., optional: true}
+      mocks:
+        - {name: archivedDefault, branch: archived, default: true, description: A project was archived., output: {projectId: '123', status: archived}}
+    - name: unarchiveProject
+      goName: UnarchiveProject
+      inputType: GetProjectInput
+      outputType: ProjectActionResult
+      kind: mutation
+      description: Restore a Basecamp project to active status.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: active, goName: Active, description: Basecamp restored the project.}
+        - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected restoring., optional: true}
+        - {id: defect, goName: Defect, description: IDs or credentials are invalid., optional: true}
+      mocks:
+        - {name: activeDefault, branch: active, default: true, description: A project is active., output: {projectId: '123', status: active}}
+    - name: trashProject
+      goName: TrashProject
+      inputType: GetProjectInput
+      outputType: ProjectActionResult
+      kind: mutation
+      description: Trash a Basecamp project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: trashed, goName: Trashed, description: Basecamp trashed the project.}
+        - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected trashing., optional: true}
+        - {id: defect, goName: Defect, description: IDs or credentials are invalid., optional: true}
+      mocks:
+        - {name: trashedDefault, branch: trashed, default: true, description: A project was trashed., output: {projectId: '123', status: trashed}}
     - name: listProjects
       goName: ListProjects
       inputType: ListProjectsInput

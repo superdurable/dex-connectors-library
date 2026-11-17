@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createProject/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+			return err
+		}},
+		{name: "updateProject/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
+			return err
+		}},
+		{name: "archiveProject/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"archived"}`)
+			return err
+		}},
+		{name: "unarchiveProject/activeDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"active"}`)
+			return err
+		}},
+		{name: "trashProject/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.ProjectActionResult](`{"projectId":"123","status":"trashed"}`)
+			return err
+		}},
 		{name: "listProjects/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[basecamp.ProjectsPage](`{"projects":[{"id":"123","name":"Example Project"}]}`)
 			return err
@@ -46,6 +66,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.ArchiveProject().Definition().Operation.OperationID != "archiveProject" {
+		t.Errorf("archiveProject mock has another definition")
+	}
+	if mock.UnarchiveProject().Definition().Operation.OperationID != "unarchiveProject" {
+		t.Errorf("unarchiveProject mock has another definition")
+	}
+	if mock.TrashProject().Definition().Operation.OperationID != "trashProject" {
+		t.Errorf("trashProject mock has another definition")
+	}
 	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
 		t.Errorf("listProjects mock has another definition")
 	}

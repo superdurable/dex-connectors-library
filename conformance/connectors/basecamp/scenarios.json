@@ -1608,6 +1608,1561 @@
       },
       "name": "getTodo-transportFailure",
       "operation": "getTodo"
+    },
+    {
+      "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "exchanges": [
+        {
+          "body": "{\"id\":456,\"name\":\"Example Project\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/projects.json",
+          "requestBody": {
+            "description": "Project notes",
+            "name": "Example Project"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "456",
+          "name": "Example Project"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "input": {
+        "accountId": "123",
+        "description": "Project notes",
+        "name": "Example Project"
+      },
+      "name": "createProject-success",
+      "operation": "createProject"
+    },
+    {
+      "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/projects.json",
+          "requestBody": {
+            "description": "Project notes",
+            "name": "Example Project"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "input": {
+        "accountId": "123",
+        "description": "Project notes",
+        "name": "Example Project"
+      },
+      "name": "createProject-providerRejected",
+      "operation": "createProject"
+    },
+    {
+      "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/projects.json",
+          "requestBody": {
+            "description": "Project notes",
+            "name": "Example Project"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "input": {
+        "accountId": "123",
+        "description": "Project notes",
+        "name": "Example Project"
+      },
+      "name": "createProject-final429",
+      "operation": "createProject"
+    },
+    {
+      "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/projects.json",
+          "requestBody": {
+            "description": "Project notes",
+            "name": "Example Project"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "input": {
+        "accountId": "123",
+        "description": "Project notes",
+        "name": "Example Project"
+      },
+      "name": "createProject-final503",
+      "operation": "createProject"
+    },
+    {
+      "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/projects.json",
+          "requestBody": {
+            "description": "Project notes",
+            "name": "Example Project"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "input": {
+        "accountId": "123",
+        "description": "Project notes",
+        "name": "Example Project"
+      },
+      "name": "createProject-serverFailure",
+      "operation": "createProject"
+    },
+    {
+      "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "input": {
+        "accountId": "123",
+        "description": "Project notes",
+        "name": " "
+      },
+      "name": "createProject-defect",
+      "operation": "createProject"
+    },
+    {
+      "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/projects.json",
+          "requestBody": {
+            "description": "Project notes",
+            "name": "Example Project"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "input": {
+        "accountId": "123",
+        "description": "Project notes",
+        "name": "Example Project"
+      },
+      "name": "createProject-transportFailure",
+      "operation": "createProject"
+    },
+    {
+      "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+      "input": {
+        "accountId": "123",
+        "description": "Project notes",
+        "name": "Example Project"
+      },
+      "name": "createProject-uncertain",
+      "operation": "createProject",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "8be5c764-e27c-5e1a-b606-03be1d0727c8",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "exchanges": [
+        {
+          "body": "{\"id\":456,\"name\":\"New Name\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456.json",
+          "requestBody": {
+            "description": "New notes",
+            "name": "New Name"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "456",
+          "name": "New Name"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "input": {
+        "accountId": "123",
+        "description": "New notes",
+        "name": "New Name",
+        "projectId": "456"
+      },
+      "name": "updateProject-success",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456.json",
+          "requestBody": {
+            "description": "New notes",
+            "name": "New Name"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "input": {
+        "accountId": "123",
+        "description": "New notes",
+        "name": "New Name",
+        "projectId": "456"
+      },
+      "name": "updateProject-notFound",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456.json",
+          "requestBody": {
+            "description": "New notes",
+            "name": "New Name"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "input": {
+        "accountId": "123",
+        "description": "New notes",
+        "name": "New Name",
+        "projectId": "456"
+      },
+      "name": "updateProject-providerRejected",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456.json",
+          "requestBody": {
+            "description": "New notes",
+            "name": "New Name"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "input": {
+        "accountId": "123",
+        "description": "New notes",
+        "name": "New Name",
+        "projectId": "456"
+      },
+      "name": "updateProject-invalidResponse",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456.json",
+          "requestBody": {
+            "description": "New notes",
+            "name": "New Name"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "input": {
+        "accountId": "123",
+        "description": "New notes",
+        "name": "New Name",
+        "projectId": "456"
+      },
+      "name": "updateProject-final429",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456.json",
+          "requestBody": {
+            "description": "New notes",
+            "name": "New Name"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "input": {
+        "accountId": "123",
+        "description": "New notes",
+        "name": "New Name",
+        "projectId": "456"
+      },
+      "name": "updateProject-final503",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "input": {
+        "accountId": "123",
+        "description": "New notes",
+        "name": "New Name",
+        "projectId": "0"
+      },
+      "name": "updateProject-defect",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456.json",
+          "requestBody": {
+            "description": "New notes",
+            "name": "New Name"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf9acc0d-a13a-531f-a762-94bde7cbe0f9",
+      "input": {
+        "accountId": "123",
+        "description": "New notes",
+        "name": "New Name",
+        "projectId": "456"
+      },
+      "name": "updateProject-transportFailure",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/archived.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "archived",
+        "failureKind": "",
+        "output": {
+          "projectId": "456",
+          "status": "archived"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "archiveProject-success",
+      "operation": "archiveProject"
+    },
+    {
+      "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/archived.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "archiveProject-notFound",
+      "operation": "archiveProject"
+    },
+    {
+      "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/archived.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "archiveProject-providerRejected",
+      "operation": "archiveProject"
+    },
+    {
+      "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/archived.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "archiveProject-final429",
+      "operation": "archiveProject"
+    },
+    {
+      "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/archived.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "archiveProject-final503",
+      "operation": "archiveProject"
+    },
+    {
+      "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "input": {
+        "accountId": "123",
+        "projectId": "0"
+      },
+      "name": "archiveProject-defect",
+      "operation": "archiveProject"
+    },
+    {
+      "callId": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/archived.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64709735-7e40-5ffa-9991-fdfcc49fc1f7",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "archiveProject-transportFailure",
+      "operation": "archiveProject"
+    },
+    {
+      "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/active.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "active",
+        "failureKind": "",
+        "output": {
+          "projectId": "456",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "unarchiveProject-success",
+      "operation": "unarchiveProject"
+    },
+    {
+      "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/active.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "unarchiveProject-notFound",
+      "operation": "unarchiveProject"
+    },
+    {
+      "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/active.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "unarchiveProject-providerRejected",
+      "operation": "unarchiveProject"
+    },
+    {
+      "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/active.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "unarchiveProject-final429",
+      "operation": "unarchiveProject"
+    },
+    {
+      "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/active.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "unarchiveProject-final503",
+      "operation": "unarchiveProject"
+    },
+    {
+      "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "input": {
+        "accountId": "123",
+        "projectId": "0"
+      },
+      "name": "unarchiveProject-defect",
+      "operation": "unarchiveProject"
+    },
+    {
+      "callId": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/projects/456/status/active.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "962d940e-54bf-5bca-a1fa-2afcf7eb0086",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "unarchiveProject-transportFailure",
+      "operation": "unarchiveProject"
+    },
+    {
+      "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/projects/456.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "trashed",
+        "failureKind": "",
+        "output": {
+          "projectId": "456",
+          "status": "trashed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "trashProject-success",
+      "operation": "trashProject"
+    },
+    {
+      "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/projects/456.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "trashProject-notFound",
+      "operation": "trashProject"
+    },
+    {
+      "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/projects/456.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "trashProject-providerRejected",
+      "operation": "trashProject"
+    },
+    {
+      "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/projects/456.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "trashProject-final429",
+      "operation": "trashProject"
+    },
+    {
+      "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/projects/456.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "trashProject-final503",
+      "operation": "trashProject"
+    },
+    {
+      "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projectId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "input": {
+        "accountId": "123",
+        "projectId": "0"
+      },
+      "name": "trashProject-defect",
+      "operation": "trashProject"
+    },
+    {
+      "callId": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/projects/456.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f50756ba-9552-5a0d-a3ce-a95115ac8cae",
+      "input": {
+        "accountId": "123",
+        "projectId": "456"
+      },
+      "name": "trashProject-transportFailure",
+      "operation": "trashProject"
     }
   ],
   "schemaVersion": 1

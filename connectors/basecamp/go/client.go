@@ -6,6 +6,8 @@ package basecamp
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -83,6 +85,14 @@ func (client *Client) getAccountResource(call sdkgo.Call, accountID string, path
 }
 
 func (client *Client) getURL(call sdkgo.Call, requestURL string) providerResponse {
+	return client.requestURL(call, call.Context, http.MethodGet, requestURL, nil)
+}
+
+func (client *Client) accountMutation(call sdkgo.Call, requestContext context.Context, method, accountID, path string, input any) providerResponse {
+	return client.requestURL(call, requestContext, method, client.apiBaseURL+"/"+accountID+path, input)
+}
+
+func (client *Client) requestURL(call sdkgo.Call, requestContext context.Context, method, requestURL string, input any) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if sdkgo.IsReauthorizationRequired(err) {
 		return providerResponse{err: errCredential}
@@ -97,11 +107,24 @@ func (client *Client) getURL(call sdkgo.Call, requestURL string) providerRespons
 	if !providerhttp.IsHeaderSafeCredential(accessToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, requestURL, nil)
+	var requestBody *bytes.Reader
+	if input != nil {
+		encoded, encodeErr := json.Marshal(input)
+		if encodeErr != nil {
+			return providerResponse{err: errRequest}
+		}
+		requestBody = bytes.NewReader(encoded)
+	} else {
+		requestBody = bytes.NewReader(nil)
+	}
+	request, err := http.NewRequestWithContext(requestContext, method, requestURL, requestBody)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
+	if input != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("User-Agent", "Dex Connector (support@superdurable.io)")
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	response, err := client.httpClient.Do(request)
