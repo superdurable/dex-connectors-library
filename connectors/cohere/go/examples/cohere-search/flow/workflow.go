@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package coheresearch embeds a query and reranks two or more documents in a Dex Flow.
+// Package coheresearch embeds, reranks, and summarizes documents in a Dex Flow.
 package coheresearch
 
 import (
@@ -18,8 +18,10 @@ const FlowType = "CohereSearch"
 const ConnectionName = "cohere"
 const embedStepType = "EmbedSearchQuery"
 const rerankStepType = "RerankSearchDocuments"
+const chatStepType = "SummarizeSearchDocuments"
 
 var requestAttribute = dex.DefineAttribute[Request]("cohere-search-request")
+var rankingAttribute = dex.DefineAttribute[cohere.RerankOutput]("cohere-search-ranking")
 
 // Request is the typed Start Flow input.
 type Request struct {
@@ -33,6 +35,8 @@ type Request struct {
 type Outcome struct {
 	// Results are indices of input documents in relevance order.
 	Results []cohere.RankedDocument `json:"results"`
+	// Summary is the generated explanation of the leading result.
+	Summary string `json:"summary"`
 }
 
 // Flow owns query embedding and document reranking.
@@ -49,7 +53,7 @@ func (*Flow) GetFlowType() string { return FlowType }
 
 // GetPersistenceSchema registers the request Attribute used across the two calls.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{requestAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{requestAttribute, rankingAttribute}}
 }
 
 // GetRPCs registers Dex Web summary and display views.
@@ -73,7 +77,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStartStep(startRequest{}),
 		dex.DefineStep(cohere.NewEmbedStep(cohere.EmbedStepConfig[Request]{StepType: embedStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "cohere-search", GroupLabel: "Cohere search", Explanation: "Embed the search query."}, MapToOperationInput: MapToEmbedInput, Embedded: sdkgo.GoTo(afterEmbedding{})})),
 		dex.DefineStep(afterEmbedding{}),
-		dex.DefineStep(cohere.NewRerankStep(cohere.RerankStepConfig[Request]{StepType: rerankStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "cohere-search", GroupLabel: "Cohere search", Explanation: "Rank the candidate documents."}, MapToOperationInput: MapToRerankInput, Ranked: sdkgo.GoTo(completeSearch{})})),
+		dex.DefineStep(cohere.NewRerankStep(cohere.RerankStepConfig[Request]{StepType: rerankStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "cohere-search", GroupLabel: "Cohere search", Explanation: "Rank the candidate documents."}, MapToOperationInput: MapToRerankInput, Ranked: sdkgo.GoTo(afterRerank{})})),
+		dex.DefineStep(afterRerank{}),
+		dex.DefineStep(cohere.NewChatStep(cohere.ChatStepConfig[cohere.ChatInput]{StepType: chatStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "cohere-search", GroupLabel: "Cohere search", Explanation: "Summarize the leading search result."}, MapToOperationInput: MapToChatInput, Answered: sdkgo.GoTo(completeSearch{})})),
 		dex.DefineStep(completeSearch{}),
 	}
 }
@@ -87,6 +93,9 @@ func MapToEmbedInput(request Request) cohere.EmbedInput {
 func MapToRerankInput(request Request) cohere.RerankInput {
 	return cohere.RerankInput{Model: "rerank-v5.0-pro", Query: request.Query, Documents: request.Documents}
 }
+
+// MapToChatInput passes a validated chat request to the connector.
+func MapToChatInput(request cohere.ChatInput) cohere.ChatInput { return request }
 
 // dex:group group-id:cohere-search group-label:"Cohere search"
 // dex:explanation text:"Validate and persist the query and documents."
@@ -122,12 +131,39 @@ func (afterEmbedding) Execute(ctx dex.Context, _ cohere.EmbedResult) (*dex.StepD
 }
 
 // dex:group group-id:cohere-search group-label:"Cohere search"
-// dex:explanation text:"Complete with ranked document indices."
-type completeSearch struct {
+// dex:explanation text:"Persist ranking before requesting a summary."
+type afterRerank struct {
 	dex.StepDefaultsNoWaitFor[cohere.RerankResult]
 }
 
+func (afterRerank) GetStepType() string { return "AfterCohereRerank" }
+func (afterRerank) Execute(ctx dex.Context, result cohere.RerankResult) (*dex.StepDecision, error) {
+	if err := rankingAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
+	request, err := requestAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(result.Value.Results) == 0 {
+		return dex.ForceFail("Cohere returned no ranked document"), nil
+	}
+	leadingIndex := result.Value.Results[0].Index
+	chatInput := cohere.ChatInput{Model: "command-a-03-2025", Messages: []cohere.ChatMessage{{Role: "user", Content: "Summarize the best match for " + request.Query + ": " + request.Documents[leadingIndex]}}, MaxTokens: 128}
+	return dex.GoTo(sdkgo.StepRef[cohere.ChatInput](chatStepType), chatInput), nil
+}
+
+// dex:group group-id:cohere-search group-label:"Cohere search"
+// dex:explanation text:"Complete with ranking and generated summary."
+type completeSearch struct {
+	dex.StepDefaultsNoWaitFor[cohere.ChatResult]
+}
+
 func (completeSearch) GetStepType() string { return "CompleteCohereSearch" }
-func (completeSearch) Execute(_ dex.Context, result cohere.RerankResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(Outcome{Results: result.Value.Results}), nil
+func (completeSearch) Execute(ctx dex.Context, result cohere.ChatResult) (*dex.StepDecision, error) {
+	ranking, err := rankingAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(Outcome{Results: ranking.Results, Summary: result.Value.Text}), nil
 }

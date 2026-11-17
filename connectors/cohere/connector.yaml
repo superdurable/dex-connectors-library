@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: cohere
   displayName: Cohere
-  description: Generate text embeddings and relevance rankings through Cohere v2.
+  description: Generate chat responses, text embeddings, and relevance rankings through Cohere v2.
   company: Cohere
   categories: [ai]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: cohere
   languages:
@@ -56,6 +56,29 @@ spec:
         - Paste the token into secret api_key and leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
         - Revoke or replace the key on the same API Keys page; the saved replacement applies on the next call.
   operations:
+    - name: chat
+      goName: Chat
+      inputType: ChatInput
+      outputType: ChatOutput
+      kind: query
+      description: Generate one text reply from a Cohere v2 chat model.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: answered, goName: Answered, description: Cohere returned a complete text reply.}
+        - {id: providerRejected, goName: ProviderRejected, description: Cohere conclusively rejected the chat request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Cohere returned malformed or oversized chat data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An unconfirmed chat generation may be billed; another attempt can incur an additional charge."}}
+      mocks:
+        - name: defaultAnswer
+          branch: answered
+          description: Cohere summarizes the leading search result.
+          default: true
+          output: {id: chat-mock-1, text: "The release note is the best match.", finishReason: COMPLETE}
     - name: embed
       goName: Embed
       inputType: EmbedInput

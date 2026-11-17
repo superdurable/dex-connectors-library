@@ -4,7 +4,7 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/cohere`.
 
-`github.com/superdurable/dex-connectors-library/connectors/cohere/go` exposes `embed` and `rerank` as Dex Query Steps using Cohere's public v2 JSON API. Calls use a connection-owned secret API key; the key stays out of URLs, Flow state, results, failures, and receipts.
+`github.com/superdurable/dex-connectors-library/connectors/cohere/go` exposes `chat`, `embed`, and `rerank` as Dex Query Steps using Cohere's public v2 JSON API. Python and TypeScript currently expose `embed` and `rerank`. Calls use a connection-owned secret API key; the key stays out of URLs, Flow state, results, failures, and receipts.
 
 ## Connection
 
@@ -21,10 +21,11 @@ responses remain unverified.
 
 ## Operations
 
+- [`chat`](https://docs.cohere.com/v2/reference/chat) sends one to 100 chronological text messages to `POST /v2/chat`. It returns the assistant's concatenated text, response ID, and finish reason. Tool calls and non-text replies select `invalidResponse`; this operation supports text generation only.
 - [`embed`](https://docs.cohere.com/reference/embed) sends up to 96 nonempty text inputs to `POST /v2/embed`, with a required model and input type. It fixes `embedding_types` to `float` and returns one float vector per input.
 - [`rerank`](https://docs.cohere.com/reference/rerank) sends a model, query, and up to 1,000 documents to `POST /v2/rerank`, returning indices and relevance scores in ranked order. `topN` optionally limits the returned count.
 
-Both operations select a success branch on HTTP 200, `providerRejected` on definitive 4xx, `invalidResponse` on malformed or oversized JSON, and `defect` on invalid local input or credentials. HTTP 408, 409, 429, 5xx, and transport failure Retry for up to three attempts. An ambiguous attempt may incur another billed request. Provider error-body text is never placed in a failure.
+These operations select a success branch on HTTP 200, `providerRejected` on definitive 4xx, `invalidResponse` on malformed or oversized JSON, and `defect` on invalid local input or credentials. HTTP 408, 409, 429, 5xx, and transport failure Retry for up to three attempts. An ambiguous attempt may incur another billed request. Provider error-body text is never placed in a failure. The Cohere v2 inference endpoints do not create provider resources, so no resource write operation applies.
 
 ## Mocks
 
@@ -32,7 +33,7 @@ The generated `coheremock` package's `embed` default returns one three-dimension
 
 ## Example
 
-The runnable [search example](go/examples/cohere-search/README.md) registers a Worker and a Flow that calls both operations. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [search example](go/examples/cohere-search/README.md) registers a Worker and a Flow that calls all three Go operations. Its mock-backed real-Dex integration test verifies the provider call sequence.
 
 ## Live verification
 
