@@ -7,3 +7,7 @@ The [REST authentication contract](https://doc.yuntongxun.com/p/5a533ac73b8496dd
 `getBalance` selects `fetched`, `providerRejected`, `invalidResponse`, or `defect`. HTTP 429, temporary 5xx, transport failures, and documented concurrency or internal errors retry. Optional branches fail the example Flow unless wired by an application.
 
 [Run the balance Flow](go/examples/balance/README.md). Its mock is synthetic; live balance lookup has not been verified without user-controlled credentials in Dex Web Connections.
+
+## TypeScript package
+
+The `@superdurable/connector-cloopen` package implements `getBalance` with the same signature, request, and outcomes as Go. Its [runnable balance Flow](typescript/examples/balance/README.md) passed a real local Dex Worker, Client, retry, and persistence test against a provider stand-in. Fourteen Go-recorded scenarios verify exact signed requests and outcomes. Live Cloopen account access remains unverified.

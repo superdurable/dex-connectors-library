@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: cloopen
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-cloopen"
+      operations: [getBalance]
+      triggers: []
   codegen:
     go:
       package: cloopen
