@@ -41,12 +41,16 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	FindDocuments() sdkgo.Query[FindDocumentsInput, DocumentSet]
+	AggregateDocuments() sdkgo.Query[AggregateDocumentsInput, DocumentSet]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) FindDocuments() sdkgo.Query[FindDocumentsInput, DocumentSet] {
 	return operations.client.FindDocuments()
+}
+func (operations clientOperations) AggregateDocuments() sdkgo.Query[AggregateDocumentsInput, DocumentSet] {
+	return operations.client.AggregateDocuments()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -255,6 +259,83 @@ func NewFindDocumentsStep[IN any](config FindDocumentsStepConfig[IN]) sdkgo.Quer
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(FindDocumentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AggregateDocumentsBranchAggregated sdkgo.BranchID = "aggregated"
+const AggregateDocumentsBranchTruncated sdkgo.BranchID = "truncated"
+const AggregateDocumentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AggregateDocumentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const AggregateDocumentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AggregateDocumentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "aggregateDocuments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AggregateDocumentsBranchAggregated, Description: "MongoDB returned bounded aggregation results."},
+		{ID: AggregateDocumentsBranchTruncated, Description: "More documents or bytes were available than configured bounds permit.", Optional: true},
+		{ID: AggregateDocumentsBranchProviderRejected, Description: "MongoDB conclusively rejected the aggregation.", Optional: true},
+		{ID: AggregateDocumentsBranchInvalidResponse, Description: "MongoDB returned a document the connector could not encode safely.", Optional: true},
+		{ID: AggregateDocumentsBranchDefect, Description: "Collection, pipeline, connection URI, or settings are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type AggregateDocumentsResult = sdkgo.QueryResult[DocumentSet]
+
+type AggregateDocumentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=mongodb"`
+	operationID                    struct{}                                       `connector:"operationId=aggregateDocuments"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) AggregateDocumentsInput               `connector:"mapToOperationInput"`
+	Aggregated                     sdkgo.Target[AggregateDocumentsResult]         `connector:"branch=aggregated"`
+	Truncated                      sdkgo.Target[AggregateDocumentsResult]         `connector:"branch=truncated,optional"`
+	ProviderRejected               sdkgo.Target[AggregateDocumentsResult]         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[AggregateDocumentsResult]         `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[AggregateDocumentsResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DocumentSet]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewAggregateDocumentsStep[IN any](config AggregateDocumentsStepConfig[IN]) sdkgo.QueryStep[IN, AggregateDocumentsInput, DocumentSet] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("mongodb connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, AggregateDocumentsInput, DocumentSet]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AggregateDocuments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AggregateDocumentsResult] {
+			branches := make([]sdkgo.BranchTarget[AggregateDocumentsResult], 0, 5)
+			if config.Aggregated.HasStep() {
+				branches = append(branches, config.Aggregated.BranchTarget(AggregateDocumentsBranchAggregated))
+			}
+			if config.Truncated.HasStep() {
+				branches = append(branches, config.Truncated.BranchTarget(AggregateDocumentsBranchTruncated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AggregateDocumentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(AggregateDocumentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AggregateDocumentsBranchDefect))
 			}
 			return branches
 		}(),

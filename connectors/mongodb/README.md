@@ -9,6 +9,12 @@ optional branches. Temporary network, timeout, and retryable read failures
 return Retry to Dex. So do DNS lookup failures, including `mongodb+srv://`
 SRV lookups; only a URI the driver rejects selects `defect`.
 
+`aggregateDocuments` runs a bounded, read-only aggregation pipeline. It allows common read stages such as `$match`, `$project`, `$group`, `$sort`, `$lookup`, and `$facet`, while rejecting `$out`, `$merge`, server-side JavaScript, and unsupported stages. It appends a final limit to bound returned documents. The happy branch is `aggregated`; truncation, rejection, invalid response, and local defects remain optional branches. Unknown read outcomes retry safely.
+
+See the [MongoDB aggregation guide](https://www.mongodb.com/docs/drivers/go/v1.x/fundamentals/aggregation/) for pipeline behavior and stage syntax.
+
+n8n also offers document insert, update, replace, and delete operations. The current connection guide provisions a read-only database user, so those writes require a new permission contract and are deferred. Search-index changes are administrative schema work and are outside this connector's read scope.
+
 The connector uses the native MongoDB wire protocol. Atlas Data API has been
 retired. The Go module currently pins driver v1.17.10 because this repository's
 CI runs Go 1.24 and driver v2.9 requires Go 1.25. Upgrade the driver after the
