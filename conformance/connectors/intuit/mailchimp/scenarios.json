@@ -2822,7 +2822,10 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+          "attempt": 2,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "campaign": {
@@ -2854,7 +2857,9 @@
           "exchangeCount": 2,
           "failureKind": "RATE_LIMIT",
           "heartbeat": {
-            "cleared": true
+            "attempt": 1,
+            "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+            "state": "canResend"
           },
           "retryAfterMs": 3000
         }
@@ -2863,6 +2868,7 @@
       "operation": "sendCampaign"
     },
     {
+      "attempts": 2,
       "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "exchanges": [
         {
@@ -2899,13 +2905,53 @@
             ]
           },
           "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 204
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
+        "branch": "sent",
+        "failureKind": "",
         "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+          "attempt": 2,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "sendCount": 2,
+          "state": "claimed"
         },
         "output": {
           "campaign": {
@@ -2922,17 +2968,30 @@
             "webId": 42
           }
         },
-        "requestCount": 2,
+        "requestCount": 4,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "input": {
         "campaignId": "42694e9e57",
         "expectedListId": "57afe96172"
       },
-      "name": "sendCampaign-post-after-send-uncertain",
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendCampaign-post-after-send-then-resent",
       "operation": "sendCampaign"
     },
     {
@@ -3016,7 +3075,10 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+          "attempt": 2,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "campaign": {
@@ -3048,7 +3110,9 @@
           "exchangeCount": 2,
           "failureKind": "TRANSPORT",
           "heartbeat": {
-            "cleared": true
+            "attempt": 1,
+            "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -3109,12 +3173,13 @@
         "campaignId": "42694e9e57",
         "expectedListId": "57afe96172"
       },
-      "name": "sendCampaign-prior-already-sent",
+      "name": "sendCampaign-legacy-checkpoint-already-sent",
       "operation": "sendCampaign",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
-        "state": "claimed"
+        "value": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        }
       }
     },
     {
@@ -3170,12 +3235,13 @@
         "campaignId": "42694e9e57",
         "expectedListId": "57afe96172"
       },
-      "name": "sendCampaign-prior-save",
+      "name": "sendCampaign-legacy-checkpoint-save",
       "operation": "sendCampaign",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
-        "state": "claimed"
+        "value": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        }
       }
     },
     {
@@ -3356,8 +3422,9 @@
       "name": "sendCampaign-prior-uncertain",
       "operation": "sendCampaign",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -3411,8 +3478,9 @@
       "name": "sendCampaign-prior-uncertain-invalid-recipients",
       "operation": "sendCampaign",
       "priorHeartbeat": {
-        "attempt": 1,
+        "attempt": 3,
         "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "sendCount": 3,
         "state": "claimed"
       }
     },
@@ -3442,33 +3510,25 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
-        "output": {
-          "campaign": {
-            "emailsSent": 0,
-            "id": "",
-            "recipientCount": 0,
-            "status": "",
-            "type": ""
-          }
-        },
+        "branch": "",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "input": {
         "campaignId": "42694e9e57",
         "expectedListId": "57afe96172"
       },
-      "name": "sendCampaign-prior-unreadable",
+      "name": "sendCampaign-legacy-checkpoint-unreadable",
       "operation": "sendCampaign",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
-        "state": "claimed"
+        "value": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        }
       }
     },
     {
@@ -3549,6 +3609,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -3679,7 +3744,10 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+          "attempt": 2,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "campaign": {
@@ -3710,6 +3778,11 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+            "state": "notSent"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3717,6 +3790,7 @@
       "operation": "sendCampaign"
     },
     {
+      "attempts": 2,
       "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "exchanges": [
         {
@@ -3753,14 +3827,32 @@
             ]
           },
           "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"sending\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
-        "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
-        },
+        "branch": "alreadySent",
+        "failureKind": "",
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -3769,24 +3861,37 @@
             "listId": "57afe96172",
             "listName": "Spring audience",
             "recipientCount": 3,
-            "status": "save",
+            "status": "sending",
             "subjectLine": "Spring news",
             "title": "Spring launch",
             "type": "regular",
             "webId": 53
           }
         },
-        "requestCount": 2,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "input": {
         "campaignId": "42694e9e57",
         "expectedListId": "57afe96172"
       },
-      "name": "sendCampaign-send-after-send",
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendCampaign-send-after-send-then-read-back-sending",
       "operation": "sendCampaign"
     },
     {
@@ -3832,7 +3937,9 @@
         "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
-          "cleared": true
+          "attempt": 1,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "state": "canResend"
         },
         "requestCount": 1,
         "retry": true,
@@ -3930,7 +4037,10 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+          "attempt": 2,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "campaign": {
@@ -3962,7 +4072,9 @@
           "exchangeCount": 2,
           "failureKind": "RATE_LIMIT",
           "heartbeat": {
-            "cleared": true
+            "attempt": 1,
+            "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+            "state": "canResend"
           },
           "retryAfterMs": 0
         }
@@ -4015,7 +4127,10 @@
         "branch": "sent",
         "failureKind": "",
         "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+          "attempt": 1,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "campaign": {
@@ -4073,6 +4188,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4112,6 +4232,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4151,6 +4276,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "state": "notSent"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -4192,6 +4322,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4243,14 +4378,17 @@
               "Bearer mailchimpfixturekey-us6"
             ]
           },
-          "status": 503
+          "status": 500
         }
       ],
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+          "attempt": 3,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "sendCount": 3,
+          "state": "claimed"
         },
         "output": {
           "campaign": {
@@ -4278,9 +4416,16 @@
         "expectedListId": "57afe96172"
       },
       "name": "sendCampaign-uncertain",
-      "operation": "sendCampaign"
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 2,
+        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "sendCount": 2,
+        "state": "claimed"
+      }
     },
     {
+      "attempts": 2,
       "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "exchanges": [
         {
@@ -4319,13 +4464,53 @@
             ]
           },
           "status": 503
+        },
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 204
         }
       ],
       "expected": {
-        "branch": "uncertain",
-        "failureKind": "AVAILABILITY",
+        "branch": "sent",
+        "failureKind": "",
         "heartbeat": {
-          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+          "attempt": 2,
+          "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+          "sendCount": 1,
+          "state": "claimed"
         },
         "output": {
           "campaign": {
@@ -4342,17 +4527,29 @@
             "webId": 53
           }
         },
-        "requestCount": 2,
+        "requestCount": 4,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "input": {
         "campaignId": "42694e9e57",
         "expectedListId": "57afe96172"
       },
-      "name": "sendCampaign-uncertain-send",
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendCampaign-send-503-then-sent",
       "operation": "sendCampaign"
     },
     {

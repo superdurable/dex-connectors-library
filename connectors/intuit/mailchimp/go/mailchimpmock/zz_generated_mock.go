@@ -304,7 +304,7 @@ func SendCampaignSent(value mailchimp.SendCampaignOutput, failure *sdkgo.Failure
 	return connectormock.Branch(mailchimp.SendCampaignBranchSent, value, failure)
 }
 
-// SendCampaignAlreadySent selects the alreadySent branch: Mailchimp reports the campaign as sending or sent, so this attempt sent nothing.
+// SendCampaignAlreadySent selects the alreadySent branch: Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing.
 func SendCampaignAlreadySent(value mailchimp.SendCampaignOutput, failure *sdkgo.Failure) connectormock.Case[mailchimp.SendCampaignOutput] {
 	return connectormock.Branch(mailchimp.SendCampaignBranchAlreadySent, value, failure)
 }
@@ -324,7 +324,7 @@ func SendCampaignProviderRejected(value mailchimp.SendCampaignOutput, failure *s
 	return connectormock.Branch(mailchimp.SendCampaignBranchProviderRejected, value, failure)
 }
 
-// SendCampaignInvalidResponse selects the invalidResponse branch: Mailchimp returned an invalid or oversized campaign before the send; nothing was sent.
+// SendCampaignInvalidResponse selects the invalidResponse branch: Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent.
 func SendCampaignInvalidResponse(value mailchimp.SendCampaignOutput, failure *sdkgo.Failure) connectormock.Case[mailchimp.SendCampaignOutput] {
 	return connectormock.Branch(mailchimp.SendCampaignBranchInvalidResponse, value, failure)
 }
@@ -334,7 +334,7 @@ func SendCampaignUncertain(value mailchimp.SendCampaignOutput, failure sdkgo.Fai
 	return connectormock.Uncertain(value, failure)
 }
 
-// SendCampaignDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid.
+// SendCampaignDefect selects the defect branch: Local input, connection configuration, or connector definition is invalid, and no send was attempted.
 func SendCampaignDefect(value mailchimp.SendCampaignOutput, failure *sdkgo.Failure) connectormock.Case[mailchimp.SendCampaignOutput] {
 	return connectormock.Branch(mailchimp.SendCampaignBranchDefect, value, failure)
 }

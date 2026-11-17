@@ -136,7 +136,7 @@ export interface SendCampaignStepConfig<StepInput, OperationInput = SendCampaign
   connectionName: string;
   /** Mailchimp accepted the send of the draft campaign this Step read. */
   sent: StepTarget<MutationResult<OperationOutput>>;
-  /** Mailchimp reports the campaign as sending or sent, so this attempt sent nothing. */
+  /** Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing. */
   alreadySent?: StepTarget<MutationResult<OperationOutput>>;
   /** The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent. */
   notSendable?: StepTarget<MutationResult<OperationOutput>>;
@@ -144,11 +144,11 @@ export interface SendCampaignStepConfig<StepInput, OperationInput = SendCampaign
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** Mailchimp returned an invalid or oversized campaign before the send; nothing was sent. */
+  /** Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
-  /** The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again. */
+  /** A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input, connection configuration, or connector definition is invalid. */
+  /** Local input, connection configuration, or connector definition is invalid, and no send was attempted. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 

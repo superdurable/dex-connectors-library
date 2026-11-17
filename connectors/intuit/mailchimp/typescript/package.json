@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-intuit-mailchimp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Mailchimp audience and campaign operations for Dex Flows",
   "license": "MIT",
   "repository": {

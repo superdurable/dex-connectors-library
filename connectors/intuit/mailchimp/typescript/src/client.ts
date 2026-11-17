@@ -85,8 +85,11 @@ export class MailchimpClient {
     return { key, baseURL: this.apiBaseURL ?? `https://${match[2]}.api.mailchimp.com/3.0` };
   }
 
-  /** Send one request and classify the outcome before an operation chooses its branch. */
-  async exchange(call: Call, connection: { key: string; baseURL: string }, operation: string, method: string, path: string, query?: URLSearchParams, payload?: unknown): Promise<MailchimpExchange> {
+  /**
+   * Send one request and classify the outcome before an operation chooses its branch. signal, when set,
+   * replaces the Step cancellation signal, such as a single-dispatch Fence's write-window signal.
+   */
+  async exchange(call: Call, connection: { key: string; baseURL: string }, operation: string, method: string, path: string, query?: URLSearchParams, payload?: unknown, signal?: AbortSignal): Promise<MailchimpExchange> {
     const url = `${connection.baseURL}${path}${query && [...query.keys()].length ? `?${sortedQuery(query)}` : ''}`;
     const headers: Record<string, string> = { Authorization: `Bearer ${connection.key}`, Accept: 'application/json' };
     if (payload !== undefined) headers['Content-Type'] = 'application/json';
@@ -94,7 +97,7 @@ export class MailchimpClient {
       url, method, headers, maxResponseBytes: this.maxResponseBytes,
       addressPolicy: this.apiBaseURL ? 'privateNetworkHTTP' : 'publicHTTPS',
       timeoutMs: Math.min(25_000, call.context.deadline ? Math.max(1, call.context.deadline.getTime() - Date.now()) : 25_000),
-      signal: call.context.cancellationSignal,
+      signal: signal ?? call.context.cancellationSignal,
       ...(payload !== undefined ? { body: Buffer.from(JSON.stringify(payload), 'utf8') } : {}),
     };
     let response: ProviderResponse;

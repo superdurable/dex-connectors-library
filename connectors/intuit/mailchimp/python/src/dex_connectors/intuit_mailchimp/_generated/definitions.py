@@ -106,13 +106,13 @@ SEND_CAMPAIGN_DEFINITION = MutationDefinition(
     OperationRef(CONNECTOR_ID, SEND_CAMPAIGN_OPERATION_ID),
     (
         BranchDefinition(SENT, "Mailchimp accepted the send of the draft campaign this Step read.", False),
-        BranchDefinition(ALREADY_SENT, "Mailchimp reports the campaign as sending or sent, so this attempt sent nothing.", True),
+        BranchDefinition(ALREADY_SENT, "Mailchimp reports the campaign as sending or sent, because another send or an earlier attempt of this Step sent it; this attempt sent nothing.", True),
         BranchDefinition(NOT_SENDABLE, "The campaign is not a draft that can be sent now, such as a scheduled, paused, canceled, or RSS campaign, or it targets another audience than expectedListId; nothing was sent.", True),
         BranchDefinition(NOT_FOUND, "The campaign does not exist; nothing was sent.", True),
         BranchDefinition(PROVIDER_REJECTED, "Mailchimp conclusively rejected the send, such as a campaign that fails its send checklist or a role that cannot send; nothing was sent.", True),
-        BranchDefinition(INVALID_RESPONSE, "Mailchimp returned an invalid or oversized campaign before the send; nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "The send request was sent but its outcome cannot be confirmed, so the campaign may be sending; the connector never sends it again.", True),
-        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
+        BranchDefinition(INVALID_RESPONSE, "Mailchimp returned an invalid or oversized campaign before the first send; nothing was sent.", True),
+        BranchDefinition(UNCERTAIN, "A send may have reached Mailchimp, but the campaign does not read as sending or sent and no further send is allowed, because maxSends is reached or the campaign changed after a possible send.", True),
+        BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid, and no send was attempted.", True),
     ),
     StepDefaults(
         timedelta(seconds=60),
