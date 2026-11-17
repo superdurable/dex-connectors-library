@@ -79,3 +79,20 @@ func TestCompletedTaskReopensOnMockWithRealDex(t *testing.T) {
 	require.Len(t, calls, 1)
 	require.Equal(t, todoist.ReopenTaskInput{TaskID: "completed-task"}, calls[0].Input)
 }
+
+func TestActiveTaskClosesOnMockWithRealDex(t *testing.T) {
+	mock := todoistmock.New(t, ConnectionName)
+	flow, harness := newCRUDHarnessWithConnection(t, mock.Connection())
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	result := harness.runFlow(t, ctx, flow, "todoist-close-mock-"+strconv.FormatInt(time.Now().UnixNano(), 10), Request{Mode: "close", TaskID: "created-task"})
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Equal(t, "closed", outcome.Status)
+	require.Equal(t, "created-task", outcome.ClosedTaskID)
+	calls := mock.CloseTask().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, todoist.CloseTaskInput{TaskID: "created-task"}, calls[0].Input)
+}

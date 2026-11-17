@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package todoist lists, reads, creates, updates, reopens, and deletes tasks through typed Dex Steps.
+// Package todoist lists, reads, creates, updates, closes, reopens, and deletes tasks through typed Dex Steps.
 // See examples/task-crud for a runnable Flow using the generated factories.
 package todoist
 
@@ -321,6 +321,9 @@ func (client *Client) DeleteTask() DeleteTaskOperation { return DeleteTaskOperat
 // ReopenTask returns this client's task restoration Mutation.
 func (client *Client) ReopenTask() ReopenTaskOperation { return ReopenTaskOperation{client} }
 
+// CloseTask returns the deduplicated task closing Mutation bound to this client.
+func (client *Client) CloseTask() CloseTaskOperation { return CloseTaskOperation{client} }
+
 // Definition returns the generated list contract.
 func (ListTasksOperation) Definition() sdkgo.QueryDefinition { return ListTasksDefinition }
 
@@ -503,6 +506,14 @@ func (client *Client) sendTaskRequest(window requestWindow, credentials Credenti
 }
 
 func (client *Client) sendRequest(window requestWindow, credentials Credentials, operation, method, endpoint string, payload []byte, requestID string) exchangeResult {
+	return client.sendRequestWithContentType(window, credentials, operation, method, endpoint, payload, requestID, "application/json")
+}
+
+func (client *Client) sendFormRequest(window requestWindow, credentials Credentials, operation, endpoint string, payload []byte) exchangeResult {
+	return client.sendRequestWithContentType(window, credentials, operation, http.MethodPost, endpoint, payload, "", "application/x-www-form-urlencoded")
+}
+
+func (client *Client) sendRequestWithContentType(window requestWindow, credentials Credentials, operation, method, endpoint string, payload []byte, requestID, contentType string) exchangeResult {
 	if !window.hasTimeToStart() {
 		return exchangeResult{isTransient: true, isUndispatched: true, failure: failure(operation, sdkgo.FailureAvailability, "too little attempt time remained, so the request was not sent")}
 	}
@@ -518,7 +529,7 @@ func (client *Client) sendRequest(window requestWindow, credentials Credentials,
 	request.Header.Set("Authorization", "Bearer "+credentials.APIToken.Reveal())
 	request.Header.Set("Accept", "application/json")
 	if method == http.MethodPost {
-		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Content-Type", contentType)
 	}
 	if requestID != "" {
 		request.Header.Set("X-Request-ID", requestID)

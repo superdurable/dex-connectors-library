@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "closeTask/activeTaskClosed/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[todoist.ClosedTask](`{"taskId":"created-task"}`)
+			return err
+		}},
 		{name: "reopenTask/completedTaskReopened/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[todoist.ReopenedTask](`{"taskId":"completed-task"}`)
 			return err
@@ -62,6 +66,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CloseTask().Definition().Operation.OperationID != "closeTask" {
+		t.Errorf("closeTask mock has another definition")
+	}
 	if mock.ReopenTask().Definition().Operation.OperationID != "reopenTask" {
 		t.Errorf("reopenTask mock has another definition")
 	}

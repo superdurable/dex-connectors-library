@@ -4,7 +4,7 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/doist/todoist`.
 
-List, read, create, update, reopen, and delete tasks through typed Dex Steps using the
+List, read, create, update, close, reopen, and delete tasks through typed Dex Steps using the
 [Todoist API v1](https://developer.todoist.com/api/v1/).
 The module is `github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go`;
 the connector ID and provider are `todoist`.
@@ -16,7 +16,14 @@ the connector ID and provider are `todoist`.
 | `NewDeleteTaskStep` | Mutation | `DeleteTaskInput` | `deleted` | `alreadyAbsent`, `providerRejected`, `defect` |
 | `NewGetTaskStep` | Query | `GetTaskInput{TaskID}` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewUpdateTaskStep` | Mutation | `UpdateTaskInput{TaskID, Content?, Description?}` | `updated` | `notFound`, `providerRejected`, `defect` |
+| `NewCloseTaskStep` | Mutation | `CloseTaskInput{TaskID}` | `closed` | `notFound`, `providerRejected`, `defect` |
 | `NewReopenTaskStep` | Mutation | `ReopenTaskInput{TaskID}` | `reopened` | `notFound`, `providerRejected`, `defect` |
+
+`closeTask` sends an `item_close` command to Todoist Sync with the Dex call ID
+as its command UUID. Todoist deduplicates repeated command UUIDs, so retries
+cannot advance a recurring task twice. Closing a recurring task advances its
+occurrence; closing a regular task completes it. See the
+[Todoist Sync command contract](https://developer.todoist.com/api/v1/).
 
 `reopenTask` sends POST `/tasks/{task_id}/reopen` and accepts Todoist's JSON
 `null` success response. It restores a completed task and any completed
@@ -27,7 +34,8 @@ The [CRUD Flow](go/examples/task-crud/flow/workflow.go) defaults to read-only li
 Its explicit lifecycle mode creates its own task, reads it, updates specified fields,
 and reads back the confirmed update.
 Confirmed matching updates continue to paginated list verification, deletion,
-and a final not-found lookup. Its `reopen` mode restores a completed task by ID.
+and a final not-found lookup. Its `close` mode closes a task by ID, and its
+`reopen` mode restores a completed task by ID.
 The application opens its declared connection with `NewProjectConnection` after
 `projectconfig.LoadFromEnvironment`. Tests can construct `New` and
 `NewConnection`, with `WithHTTPClient` for a custom transport.

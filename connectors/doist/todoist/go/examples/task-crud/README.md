@@ -1,6 +1,6 @@
 # Todoist CRUD and list example
 
-[TodoistTaskCRUDFlow](flow/workflow.go) has three start modes:
+[TodoistTaskCRUDFlow](flow/workflow.go) has four start modes:
 
 - `list` (the default) calls `NewListTasksStep`, persists one task page, and
   completes without any write. Supply the returned cursor in another list run
@@ -14,6 +14,10 @@
 - `reopen` restores the completed task named by `taskId` with
   `NewReopenTaskStep`. Start with `{"mode":"reopen","taskId":"<completed task ID>"}`;
   the Flow records the restored ID in its outcome.
+- `close` closes the task named by `taskId` with a deduplicated Sync command
+  through `NewCloseTaskStep`. Start with `{"mode":"close","taskId":"<task ID>"}`;
+  the Flow records the closed ID in its outcome. A recurring task advances to
+  its next occurrence.
 
 Every provider call runs inside a connector Step. The created task ID, update
 and delete results, request, page counter, and final outcome are registered

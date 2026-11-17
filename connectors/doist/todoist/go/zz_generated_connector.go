@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CloseTask() sdkgo.Mutation[CloseTaskInput, ClosedTask]
 	ReopenTask() sdkgo.Mutation[ReopenTaskInput, ReopenedTask]
 	GetTask() sdkgo.Query[GetTaskInput, Task]
 	UpdateTask() sdkgo.Mutation[UpdateTaskInput, Task]
@@ -50,6 +51,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CloseTask() sdkgo.Mutation[CloseTaskInput, ClosedTask] {
+	return operations.client.CloseTask()
+}
 func (operations clientOperations) ReopenTask() sdkgo.Mutation[ReopenTaskInput, ReopenedTask] {
 	return operations.client.ReopenTask()
 }
@@ -204,6 +208,77 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_token is required")
 	}
 	return nil
+}
+
+const CloseTaskBranchClosed sdkgo.BranchID = "closed"
+const CloseTaskBranchNotFound sdkgo.BranchID = "notFound"
+const CloseTaskBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CloseTaskBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CloseTaskDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "closeTask"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CloseTaskBranchClosed, Description: "Todoist confirmed the close command."},
+		{ID: CloseTaskBranchNotFound, Description: "Todoist found no task with that ID.", Optional: true},
+		{ID: CloseTaskBranchProviderRejected, Description: "Todoist definitively rejected closing the task.", Optional: true},
+		{ID: CloseTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CloseTaskResult = sdkgo.MutationResult[ClosedTask]
+
+type CloseTaskStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=todoist"`
+	operationID                       struct{}                                         `connector:"operationId=closeTask"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) CloseTaskInput                          `connector:"mapToOperationInput"`
+	Closed                            sdkgo.Target[CloseTaskResult]                    `connector:"branch=closed"`
+	NotFound                          sdkgo.Target[CloseTaskResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CloseTaskResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CloseTaskResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ClosedTask]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewCloseTaskStep[IN any](config CloseTaskStepConfig[IN]) sdkgo.MutationStep[IN, CloseTaskInput, ClosedTask] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("todoist connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CloseTaskInput, ClosedTask]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CloseTask(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CloseTaskResult] {
+			branches := make([]sdkgo.BranchTarget[CloseTaskResult], 0, 4)
+			if config.Closed.HasStep() {
+				branches = append(branches, config.Closed.BranchTarget(CloseTaskBranchClosed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CloseTaskBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CloseTaskBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CloseTaskBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ReopenTaskBranchReopened sdkgo.BranchID = "reopened"
