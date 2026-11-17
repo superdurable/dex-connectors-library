@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/superdurable/dex-connectors-library/schema"
 )
 
 func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
@@ -18,11 +20,14 @@ func conformanceOperationsCommand(manifestPath string, output io.Writer) error {
 		Kind                string   `json:"kind"`
 		Branches            []string `json:"branches"`
 		OptionalInputFields []string `json:"optionalInputFields"`
+		// IsSafeToRepeat marks a safe Mutation, whose declared uncertain and invalidResponse branches may be unreachable.
+		IsSafeToRepeat bool `json:"isSafeToRepeat,omitempty"`
 	}
 	operations := make(map[string]conformanceOperation, len(manifest.Spec.Operations))
 	goPackage := newConnectorGoPackage(manifestPath)
 	for _, operation := range manifest.Spec.Operations {
 		entry := conformanceOperation{Kind: operation.Kind}
+		entry.IsSafeToRepeat = operation.Kind == "mutation" && operation.ResolvedRepeatOnUnknown() == schema.RepeatOnUnknownSafe
 		entry.OptionalInputFields, err = conformanceOptionalInputFields(goPackage, operation.InputType)
 		if err != nil {
 			return err
