@@ -7,3 +7,5 @@ Open [365 API](https://www.hby365.studio), sign in, then create an API Key in th
 The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `ConnectionName = "hby365"`. Run the worker with `go run .` from its directory, then start `HBY365ModelCatalog` with `{}`. Strict FDG 2.0 instructions and a Dex mock integration test are alongside the Flow.
 
 Provider contract: [official developer documentation](https://www.hby365.studio/developers). Real provider authorization is unverified without a customer-controlled Key.
+
+The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.
