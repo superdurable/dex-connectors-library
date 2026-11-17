@@ -15,20 +15,27 @@ const (
 	// FlowType is the stable Dex Flow identity.
 	FlowType = "SquareResourceRead"
 	// ConnectionName is the static Dex Web connection name.
-	ConnectionName = "square"
-	readStepType   = "ReadSquareResource"
+	ConnectionName        = "square"
+	readStepType          = "ReadSquareResource"
+	createPaymentStepType = "CreateSquareCashPayment"
 )
 
 // Request is the typed start input for this example.
 type Request struct {
 	// Cursor selects the resource for the read.
 	Cursor string `json:"cursor"`
+	// RecordCashPayment selects the payment write instead of the payment list.
+	RecordCashPayment bool `json:"recordCashPayment,omitempty"`
+	// AmountMoney is the positive cash payment amount in minor currency units when recording a payment.
+	AmountMoney square.Money `json:"amountMoney,omitempty"`
 }
 
 // Outcome is the completed resource read.
 type Outcome struct {
 	// Value holds the provider resource or page.
 	Value square.PaymentPage `json:"value"`
+	// Payment is the created cash payment when RecordCashPayment was selected.
+	Payment square.Payment `json:"payment,omitempty"`
 }
 
 var outcomeAttribute = dex.DefineAttribute[Outcome]("square-resource-read-outcome")
@@ -54,7 +61,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToOperationInput,
 			Listed:              sdkgo.GoTo(completeRead{}),
 		})),
+		dex.DefineStep(square.NewCreatePaymentStep(square.CreatePaymentStepConfig[Request]{
+			StepType: createPaymentStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "square", GroupLabel: "Square", Explanation: "Record the requested cash payment."},
+			MapToOperationInput: MapToCreatePaymentInput,
+			Created:             sdkgo.GoTo(completeCashPayment{}),
+		})),
 		dex.DefineStep(completeRead{}),
+		dex.DefineStep(completeCashPayment{}),
 	}
 }
 
@@ -87,8 +101,18 @@ func MapToOperationInput(request Request) square.ListPaymentsInput {
 	return square.ListPaymentsInput{Cursor: request.Cursor}
 }
 
+// MapToCreatePaymentInput maps a cash request without storing a payment token in the Flow.
+func MapToCreatePaymentInput(request Request) square.CreatePaymentInput {
+	return square.CreatePaymentInput{SourceID: "CASH", AmountMoney: request.AmountMoney}
+}
+
 // PrepareRequest rejects invalid local input before a provider call.
-func PrepareRequest(request Request) (Request, error) { return request, nil }
+func PrepareRequest(request Request) (Request, error) {
+	if request.RecordCashPayment && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
+		return Request{}, errors.New("cash payment amount and currency are required")
+	}
+	return request, nil
+}
 
 // dex:group group-id:resource-read group-label:"Resource read"
 // dex:explanation text:"Validate the request before reading the provider."
@@ -103,6 +127,9 @@ func (prepareRequest) Execute(ctx dex.Context, request Request) (*dex.StepDecisi
 	if err != nil {
 		return dex.ForceFail(err.Error()), nil
 	}
+	if prepared.RecordCashPayment {
+		return dex.GoTo(sdkgo.StepRef[Request](createPaymentStepType), prepared), nil
+	}
 	return dex.GoTo(sdkgo.StepRef[Request](readStepType), prepared), nil
 }
 
@@ -115,6 +142,21 @@ type completeRead struct {
 func (completeRead) GetStepType() string { return "CompleteResourceRead" }
 func (completeRead) Execute(ctx dex.Context, result square.ListPaymentsResult) (*dex.StepDecision, error) {
 	outcome := Outcome{Value: result.Value}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:resource-result group-label:"Resource result"
+// dex:explanation text:"Persist the created cash payment as the Flow outcome."
+type completeCashPayment struct {
+	dex.StepDefaultsNoWaitFor[square.CreatePaymentResult]
+}
+
+func (completeCashPayment) GetStepType() string { return "CompleteCashPayment" }
+func (completeCashPayment) Execute(ctx dex.Context, result square.CreatePaymentResult) (*dex.StepDecision, error) {
+	outcome := Outcome{Payment: result.Value}
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

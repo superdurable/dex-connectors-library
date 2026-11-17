@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted square connection. Script each operation through its accessor.
 type Mock struct {
-	connection   square.Connection
-	listPayments *connectormock.Query[square.ListPaymentsInput, square.PaymentPage]
-	getPayment   *connectormock.Query[square.GetPaymentInput, square.Payment]
+	connection      square.Connection
+	listPayments    *connectormock.Query[square.ListPaymentsInput, square.PaymentPage]
+	getPayment      *connectormock.Query[square.GetPaymentInput, square.Payment]
+	createPayment   *connectormock.Mutation[square.CreatePaymentInput, square.Payment]
+	updatePayment   *connectormock.Mutation[square.UpdatePaymentInput, square.Payment]
+	cancelPayment   *connectormock.Mutation[square.CancelPaymentInput, square.Payment]
+	completePayment *connectormock.Mutation[square.CompletePaymentInput, square.Payment]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +31,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listPayments: connectormock.NewQuery[square.ListPaymentsInput, square.PaymentPage](t, square.ListPaymentsDefinition),
-		getPayment:   connectormock.NewQuery[square.GetPaymentInput, square.Payment](t, square.GetPaymentDefinition),
+		listPayments:    connectormock.NewQuery[square.ListPaymentsInput, square.PaymentPage](t, square.ListPaymentsDefinition),
+		getPayment:      connectormock.NewQuery[square.GetPaymentInput, square.Payment](t, square.GetPaymentDefinition),
+		createPayment:   connectormock.NewMutation[square.CreatePaymentInput, square.Payment](t, square.CreatePaymentDefinition),
+		updatePayment:   connectormock.NewMutation[square.UpdatePaymentInput, square.Payment](t, square.UpdatePaymentDefinition),
+		cancelPayment:   connectormock.NewMutation[square.CancelPaymentInput, square.Payment](t, square.CancelPaymentDefinition),
+		completePayment: connectormock.NewMutation[square.CompletePaymentInput, square.Payment](t, square.CompletePaymentDefinition),
 	}
 	mock.listPayments.Default(ListPaymentsDefault())
 	mock.getPayment.Default(GetPaymentDefault())
+	mock.createPayment.Default(CreatePaymentDefault())
+	mock.updatePayment.Default(UpdatePaymentDefault())
+	mock.cancelPayment.Default(CancelPaymentDefault())
+	mock.completePayment.Default(CompletePaymentDefault())
 	connection, err := square.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "square", Name: connectionName})
 	if err != nil {
 		t.Fatalf("square mock connection: %v", err)
@@ -53,6 +65,26 @@ func (mock *Mock) GetPayment() *connectormock.Query[square.GetPaymentInput, squa
 	return mock.getPayment
 }
 
+// CreatePayment returns the createPayment script.
+func (mock *Mock) CreatePayment() *connectormock.Mutation[square.CreatePaymentInput, square.Payment] {
+	return mock.createPayment
+}
+
+// UpdatePayment returns the updatePayment script.
+func (mock *Mock) UpdatePayment() *connectormock.Mutation[square.UpdatePaymentInput, square.Payment] {
+	return mock.updatePayment
+}
+
+// CancelPayment returns the cancelPayment script.
+func (mock *Mock) CancelPayment() *connectormock.Mutation[square.CancelPaymentInput, square.Payment] {
+	return mock.cancelPayment
+}
+
+// CompletePayment returns the completePayment script.
+func (mock *Mock) CompletePayment() *connectormock.Mutation[square.CompletePaymentInput, square.Payment] {
+	return mock.completePayment
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListPayments() sdkgo.Query[square.ListPaymentsInput, square.PaymentPage] {
@@ -60,6 +92,18 @@ func (operations mockOperations) ListPayments() sdkgo.Query[square.ListPaymentsI
 }
 func (operations mockOperations) GetPayment() sdkgo.Query[square.GetPaymentInput, square.Payment] {
 	return operations.mock.getPayment
+}
+func (operations mockOperations) CreatePayment() sdkgo.Mutation[square.CreatePaymentInput, square.Payment] {
+	return operations.mock.createPayment
+}
+func (operations mockOperations) UpdatePayment() sdkgo.Mutation[square.UpdatePaymentInput, square.Payment] {
+	return operations.mock.updatePayment
+}
+func (operations mockOperations) CancelPayment() sdkgo.Mutation[square.CancelPaymentInput, square.Payment] {
+	return operations.mock.cancelPayment
+}
+func (operations mockOperations) CompletePayment() sdkgo.Mutation[square.CompletePaymentInput, square.Payment] {
+	return operations.mock.completePayment
 }
 
 // ListPaymentsListed selects the listed branch: List one page of Square payments.
@@ -139,3 +183,156 @@ func GetPaymentDefaultAnswer() connectormock.Case[square.Payment] {
 
 // GetPaymentDefault is the manifest default, defaultAnswer, which New installs.
 func GetPaymentDefault() connectormock.Case[square.Payment] { return GetPaymentDefaultAnswer() }
+
+// CreatePaymentCreated selects the created branch: Square created the payment.
+func CreatePaymentCreated(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CreatePaymentBranchCreated, value, failure)
+}
+
+// CreatePaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the payment.
+func CreatePaymentProviderRejected(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CreatePaymentBranchProviderRejected, value, failure)
+}
+
+// CreatePaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CreatePaymentInvalidResponse(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CreatePaymentBranchInvalidResponse, value, failure)
+}
+
+// CreatePaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreatePaymentDefect(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CreatePaymentBranchDefect, value, failure)
+}
+
+// CreatePaymentRetry asks Dex to retry the createPayment Step, after the delay when it is positive.
+func CreatePaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Payment] {
+	return connectormock.Retry[square.Payment](failure, after)
+}
+
+// CreatePaymentDefaultAnswer is the manifest mock defaultAnswer: A Square payment created from a test source.
+func CreatePaymentDefaultAnswer() connectormock.Case[square.Payment] {
+	value := connectormock.MustDecodeOutput[square.Payment](`{"id":"pay_102","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
+	return connectormock.Branch(square.CreatePaymentBranchCreated, value, nil)
+}
+
+// CreatePaymentDefault is the manifest default, defaultAnswer, which New installs.
+func CreatePaymentDefault() connectormock.Case[square.Payment] { return CreatePaymentDefaultAnswer() }
+
+// UpdatePaymentUpdated selects the updated branch: Square updated the payment.
+func UpdatePaymentUpdated(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchUpdated, value, failure)
+}
+
+// UpdatePaymentNotFound selects the notFound branch: The payment was not found.
+func UpdatePaymentNotFound(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchNotFound, value, failure)
+}
+
+// UpdatePaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the update.
+func UpdatePaymentProviderRejected(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchProviderRejected, value, failure)
+}
+
+// UpdatePaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func UpdatePaymentInvalidResponse(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchInvalidResponse, value, failure)
+}
+
+// UpdatePaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdatePaymentDefect(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.UpdatePaymentBranchDefect, value, failure)
+}
+
+// UpdatePaymentRetry asks Dex to retry the updatePayment Step, after the delay when it is positive.
+func UpdatePaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Payment] {
+	return connectormock.Retry[square.Payment](failure, after)
+}
+
+// UpdatePaymentDefaultAnswer is the manifest mock defaultAnswer: A Square payment with an updated amount.
+func UpdatePaymentDefaultAnswer() connectormock.Case[square.Payment] {
+	value := connectormock.MustDecodeOutput[square.Payment](`{"id":"pay_101","status":"APPROVED","amount_money":{"amount":3000,"currency":"USD"}}`)
+	return connectormock.Branch(square.UpdatePaymentBranchUpdated, value, nil)
+}
+
+// UpdatePaymentDefault is the manifest default, defaultAnswer, which New installs.
+func UpdatePaymentDefault() connectormock.Case[square.Payment] { return UpdatePaymentDefaultAnswer() }
+
+// CancelPaymentCanceled selects the canceled branch: Square canceled the payment.
+func CancelPaymentCanceled(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchCanceled, value, failure)
+}
+
+// CancelPaymentNotFound selects the notFound branch: The payment was not found.
+func CancelPaymentNotFound(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchNotFound, value, failure)
+}
+
+// CancelPaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the cancellation.
+func CancelPaymentProviderRejected(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchProviderRejected, value, failure)
+}
+
+// CancelPaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CancelPaymentInvalidResponse(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchInvalidResponse, value, failure)
+}
+
+// CancelPaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func CancelPaymentDefect(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CancelPaymentBranchDefect, value, failure)
+}
+
+// CancelPaymentRetry asks Dex to retry the cancelPayment Step, after the delay when it is positive.
+func CancelPaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Payment] {
+	return connectormock.Retry[square.Payment](failure, after)
+}
+
+// CancelPaymentDefaultAnswer is the manifest mock defaultAnswer: A voided Square payment.
+func CancelPaymentDefaultAnswer() connectormock.Case[square.Payment] {
+	value := connectormock.MustDecodeOutput[square.Payment](`{"id":"pay_101","status":"CANCELED","amount_money":{"amount":2900,"currency":"USD"}}`)
+	return connectormock.Branch(square.CancelPaymentBranchCanceled, value, nil)
+}
+
+// CancelPaymentDefault is the manifest default, defaultAnswer, which New installs.
+func CancelPaymentDefault() connectormock.Case[square.Payment] { return CancelPaymentDefaultAnswer() }
+
+// CompletePaymentCompleted selects the completed branch: Square completed the payment.
+func CompletePaymentCompleted(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchCompleted, value, failure)
+}
+
+// CompletePaymentNotFound selects the notFound branch: The payment was not found.
+func CompletePaymentNotFound(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchNotFound, value, failure)
+}
+
+// CompletePaymentProviderRejected selects the providerRejected branch: Square conclusively rejected the capture.
+func CompletePaymentProviderRejected(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchProviderRejected, value, failure)
+}
+
+// CompletePaymentInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CompletePaymentInvalidResponse(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchInvalidResponse, value, failure)
+}
+
+// CompletePaymentDefect selects the defect branch: Local input or connection credentials are invalid.
+func CompletePaymentDefect(value square.Payment, failure *sdkgo.Failure) connectormock.Case[square.Payment] {
+	return connectormock.Branch(square.CompletePaymentBranchDefect, value, failure)
+}
+
+// CompletePaymentRetry asks Dex to retry the completePayment Step, after the delay when it is positive.
+func CompletePaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Payment] {
+	return connectormock.Retry[square.Payment](failure, after)
+}
+
+// CompletePaymentDefaultAnswer is the manifest mock defaultAnswer: A captured Square payment.
+func CompletePaymentDefaultAnswer() connectormock.Case[square.Payment] {
+	value := connectormock.MustDecodeOutput[square.Payment](`{"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
+	return connectormock.Branch(square.CompletePaymentBranchCompleted, value, nil)
+}
+
+// CompletePaymentDefault is the manifest default, defaultAnswer, which New installs.
+func CompletePaymentDefault() connectormock.Case[square.Payment] {
+	return CompletePaymentDefaultAnswer()
+}

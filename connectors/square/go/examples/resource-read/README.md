@@ -1,6 +1,6 @@
 # Square resource-read example
 
-This Flow uses the static `square` connection and `square.NewListPaymentsStep` to read one provider resource. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
+This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
@@ -19,8 +19,8 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/square-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/square/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/square/go --version v0.2.0 --tag connectors/square/go/v0.2.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/square-release/connector-release.json --digest-output /tmp/square-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/square/go/build" --connector-release-override square=/tmp/square-release
+go run ./cmd/connectorctl release-artifact --manifest connectors/square/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/square/go --version v0.3.0 --tag connectors/square/go/v0.3.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/square-release/connector-release.json --digest-output /tmp/square-release/connector-release.json.sha256
+dexcli dev -open=false --flow-rendering-dir "$PWD/connectors/square/go/build" --connector-release-override square=/tmp/square-release
 ```
 
 In Dex Web **Connections**, create the `square` connection with the manifest's authorization guide. Then start the Worker in another terminal:
@@ -38,4 +38,6 @@ The pull Worker connects outbound to Dex. In **Start Flow**, choose `SquareResou
 
 The Flow completes with the provider value. A missing resource selects the unwired `notFound` branch and fails the Flow.
 
-The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs the manifest default through a real Dex Worker in CI; it is not run during this host's heavy-work pause.
+To record a cash payment, enable `PAYMENTS_WRITE` in the Square application and start with `{"recordCashPayment":true,"amountMoney":{"amount":2900,"currency":"USD"}}`. The amount is in minor currency units. The connector sets `source_id` to `CASH`; no card token is stored in the Flow.
+
+The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs both read and cash write paths through a real Dex Worker using manifest mocks.

@@ -15,6 +15,7 @@ func TestRequestMappingAndFlowIdentity(t *testing.T) {
 	prepared, err := PrepareRequest(request)
 	require.NoError(t, err)
 	require.Equal(t, square.ListPaymentsInput{Cursor: ""}, MapToOperationInput(prepared))
+	require.Equal(t, square.CreatePaymentInput{SourceID: "CASH", AmountMoney: square.Money{Amount: 2900, Currency: "USD"}}, MapToCreatePaymentInput(Request{RecordCashPayment: true, AmountMoney: square.Money{Amount: 2900, Currency: "USD"}}))
 	require.Equal(t, FlowType, dex.GetFinalFlowType(NewFlow(square.Connection{})))
 	require.Equal(t, "PrepareResourceRead", dex.GetFinalStepType[Request](prepareRequest{}))
 }

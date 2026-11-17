@@ -26,5 +26,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listPayments": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPayments(), connection),
 		"getPayment":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPayment(), connection),
+		"createPayment": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreatePayment(), connection, scenario.CallID),
+		"updatePayment": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdatePayment(), connection, scenario.CallID),
+		"cancelPayment": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelPayment(), connection, scenario.CallID),
+		"completePayment": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CompletePayment(), connection, scenario.CallID),
 	}}
 }

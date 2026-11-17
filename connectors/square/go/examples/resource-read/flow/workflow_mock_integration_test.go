@@ -68,4 +68,19 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, square.ListPaymentsInput{Cursor: ""}, calls[0].Input)
 	require.Equal(t, square.ListPaymentsBranchListed, calls[0].Branch)
+	cashFlowID := "square-cash-payment-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	cashInput := Request{RecordCashPayment: true, AmountMoney: square.Money{Amount: 2900, Currency: "USD"}}
+	_, err = client.StartFlow(ctx, flow, cashFlowID, cashInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	cashResult, err := client.WaitForFlow(ctx, cashFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, cashResult.Status, cashResult.ErrorMessage)
+	var cashOutcome Outcome
+	require.NoError(t, cashResult.DecodeSingleOutput(&cashOutcome))
+	require.Equal(t, "pay_102", cashOutcome.Payment.ID)
+	cashCalls := mock.CreatePayment().Calls()
+	require.Len(t, cashCalls, 1)
+	require.Equal(t, cashFlowID, cashCalls[0].FlowID)
+	require.Equal(t, square.CreatePaymentInput{SourceID: "CASH", AmountMoney: cashInput.AmountMoney}, cashCalls[0].Input)
+	require.Equal(t, square.CreatePaymentBranchCreated, cashCalls[0].Branch)
 }

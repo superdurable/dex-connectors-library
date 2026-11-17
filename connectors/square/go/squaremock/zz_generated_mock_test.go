@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
 			return err
 		}},
+		{name: "createPayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_102","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "updatePayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"APPROVED","amount_money":{"amount":3000,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "cancelPayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"CANCELED","amount_money":{"amount":2900,"currency":"USD"}}`)
+			return err
+		}},
+		{name: "completePayment/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Payment](`{"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +55,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetPayment().Definition().Operation.OperationID != "getPayment" {
 		t.Errorf("getPayment mock has another definition")
+	}
+	if mock.CreatePayment().Definition().Operation.OperationID != "createPayment" {
+		t.Errorf("createPayment mock has another definition")
+	}
+	if mock.UpdatePayment().Definition().Operation.OperationID != "updatePayment" {
+		t.Errorf("updatePayment mock has another definition")
+	}
+	if mock.CancelPayment().Definition().Operation.OperationID != "cancelPayment" {
+		t.Errorf("cancelPayment mock has another definition")
+	}
+	if mock.CompletePayment().Definition().Operation.OperationID != "completePayment" {
+		t.Errorf("completePayment mock has another definition")
 	}
 }
