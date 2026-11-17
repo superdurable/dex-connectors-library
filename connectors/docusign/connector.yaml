@@ -262,6 +262,8 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 0, totalDuration: 65m}
+        # Voiding is idempotent: a repeated void finds the envelope already voided and selects voided.
+        repeatOnUnknown: safe
       mocks:
         - name: expiredAgreementVoided
           branch: voided

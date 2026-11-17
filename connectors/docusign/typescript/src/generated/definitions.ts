@@ -139,8 +139,7 @@ export const VoidEnvelopeDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 0, totalDurationMs: 3900000 } },
-  repeatOnUnknown: "limited",
-  maxSends: 3,
+  repeatOnUnknown: "safe",
 };
 /** Manifest metadata for voidEnvelope. */
 export const VoidEnvelopeMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

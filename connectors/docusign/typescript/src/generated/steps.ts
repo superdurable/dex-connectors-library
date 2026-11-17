@@ -115,11 +115,14 @@ export interface VoidEnvelopeStepConfig<StepInput, OperationInput = VoidEnvelope
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
+  /** Accepted for compatibility; ignored because the operation is safe to repeat. */
+  maxSends?: number;
 }
 
 /** Build the voidEnvelope Step from a named connection. */
 export function newVoidEnvelopeStep<StepInput, OperationInput = VoidEnvelopeInput, OperationOutput = VoidedEnvelope>(configuration: VoidEnvelopeStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, voided, notVoidable, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a safe operation drops maxSends, which the SDK rejects.
+  const { connection, connectionName, voided, notVoidable, notFound, providerRejected, invalidResponse, defect, maxSends, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.voidEnvelope(), connection: connection.reference, branches: [
     goToBranch("voided", voided),

@@ -90,8 +90,10 @@ authentication and permission codes select `providerRejected`, and
 `ENVELOPE_ALLOWANCE_EXCEEDED` is `QUOTA_EXHAUSTED`. Only HTTP 400, 401, 403,
 404, 411, 413, 414, 415, or 422 is a definite refusal; any other status a write
 receives, such as a `3xx` or `409`, is an unknown outcome. `voidEnvelope`
-retries every unknown outcome without a send cap, because voiding sets an
-absolute status and an already voided envelope selects `voided`.
+declares `repeatOnUnknown: safe` and retries every unknown outcome without a
+send cap, because voiding sets an absolute status and an already voided
+envelope selects `voided`. Its Step factory still accepts `MaxSends` for
+compatibility and ignores it.
 
 ### createEnvelopeFromTemplate and duplicate dispatch
 

@@ -101,8 +101,7 @@ VOID_ENVELOPE_DEFINITION = MutationDefinition(
         2,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 0, timedelta(seconds=3900)),
     ),
-    repeat_on_unknown=RepeatOnUnknown.LIMITED,
-    max_sends=3,
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 DOWNLOAD_COMBINED_DOCUMENT_DEFINITION = QueryDefinition(

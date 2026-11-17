@@ -605,8 +605,7 @@ var VoidEnvelopeDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
-	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
-	MaxSends:        3,
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type VoidEnvelopeResult = sdkgo.MutationResult[VoidedEnvelope]
@@ -628,7 +627,7 @@ type VoidEnvelopeStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[VoidEnvelopeResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[VoidedEnvelope]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
-	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	// MaxSends is accepted for compatibility; ignored because the operation is safe to repeat.
 	MaxSends int32 `connector:"maxSends"`
 }
 
@@ -667,7 +666,6 @@ func NewVoidEnvelopeStep[IN any](config VoidEnvelopeStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
-		MaxSends:            config.MaxSends,
 	})
 }
 
