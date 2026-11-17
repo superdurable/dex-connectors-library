@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -65,12 +66,14 @@ PUBLISH_TEXT_POST_DEFINITION = MutationDefinition(
     (
         BranchDefinition(PUBLISHED, "Meta returned the published post ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "Meta definitively rejected the post.", True),
-        BranchDefinition(UNCERTAIN, "The publish outcome is unknown; inspect the Page before retrying manually.", True),
-        BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
+        BranchDefinition(UNCERTAIN, "Meta may have published the post, but the send cap was reached or Meta contradicted itself; inspect the Page before retrying manually.", True),
+        BranchDefinition(DEFECT, "Local input or connection credentials are invalid before any send.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )

@@ -1,10 +1,10 @@
 {
   "connectorId": "facebook-pages",
-  "releaseTag": "connectors/meta/facebook-pages/go/v0.1.0",
+  "releaseTag": "connectors/meta/facebook-pages/go/v0.1.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-meta-facebook-pages",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -124,7 +124,7 @@
       "kind": "mutation",
       "operationId": "publishTextPost",
       "inputType": "PublishTextPostInput",
-      "description": "Publish a plain-text post to a Facebook Page feed.",
+      "description": "Publish a plain-text post to a Facebook Page feed. An unknown outcome resends up to the send cap, so the Page may show a duplicate post.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

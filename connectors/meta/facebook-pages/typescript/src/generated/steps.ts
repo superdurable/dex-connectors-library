@@ -79,9 +79,9 @@ export interface PublishTextPostStepConfig<StepInput, OperationInput = PublishTe
   published: StepTarget<MutationResult<OperationOutput>>;
   /** Meta definitively rejected the post. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The publish outcome is unknown; inspect the Page before retrying manually. */
+  /** Meta may have published the post, but the send cap was reached or Meta contradicted itself; inspect the Page before retrying manually. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
-  /** Local input or connection credentials are invalid. */
+  /** Local input or connection credentials are invalid before any send. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
 }
 

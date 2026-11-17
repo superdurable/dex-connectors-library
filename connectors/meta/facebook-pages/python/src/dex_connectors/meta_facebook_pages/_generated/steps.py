@@ -141,6 +141,7 @@ def new_publish_text_post_step(
     defect: dex.StepTarget[MutationResult[PublishedPost]] | None = None,
     result_attribute: dex.Attribute[MutationResult[PublishedPost]] | None = None,
     step_options_override: dex.StepOptions | None = None,
+    max_sends_override: int | None = None,
 ) -> MutationStep[StepInput, PublishTextPostInput, PublishedPost]:
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Facebook Pages Step connection name must match its connection reference")
@@ -172,6 +173,7 @@ def new_publish_text_post_step(
             branches=branches,
             result_attribute=result_attribute,
             step_options_override=step_options_override,
+            max_sends_override=max_sends_override,
         )
     )
 

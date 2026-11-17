@@ -14,4 +14,4 @@ Start `dexcli dev` separately and set `DEX_FLOW_SERVICE_ADDRESS` for the real De
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8981 uv run pytest examples/post_publish/integration_test.py
 ```
 
-The test supplies a synthetic token and mock Meta transport, then checks a 503 retry, completion, and an uncertain HTTP 500 that fails without resending across a real Dex Worker and Client. Live Meta authorization has not been verified.
+The test supplies a synthetic token and mock Meta transport, then checks a 503 retry, completion, and an HTTP 500 that resends up to the send cap of 3 before failing as uncertain across a real Dex Worker and Client. Live Meta authorization has not been verified.

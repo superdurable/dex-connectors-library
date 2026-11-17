@@ -1,6 +1,6 @@
 # Facebook Pages publish-post Flow
 
-This runnable Flow calls `publishTextPost` through the static `facebook-pages` connection and stores the accepted post ID in an Attribute. The post appears on the Page feed. Optional provider rejection and uncertainty branches are unwired and fail the Flow; inspect the Page before any manual retry after uncertainty.
+This runnable Flow calls `publishTextPost` through the static `facebook-pages` connection and stores the accepted post ID in an Attribute. The post appears on the Page feed. Optional provider rejection and uncertainty branches are unwired and fail the Flow; an unknown outcome resends up to the send cap before uncertainty, so inspect the Page before any manual retry after uncertainty.
 
 From the repository root, check the FDG 2.0 graph:
 

@@ -14,7 +14,7 @@ import { PublishPostFlow, ConnectionName } from '../../examples/publish-post/flo
 import { FacebookPagesClient } from '../../src/client.js';
 import { newConnection, type PublishedPost } from '../../src/index.js';
 
-it('retries a safe 503 and fails an uncertain publish without resending through real Dex', async () => {
+it('retries a safe 503 and resends an unknown publish up to the send cap through real Dex', async () => {
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev service');
   const messages: string[] = [];
@@ -57,7 +57,8 @@ it('retries a safe 503 and fails an uncertain publish without resending through 
     const uncertain = await client.waitForFlow(uncertainFlowId, 60_000);
     expect(uncertain.status).toBe('failed');
     expect(uncertain.errorMessage).toContain('uncertain');
-    expect(messages).toEqual(['Hello from Dex', 'Hello from Dex', 'Maybe published']);
+    // Each unknown outcome resends until the send cap of 3, then selects uncertain.
+    expect(messages).toEqual(['Hello from Dex', 'Hello from Dex', 'Maybe published', 'Maybe published', 'Maybe published']);
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });
