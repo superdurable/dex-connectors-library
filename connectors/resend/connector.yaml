@@ -2216,3 +2216,53 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: sendInboxDraftDefault, branch: sent, default: true, description: Resend completed the draft request., output: {"id":"email-1"}}
+  - name: createDomainClaim
+    goName: CreateDomainClaim
+    inputType: CreateDomainClaimInput
+    outputType: DomainClaim
+    kind: mutation
+    description: CreateDomainClaim using the Resend domain claim API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the claim request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the claim., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createDomainClaimDefault, branch: created, default: true, description: Resend completed the claim request., output: {id: claim-1, name: example.test, status: pending, domain_id: domain-1, region: us-east-1, record: {type: TXT, name: example.test, value: "resend-domain-verification=example", ttl: Auto}}}
+  - name: getDomainClaim
+    goName: GetDomainClaim
+    inputType: GetDomainClaimInput
+    outputType: DomainClaim
+    kind: query
+    description: GetDomainClaim using the Resend domain claim API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the claim request.}
+    - {id: notFound, goName: NotFound, description: The claim does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getDomainClaimDefault, branch: found, default: true, description: Resend completed the claim request., output: {id: claim-1, name: example.test, status: pending, domain_id: domain-1, region: us-east-1, record: {type: TXT, name: example.test, value: "resend-domain-verification=example", ttl: Auto}}}
+  - name: verifyDomainClaim
+    goName: VerifyDomainClaim
+    inputType: VerifyDomainClaimInput
+    outputType: DomainClaim
+    kind: mutation
+    description: VerifyDomainClaim using the Resend domain claim API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: verificationStarted, goName: VerificationStarted, description: Resend completed the claim request.}
+    - {id: notFound, goName: NotFound, description: The claim does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: verifyDomainClaimDefault, branch: verificationStarted, default: true, description: Resend completed the claim request., output: {id: claim-1, name: example.test, status: pending, domain_id: domain-1, region: us-east-1, record: {type: TXT, name: example.test, value: "resend-domain-verification=example", ttl: Auto}}}

@@ -166,6 +166,9 @@ type Operations interface {
 	UpdateInboxDraft() sdkgo.Mutation[UpdateInboxDraftInput, InboxDraftReference]
 	DeleteInboxDraft() sdkgo.Mutation[DeleteInboxDraftInput, DeletedInboxDraft]
 	SendInboxDraft() sdkgo.Mutation[SendInboxDraftInput, SentInboxDraft]
+	CreateDomainClaim() sdkgo.Mutation[CreateDomainClaimInput, DomainClaim]
+	GetDomainClaim() sdkgo.Query[GetDomainClaimInput, DomainClaim]
+	VerifyDomainClaim() sdkgo.Mutation[VerifyDomainClaimInput, DomainClaim]
 }
 
 type clientOperations struct{ client *Client }
@@ -547,6 +550,15 @@ func (operations clientOperations) DeleteInboxDraft() sdkgo.Mutation[DeleteInbox
 }
 func (operations clientOperations) SendInboxDraft() sdkgo.Mutation[SendInboxDraftInput, SentInboxDraft] {
 	return operations.client.SendInboxDraft()
+}
+func (operations clientOperations) CreateDomainClaim() sdkgo.Mutation[CreateDomainClaimInput, DomainClaim] {
+	return operations.client.CreateDomainClaim()
+}
+func (operations clientOperations) GetDomainClaim() sdkgo.Query[GetDomainClaimInput, DomainClaim] {
+	return operations.client.GetDomainClaim()
+}
+func (operations clientOperations) VerifyDomainClaim() sdkgo.Mutation[VerifyDomainClaimInput, DomainClaim] {
+	return operations.client.VerifyDomainClaim()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -10205,6 +10217,237 @@ func NewSendInboxDraftStep[IN any](config SendInboxDraftStepConfig[IN]) sdkgo.Mu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SendInboxDraftBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateDomainClaimBranchCreated sdkgo.BranchID = "created"
+const CreateDomainClaimBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDomainClaimBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateDomainClaimBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateDomainClaimDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDomainClaim"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDomainClaimBranchCreated, Description: "Resend completed the claim request."},
+		{ID: CreateDomainClaimBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateDomainClaimBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateDomainClaimBranchUncertain, Description: "Bounded sends ended without confirming the claim.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDomainClaimResult = sdkgo.MutationResult[DomainClaim]
+
+type CreateDomainClaimStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=resend"`
+	operationID                       struct{}                                          `connector:"operationId=createDomainClaim"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDomainClaimInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDomainClaimResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateDomainClaimResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateDomainClaimResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateDomainClaimResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DomainClaim]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDomainClaimStep[IN any](config CreateDomainClaimStepConfig[IN]) sdkgo.MutationStep[IN, CreateDomainClaimInput, DomainClaim] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDomainClaimInput, DomainClaim]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDomainClaim(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDomainClaimResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDomainClaimResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDomainClaimBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDomainClaimBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDomainClaimBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDomainClaimBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetDomainClaimBranchFound sdkgo.BranchID = "found"
+const GetDomainClaimBranchNotFound sdkgo.BranchID = "notFound"
+const GetDomainClaimBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDomainClaimBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDomainClaimBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDomainClaimDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDomainClaim"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDomainClaimBranchFound, Description: "Resend completed the claim request."},
+		{ID: GetDomainClaimBranchNotFound, Description: "The claim does not exist.", Optional: true},
+		{ID: GetDomainClaimBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetDomainClaimBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetDomainClaimBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDomainClaimResult = sdkgo.QueryResult[DomainClaim]
+
+type GetDomainClaimStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=resend"`
+	operationID                    struct{}                                       `connector:"operationId=getDomainClaim"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDomainClaimInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDomainClaimResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDomainClaimResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDomainClaimResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDomainClaimResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDomainClaimResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DomainClaim]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetDomainClaimStep[IN any](config GetDomainClaimStepConfig[IN]) sdkgo.QueryStep[IN, GetDomainClaimInput, DomainClaim] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDomainClaimInput, DomainClaim]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDomainClaim(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDomainClaimResult] {
+			branches := make([]sdkgo.BranchTarget[GetDomainClaimResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDomainClaimBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDomainClaimBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDomainClaimBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDomainClaimBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDomainClaimBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const VerifyDomainClaimBranchVerificationStarted sdkgo.BranchID = "verificationStarted"
+const VerifyDomainClaimBranchNotFound sdkgo.BranchID = "notFound"
+const VerifyDomainClaimBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const VerifyDomainClaimBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const VerifyDomainClaimBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var VerifyDomainClaimDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "verifyDomainClaim"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: VerifyDomainClaimBranchVerificationStarted, Description: "Resend completed the claim request."},
+		{ID: VerifyDomainClaimBranchNotFound, Description: "The claim does not exist.", Optional: true},
+		{ID: VerifyDomainClaimBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: VerifyDomainClaimBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: VerifyDomainClaimBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type VerifyDomainClaimResult = sdkgo.MutationResult[DomainClaim]
+
+type VerifyDomainClaimStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=resend"`
+	operationID                       struct{}                                          `connector:"operationId=verifyDomainClaim"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) VerifyDomainClaimInput                   `connector:"mapToOperationInput"`
+	VerificationStarted               sdkgo.Target[VerifyDomainClaimResult]             `connector:"branch=verificationStarted"`
+	NotFound                          sdkgo.Target[VerifyDomainClaimResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[VerifyDomainClaimResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[VerifyDomainClaimResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[VerifyDomainClaimResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DomainClaim]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewVerifyDomainClaimStep[IN any](config VerifyDomainClaimStepConfig[IN]) sdkgo.MutationStep[IN, VerifyDomainClaimInput, DomainClaim] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, VerifyDomainClaimInput, DomainClaim]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.VerifyDomainClaim(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[VerifyDomainClaimResult] {
+			branches := make([]sdkgo.BranchTarget[VerifyDomainClaimResult], 0, 5)
+			if config.VerificationStarted.HasStep() {
+				branches = append(branches, config.VerificationStarted.BranchTarget(VerifyDomainClaimBranchVerificationStarted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(VerifyDomainClaimBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(VerifyDomainClaimBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(VerifyDomainClaimBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(VerifyDomainClaimBranchDefect))
 			}
 			return branches
 		}(),

@@ -335,6 +335,15 @@ retrieval. The runnable
 [`create-inbox-draft` example](go/examples/create-inbox-draft/README.md)
 verifies draft creation through a real Dex Worker and generated provider mock.
 
+## Domain claims
+
+`CreateDomainClaim` starts an ownership claim with bounded `limited`
+retries and reads back the domain name and claim before another send.
+`GetDomainClaim` and `VerifyDomainClaim` are safe to repeat. A claim's TXT
+challenge is intended for public DNS. The runnable
+[`create-domain-claim` example](go/examples/create-domain-claim/README.md)
+verifies claim creation through a real Dex Worker and generated provider mock.
+
 ## Mocks
 
 `resendmock.New(t, "mock")` binds the default manifest answers and the

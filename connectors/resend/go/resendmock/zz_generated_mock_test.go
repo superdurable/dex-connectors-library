@@ -520,6 +520,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.SentInboxDraft](`{"id":"email-1"}`)
 			return err
 		}},
+		{name: "createDomainClaim/createDomainClaimDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
+			return err
+		}},
+		{name: "getDomainClaim/getDomainClaimDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
+			return err
+		}},
+		{name: "verifyDomainClaim/verifyDomainClaimDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -907,5 +919,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SendInboxDraft().Definition().Operation.OperationID != "sendInboxDraft" {
 		t.Errorf("sendInboxDraft mock has another definition")
+	}
+	if mock.CreateDomainClaim().Definition().Operation.OperationID != "createDomainClaim" {
+		t.Errorf("createDomainClaim mock has another definition")
+	}
+	if mock.GetDomainClaim().Definition().Operation.OperationID != "getDomainClaim" {
+		t.Errorf("getDomainClaim mock has another definition")
+	}
+	if mock.VerifyDomainClaim().Definition().Operation.OperationID != "verifyDomainClaim" {
+		t.Errorf("verifyDomainClaim mock has another definition")
 	}
 }

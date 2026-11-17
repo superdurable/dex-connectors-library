@@ -51135,6 +51135,1439 @@
       },
       "name": "listInboxDrafts-before",
       "operation": "listInboxDrafts"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"domain_claim\",\"id\":\"claim-1\",\"name\":\"example.test\",\"status\":\"pending\",\"domain_id\":\"domain-1\",\"region\":\"eu-west-1\",\"record\":{\"type\":\"TXT\",\"name\":\"example.test\",\"value\":\"resend-domain-verification=example\",\"ttl\":\"Auto\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1/claim",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "domain_id": "domain-1",
+          "id": "claim-1",
+          "name": "example.test",
+          "record": {
+            "name": "example.test",
+            "ttl": "Auto",
+            "type": "TXT",
+            "value": "resend-domain-verification=example"
+          },
+          "region": "eu-west-1",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "getDomainClaim-success",
+      "operation": "getDomainClaim"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1/claim",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "getDomainClaim-missing",
+      "operation": "getDomainClaim"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1/claim",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "getDomainClaim-rejected",
+      "operation": "getDomainClaim"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"domain_claim\",\"id\":\"claim-1\",\"name\":\"example.test\",\"status\":\"pending\",\"domain_id\":\"domain-1\",\"region\":\"eu-west-1\",\"record\":{\"type\":\"TXT\",\"name\":\"example.test\",\"value\":\"resend-domain-verification=example\",\"ttl\":\"Auto\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1/claim",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "domain_id": "domain-1",
+          "id": "claim-1",
+          "name": "example.test",
+          "record": {
+            "name": "example.test",
+            "ttl": "Auto",
+            "type": "TXT",
+            "value": "resend-domain-verification=example"
+          },
+          "region": "eu-west-1",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "getDomainClaim-invalid",
+      "operation": "getDomainClaim"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domainId": ""
+      },
+      "name": "getDomainClaim-defect",
+      "operation": "getDomainClaim"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1/claim",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "getDomainClaim-rate",
+      "operation": "getDomainClaim"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1/claim",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "getDomainClaim-server",
+      "operation": "getDomainClaim"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1/claim",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "getDomainClaim-transport",
+      "operation": "getDomainClaim"
+    },
+    {
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"domain_claim\",\"id\":\"claim-1\",\"name\":\"example.test\",\"status\":\"pending\",\"domain_id\":\"domain-1\",\"region\":\"eu-west-1\",\"record\":{\"type\":\"TXT\",\"name\":\"example.test\",\"value\":\"resend-domain-verification=example\",\"ttl\":\"Auto\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "domain_id": "domain-1",
+          "id": "claim-1",
+          "name": "example.test",
+          "record": {
+            "name": "example.test",
+            "ttl": "Auto",
+            "type": "TXT",
+            "value": "resend-domain-verification=example"
+          },
+          "region": "eu-west-1",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "example.test",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "name": "createDomainClaim-success",
+      "operation": "createDomainClaim"
+    },
+    {
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "example.test",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "name": "createDomainClaim-rejected",
+      "operation": "createDomainClaim"
+    },
+    {
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "example.test",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "name": "createDomainClaim-429",
+      "operation": "createDomainClaim"
+    },
+    {
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "example.test",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "name": "createDomainClaim-5xx",
+      "operation": "createDomainClaim"
+    },
+    {
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "example.test",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "name": "createDomainClaim-transport",
+      "operation": "createDomainClaim"
+    },
+    {
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "name": "createDomainClaim-defect",
+      "operation": "createDomainClaim"
+    },
+    {
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "example.test",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "name": "createDomainClaim-conflict",
+      "operation": "createDomainClaim"
+    },
+    {
+      "attempts": 2,
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"domain-1\",\"name\":\"example.test\",\"status\":\"pending\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"object\":\"domain_claim\",\"id\":\"claim-1\",\"name\":\"example.test\",\"status\":\"pending\",\"domain_id\":\"domain-1\",\"region\":\"eu-west-1\",\"record\":{\"type\":\"TXT\",\"name\":\"example.test\",\"value\":\"resend-domain-verification=example\",\"ttl\":\"Auto\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains/domain-1/claim",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "domain_id": "domain-1",
+          "id": "claim-1",
+          "name": "example.test",
+          "record": {
+            "name": "example.test",
+            "ttl": "Auto",
+            "type": "TXT",
+            "value": "resend-domain-verification=example"
+          },
+          "region": "eu-west-1",
+          "status": "pending"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "example.test",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDomainClaim-retry-readback",
+      "operation": "createDomainClaim"
+    },
+    {
+      "attempts": 3,
+      "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/domains",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/claim",
+          "requestBody": {
+            "click_tracking": true,
+            "custom_return_path": "bounce",
+            "name": "example.test",
+            "open_tracking": true,
+            "region": "eu-west-1",
+            "tracking_subdomain": "track"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+      "input": {
+        "clickTracking": true,
+        "customReturnPath": "bounce",
+        "name": "example.test",
+        "openTracking": true,
+        "region": "eu-west-1",
+        "trackingSubdomain": "track"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "713e8bec-cfa7-5364-89f3-101a1f22e341",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDomainClaim-send-cap",
+      "operation": "createDomainClaim"
+    },
+    {
+      "callId": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"domain_claim\",\"id\":\"claim-1\",\"name\":\"example.test\",\"status\":\"pending\",\"domain_id\":\"domain-1\",\"region\":\"eu-west-1\",\"record\":{\"type\":\"TXT\",\"name\":\"example.test\",\"value\":\"resend-domain-verification=example\",\"ttl\":\"Auto\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/claim/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "verificationStarted",
+        "failureKind": "",
+        "output": {
+          "domain_id": "domain-1",
+          "id": "claim-1",
+          "name": "example.test",
+          "record": {
+            "name": "example.test",
+            "ttl": "Auto",
+            "type": "TXT",
+            "value": "resend-domain-verification=example"
+          },
+          "region": "eu-west-1",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "verifyDomainClaim-success",
+      "operation": "verifyDomainClaim"
+    },
+    {
+      "callId": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/claim/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "verifyDomainClaim-notFound",
+      "operation": "verifyDomainClaim"
+    },
+    {
+      "callId": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/claim/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "verifyDomainClaim-providerRejected",
+      "operation": "verifyDomainClaim"
+    },
+    {
+      "callId": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"domain_claim\",\"id\":\"claim-1\",\"name\":\"example.test\",\"status\":\"pending\",\"domain_id\":\"domain-1\",\"region\":\"eu-west-1\",\"record\":{\"type\":\"TXT\",\"name\":\"example.test\",\"value\":\"resend-domain-verification=example\",\"ttl\":\"Auto\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/claim/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "verificationStarted",
+        "failureKind": "",
+        "output": {
+          "domain_id": "domain-1",
+          "id": "claim-1",
+          "name": "example.test",
+          "record": {
+            "name": "example.test",
+            "ttl": "Auto",
+            "type": "TXT",
+            "value": "resend-domain-verification=example"
+          },
+          "region": "eu-west-1",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "verifyDomainClaim-invalidResponse",
+      "operation": "verifyDomainClaim"
+    },
+    {
+      "callId": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "domain_id": "",
+          "id": "",
+          "name": "",
+          "record": {
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
+          },
+          "region": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "input": {
+        "domainId": ""
+      },
+      "name": "verifyDomainClaim-defect",
+      "operation": "verifyDomainClaim"
+    },
+    {
+      "callId": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/claim/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "verifyDomainClaim-429",
+      "operation": "verifyDomainClaim"
+    },
+    {
+      "callId": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/claim/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "verifyDomainClaim-5xx",
+      "operation": "verifyDomainClaim"
+    },
+    {
+      "callId": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/domains/domain-1/claim/verify",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0a642e59-e684-5654-8214-05ae5c3c87ac",
+      "input": {
+        "domainId": "domain-1"
+      },
+      "name": "verifyDomainClaim-transport",
+      "operation": "verifyDomainClaim"
     }
   ],
   "schemaVersion": 1

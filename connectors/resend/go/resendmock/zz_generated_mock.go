@@ -144,6 +144,9 @@ type Mock struct {
 	updateInboxDraft             *connectormock.Mutation[resend.UpdateInboxDraftInput, resend.InboxDraftReference]
 	deleteInboxDraft             *connectormock.Mutation[resend.DeleteInboxDraftInput, resend.DeletedInboxDraft]
 	sendInboxDraft               *connectormock.Mutation[resend.SendInboxDraftInput, resend.SentInboxDraft]
+	createDomainClaim            *connectormock.Mutation[resend.CreateDomainClaimInput, resend.DomainClaim]
+	getDomainClaim               *connectormock.Query[resend.GetDomainClaimInput, resend.DomainClaim]
+	verifyDomainClaim            *connectormock.Mutation[resend.VerifyDomainClaimInput, resend.DomainClaim]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -277,6 +280,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateInboxDraft:             connectormock.NewMutation[resend.UpdateInboxDraftInput, resend.InboxDraftReference](t, resend.UpdateInboxDraftDefinition),
 		deleteInboxDraft:             connectormock.NewMutation[resend.DeleteInboxDraftInput, resend.DeletedInboxDraft](t, resend.DeleteInboxDraftDefinition),
 		sendInboxDraft:               connectormock.NewMutation[resend.SendInboxDraftInput, resend.SentInboxDraft](t, resend.SendInboxDraftDefinition),
+		createDomainClaim:            connectormock.NewMutation[resend.CreateDomainClaimInput, resend.DomainClaim](t, resend.CreateDomainClaimDefinition),
+		getDomainClaim:               connectormock.NewQuery[resend.GetDomainClaimInput, resend.DomainClaim](t, resend.GetDomainClaimDefinition),
+		verifyDomainClaim:            connectormock.NewMutation[resend.VerifyDomainClaimInput, resend.DomainClaim](t, resend.VerifyDomainClaimDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -404,6 +410,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateInboxDraft.Default(UpdateInboxDraftDefault())
 	mock.deleteInboxDraft.Default(DeleteInboxDraftDefault())
 	mock.sendInboxDraft.Default(SendInboxDraftDefault())
+	mock.createDomainClaim.Default(CreateDomainClaimDefault())
+	mock.getDomainClaim.Default(GetDomainClaimDefault())
+	mock.verifyDomainClaim.Default(VerifyDomainClaimDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -1045,6 +1054,21 @@ func (mock *Mock) SendInboxDraft() *connectormock.Mutation[resend.SendInboxDraft
 	return mock.sendInboxDraft
 }
 
+// CreateDomainClaim returns the createDomainClaim script.
+func (mock *Mock) CreateDomainClaim() *connectormock.Mutation[resend.CreateDomainClaimInput, resend.DomainClaim] {
+	return mock.createDomainClaim
+}
+
+// GetDomainClaim returns the getDomainClaim script.
+func (mock *Mock) GetDomainClaim() *connectormock.Query[resend.GetDomainClaimInput, resend.DomainClaim] {
+	return mock.getDomainClaim
+}
+
+// VerifyDomainClaim returns the verifyDomainClaim script.
+func (mock *Mock) VerifyDomainClaim() *connectormock.Mutation[resend.VerifyDomainClaimInput, resend.DomainClaim] {
+	return mock.verifyDomainClaim
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -1424,6 +1448,15 @@ func (operations mockOperations) DeleteInboxDraft() sdkgo.Mutation[resend.Delete
 }
 func (operations mockOperations) SendInboxDraft() sdkgo.Mutation[resend.SendInboxDraftInput, resend.SentInboxDraft] {
 	return operations.mock.sendInboxDraft
+}
+func (operations mockOperations) CreateDomainClaim() sdkgo.Mutation[resend.CreateDomainClaimInput, resend.DomainClaim] {
+	return operations.mock.createDomainClaim
+}
+func (operations mockOperations) GetDomainClaim() sdkgo.Query[resend.GetDomainClaimInput, resend.DomainClaim] {
+	return operations.mock.getDomainClaim
+}
+func (operations mockOperations) VerifyDomainClaim() sdkgo.Mutation[resend.VerifyDomainClaimInput, resend.DomainClaim] {
+	return operations.mock.verifyDomainClaim
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -6288,4 +6321,122 @@ func SendInboxDraftSendInboxDraftDefault() connectormock.Case[resend.SentInboxDr
 // SendInboxDraftDefault is the manifest default, sendInboxDraftDefault, which New installs.
 func SendInboxDraftDefault() connectormock.Case[resend.SentInboxDraft] {
 	return SendInboxDraftSendInboxDraftDefault()
+}
+
+// CreateDomainClaimCreated selects the created branch: Resend completed the claim request.
+func CreateDomainClaimCreated(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.CreateDomainClaimBranchCreated, value, failure)
+}
+
+// CreateDomainClaimProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateDomainClaimProviderRejected(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.CreateDomainClaimBranchProviderRejected, value, failure)
+}
+
+// CreateDomainClaimDefect selects the defect branch: Local input or credentials are invalid.
+func CreateDomainClaimDefect(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.CreateDomainClaimBranchDefect, value, failure)
+}
+
+// CreateDomainClaimUncertain returns an uncertain createDomainClaim outcome.
+func CreateDomainClaimUncertain(value resend.DomainClaim, failure sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDomainClaimRetry asks Dex to retry the createDomainClaim Step, after the delay when it is positive.
+func CreateDomainClaimRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Retry[resend.DomainClaim](failure, after)
+}
+
+// CreateDomainClaimCreateDomainClaimDefault is the manifest mock createDomainClaimDefault: Resend completed the claim request.
+func CreateDomainClaimCreateDomainClaimDefault() connectormock.Case[resend.DomainClaim] {
+	value := connectormock.MustDecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
+	return connectormock.Branch(resend.CreateDomainClaimBranchCreated, value, nil)
+}
+
+// CreateDomainClaimDefault is the manifest default, createDomainClaimDefault, which New installs.
+func CreateDomainClaimDefault() connectormock.Case[resend.DomainClaim] {
+	return CreateDomainClaimCreateDomainClaimDefault()
+}
+
+// GetDomainClaimFound selects the found branch: Resend completed the claim request.
+func GetDomainClaimFound(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.GetDomainClaimBranchFound, value, failure)
+}
+
+// GetDomainClaimNotFound selects the notFound branch: The claim does not exist.
+func GetDomainClaimNotFound(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.GetDomainClaimBranchNotFound, value, failure)
+}
+
+// GetDomainClaimProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetDomainClaimProviderRejected(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.GetDomainClaimBranchProviderRejected, value, failure)
+}
+
+// GetDomainClaimInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetDomainClaimInvalidResponse(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.GetDomainClaimBranchInvalidResponse, value, failure)
+}
+
+// GetDomainClaimDefect selects the defect branch: Local input or credentials are invalid.
+func GetDomainClaimDefect(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.GetDomainClaimBranchDefect, value, failure)
+}
+
+// GetDomainClaimRetry asks Dex to retry the getDomainClaim Step, after the delay when it is positive.
+func GetDomainClaimRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Retry[resend.DomainClaim](failure, after)
+}
+
+// GetDomainClaimGetDomainClaimDefault is the manifest mock getDomainClaimDefault: Resend completed the claim request.
+func GetDomainClaimGetDomainClaimDefault() connectormock.Case[resend.DomainClaim] {
+	value := connectormock.MustDecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
+	return connectormock.Branch(resend.GetDomainClaimBranchFound, value, nil)
+}
+
+// GetDomainClaimDefault is the manifest default, getDomainClaimDefault, which New installs.
+func GetDomainClaimDefault() connectormock.Case[resend.DomainClaim] {
+	return GetDomainClaimGetDomainClaimDefault()
+}
+
+// VerifyDomainClaimVerificationStarted selects the verificationStarted branch: Resend completed the claim request.
+func VerifyDomainClaimVerificationStarted(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.VerifyDomainClaimBranchVerificationStarted, value, failure)
+}
+
+// VerifyDomainClaimNotFound selects the notFound branch: The claim does not exist.
+func VerifyDomainClaimNotFound(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.VerifyDomainClaimBranchNotFound, value, failure)
+}
+
+// VerifyDomainClaimProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func VerifyDomainClaimProviderRejected(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.VerifyDomainClaimBranchProviderRejected, value, failure)
+}
+
+// VerifyDomainClaimInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func VerifyDomainClaimInvalidResponse(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.VerifyDomainClaimBranchInvalidResponse, value, failure)
+}
+
+// VerifyDomainClaimDefect selects the defect branch: Local input or credentials are invalid.
+func VerifyDomainClaimDefect(value resend.DomainClaim, failure *sdkgo.Failure) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Branch(resend.VerifyDomainClaimBranchDefect, value, failure)
+}
+
+// VerifyDomainClaimRetry asks Dex to retry the verifyDomainClaim Step, after the delay when it is positive.
+func VerifyDomainClaimRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DomainClaim] {
+	return connectormock.Retry[resend.DomainClaim](failure, after)
+}
+
+// VerifyDomainClaimVerifyDomainClaimDefault is the manifest mock verifyDomainClaimDefault: Resend completed the claim request.
+func VerifyDomainClaimVerifyDomainClaimDefault() connectormock.Case[resend.DomainClaim] {
+	value := connectormock.MustDecodeOutput[resend.DomainClaim](`{"id":"claim-1","name":"example.test","status":"pending","domain_id":"domain-1","region":"us-east-1","record":{"type":"TXT","name":"example.test","value":"resend-domain-verification=example","ttl":"Auto"}}`)
+	return connectormock.Branch(resend.VerifyDomainClaimBranchVerificationStarted, value, nil)
+}
+
+// VerifyDomainClaimDefault is the manifest default, verifyDomainClaimDefault, which New installs.
+func VerifyDomainClaimDefault() connectormock.Case[resend.DomainClaim] {
+	return VerifyDomainClaimVerifyDomainClaimDefault()
 }
