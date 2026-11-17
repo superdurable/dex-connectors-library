@@ -28,6 +28,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[pinterest.BoardsPage](`{"boards":[{"id":"987654321","name":"Example Board"}],"nextBookmark":""}`)
 			return err
 		}},
+		{name: "listBoardPins/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinterest.PinsPage](`{"pins":[{"id":"123456789","boardId":"987654321","title":"Example Pin"}],"nextBookmark":""}`)
+			return err
+		}},
+		{name: "listBoardSections/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinterest.BoardSectionsPage](`{"sections":[{"id":"112233445","name":"Saved Ideas"}],"nextBookmark":""}`)
+			return err
+		}},
+		{name: "listBoardSectionPins/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinterest.PinsPage](`{"pins":[{"id":"123456789","boardId":"987654321","title":"Example Pin"}],"nextBookmark":""}`)
+			return err
+		}},
 		{name: "listPins/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[pinterest.PinsPage](`{"pins":[{"id":"123456789","boardId":"987654321","title":"Example Pin"}],"nextBookmark":""}`)
 			return err
@@ -50,6 +62,15 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListBoards().Definition().Operation.OperationID != "listBoards" {
 		t.Errorf("listBoards mock has another definition")
+	}
+	if mock.ListBoardPins().Definition().Operation.OperationID != "listBoardPins" {
+		t.Errorf("listBoardPins mock has another definition")
+	}
+	if mock.ListBoardSections().Definition().Operation.OperationID != "listBoardSections" {
+		t.Errorf("listBoardSections mock has another definition")
+	}
+	if mock.ListBoardSectionPins().Definition().Operation.OperationID != "listBoardSectionPins" {
+		t.Errorf("listBoardSectionPins mock has another definition")
 	}
 	if mock.ListPins().Definition().Operation.OperationID != "listPins" {
 		t.Errorf("listPins mock has another definition")

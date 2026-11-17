@@ -17,11 +17,14 @@ import (
 
 // Mock is a scripted pinterest connection. Script each operation through its accessor.
 type Mock struct {
-	connection pinterest.Connection
-	getBoard   *connectormock.Query[pinterest.GetBoardInput, pinterest.Board]
-	getPin     *connectormock.Query[pinterest.GetPinInput, pinterest.Pin]
-	listBoards *connectormock.Query[pinterest.ListBoardsInput, pinterest.BoardsPage]
-	listPins   *connectormock.Query[pinterest.ListPinsInput, pinterest.PinsPage]
+	connection           pinterest.Connection
+	getBoard             *connectormock.Query[pinterest.GetBoardInput, pinterest.Board]
+	getPin               *connectormock.Query[pinterest.GetPinInput, pinterest.Pin]
+	listBoards           *connectormock.Query[pinterest.ListBoardsInput, pinterest.BoardsPage]
+	listBoardPins        *connectormock.Query[pinterest.ListBoardPinsInput, pinterest.PinsPage]
+	listBoardSections    *connectormock.Query[pinterest.ListBoardSectionsInput, pinterest.BoardSectionsPage]
+	listBoardSectionPins *connectormock.Query[pinterest.ListBoardSectionPinsInput, pinterest.PinsPage]
+	listPins             *connectormock.Query[pinterest.ListPinsInput, pinterest.PinsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,14 +32,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getBoard:   connectormock.NewQuery[pinterest.GetBoardInput, pinterest.Board](t, pinterest.GetBoardDefinition),
-		getPin:     connectormock.NewQuery[pinterest.GetPinInput, pinterest.Pin](t, pinterest.GetPinDefinition),
-		listBoards: connectormock.NewQuery[pinterest.ListBoardsInput, pinterest.BoardsPage](t, pinterest.ListBoardsDefinition),
-		listPins:   connectormock.NewQuery[pinterest.ListPinsInput, pinterest.PinsPage](t, pinterest.ListPinsDefinition),
+		getBoard:             connectormock.NewQuery[pinterest.GetBoardInput, pinterest.Board](t, pinterest.GetBoardDefinition),
+		getPin:               connectormock.NewQuery[pinterest.GetPinInput, pinterest.Pin](t, pinterest.GetPinDefinition),
+		listBoards:           connectormock.NewQuery[pinterest.ListBoardsInput, pinterest.BoardsPage](t, pinterest.ListBoardsDefinition),
+		listBoardPins:        connectormock.NewQuery[pinterest.ListBoardPinsInput, pinterest.PinsPage](t, pinterest.ListBoardPinsDefinition),
+		listBoardSections:    connectormock.NewQuery[pinterest.ListBoardSectionsInput, pinterest.BoardSectionsPage](t, pinterest.ListBoardSectionsDefinition),
+		listBoardSectionPins: connectormock.NewQuery[pinterest.ListBoardSectionPinsInput, pinterest.PinsPage](t, pinterest.ListBoardSectionPinsDefinition),
+		listPins:             connectormock.NewQuery[pinterest.ListPinsInput, pinterest.PinsPage](t, pinterest.ListPinsDefinition),
 	}
 	mock.getBoard.Default(GetBoardDefault())
 	mock.getPin.Default(GetPinDefault())
 	mock.listBoards.Default(ListBoardsDefault())
+	mock.listBoardPins.Default(ListBoardPinsDefault())
+	mock.listBoardSections.Default(ListBoardSectionsDefault())
+	mock.listBoardSectionPins.Default(ListBoardSectionPinsDefault())
 	mock.listPins.Default(ListPinsDefault())
 	connection, err := pinterest.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "pinterest", Name: connectionName})
 	if err != nil {
@@ -64,6 +73,21 @@ func (mock *Mock) ListBoards() *connectormock.Query[pinterest.ListBoardsInput, p
 	return mock.listBoards
 }
 
+// ListBoardPins returns the listBoardPins script.
+func (mock *Mock) ListBoardPins() *connectormock.Query[pinterest.ListBoardPinsInput, pinterest.PinsPage] {
+	return mock.listBoardPins
+}
+
+// ListBoardSections returns the listBoardSections script.
+func (mock *Mock) ListBoardSections() *connectormock.Query[pinterest.ListBoardSectionsInput, pinterest.BoardSectionsPage] {
+	return mock.listBoardSections
+}
+
+// ListBoardSectionPins returns the listBoardSectionPins script.
+func (mock *Mock) ListBoardSectionPins() *connectormock.Query[pinterest.ListBoardSectionPinsInput, pinterest.PinsPage] {
+	return mock.listBoardSectionPins
+}
+
 // ListPins returns the listPins script.
 func (mock *Mock) ListPins() *connectormock.Query[pinterest.ListPinsInput, pinterest.PinsPage] {
 	return mock.listPins
@@ -79,6 +103,15 @@ func (operations mockOperations) GetPin() sdkgo.Query[pinterest.GetPinInput, pin
 }
 func (operations mockOperations) ListBoards() sdkgo.Query[pinterest.ListBoardsInput, pinterest.BoardsPage] {
 	return operations.mock.listBoards
+}
+func (operations mockOperations) ListBoardPins() sdkgo.Query[pinterest.ListBoardPinsInput, pinterest.PinsPage] {
+	return operations.mock.listBoardPins
+}
+func (operations mockOperations) ListBoardSections() sdkgo.Query[pinterest.ListBoardSectionsInput, pinterest.BoardSectionsPage] {
+	return operations.mock.listBoardSections
+}
+func (operations mockOperations) ListBoardSectionPins() sdkgo.Query[pinterest.ListBoardSectionPinsInput, pinterest.PinsPage] {
+	return operations.mock.listBoardSectionPins
 }
 func (operations mockOperations) ListPins() sdkgo.Query[pinterest.ListPinsInput, pinterest.PinsPage] {
 	return operations.mock.listPins
@@ -195,6 +228,114 @@ func ListBoardsListedDefault() connectormock.Case[pinterest.BoardsPage] {
 
 // ListBoardsDefault is the manifest default, listedDefault, which New installs.
 func ListBoardsDefault() connectormock.Case[pinterest.BoardsPage] { return ListBoardsListedDefault() }
+
+// ListBoardPinsListed selects the listed branch: Pinterest returned the selected board Pin page.
+func ListBoardPinsListed(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Branch(pinterest.ListBoardPinsBranchListed, value, failure)
+}
+
+// ListBoardPinsProviderRejected selects the providerRejected branch: Pinterest conclusively rejected the read.
+func ListBoardPinsProviderRejected(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Branch(pinterest.ListBoardPinsBranchProviderRejected, value, failure)
+}
+
+// ListBoardPinsInvalidResponse selects the invalidResponse branch: Pinterest returned malformed or oversized Pin JSON.
+func ListBoardPinsInvalidResponse(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Branch(pinterest.ListBoardPinsBranchInvalidResponse, value, failure)
+}
+
+// ListBoardPinsDefect selects the defect branch: Local board ID or page input or connection credentials are invalid.
+func ListBoardPinsDefect(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Branch(pinterest.ListBoardPinsBranchDefect, value, failure)
+}
+
+// ListBoardPinsRetry asks Dex to retry the listBoardPins Step, after the delay when it is positive.
+func ListBoardPinsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Retry[pinterest.PinsPage](failure, after)
+}
+
+// ListBoardPinsListedDefault is the manifest mock listedDefault: One example Pin is on the board.
+func ListBoardPinsListedDefault() connectormock.Case[pinterest.PinsPage] {
+	value := connectormock.MustDecodeOutput[pinterest.PinsPage](`{"pins":[{"id":"123456789","boardId":"987654321","title":"Example Pin"}],"nextBookmark":""}`)
+	return connectormock.Branch(pinterest.ListBoardPinsBranchListed, value, nil)
+}
+
+// ListBoardPinsDefault is the manifest default, listedDefault, which New installs.
+func ListBoardPinsDefault() connectormock.Case[pinterest.PinsPage] {
+	return ListBoardPinsListedDefault()
+}
+
+// ListBoardSectionsListed selects the listed branch: Pinterest returned the selected board section page.
+func ListBoardSectionsListed(value pinterest.BoardSectionsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.BoardSectionsPage] {
+	return connectormock.Branch(pinterest.ListBoardSectionsBranchListed, value, failure)
+}
+
+// ListBoardSectionsProviderRejected selects the providerRejected branch: Pinterest conclusively rejected the read.
+func ListBoardSectionsProviderRejected(value pinterest.BoardSectionsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.BoardSectionsPage] {
+	return connectormock.Branch(pinterest.ListBoardSectionsBranchProviderRejected, value, failure)
+}
+
+// ListBoardSectionsInvalidResponse selects the invalidResponse branch: Pinterest returned malformed or oversized section JSON.
+func ListBoardSectionsInvalidResponse(value pinterest.BoardSectionsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.BoardSectionsPage] {
+	return connectormock.Branch(pinterest.ListBoardSectionsBranchInvalidResponse, value, failure)
+}
+
+// ListBoardSectionsDefect selects the defect branch: Local board ID or page input or connection credentials are invalid.
+func ListBoardSectionsDefect(value pinterest.BoardSectionsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.BoardSectionsPage] {
+	return connectormock.Branch(pinterest.ListBoardSectionsBranchDefect, value, failure)
+}
+
+// ListBoardSectionsRetry asks Dex to retry the listBoardSections Step, after the delay when it is positive.
+func ListBoardSectionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinterest.BoardSectionsPage] {
+	return connectormock.Retry[pinterest.BoardSectionsPage](failure, after)
+}
+
+// ListBoardSectionsListedDefault is the manifest mock listedDefault: One example section is on the board.
+func ListBoardSectionsListedDefault() connectormock.Case[pinterest.BoardSectionsPage] {
+	value := connectormock.MustDecodeOutput[pinterest.BoardSectionsPage](`{"sections":[{"id":"112233445","name":"Saved Ideas"}],"nextBookmark":""}`)
+	return connectormock.Branch(pinterest.ListBoardSectionsBranchListed, value, nil)
+}
+
+// ListBoardSectionsDefault is the manifest default, listedDefault, which New installs.
+func ListBoardSectionsDefault() connectormock.Case[pinterest.BoardSectionsPage] {
+	return ListBoardSectionsListedDefault()
+}
+
+// ListBoardSectionPinsListed selects the listed branch: Pinterest returned the selected section Pin page.
+func ListBoardSectionPinsListed(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Branch(pinterest.ListBoardSectionPinsBranchListed, value, failure)
+}
+
+// ListBoardSectionPinsProviderRejected selects the providerRejected branch: Pinterest conclusively rejected the read.
+func ListBoardSectionPinsProviderRejected(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Branch(pinterest.ListBoardSectionPinsBranchProviderRejected, value, failure)
+}
+
+// ListBoardSectionPinsInvalidResponse selects the invalidResponse branch: Pinterest returned malformed or oversized Pin JSON.
+func ListBoardSectionPinsInvalidResponse(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Branch(pinterest.ListBoardSectionPinsBranchInvalidResponse, value, failure)
+}
+
+// ListBoardSectionPinsDefect selects the defect branch: Local board or section ID or page input or connection credentials are invalid.
+func ListBoardSectionPinsDefect(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Branch(pinterest.ListBoardSectionPinsBranchDefect, value, failure)
+}
+
+// ListBoardSectionPinsRetry asks Dex to retry the listBoardSectionPins Step, after the delay when it is positive.
+func ListBoardSectionPinsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pinterest.PinsPage] {
+	return connectormock.Retry[pinterest.PinsPage](failure, after)
+}
+
+// ListBoardSectionPinsListedDefault is the manifest mock listedDefault: One example Pin is on the section.
+func ListBoardSectionPinsListedDefault() connectormock.Case[pinterest.PinsPage] {
+	value := connectormock.MustDecodeOutput[pinterest.PinsPage](`{"pins":[{"id":"123456789","boardId":"987654321","title":"Example Pin"}],"nextBookmark":""}`)
+	return connectormock.Branch(pinterest.ListBoardSectionPinsBranchListed, value, nil)
+}
+
+// ListBoardSectionPinsDefault is the manifest default, listedDefault, which New installs.
+func ListBoardSectionPinsDefault() connectormock.Case[pinterest.PinsPage] {
+	return ListBoardSectionPinsListedDefault()
+}
 
 // ListPinsListed selects the listed branch: Pinterest returned the selected Pin page.
 func ListPinsListed(value pinterest.PinsPage, failure *sdkgo.Failure) connectormock.Case[pinterest.PinsPage] {

@@ -31,6 +31,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"getBoard": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetBoard(), reference),
 		"getPin": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPin(), reference),
+		"listBoardPins": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListBoardPins(), reference),
+		"listBoardSections": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListBoardSections(), reference),
+		"listBoardSectionPins": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListBoardSectionPins(), reference),
 		"listBoards": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListBoards(), reference),
 		"listPins": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPins(), reference),
 	}}

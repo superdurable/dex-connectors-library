@@ -46,6 +46,9 @@ type Operations interface {
 	GetBoard() sdkgo.Query[GetBoardInput, Board]
 	GetPin() sdkgo.Query[GetPinInput, Pin]
 	ListBoards() sdkgo.Query[ListBoardsInput, BoardsPage]
+	ListBoardPins() sdkgo.Query[ListBoardPinsInput, PinsPage]
+	ListBoardSections() sdkgo.Query[ListBoardSectionsInput, BoardSectionsPage]
+	ListBoardSectionPins() sdkgo.Query[ListBoardSectionPinsInput, PinsPage]
 	ListPins() sdkgo.Query[ListPinsInput, PinsPage]
 }
 
@@ -59,6 +62,15 @@ func (operations clientOperations) GetPin() sdkgo.Query[GetPinInput, Pin] {
 }
 func (operations clientOperations) ListBoards() sdkgo.Query[ListBoardsInput, BoardsPage] {
 	return operations.client.ListBoards()
+}
+func (operations clientOperations) ListBoardPins() sdkgo.Query[ListBoardPinsInput, PinsPage] {
+	return operations.client.ListBoardPins()
+}
+func (operations clientOperations) ListBoardSections() sdkgo.Query[ListBoardSectionsInput, BoardSectionsPage] {
+	return operations.client.ListBoardSections()
+}
+func (operations clientOperations) ListBoardSectionPins() sdkgo.Query[ListBoardSectionPinsInput, PinsPage] {
+	return operations.client.ListBoardSectionPins()
 }
 func (operations clientOperations) ListPins() sdkgo.Query[ListPinsInput, PinsPage] {
 	return operations.client.ListPins()
@@ -481,6 +493,219 @@ func NewListBoardsStep[IN any](config ListBoardsStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListBoardsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListBoardPinsBranchListed sdkgo.BranchID = "listed"
+const ListBoardPinsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBoardPinsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBoardPinsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBoardPinsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBoardPins"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBoardPinsBranchListed, Description: "Pinterest returned the selected board Pin page."},
+		{ID: ListBoardPinsBranchProviderRejected, Description: "Pinterest conclusively rejected the read.", Optional: true},
+		{ID: ListBoardPinsBranchInvalidResponse, Description: "Pinterest returned malformed or oversized Pin JSON.", Optional: true},
+		{ID: ListBoardPinsBranchDefect, Description: "Local board ID or page input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBoardPinsResult = sdkgo.QueryResult[PinsPage]
+
+type ListBoardPinsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=pinterest"`
+	operationID                    struct{}                                    `connector:"operationId=listBoardPins"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBoardPinsInput                 `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBoardPinsResult]           `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBoardPinsResult]           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBoardPinsResult]           `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBoardPinsResult]           `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PinsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListBoardPinsStep[IN any](config ListBoardPinsStepConfig[IN]) sdkgo.QueryStep[IN, ListBoardPinsInput, PinsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinterest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBoardPinsInput, PinsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBoardPins(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBoardPinsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBoardPinsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBoardPinsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBoardPinsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBoardPinsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBoardPinsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListBoardSectionsBranchListed sdkgo.BranchID = "listed"
+const ListBoardSectionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBoardSectionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBoardSectionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBoardSectionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBoardSections"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBoardSectionsBranchListed, Description: "Pinterest returned the selected board section page."},
+		{ID: ListBoardSectionsBranchProviderRejected, Description: "Pinterest conclusively rejected the read.", Optional: true},
+		{ID: ListBoardSectionsBranchInvalidResponse, Description: "Pinterest returned malformed or oversized section JSON.", Optional: true},
+		{ID: ListBoardSectionsBranchDefect, Description: "Local board ID or page input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBoardSectionsResult = sdkgo.QueryResult[BoardSectionsPage]
+
+type ListBoardSectionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=pinterest"`
+	operationID                    struct{}                                             `connector:"operationId=listBoardSections"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBoardSectionsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBoardSectionsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBoardSectionsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBoardSectionsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBoardSectionsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[BoardSectionsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListBoardSectionsStep[IN any](config ListBoardSectionsStepConfig[IN]) sdkgo.QueryStep[IN, ListBoardSectionsInput, BoardSectionsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinterest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBoardSectionsInput, BoardSectionsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBoardSections(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBoardSectionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBoardSectionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBoardSectionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBoardSectionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBoardSectionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBoardSectionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListBoardSectionPinsBranchListed sdkgo.BranchID = "listed"
+const ListBoardSectionPinsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListBoardSectionPinsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListBoardSectionPinsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListBoardSectionPinsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listBoardSectionPins"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListBoardSectionPinsBranchListed, Description: "Pinterest returned the selected section Pin page."},
+		{ID: ListBoardSectionPinsBranchProviderRejected, Description: "Pinterest conclusively rejected the read.", Optional: true},
+		{ID: ListBoardSectionPinsBranchInvalidResponse, Description: "Pinterest returned malformed or oversized Pin JSON.", Optional: true},
+		{ID: ListBoardSectionPinsBranchDefect, Description: "Local board or section ID or page input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListBoardSectionPinsResult = sdkgo.QueryResult[PinsPage]
+
+type ListBoardSectionPinsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=pinterest"`
+	operationID                    struct{}                                    `connector:"operationId=listBoardSectionPins"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListBoardSectionPinsInput          `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListBoardSectionPinsResult]    `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListBoardSectionPinsResult]    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListBoardSectionPinsResult]    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListBoardSectionPinsResult]    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PinsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListBoardSectionPinsStep[IN any](config ListBoardSectionPinsStepConfig[IN]) sdkgo.QueryStep[IN, ListBoardSectionPinsInput, PinsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("pinterest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListBoardSectionPinsInput, PinsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListBoardSectionPins(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListBoardSectionPinsResult] {
+			branches := make([]sdkgo.BranchTarget[ListBoardSectionPinsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListBoardSectionPinsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListBoardSectionPinsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListBoardSectionPinsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListBoardSectionPinsBranchDefect))
 			}
 			return branches
 		}(),

@@ -150,6 +150,66 @@ spec:
           default: true
           description: One example board is visible.
           output: {boards: [{id: '987654321', name: Example Board}], nextBookmark: ''}
+    - name: listBoardPins
+      goName: ListBoardPins
+      inputType: ListBoardPinsInput
+      outputType: PinsPage
+      kind: query
+      description: List one page of Pins on a board available to the authorized user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Pinterest returned the selected board Pin page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pinterest conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pinterest returned malformed or oversized Pin JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local board ID or page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example Pin is on the board.
+          output: {pins: [{id: '123456789', boardId: '987654321', title: Example Pin}], nextBookmark: ''}
+    - name: listBoardSections
+      goName: ListBoardSections
+      inputType: ListBoardSectionsInput
+      outputType: BoardSectionsPage
+      kind: query
+      description: List one page of sections on a board available to the authorized user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Pinterest returned the selected board section page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pinterest conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pinterest returned malformed or oversized section JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local board ID or page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example section is on the board.
+          output: {sections: [{id: '112233445', name: Saved Ideas}], nextBookmark: ''}
+    - name: listBoardSectionPins
+      goName: ListBoardSectionPins
+      inputType: ListBoardSectionPinsInput
+      outputType: PinsPage
+      kind: query
+      description: List one page of Pins on a board section available to the authorized user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Pinterest returned the selected section Pin page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pinterest conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pinterest returned malformed or oversized Pin JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local board or section ID or page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example Pin is on the section.
+          output: {pins: [{id: '123456789', boardId: '987654321', title: Example Pin}], nextBookmark: ''}
     - name: listPins
       goName: ListPins
       inputType: ListPinsInput
