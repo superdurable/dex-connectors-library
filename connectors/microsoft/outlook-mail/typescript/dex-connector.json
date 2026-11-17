@@ -1,10 +1,10 @@
 {
   "connectorId": "outlook-mail",
-  "releaseTag": "connectors/microsoft/outlook-mail/go/v0.24.0",
+  "releaseTag": "connectors/microsoft/outlook-mail/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-microsoft-outlook-mail",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -148,7 +148,7 @@
       "kind": "mutation",
       "operationId": "sendMessage",
       "inputType": "SendMessageInput",
-      "description": "Send one plain-text message by creating a draft marked with the Step's idempotency key and sending that draft. Graph has no idempotency key, so the Step runs with sync durability, finds its own draft again on every retry, sends it at most once, and confirms a lost answer from the Sent Items copy.",
+      "description": "Send one plain-text message by creating a draft marked with the Step's idempotency key and sending that draft. Graph has no idempotency key, so the Step runs with sync durability, finds its own draft again on every retry, and confirms a lost answer from the Sent Items copy; a draft still unsent after a lost answer is sent again until the send cap is reached.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -234,7 +234,7 @@
       "kind": "mutation",
       "operationId": "replyToMessage",
       "inputType": "ReplyToMessageInput",
-      "description": "Reply to one message, or reply to all, by creating Outlook's threaded reply draft, which quotes the original, marking it with the Step's idempotency key, and sending it at most once per Step execution like sendMessage.",
+      "description": "Reply to one message, or reply to all, by creating Outlook's threaded reply draft, which quotes the original, marking it with the Step's idempotency key, and sending it like sendMessage: a lost answer is confirmed from the Sent Items copy, and a still-unsent draft is sent again until the send cap is reached.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

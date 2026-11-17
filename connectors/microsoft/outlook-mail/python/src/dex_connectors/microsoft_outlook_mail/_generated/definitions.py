@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -69,7 +70,7 @@ SEND_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Microsoft Graph accepted the draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed.", False),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively refused the draft or the send, such as a revoked authorization, a mailbox without send permission, or an invalid recipient, so nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; the connector never sends it again, and the Result names the draft to inspect.", True),
+        BranchDefinition(UNCERTAIN, "The send cap was reached while the draft had still not appeared as sent after a lost answer, so the message may have been sent; the connector does not send it again, and the Result names the draft to inspect.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -78,6 +79,8 @@ SEND_MESSAGE_DEFINITION = MutationDefinition(
         heartbeat_timeout=timedelta(seconds=90),
         execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 8, timedelta(seconds=600)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
@@ -86,7 +89,7 @@ REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
         BranchDefinition(SENT, "Microsoft Graph accepted the reply draft for sending, now or in an earlier attempt of this Step execution that this attempt confirmed.", False),
         BranchDefinition(NOT_FOUND, "No message with the ID exists in the mailbox, so no reply was drafted or sent.", True),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively refused the reply draft or the send, such as a revoked authorization, a mailbox without send permission, or an original without a usable reply address, so nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "The send was dispatched but its answer was lost and the draft has not appeared as sent, so the reply may have been sent; the connector never sends it again, and the Result names the draft to inspect.", True),
+        BranchDefinition(UNCERTAIN, "The send cap was reached while the reply draft had still not appeared as sent after a lost answer, so the reply may have been sent; the connector does not send it again, and the Result names the draft to inspect.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -95,6 +98,8 @@ REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
         heartbeat_timeout=timedelta(seconds=90),
         execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 8, timedelta(seconds=600)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 MOVE_MESSAGE_DEFINITION = MutationDefinition(
@@ -110,6 +115,7 @@ MOVE_MESSAGE_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 SET_MESSAGE_FLAGS_DEFINITION = MutationDefinition(
@@ -125,4 +131,5 @@ SET_MESSAGE_FLAGS_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )

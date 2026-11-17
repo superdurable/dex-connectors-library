@@ -19,13 +19,12 @@ from .message import (
     timestamp_value,
 )
 from .models import ReplyToMessageInput, SendMessageInput, SentMessage
-from .operations import quote_odata, validate_address, validate_single_line
+from .operations import DEFINITE_REFUSAL_STATUSES, quote_odata, validate_address, validate_single_line
 
 MARKER_PROPERTY_ID = "String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey"
 MARKER_PREFIX = "dex-"
 MARKER_KEY_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 SEND_CONFIRMATION_DELAY = 3.0
-MAXIMUM_SEND_CONFIRMATIONS = 3
 
 
 def _draft_created_key(item: dict[str, Any]) -> tuple[datetime, int]:
@@ -44,9 +43,15 @@ class Checkpoint:
 
     phase: str = field(metadata={"dex_json_name": "outlookMailSendPhase"})
     draft_message_id: str = field(metadata={"dex_json_name": "outlookMailDraftMessageId"})
+    # Written only by releases before 0.1.1; it is read and ignored.
     confirmations: int = field(
         default=0,
         metadata={"dex_json_name": "outlookMailSendConfirmations", "dex_json_omit_default": True},
+    )
+    # Possibly effective sends: a dispatched checkpoint includes its own send, draftReady only earlier ones.
+    send_count: int = field(
+        default=0,
+        metadata={"dex_json_name": "outlookMailSendCount", "dex_json_omit_default": True},
     )
 
     def to_wire(self) -> dict[str, object]:
@@ -57,7 +62,15 @@ class Checkpoint:
         }
         if self.confirmations:
             result["outlookMailSendConfirmations"] = self.confirmations
+        if self.send_count:
+            result["outlookMailSendCount"] = self.send_count
         return result
+
+    def prior_send_count(self) -> int:
+        """Bound the sends this Step execution may have made; a legacy dispatch counts as one."""
+        if self.phase == "sendDispatched":
+            return max(self.send_count, 1)
+        return max(self.send_count, 0)
 
 
 async def _record(call: Call, checkpoint: Checkpoint) -> bool:
@@ -78,7 +91,7 @@ def _last_checkpoint(call: Call) -> Checkpoint | None:
     value = call.context.get_last_heartbeat_value(Checkpoint)
     if not isinstance(value, Checkpoint):
         raise ValueError("the heartbeat checkpoint is not a send checkpoint")
-    if value.phase not in ("draftReady", "sendDispatched") or value.confirmations < 0:
+    if value.phase not in ("draftReady", "sendDispatched") or value.confirmations < 0 or value.send_count < 0:
         raise ValueError("the heartbeat checkpoint is not a send checkpoint")
     return value
 
@@ -106,12 +119,26 @@ def _pending(marker: str, draft_id: str = "") -> SentMessage:
 
 
 def _before_dispatch(
-    result: Exchange, value: SentMessage, receipt: Receipt, has_not_found: bool
+    result: Exchange, value: SentMessage, receipt: Receipt, has_not_found: bool, prior_send_count: int
 ) -> MutationAttempt[SentMessage]:
-    """Map a failure while no send request has left this attempt."""
+    """Map a failure before this attempt dispatched a send.
+
+    A terminal answer selects uncertain when an earlier attempt may have sent the draft.
+    """
     assert result.problem is not None
     if result.outcome in ("retry", "ambiguous", "invalid"):
         return MutationAttempt.retry(result.problem, result.retry_after)
+    if prior_send_count > 0:
+        return MutationAttempt.uncertain(
+            value,
+            failure(
+                result.problem.operation,
+                result.problem.kind,
+                result.problem.message + "; an earlier send may have delivered the message, "
+                "and it cannot be confirmed or sent again",
+            ),
+            receipt,
+        )
     if result.outcome == "not_found" and has_not_found:
         return MutationAttempt.branch_result("notFound", value, receipt, result.problem)
     if result.outcome == "defect":
@@ -194,57 +221,78 @@ async def _find_marked_draft(session: Session, marker: str) -> tuple[dict[str, A
 
 
 async def _confirm_dispatched(
-    session: Session, marker: str, checkpoint: Checkpoint
+    session: Session,
+    input: SendMessageInput | ReplyToMessageInput,
+    marker: str,
+    checkpoint: Checkpoint,
+    prior_send_count: int,
 ) -> MutationAttempt[SentMessage]:
-    """Read a dispatched draft without sending it again."""
+    """Read a dispatched draft back and send a still-unsent draft again while the cap allows."""
     pending = _pending(marker, checkpoint.draft_message_id)
     try:
         validate_graph_id("draft message id", checkpoint.draft_message_id)
     except ValueError:
-        return MutationAttempt.uncertain(
-            pending,
-            failure(
-                session.operation,
-                FailureKind.LOCAL_DEFECT,
-                "an earlier attempt dispatched the send without naming its draft, so the message may have been sent; it is not sent again",  # noqa: E501
-            ),
-            Receipt(),
-        )
+        # The marker lookup reads the message back without the draft ID.
+        return await _find_create_send(session, input, marker, prior_send_count)
     draft, result = await _read_draft(session, checkpoint.draft_message_id)
     receipt = session.client.receipt(session.call, result, checkpoint.draft_message_id)
-    if result.outcome == "succeeded" and draft is not None and not draft.get("isDraft", False):
-        return MutationAttempt.branch_result("sent", _sent_message(draft, marker, True), receipt)
     if result.outcome == "succeeded" and draft is not None:
-        pending = _sent_message(draft, marker)
-    if checkpoint.confirmations + 1 < MAXIMUM_SEND_CONFIRMATIONS:
-        if await _record(
-            session.call,
-            Checkpoint("sendDispatched", checkpoint.draft_message_id, checkpoint.confirmations + 1),
-        ):
-            return MutationAttempt.retry(
-                failure(
-                    session.operation,
-                    FailureKind.AVAILABILITY,
-                    "the send was dispatched but its answer was lost; the draft has not appeared as sent yet, so a later attempt reads it again",  # noqa: E501
-                ),
-                SEND_CONFIRMATION_DELAY,
-            )
+        if not draft.get("isDraft", False):
+            return MutationAttempt.branch_result("sent", _sent_message(draft, marker, True), receipt)
+        return await _dispatch(session, marker, draft, prior_send_count)
+    if result.outcome == "not_found":
+        return await _find_create_send(session, input, marker, prior_send_count)
+    assert result.problem is not None
+    if result.outcome in ("retry", "ambiguous", "invalid"):
+        return MutationAttempt.retry(result.problem, result.retry_after)
     return MutationAttempt.uncertain(
         pending,
         failure(
             session.operation,
-            FailureKind.TRANSPORT,
-            "the send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; it is not sent again",  # noqa: E501
+            result.problem.kind,
+            result.problem.message
+            + "; the dispatched draft could not be read back, so the message may have been sent; it is not sent again",  # noqa: E501
         ),
         receipt,
     )
 
 
-async def _dispatch(session: Session, marker: str, draft: dict[str, Any]) -> MutationAttempt[SentMessage]:
-    """Persist dispatch before POST /send; clear only after a conclusive refusal."""
+def _is_unprocessed_send_answer(result: Exchange) -> bool:
+    """Report a 429, a 503, or a connection that never reached Graph."""
+    if result.status_code == 0:
+        return result.outcome == "retry"
+    return result.status_code in (429, 503)
+
+
+def _is_definite_send_refusal(result: Exchange) -> bool:
+    """Report a definite refusal status, or a local request defect before sending."""
+    if result.status_code == 0:
+        return result.outcome == "defect"
+    return result.status_code in DEFINITE_REFUSAL_STATUSES
+
+
+async def _dispatch(
+    session: Session, marker: str, draft: dict[str, Any], prior_send_count: int
+) -> MutationAttempt[SentMessage]:
+    """Persist dispatch before POST /send while the send cap allows another send.
+
+    Only an answer proving Graph did not process the send releases the checkpoint.
+    """
     draft_id = string_value(draft, "id")
     message = _sent_message(draft, marker)
-    if not await _record(session.call, Checkpoint("sendDispatched", draft_id)):
+    max_sends = session.call.max_sends
+    if prior_send_count >= max_sends:
+        return MutationAttempt.uncertain(
+            message,
+            failure(
+                session.operation,
+                FailureKind.TRANSPORT,
+                f"an earlier send of the draft was not confirmed and the send cap of {max_sends} is reached, so the message may have been sent; it is not sent again",  # noqa: E501
+            ),
+            session.client.receipt(session.call, Exchange("succeeded"), draft_id),
+        )
+    dispatched = Checkpoint("sendDispatched", draft_id, send_count=prior_send_count + 1)
+    if not await _record(session.call, dispatched):
         return MutationAttempt.retry(
             failure(
                 session.operation,
@@ -257,11 +305,11 @@ async def _dispatch(session: Session, marker: str, draft: dict[str, Any]) -> Mut
     if result.outcome in ("succeeded", "invalid"):
         return MutationAttempt.branch_result("sent", message, receipt)
     assert result.problem is not None
-    if result.outcome == "retry":
-        await _record(session.call, Checkpoint("draftReady", draft_id))
+    if _is_unprocessed_send_answer(result):
+        await _record(session.call, Checkpoint("draftReady", draft_id, send_count=prior_send_count))
         return MutationAttempt.retry(result.problem, result.retry_after)
-    if result.outcome in ("rejected", "not_found", "defect"):
-        await _record(session.call, Checkpoint("draftReady", draft_id))
+    if _is_definite_send_refusal(result) and prior_send_count == 0:
+        await _record(session.call, Checkpoint("draftReady", draft_id, send_count=prior_send_count))
         return MutationAttempt.branch_result(
             "providerRejected",
             message,
@@ -272,12 +320,23 @@ async def _dispatch(session: Session, marker: str, draft: dict[str, Any]) -> Mut
                 result.problem.message + "; nothing was sent and the draft stays in Drafts",
             ),
         )
+    if _is_definite_send_refusal(result):
+        # An earlier send may have delivered the draft, so the next attempt reads it back.
+        return MutationAttempt.retry(
+            failure(
+                session.operation,
+                result.problem.kind,
+                result.problem.message
+                + "; an earlier send may have delivered the draft, so a later attempt reads it back",
+            ),
+            SEND_CONFIRMATION_DELAY,
+        )
     return MutationAttempt.retry(
         failure(
             session.operation,
             result.problem.kind,
             result.problem.message
-            + "; the send was dispatched, so a later attempt confirms it from the draft instead of sending again",  # noqa: E501
+            + "; the send was dispatched, so a later attempt reads the draft back before sending again",
         ),
         SEND_CONFIRMATION_DELAY,
     )
@@ -361,7 +420,7 @@ async def _create_draft(
 
 
 async def _find_create_send(
-    session: Session, input: SendMessageInput | ReplyToMessageInput, marker: str
+    session: Session, input: SendMessageInput | ReplyToMessageInput, marker: str, prior_send_count: int
 ) -> MutationAttempt[SentMessage]:
     """Find the marker before creating or dispatching any draft."""
     existing, found = await _find_marked_draft(session, marker)
@@ -371,6 +430,7 @@ async def _find_create_send(
             _pending(marker),
             session.client.receipt(session.call, found),
             isinstance(input, ReplyToMessageInput),
+            prior_send_count,
         )
     if existing is not None:
         if not existing.get("isDraft", False):
@@ -379,7 +439,7 @@ async def _find_create_send(
                 _sent_message(existing, marker, True),
                 session.client.receipt(session.call, found, string_value(existing, "id")),
             )
-        return await _dispatch(session, marker, existing)
+        return await _dispatch(session, marker, existing, prior_send_count)
     draft, created = await _create_draft(session, input, marker)
     if created.outcome != "succeeded" or draft is None:
         return _before_dispatch(
@@ -387,9 +447,10 @@ async def _find_create_send(
             _pending(marker),
             session.client.receipt(session.call, created),
             isinstance(input, ReplyToMessageInput),
+            prior_send_count,
         )
     draft_id = string_value(draft, "id")
-    await _record(session.call, Checkpoint("draftReady", draft_id))
+    await _record(session.call, Checkpoint("draftReady", draft_id, send_count=prior_send_count))
     if isinstance(input, ReplyToMessageInput):
         marked = await session.exchange(
             "PATCH",
@@ -405,8 +466,9 @@ async def _find_create_send(
                 _sent_message(draft, marker),
                 session.client.receipt(session.call, marked, draft_id),
                 True,
+                prior_send_count,
             )
-    return await _dispatch(session, marker, draft)
+    return await _dispatch(session, marker, draft, prior_send_count)
 
 
 async def _send_draft_once(
@@ -429,35 +491,37 @@ async def _send_draft_once(
     try:
         checkpoint = _last_checkpoint(call)
     except ValueError:
-        return MutationAttempt.uncertain(
-            _pending(marker),
+        return MutationAttempt.retry(
             failure(
                 operation,
-                FailureKind.LOCAL_DEFECT,
-                "the send checkpoint of an earlier attempt is unreadable, so the message may have been sent; it is not sent again",  # noqa: E501
-            ),
-            Receipt(),
+                FailureKind.AVAILABILITY,
+                "the send checkpoint of an earlier attempt is unreadable; nothing is sent in this attempt",
+            )
         )
+    prior_send_count = checkpoint.prior_send_count() if checkpoint is not None else 0
     session, failed = await client.open_session(call, operation)
     if failed is not None:
-        return _before_dispatch(failed, _pending(marker), Receipt(), isinstance(input, ReplyToMessageInput))
+        return _before_dispatch(
+            failed, _pending(marker), Receipt(), isinstance(input, ReplyToMessageInput), prior_send_count
+        )
     assert session is not None
     if checkpoint is not None and checkpoint.phase == "sendDispatched":
-        return await _confirm_dispatched(session, marker, checkpoint)
+        return await _confirm_dispatched(session, input, marker, checkpoint, prior_send_count)
     if checkpoint is not None and checkpoint.phase == "draftReady":
         try:
             validate_graph_id("draft message id", checkpoint.draft_message_id)
         except ValueError:
-            return await _find_create_send(session, input, marker)
+            return await _find_create_send(session, input, marker, prior_send_count)
         draft, read = await _read_draft(session, checkpoint.draft_message_id)
         if read.outcome == "not_found":
-            return await _find_create_send(session, input, marker)
+            return await _find_create_send(session, input, marker, prior_send_count)
         if read.outcome != "succeeded":
             return _before_dispatch(
                 read,
                 _pending(marker, checkpoint.draft_message_id),
                 client.receipt(call, read, checkpoint.draft_message_id),
                 isinstance(input, ReplyToMessageInput),
+                prior_send_count,
             )
         assert draft is not None
         if not draft.get("isDraft", False):
@@ -466,8 +530,8 @@ async def _send_draft_once(
                 _sent_message(draft, marker, True),
                 client.receipt(call, read, string_value(draft, "id")),
             )
-        return await _dispatch(session, marker, draft)
-    return await _find_create_send(session, input, marker)
+        return await _dispatch(session, marker, draft, prior_send_count)
+    return await _find_create_send(session, input, marker, prior_send_count)
 
 
 async def send_message(client: Client, call: Call, input: SendMessageInput) -> MutationAttempt[SentMessage]:

@@ -35,7 +35,7 @@ func (ReplyToMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToMess
 }
 
 // Invoke creates Outlook's reply draft, which threads and quotes the original, marks it with the Step's
-// marker, and sends it at most once like SendMessage.
+// marker, and sends it like SendMessage: a lost answer is read back before any resend, up to the send cap.
 func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMessageInput) sdkgo.MutationAttempt[SentMessage] {
 	input.MessageID = strings.TrimSpace(input.MessageID)
 	if err := validateGraphID("messageId", input.MessageID); err != nil {

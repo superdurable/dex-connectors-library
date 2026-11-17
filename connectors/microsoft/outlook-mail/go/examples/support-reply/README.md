@@ -16,8 +16,9 @@ started from Dex Web **Start Flow**, using every Outlook Mail operation:
    attachments.
 5. `PrepareReply` records the attachment count, and `ReplyToCustomer` calls
    `outlookmail.NewReplyToMessageStep`. Outlook's reply draft threads the
-   reply and quotes the original; the draft carries the Step's marker and is
-   sent at most once.
+   reply and quotes the original; the draft carries the Step's marker, and a
+   lost send answer is read back before the draft is sent again, at most up
+   to the send cap.
 6. `MarkCustomerMessageRead` calls `outlookmail.NewSetMessageFlagsStep` to
    mark the message read.
 7. `ArchiveCustomerMessage` calls `outlookmail.NewMoveMessageStep` to move
@@ -28,8 +29,8 @@ started from Dex Web **Start Flow**, using every Outlook Mail operation:
    `SendNewCustomerMessage`, which calls `outlookmail.NewSendMessageStep`.
 
 The `uncertain` branches of the reply and the new message are unwired: a send
-whose answer was lost and whose Sent Items copy never appeared fails the Flow
-with the connector's safe reason. Every optional branch is unwired and fails
+whose answer was lost and whose Sent Items copy still had not appeared when the
+send cap was reached fails the Flow with the connector's safe reason. Every optional branch is unwired and fails
 the Flow, such as a revoked
 authorization, a rejected recipient, a missing message, or a local defect.
 
@@ -69,7 +70,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/outlook-mail/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go \
-  --version v0.24.0 --tag connectors/microsoft/outlook-mail/go/v0.24.0 \
+  --version v0.24.1 --tag connectors/microsoft/outlook-mail/go/v0.24.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/outlook-mail-reply/release/connector-ui.tgz \
   --ui-digest /tmp/outlook-mail-reply/release/connector-ui.tgz.sha256 \
@@ -164,9 +165,10 @@ and `internal/graphtest`, which, like Graph, has no send idempotency key:
 - a move whose answer Graph drops after applying it is confirmed by read-back,
   and the message is archived once;
 - a send whose answer is lost after Graph applied it is confirmed from the
-  Sent Items copy and never sent again;
-- a send whose answer is lost and whose copy never appears fails through the
-  unwired `uncertain` branch without a second send;
+  Sent Items copy without a second send;
+- a send whose answer is lost and whose copy never appears is read back and
+  resent up to the send cap of three, then fails through the unwired
+  `uncertain` branch;
 - a Worker lost while Graph holds the send is replaced, and the new attempt
   finds the dispatch checkpoint and confirms the send instead of sending;
 - an expired access token is refreshed during the Flow and the rotated

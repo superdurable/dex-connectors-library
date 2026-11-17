@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-microsoft-outlook-mail",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Microsoft Outlook Mail connector for Dex TypeScript applications",
   "repository": {
@@ -55,7 +55,7 @@
     "test:integration": "vitest run examples/read-message/integration.test.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "htmlparser2": "^10.1.0",
     "zod": "^4.1.0"
