@@ -17,9 +17,11 @@ import (
 
 // Mock is a scripted vercel connection. Script each operation through its accessor.
 type Mock struct {
-	connection      vercel.Connection
-	listDeployments *connectormock.Query[vercel.ListDeploymentsInput, vercel.DeploymentsPage]
-	getDeployment   *connectormock.Query[vercel.GetDeploymentInput, vercel.Deployment]
+	connection       vercel.Connection
+	listDeployments  *connectormock.Query[vercel.ListDeploymentsInput, vercel.DeploymentsPage]
+	getDeployment    *connectormock.Query[vercel.GetDeploymentInput, vercel.Deployment]
+	cancelDeployment *connectormock.Mutation[vercel.CancelDeploymentInput, vercel.Deployment]
+	deleteDeployment *connectormock.Mutation[vercel.DeleteDeploymentInput, vercel.DeletedDeployment]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +29,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listDeployments: connectormock.NewQuery[vercel.ListDeploymentsInput, vercel.DeploymentsPage](t, vercel.ListDeploymentsDefinition),
-		getDeployment:   connectormock.NewQuery[vercel.GetDeploymentInput, vercel.Deployment](t, vercel.GetDeploymentDefinition),
+		listDeployments:  connectormock.NewQuery[vercel.ListDeploymentsInput, vercel.DeploymentsPage](t, vercel.ListDeploymentsDefinition),
+		getDeployment:    connectormock.NewQuery[vercel.GetDeploymentInput, vercel.Deployment](t, vercel.GetDeploymentDefinition),
+		cancelDeployment: connectormock.NewMutation[vercel.CancelDeploymentInput, vercel.Deployment](t, vercel.CancelDeploymentDefinition),
+		deleteDeployment: connectormock.NewMutation[vercel.DeleteDeploymentInput, vercel.DeletedDeployment](t, vercel.DeleteDeploymentDefinition),
 	}
 	mock.listDeployments.Default(ListDeploymentsDefault())
 	mock.getDeployment.Default(GetDeploymentDefault())
+	mock.cancelDeployment.Default(CancelDeploymentDefault())
+	mock.deleteDeployment.Default(DeleteDeploymentDefault())
 	connection, err := vercel.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "vercel", Name: connectionName})
 	if err != nil {
 		t.Fatalf("vercel mock connection: %v", err)
@@ -53,6 +59,16 @@ func (mock *Mock) GetDeployment() *connectormock.Query[vercel.GetDeploymentInput
 	return mock.getDeployment
 }
 
+// CancelDeployment returns the cancelDeployment script.
+func (mock *Mock) CancelDeployment() *connectormock.Mutation[vercel.CancelDeploymentInput, vercel.Deployment] {
+	return mock.cancelDeployment
+}
+
+// DeleteDeployment returns the deleteDeployment script.
+func (mock *Mock) DeleteDeployment() *connectormock.Mutation[vercel.DeleteDeploymentInput, vercel.DeletedDeployment] {
+	return mock.deleteDeployment
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListDeployments() sdkgo.Query[vercel.ListDeploymentsInput, vercel.DeploymentsPage] {
@@ -60,6 +76,12 @@ func (operations mockOperations) ListDeployments() sdkgo.Query[vercel.ListDeploy
 }
 func (operations mockOperations) GetDeployment() sdkgo.Query[vercel.GetDeploymentInput, vercel.Deployment] {
 	return operations.mock.getDeployment
+}
+func (operations mockOperations) CancelDeployment() sdkgo.Mutation[vercel.CancelDeploymentInput, vercel.Deployment] {
+	return operations.mock.cancelDeployment
+}
+func (operations mockOperations) DeleteDeployment() sdkgo.Mutation[vercel.DeleteDeploymentInput, vercel.DeletedDeployment] {
+	return operations.mock.deleteDeployment
 }
 
 // ListDeploymentsListed selects the listed branch: List deployments visible to a personal account or team.
@@ -136,3 +158,75 @@ func GetDeploymentFoundDefault() connectormock.Case[vercel.Deployment] {
 
 // GetDeploymentDefault is the manifest default, foundDefault, which New installs.
 func GetDeploymentDefault() connectormock.Case[vercel.Deployment] { return GetDeploymentFoundDefault() }
+
+// CancelDeploymentCanceled selects the canceled branch: Vercel accepted the cancellation.
+func CancelDeploymentCanceled(value vercel.Deployment, failure *sdkgo.Failure) connectormock.Case[vercel.Deployment] {
+	return connectormock.Branch(vercel.CancelDeploymentBranchCanceled, value, failure)
+}
+
+// CancelDeploymentNotFound selects the notFound branch: The deployment does not exist or is inaccessible.
+func CancelDeploymentNotFound(value vercel.Deployment, failure *sdkgo.Failure) connectormock.Case[vercel.Deployment] {
+	return connectormock.Branch(vercel.CancelDeploymentBranchNotFound, value, failure)
+}
+
+// CancelDeploymentProviderRejected selects the providerRejected branch: Vercel conclusively rejected cancellation.
+func CancelDeploymentProviderRejected(value vercel.Deployment, failure *sdkgo.Failure) connectormock.Case[vercel.Deployment] {
+	return connectormock.Branch(vercel.CancelDeploymentBranchProviderRejected, value, failure)
+}
+
+// CancelDeploymentInvalidResponse selects the invalidResponse branch: Vercel returned malformed or oversized JSON.
+func CancelDeploymentInvalidResponse(value vercel.Deployment, failure *sdkgo.Failure) connectormock.Case[vercel.Deployment] {
+	return connectormock.Branch(vercel.CancelDeploymentBranchInvalidResponse, value, failure)
+}
+
+// CancelDeploymentDefect selects the defect branch: The deployment ID or connection is invalid.
+func CancelDeploymentDefect(value vercel.Deployment, failure *sdkgo.Failure) connectormock.Case[vercel.Deployment] {
+	return connectormock.Branch(vercel.CancelDeploymentBranchDefect, value, failure)
+}
+
+// CancelDeploymentRetry asks Dex to retry the cancelDeployment Step, after the delay when it is positive.
+func CancelDeploymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[vercel.Deployment] {
+	return connectormock.Retry[vercel.Deployment](failure, after)
+}
+
+// CancelDeploymentCanceledDefault is the manifest mock canceledDefault: One example deployment was canceled.
+func CancelDeploymentCanceledDefault() connectormock.Case[vercel.Deployment] {
+	value := connectormock.MustDecodeOutput[vercel.Deployment](`{"uid":"dpl_meridian1","name":"meridian-web","readyState":"CANCELED"}`)
+	return connectormock.Branch(vercel.CancelDeploymentBranchCanceled, value, nil)
+}
+
+// CancelDeploymentDefault is the manifest default, canceledDefault, which New installs.
+func CancelDeploymentDefault() connectormock.Case[vercel.Deployment] {
+	return CancelDeploymentCanceledDefault()
+}
+
+// DeleteDeploymentDeleted selects the deleted branch: The deployment is now absent.
+func DeleteDeploymentDeleted(value vercel.DeletedDeployment, failure *sdkgo.Failure) connectormock.Case[vercel.DeletedDeployment] {
+	return connectormock.Branch(vercel.DeleteDeploymentBranchDeleted, value, failure)
+}
+
+// DeleteDeploymentProviderRejected selects the providerRejected branch: Vercel conclusively rejected deletion.
+func DeleteDeploymentProviderRejected(value vercel.DeletedDeployment, failure *sdkgo.Failure) connectormock.Case[vercel.DeletedDeployment] {
+	return connectormock.Branch(vercel.DeleteDeploymentBranchProviderRejected, value, failure)
+}
+
+// DeleteDeploymentDefect selects the defect branch: The deployment ID or connection is invalid.
+func DeleteDeploymentDefect(value vercel.DeletedDeployment, failure *sdkgo.Failure) connectormock.Case[vercel.DeletedDeployment] {
+	return connectormock.Branch(vercel.DeleteDeploymentBranchDefect, value, failure)
+}
+
+// DeleteDeploymentRetry asks Dex to retry the deleteDeployment Step, after the delay when it is positive.
+func DeleteDeploymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[vercel.DeletedDeployment] {
+	return connectormock.Retry[vercel.DeletedDeployment](failure, after)
+}
+
+// DeleteDeploymentDeletedDefault is the manifest mock deletedDefault: One example deployment was deleted.
+func DeleteDeploymentDeletedDefault() connectormock.Case[vercel.DeletedDeployment] {
+	value := connectormock.MustDecodeOutput[vercel.DeletedDeployment](`{"deploymentId":"dpl_meridian1"}`)
+	return connectormock.Branch(vercel.DeleteDeploymentBranchDeleted, value, nil)
+}
+
+// DeleteDeploymentDefault is the manifest default, deletedDefault, which New installs.
+func DeleteDeploymentDefault() connectormock.Case[vercel.DeletedDeployment] {
+	return DeleteDeploymentDeletedDefault()
+}

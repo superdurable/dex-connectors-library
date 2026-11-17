@@ -1,6 +1,6 @@
 # Vercel connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/vercel/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/vercel/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/vercel`.
 
@@ -17,8 +17,10 @@ The TypeScript package is [`@superdurable/connector-vercel`](typescript/README.m
 | --- | --- | --- | --- | --- | --- |
 | NewListDeploymentsStep | GET /v6/deployments | optional `TeamID` | `DeploymentsPage.Deployments` and `Pagination.Next` | `listed` | `providerRejected`, `invalidResponse`, `defect |
 | NewGetDeploymentStep | GET /v13/deployments/{idOrUrl} | deployment ID or hostname in `IDOrURL`, optional `TeamID` | `Deployment` with identity, URL, and state fields | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect |
+| NewCancelDeploymentStep | PATCH /v12/deployments/{id}/cancel | deployment ID and optional team ID | canceled `Deployment` | `canceled` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewDeleteDeploymentStep | DELETE /v13/deployments/{id} | deployment ID and optional team ID | `DeletedDeployment` | `deleted` | `providerRejected`, `defect` |
 
-Both operations are read-only Queries. The list operation returns one provider page.
+The first two operations are read-only Queries; the list operation returns one provider page. Cancellation and deletion are safe-repeat Mutations. An already absent deployment counts as deleted. Creating deployments requires file upload and is deferred as a binary-heavy operation.
 
 ## Authorization
 

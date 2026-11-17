@@ -24,6 +24,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[vercel.Deployment](`{"uid":"dpl_meridian1","name":"meridian-web","url":"meridian-web.vercel.app","state":"READY","created":1761436800000}`)
 			return err
 		}},
+		{name: "cancelDeployment/canceledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.Deployment](`{"uid":"dpl_meridian1","name":"meridian-web","readyState":"CANCELED"}`)
+			return err
+		}},
+		{name: "deleteDeployment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[vercel.DeletedDeployment](`{"deploymentId":"dpl_meridian1"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +47,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetDeployment().Definition().Operation.OperationID != "getDeployment" {
 		t.Errorf("getDeployment mock has another definition")
+	}
+	if mock.CancelDeployment().Definition().Operation.OperationID != "cancelDeployment" {
+		t.Errorf("cancelDeployment mock has another definition")
+	}
+	if mock.DeleteDeployment().Definition().Operation.OperationID != "deleteDeployment" {
+		t.Errorf("deleteDeployment mock has another definition")
 	}
 }

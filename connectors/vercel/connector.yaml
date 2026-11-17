@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: vercel
   displayName: Vercel
-  description: "Use the Vercel REST API through typed Dex connector Steps."
+  description: "Inspect and manage Vercel deployments through typed Dex connector Steps."
   company: Vercel
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: vercel
   languages:
@@ -99,3 +99,43 @@ spec:
           description: "A Meridian example returns a representative Deployment."
           default: true
           output: {"uid":"dpl_meridian1","name":"meridian-web","url":"meridian-web.vercel.app","state":"READY","created":1761436800000}
+    - name: cancelDeployment
+      goName: CancelDeployment
+      inputType: CancelDeploymentInput
+      outputType: Deployment
+      kind: mutation
+      description: Cancel a deployment that has not completed.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: canceled, goName: Canceled, description: Vercel accepted the cancellation.}
+        - {id: notFound, goName: NotFound, description: The deployment does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel conclusively rejected cancellation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Vercel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The deployment ID or connection is invalid., optional: true}
+      mocks:
+        - name: canceledDefault
+          branch: canceled
+          default: true
+          description: One example deployment was canceled.
+          output: {uid: dpl_meridian1, name: meridian-web, readyState: CANCELED}
+    - name: deleteDeployment
+      goName: DeleteDeployment
+      inputType: DeleteDeploymentInput
+      outputType: DeletedDeployment
+      kind: mutation
+      description: Delete a deployment by ID; an already absent deployment counts as deleted.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The deployment is now absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Vercel conclusively rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: The deployment ID or connection is invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example deployment was deleted.
+          output: {deploymentId: dpl_meridian1}

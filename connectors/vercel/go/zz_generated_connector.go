@@ -42,6 +42,8 @@ type Connection struct {
 type Operations interface {
 	ListDeployments() sdkgo.Query[ListDeploymentsInput, DeploymentsPage]
 	GetDeployment() sdkgo.Query[GetDeploymentInput, Deployment]
+	CancelDeployment() sdkgo.Mutation[CancelDeploymentInput, Deployment]
+	DeleteDeployment() sdkgo.Mutation[DeleteDeploymentInput, DeletedDeployment]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +53,12 @@ func (operations clientOperations) ListDeployments() sdkgo.Query[ListDeployments
 }
 func (operations clientOperations) GetDeployment() sdkgo.Query[GetDeploymentInput, Deployment] {
 	return operations.client.GetDeployment()
+}
+func (operations clientOperations) CancelDeployment() sdkgo.Mutation[CancelDeploymentInput, Deployment] {
+	return operations.client.CancelDeployment()
+}
+func (operations clientOperations) DeleteDeployment() sdkgo.Mutation[DeleteDeploymentInput, DeletedDeployment] {
+	return operations.client.DeleteDeployment()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +338,148 @@ func NewGetDeploymentStep[IN any](config GetDeploymentStepConfig[IN]) sdkgo.Quer
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetDeploymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelDeploymentBranchCanceled sdkgo.BranchID = "canceled"
+const CancelDeploymentBranchNotFound sdkgo.BranchID = "notFound"
+const CancelDeploymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelDeploymentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelDeploymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelDeploymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelDeployment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelDeploymentBranchCanceled, Description: "Vercel accepted the cancellation."},
+		{ID: CancelDeploymentBranchNotFound, Description: "The deployment does not exist or is inaccessible.", Optional: true},
+		{ID: CancelDeploymentBranchProviderRejected, Description: "Vercel conclusively rejected cancellation.", Optional: true},
+		{ID: CancelDeploymentBranchInvalidResponse, Description: "Vercel returned malformed or oversized JSON.", Optional: true},
+		{ID: CancelDeploymentBranchDefect, Description: "The deployment ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CancelDeploymentResult = sdkgo.MutationResult[Deployment]
+
+type CancelDeploymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=vercel"`
+	operationID                       struct{}                                         `connector:"operationId=cancelDeployment"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelDeploymentInput                   `connector:"mapToOperationInput"`
+	Canceled                          sdkgo.Target[CancelDeploymentResult]             `connector:"branch=canceled"`
+	NotFound                          sdkgo.Target[CancelDeploymentResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelDeploymentResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelDeploymentResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelDeploymentResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Deployment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewCancelDeploymentStep[IN any](config CancelDeploymentStepConfig[IN]) sdkgo.MutationStep[IN, CancelDeploymentInput, Deployment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelDeploymentInput, Deployment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelDeployment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelDeploymentResult] {
+			branches := make([]sdkgo.BranchTarget[CancelDeploymentResult], 0, 5)
+			if config.Canceled.HasStep() {
+				branches = append(branches, config.Canceled.BranchTarget(CancelDeploymentBranchCanceled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelDeploymentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelDeploymentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelDeploymentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelDeploymentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteDeploymentBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteDeploymentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDeploymentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDeploymentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDeployment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDeploymentBranchDeleted, Description: "The deployment is now absent."},
+		{ID: DeleteDeploymentBranchProviderRejected, Description: "Vercel conclusively rejected deletion.", Optional: true},
+		{ID: DeleteDeploymentBranchDefect, Description: "The deployment ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteDeploymentResult = sdkgo.MutationResult[DeletedDeployment]
+
+type DeleteDeploymentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=vercel"`
+	operationID                       struct{}                                                `connector:"operationId=deleteDeployment"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteDeploymentInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteDeploymentResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteDeploymentResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteDeploymentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedDeployment]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDeploymentStep[IN any](config DeleteDeploymentStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDeploymentInput, DeletedDeployment] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("vercel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteDeploymentInput, DeletedDeployment]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDeployment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDeploymentResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDeploymentResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteDeploymentBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDeploymentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDeploymentBranchDefect))
 			}
 			return branches
 		}(),

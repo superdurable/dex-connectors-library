@@ -621,6 +621,630 @@
       },
       "name": "getDeployment-transport",
       "operation": "getDeployment"
+    },
+    {
+      "callId": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"dpl_meridian1\",\"name\":\"meridian-web\",\"readyState\":\"CANCELED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v12/deployments/dpl_meridian1/cancel",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "created": 0,
+          "id": "dpl_meridian1",
+          "name": "meridian-web",
+          "readyState": "CANCELED",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "cancelDeployment-canceled",
+      "operation": "cancelDeployment"
+    },
+    {
+      "callId": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v12/deployments/dpl_meridian1/cancel",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created": 0,
+          "id": "",
+          "name": "",
+          "readyState": "",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "cancelDeployment-notFound",
+      "operation": "cancelDeployment"
+    },
+    {
+      "callId": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v12/deployments/dpl_meridian1/cancel",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created": 0,
+          "id": "",
+          "name": "",
+          "readyState": "",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "cancelDeployment-providerRejected",
+      "operation": "cancelDeployment"
+    },
+    {
+      "callId": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v12/deployments/dpl_meridian1/cancel",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "name": "",
+          "readyState": "",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "cancelDeployment-invalidResponse",
+      "operation": "cancelDeployment"
+    },
+    {
+      "callId": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": 0,
+          "id": "",
+          "name": "",
+          "readyState": "",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "input": {
+        "deploymentId": "",
+        "teamId": "team_123"
+      },
+      "name": "cancelDeployment-defect",
+      "operation": "cancelDeployment"
+    },
+    {
+      "callId": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v12/deployments/dpl_meridian1/cancel",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "cancelDeployment-rateLimit",
+      "operation": "cancelDeployment"
+    },
+    {
+      "callId": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v12/deployments/dpl_meridian1/cancel",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "cancelDeployment-serverUnavailable",
+      "operation": "cancelDeployment"
+    },
+    {
+      "callId": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v12/deployments/dpl_meridian1/cancel",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dba06dd8-9995-5187-8a71-40f5d06a800f",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "cancelDeployment-transport",
+      "operation": "cancelDeployment"
+    },
+    {
+      "callId": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deploymentId": "dpl_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteDeployment-deleted",
+      "operation": "deleteDeployment"
+    },
+    {
+      "callId": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deploymentId": "dpl_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteDeployment-alreadyAbsent",
+      "operation": "deleteDeployment"
+    },
+    {
+      "callId": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deploymentId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteDeployment-providerRejected",
+      "operation": "deleteDeployment"
+    },
+    {
+      "callId": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deploymentId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "input": {
+        "deploymentId": "",
+        "teamId": "team_123"
+      },
+      "name": "deleteDeployment-defect",
+      "operation": "deleteDeployment"
+    },
+    {
+      "callId": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteDeployment-rateLimit",
+      "operation": "deleteDeployment"
+    },
+    {
+      "callId": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteDeployment-serverUnavailable",
+      "operation": "deleteDeployment"
+    },
+    {
+      "callId": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8371f4c4-6834-58e8-a0ac-69cf3dac9b9e",
+      "input": {
+        "deploymentId": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "deleteDeployment-transport",
+      "operation": "deleteDeployment"
     }
   ],
   "schemaVersion": 1
