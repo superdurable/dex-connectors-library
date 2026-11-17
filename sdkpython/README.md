@@ -537,11 +537,13 @@ assert token.access_token.reveal() == "INERT_ACCESS"
 
 ## Single dispatch checkpoints
 
-`singledispatch.Marker` uses the Go heartbeat JSON shape. `decide_dispatch`
+`singledispatch.Marker` uses the Go marker JSON shape. `decide_dispatch`
 allows an initial send or a resend only after the immediately prior attempt
-recorded `notSent` or `canResend` without a provider ID. A claimed, missing,
-stale, or accepted checkpoint requires read-back; malformed or foreign data
-fails closed. `singledispatch.Fence` reads `Call.context.deadline` and the
+recorded `notSent` or `canResend` without a provider ID for this call. A
+claimed, missing, stale, or accepted checkpoint requires read-back. A
+heartbeat the SDK cannot read counts as no marker; only a heartbeat read
+error and an own entry with an impossible send count fail closed.
+`singledispatch.Fence` reads `Call.context.deadline` and the
 previous Dex heartbeat before credential lookup. `dispatch(send)` checkpoints
 `claimed` before one provider send and repeats that claim every five seconds.
 The callback receives the write deadline and must avoid transport replay.
@@ -551,8 +553,20 @@ the request. `record_provider_id` preserves an accepted resource identity for
 read-back. Use sync Execute durability because local async activities ignore
 heartbeats.
 
+From `0.13.0`, one Step may make several fenced writes, such as an agent tool
+that sends a Gmail message and then posts a Slack thread reply, also from
+concurrent asyncio tasks. Each Fence keeps the marker of its own Call ID, and
+every heartbeat any Fence of the Step attempt records carries the markers of
+all its calls: the previous attempt's entries plus those recorded so far in
+this attempt. `decide` reads only its own Call ID's entry. A missing entry, or
+a heartbeat it cannot read, including the single marker that releases before
+`0.13.0` recorded, counts as no marker: attempt one may send, and a later
+attempt assumes each earlier attempt sent once, which can only overcount.
+The heartbeat format is internal to the connector SDKs and may change; hosts
+must not parse it and classify a result by the connector's selected branch.
+
 `Fence(..., max_sends=n)` caps sends per call; the default 1 keeps the
-decisions above and writes the same marker bytes as `0.9.0`. With a cap of 2
+decisions above and omits `sendCount`. With a cap of 2
 or more, each marker also records `send_count`, JSON `sendCount`: the possibly
 effective sends of the Call ID up to and including its attempt. A claim counts
 its own send, `notSent` and `canResend` carry the count from before the
@@ -583,7 +597,7 @@ connector factories and definitions adopt these fields in later releases.
 From [the runnable single-dispatch example](examples/single_dispatch.py):
 
 ```python
-fence = Fence(call, timedelta(seconds=10))
+fence = Fence(_example_call(context), timedelta(seconds=10))
 assert (await fence.decide()).kind == DecisionKind.SEND_ALLOWED
 
 async def send(write_deadline: datetime) -> str:
@@ -593,6 +607,12 @@ async def send(write_deadline: datetime) -> str:
 
 provider_id = await fence.dispatch(send)
 await fence.record_provider_id(provider_id)
+
+# The heartbeat format is internal; a retry learns the provider ID from its decision.
+retry_context = ExampleContext(2, context.heartbeats[-1])
+retry = await Fence(_example_call(retry_context), timedelta(seconds=10)).decide()
+assert retry.kind == DecisionKind.READ_BACK_REQUIRED and retry.marker is not None
+assert retry.marker.state == State.CLAIMED and retry.marker.provider_id == provider_id
 ```
 
 ## Provider HTTP
@@ -634,6 +654,7 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.13.0` (breaking): One Step may make several fenced writes. Every Fence heartbeat holds one marker per Call ID of the Step attempt, merged across Fences, including concurrent tasks, and `decide_dispatch` takes the whole previous heartbeat and reads only its own Call ID's entry. A heartbeat it cannot read, including a single marker from an earlier release, counts as no marker instead of failing closed; a later attempt then assumes each earlier attempt sent once. The heartbeat format is internal and may change; hosts must not parse it. Releases before `0.13.0` fail closed on the new format.
 - `0.12.0`: Add the durable poll Trigger kit `pollingtrigger` (binding and feed pollers, `PollRunner`, keyed snapshots, `new_binding_trigger_source`, `new_trigger_credential_call`) and `projectconfig.PollCursorStore` with `LoadedProject.poll_cursor_store` and `poll_feed_cursor_store`, byte-compatible with the Go kit. Local poll cursor objects may be 8 MiB. This addition is not breaking.
 - `0.11.0`: Add Trigger support: Trigger identities and runners, `deliver_trigger` with capped retries, Dex Flow and RPC Trigger targets, durable project Trigger inboxes byte-compatible with Go and TypeScript (file-backed for Dex Web projects), relay signatures and `LoadedProject.verify_relayed_request` and `register_relayed_trigger`, and `webhooktrigger.WebhookEndpoint` as an ASGI application with lifespan-run Trigger runners. Local Trigger inbox objects may be 8 MiB. This addition is not breaking.
 - `0.10.0`: The single-dispatch fence supports bounded resend on unknown outcomes. `Fence` and `decide_dispatch` accept `max_sends` (default 1, unchanged decisions and marker bytes); with a cap of 2 or more, markers carry an optional `sendCount` and decisions can return `DecisionKind.READ_BACK_THEN_RESEND_ALLOWED`. `RepeatOnUnknown`, `MutationDefinition.repeat_on_unknown` and `max_sends`, `Call.max_sends`, and `MutationStepConfig.max_sends_override` expose the send cap to Steps. Workers on `0.9.0` ignore `sendCount` and keep their conservative decisions. This addition is not breaking.

@@ -6,7 +6,7 @@ import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import dex
 import pytest
@@ -22,14 +22,26 @@ from dex_connectors.sdk.singledispatch import (
     State,
     decide_dispatch,
 )
+from dex_connectors.sdk.singledispatch.markers import checkpoint_heartbeat, markers_from_heartbeat
 
 CALL_ID =CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf")
 MARKER_CODEC = dex.CodecRegistry().resolve(Marker)
 
 
+def _checkpoint(*markers: Marker) -> dict[str, object]:
+    """Encode markers in the map format a Fence records."""
+    return checkpoint_heartbeat({str(marker.call_id): marker for marker in markers})
+
+
+def _own(heartbeat: object, call_id: CallID = CALL_ID) -> Marker:
+    """Return one call's entry from a recorded heartbeat."""
+    return markers_from_heartbeat(heartbeat)[str(call_id)]
+
+
 def test_go_marker_conformance(conformance_dir: Path) -> None:
     """Round-trip every Go heartbeat marker without wire-name or field-order drift."""
-    markers = json.loads((conformance_dir / "single-dispatch-markers.json").read_text())
+    fixture = json.loads((conformance_dir / "single-dispatch-markers.json").read_text())
+    markers = fixture["markers"]
     assert any("sendCount" in value for value in markers)
     for value in markers:
         marker = Marker.from_wire(value)
@@ -57,17 +69,36 @@ def test_only_proven_prior_attempt_can_resend() -> None:
     assert decide_dispatch(call_id, 1, None).kind == DecisionKind.SEND_ALLOWED
     assert decide_dispatch(call_id, 2, None).kind == DecisionKind.READ_BACK_REQUIRED
     for state in (State.NOT_SENT, State.CAN_RESEND):
-        previous = Marker(call_id, 1, state).to_wire()
+        previous = _checkpoint(Marker(call_id, 1, state))
         assert decide_dispatch(call_id, 2, previous).kind == DecisionKind.SEND_ALLOWED
         assert decide_dispatch(call_id, 3, previous).kind == DecisionKind.READ_BACK_REQUIRED
-    claimed = Marker(call_id, 1, State.CLAIMED).to_wire()
+    claimed = _checkpoint(Marker(call_id, 1, State.CLAIMED))
     assert decide_dispatch(call_id, 2, claimed).kind == DecisionKind.READ_BACK_REQUIRED
-    accepted = Marker(call_id, 1, State.CLAIMED, "object-42").to_wire()
+    accepted = _checkpoint(Marker(call_id, 1, State.CLAIMED, "object-42"))
     assert decide_dispatch(call_id, 2, accepted).kind == DecisionKind.READ_BACK_REQUIRED
-    foreign = Marker(CallID("5af8fafa-06ff-5b2d-bb13-04693809fab0"), 1, State.NOT_SENT).to_wire()
-    assert decide_dispatch(call_id, 2, foreign).kind == DecisionKind.FAIL_CLOSED
-    invalid = {"callId": call_id, "attempt": 1, "state": "unknown"}
-    assert decide_dispatch(call_id, 2, invalid).kind == DecisionKind.FAIL_CLOSED
+    foreign = _checkpoint(Marker(CallID("5af8fafa-06ff-5b2d-bb13-04693809fab0"), 1, State.NOT_SENT))
+    assert decide_dispatch(call_id, 2, foreign).kind == DecisionKind.READ_BACK_REQUIRED
+    invalid = {"singleDispatchMarkers": {call_id: {"callId": call_id, "attempt": 1, "state": "unknown"}}}
+    assert decide_dispatch(call_id, 2, invalid).kind == DecisionKind.READ_BACK_REQUIRED
+
+
+def test_unreadable_or_legacy_heartbeats_count_as_no_marker() -> None:
+    """A legacy single marker, garbage, or a mismatched entry never fails closed."""
+    proven = Marker(CALL_ID, 1, State.NOT_SENT)
+    for heartbeat in (
+        proven, proven.to_wire(), "garbage", [1, 2], 3, {"progress": 1},
+        {"singleDispatchMarkers": None},
+        {"singleDispatchMarkers": {"5af8fafa-06ff-5b2d-bb13-04693809fab0": proven.to_wire()}},
+        {"singleDispatchMarkers": {str(CALL_ID): {**proven.to_wire(), "extra": True}}},
+    ):
+        first = decide_dispatch(CALL_ID, 1, heartbeat, max_sends=3)
+        assert (first.kind, first.prior_send_upper_bound, first.marker) == (
+            DecisionKind.SEND_ALLOWED, 0, None
+        )
+        later = decide_dispatch(CALL_ID, 3, heartbeat, max_sends=3)
+        assert (later.kind, later.prior_send_upper_bound, later.error) == (
+            DecisionKind.READ_BACK_THEN_RESEND_ALLOWED, 2, ""
+        )
 
 
 def test_malformed_markers_are_rejected() -> None:
@@ -107,7 +138,7 @@ def test_default_send_cap_matches_previous_decisions() -> None:
                     )
     for attempt in range(1, 8):
         for previous in previous_markers:
-            wire = previous.to_wire() if previous is not None else None
+            wire = _checkpoint(previous) if previous is not None else None
             for max_sends in ({}, {"max_sends": 1}):
                 decision = decide_dispatch(CALL_ID, attempt, wire, **max_sends)
                 assert decision.kind == _legacy_decision_kind(attempt, previous)
@@ -168,19 +199,19 @@ def test_bounded_resend_decisions(
     expected_kind: DecisionKind, expected_bound: int,
 ) -> None:
     """Compute S from each marker form and compare it with the send cap."""
-    for heartbeat in (previous, previous.to_wire() if previous is not None else None):
-        decision = decide_dispatch(CALL_ID, attempt, heartbeat, max_sends=max_sends)
-        assert decision.kind == expected_kind
-        assert decision.prior_send_upper_bound == expected_bound
-        assert decision.marker == previous
+    heartbeat = _checkpoint(previous) if previous is not None else None
+    decision = decide_dispatch(CALL_ID, attempt, heartbeat, max_sends=max_sends)
+    assert decision.kind == expected_kind
+    assert decision.prior_send_upper_bound == expected_bound
+    assert decision.marker == previous
 
 
-def test_foreign_and_invalid_markers_fail_closed_with_bounded_resend() -> None:
-    """Bounded resend never relaxes untrusted checkpoints."""
+def test_foreign_and_unreadable_entries_are_ignored_with_bounded_resend() -> None:
+    """Unreadable entries count as no marker, so each earlier attempt counts as one send."""
     foreign = Marker(CallID("5af8fafa-06ff-5b2d-bb13-04693809fab0"), 1, State.NOT_SENT, send_count=0)
-    decision = decide_dispatch(CALL_ID, 2, foreign.to_wire(), max_sends=10)
-    assert decision.kind == DecisionKind.FAIL_CLOSED
-    assert decision.prior_send_upper_bound == 0
+    decision = decide_dispatch(CALL_ID, 2, _checkpoint(foreign), max_sends=10)
+    assert decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+    assert decision.prior_send_upper_bound == 1
     base = {"callId": str(CALL_ID), "attempt": 1, "state": "claimed"}
     for invalid in (
         {**base, "sendCount": -1},
@@ -188,9 +219,11 @@ def test_foreign_and_invalid_markers_fail_closed_with_bounded_resend() -> None:
         {**base, "sendCount": "1"},
         {**base, "state": "unknown"},
         {**base, "sendCount": 1, "extra": "x"},
-        Marker(CALL_ID, 1, State.CLAIMED, send_count=-1),
     ):
-        assert decide_dispatch(CALL_ID, 2, invalid, max_sends=10).kind == DecisionKind.FAIL_CLOSED
+        heartbeat = {"singleDispatchMarkers": {str(CALL_ID): invalid}}
+        unreadable = decide_dispatch(CALL_ID, 2, heartbeat, max_sends=10)
+        assert unreadable.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+        assert unreadable.prior_send_upper_bound == 1
 
 
 @pytest.mark.parametrize(
@@ -218,15 +251,14 @@ def test_marker_send_count_range_matches_go(
     expected_kind: DecisionKind, expected_bound: int,
 ) -> None:
     """A send count that one send per attempt could not produce fails closed."""
-    for heartbeat in (previous, previous.to_wire()):
-        decision = decide_dispatch(CALL_ID, attempt, heartbeat, max_sends=max_sends)
-        assert decision.kind == expected_kind
-        assert decision.prior_send_upper_bound == expected_bound
-        assert decision.marker == previous
-        expected_error = (
-            "invalid single-dispatch checkpoint" if expected_kind == DecisionKind.FAIL_CLOSED else ""
-        )
-        assert decision.error == expected_error
+    decision = decide_dispatch(CALL_ID, attempt, _checkpoint(previous), max_sends=max_sends)
+    assert decision.kind == expected_kind
+    assert decision.prior_send_upper_bound == expected_bound
+    assert decision.marker == previous
+    expected_error = (
+        "invalid single-dispatch checkpoint" if expected_kind == DecisionKind.FAIL_CLOSED else ""
+    )
+    assert decision.error == expected_error
 
 
 @pytest.mark.parametrize("max_sends", [0, 11, -1, True, 2.0, "3"])
@@ -247,16 +279,23 @@ class FakeContext:
         self.previous = previous
         self.heartbeats: list[object] = []
         self.fail_heartbeat = False
+        self.fail_read = False
         self.failing_heartbeat_count = 0
         self.repeated = asyncio.Event()
 
     def has_last_heartbeat_value(self) -> bool:
         """Distinguish a missing checkpoint from a persisted marker."""
+        if self.fail_read:
+            raise OSError("inert heartbeat read failure")
         return self.previous is not None
 
-    def get_last_heartbeat_value(self, value_type: type[Marker]) -> object:
-        """Return the previous attempt's decoded public heartbeat value."""
-        return self.previous
+    def get_last_heartbeat_value(self, value_type: object) -> object:
+        """Decode the previous heartbeat as the Dex codec would; a Marker means its own entry."""
+        if isinstance(self.previous, Marker):
+            return _checkpoint(self.previous)
+        if not isinstance(self.previous, dict):
+            raise dex.ValueMappingError("decode", "heartbeat is not a JSON object")
+        return json.loads(json.dumps(self.previous))
 
     async def heartbeat(self, value: object) -> None:
         """Record an inert checkpoint or simulate a failed heartbeat."""
@@ -299,12 +338,11 @@ async def test_fence_claims_once_and_repeats_heartbeat_while_sending() -> None:
 
     assert await fence.dispatch(send) == "accepted"
     assert sends == 1
-    assert all(isinstance(value, Marker) and value.state == State.CLAIMED for value in context.heartbeats)
+    assert all(_own(value).state == State.CLAIMED for value in context.heartbeats)
     with pytest.raises(DispatchNotAllowedError):
         await fence.dispatch(send)
     await fence.record_provider_id("provider-object")
-    assert isinstance(context.heartbeats[-1], Marker)
-    assert context.heartbeats[-1].provider_id == "provider-object"
+    assert _own(context.heartbeats[-1]).provider_id == "provider-object"
     assert decide_dispatch(
         CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf"), 2, context.heartbeats[-1]
     ).kind == DecisionKind.READ_BACK_REQUIRED
@@ -365,7 +403,7 @@ async def test_fence_failed_claim_never_dispatches_and_deadline_limits_window() 
 
 @pytest.mark.asyncio
 async def test_fence_short_attempt_and_untrusted_checkpoint_fail_before_send() -> None:
-    """A too-short Dex deadline records notSent; malformed persisted state fails closed."""
+    """A too-short Dex deadline records notSent; unreadable state reads back; read errors fail closed."""
     short_context = FakeContext()
     short_context.deadline = datetime.now(UTC) - timedelta(seconds=1)
     short = _fence(short_context)
@@ -379,22 +417,37 @@ async def test_fence_short_attempt_and_untrusted_checkpoint_fail_before_send() -
     with pytest.raises(InsufficientAttemptTimeError):
         await short.dispatch(send)
     assert not sent
-    assert isinstance(short_context.heartbeats[-1], Marker)
-    assert short_context.heartbeats[-1].state == State.NOT_SENT
+    assert _own(short_context.heartbeats[-1]).state == State.NOT_SENT
 
     malformed = FakeContext(2, {"callId": "foreign", "attempt": 1, "state": "claimed"})
-    closed = _fence(malformed)
+    read_back = _fence(malformed)
+    assert (await read_back.decide()).kind == DecisionKind.READ_BACK_REQUIRED
+    with pytest.raises(DispatchNotAllowedError):
+        await read_back.dispatch(send)
+    assert not sent
+
+    unreadable = FakeContext(2, "not a checkpoint")
+    assert (await _fence(unreadable, max_sends=3).decide()).kind == (
+        DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+    )
+
+    failing_read = FakeContext(2, _checkpoint(Marker(CALL_ID, 1, State.NOT_SENT)))
+    failing_read.fail_read = True
+    closed = _fence(failing_read)
     assert (await closed.decide()).kind == DecisionKind.FAIL_CLOSED
     with pytest.raises(DispatchNotAllowedError):
         await closed.dispatch(send)
     assert not sent
 
 
+CHECKPOINT_CODEC = dex.CodecRegistry().resolve(dict[str, Any])
+
+
 def _persisted(context: FakeContext) -> Marker:
     """Round-trip the latest checkpoint through the Dex heartbeat codec."""
-    decoded = MARKER_CODEC.decode(MARKER_CODEC.encode(context.heartbeats[-1]))
-    assert isinstance(decoded, Marker)
-    return decoded
+    frame = context.heartbeats[-1]
+    assert isinstance(frame, dict)
+    return _own(CHECKPOINT_CODEC.decode(CHECKPOINT_CODEC.encode(frame)))
 
 
 async def _lose_response(fence: Fence) -> None:
@@ -429,7 +482,7 @@ async def test_bounded_fence_resends_until_cap_then_requires_read_back() -> None
         await second.dispatch(slow_lost_response)
     assert len(second_context.heartbeats) >= 2
     assert all(
-        value == Marker(CALL_ID, 2, State.CLAIMED, send_count=2)
+        _own(value) == Marker(CALL_ID, 2, State.CLAIMED, send_count=2)
         for value in second_context.heartbeats
     )
 
@@ -517,7 +570,9 @@ async def test_bounded_fence_pre_send_failures_keep_prior_count() -> None:
     assert (await failed_claim.decide()).kind == DecisionKind.SEND_ALLOWED
     with pytest.raises(CheckpointError):
         await failed_claim.dispatch(lambda deadline: asyncio.sleep(0))
-    assert failed_claim_context.heartbeats == [Marker(CALL_ID, 4, State.NOT_SENT, send_count=2)]
+    assert [_own(value) for value in failed_claim_context.heartbeats] == [
+        Marker(CALL_ID, 4, State.NOT_SENT, send_count=2)
+    ]
 
 
 @pytest.mark.asyncio
@@ -586,30 +641,31 @@ async def test_bounded_fence_keeps_unresolved_send_for_read_back(previous: Marke
 
 @pytest.mark.asyncio
 async def test_default_fence_records_counts_without_resending() -> None:
-    """max_sends=1 keeps 0.9.0 decisions and 0.9.0 marker bytes without sendCount."""
+    """max_sends=1 keeps 0.9.0 decisions and records markers without sendCount."""
     first_context = FakeContext()
     first = _fence(first_context)
     await first.decide()
     await _lose_response(first)
-    assert first_context.heartbeats[-1] == Marker(CALL_ID, 1, State.CLAIMED)
-    assert MARKER_CODEC.encode(first_context.heartbeats[-1]).data == (
-        '{"attempt":1,"callId":"5af8fafa-06ff-5b2d-bb13-04693809fabf","state":"claimed"}'
+    assert _own(first_context.heartbeats[-1]) == Marker(CALL_ID, 1, State.CLAIMED)
+    assert json.dumps(first_context.heartbeats[-1], separators=(",", ":")) == (
+        '{"singleDispatchMarkers":{"5af8fafa-06ff-5b2d-bb13-04693809fabf":'
+        '{"callId":"5af8fafa-06ff-5b2d-bb13-04693809fabf","attempt":1,"state":"claimed"}}}'
     )
     await first.record_can_resend()
-    assert first_context.heartbeats[-1] == Marker(CALL_ID, 1, State.CAN_RESEND)
+    assert _own(first_context.heartbeats[-1]) == Marker(CALL_ID, 1, State.CAN_RESEND)
 
     resend_context = FakeContext(2, _persisted(first_context))
     resend = _fence(resend_context)
     assert (await resend.decide()).kind == DecisionKind.SEND_ALLOWED
     assert await resend.dispatch(lambda deadline: asyncio.sleep(0, "object-42")) == "object-42"
     await resend.record_provider_id("object-42")
-    assert resend_context.heartbeats[-1] == Marker(CALL_ID, 2, State.CLAIMED, "object-42")
+    assert _own(resend_context.heartbeats[-1]) == Marker(CALL_ID, 2, State.CLAIMED, "object-42")
 
     not_sent_context = FakeContext()
     not_sent = _fence(not_sent_context)
     await not_sent.decide()
     await not_sent.record_not_sent()
-    assert not_sent_context.heartbeats == [Marker(CALL_ID, 1, State.NOT_SENT)]
+    assert [_own(value) for value in not_sent_context.heartbeats] == [Marker(CALL_ID, 1, State.NOT_SENT)]
 
     lost_context = FakeContext()
     lost = _fence(lost_context)
@@ -626,3 +682,132 @@ async def test_default_fence_records_counts_without_resending() -> None:
     raised = await _fence(FakeContext(2, _persisted(lost_context)), max_sends=2).decide()
     assert raised.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
     assert raised.prior_send_upper_bound == 1
+
+
+_DECISION_NAMES = {
+    DecisionKind.SEND_ALLOWED: "sendAllowed",
+    DecisionKind.READ_BACK_REQUIRED: "readBackRequired",
+    DecisionKind.FAIL_CLOSED: "failClosed",
+    DecisionKind.READ_BACK_THEN_RESEND_ALLOWED: "readBackThenResendAllowed",
+}
+
+
+def _call_fence(context: FakeContext, call_id: str, max_sends: int) -> Fence:
+    call = Call(
+        CallID(call_id), ConnectionRef("sample", "main"), OperationRef("sample", "createItem"),
+        context=cast(dex.AsyncContext, context),
+    )
+    return Fence(call, timedelta(minutes=1), max_sends=max_sends)
+
+
+@pytest.mark.asyncio
+async def test_go_checkpoint_scenarios(conformance_dir: Path) -> None:
+    """Replay Go's multi-call checkpoint scenarios with identical decisions and heartbeats."""
+    fixture = json.loads((conformance_dir / "single-dispatch-markers.json").read_text())
+    scenarios = fixture["checkpointScenarios"]
+    assert len(scenarios) >= 10
+    for scenario in scenarios:
+        context = FakeContext(scenario["attempt"], scenario.get("previousHeartbeat"))
+        for scenario_call in scenario["calls"]:
+            fence = _call_fence(context, scenario_call["callId"], scenario_call["maxSends"])
+            decision = await fence.decide()
+            assert _DECISION_NAMES[decision.kind] == scenario_call["decision"], scenario["name"]
+            assert decision.prior_send_upper_bound == scenario_call["maximumPriorSends"], scenario["name"]
+            if scenario_call["dispatch"] and decision.kind in (
+                DecisionKind.SEND_ALLOWED, DecisionKind.READ_BACK_THEN_RESEND_ALLOWED,
+            ):
+                await fence.dispatch(lambda deadline: asyncio.sleep(0))
+                if scenario_call.get("providerId"):
+                    await fence.record_provider_id(scenario_call["providerId"])
+        compact = [json.dumps(frame, separators=(",", ":")) for frame in context.heartbeats]
+        expected = [json.dumps(frame, separators=(",", ":")) for frame in scenario["heartbeats"]]
+        assert compact == expected, scenario["name"]
+
+
+GMAIL_CALL_ID = "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10"
+
+
+@pytest.mark.asyncio
+async def test_two_fenced_calls_in_one_step_both_send_and_survive_retry() -> None:
+    """Gmail then Slack in one Step both send; a retry of one keeps the other's claim."""
+    context = FakeContext()
+    for call_id in (GMAIL_CALL_ID, str(CALL_ID)):
+        fence = _call_fence(context, call_id, 1)
+        assert (await fence.decide()).kind == DecisionKind.SEND_ALLOWED
+        await fence.dispatch(lambda deadline: asyncio.sleep(0))
+    assert markers_from_heartbeat(context.heartbeats[-1]) == {
+        GMAIL_CALL_ID: Marker(CallID(GMAIL_CALL_ID), 1, State.CLAIMED),
+        str(CALL_ID): Marker(CALL_ID, 1, State.CLAIMED),
+    }
+
+    previous = _checkpoint(
+        Marker(CallID(GMAIL_CALL_ID), 1, State.CLAIMED), Marker(CALL_ID, 1, State.CAN_RESEND),
+    )
+    retry = FakeContext(2, previous)
+    slack = _call_fence(retry, str(CALL_ID), 1)
+    assert (await slack.decide()).kind == DecisionKind.SEND_ALLOWED
+    await slack.dispatch(lambda deadline: asyncio.sleep(0))
+    gmail = await _call_fence(retry, GMAIL_CALL_ID, 1).decide()
+    assert gmail.kind == DecisionKind.READ_BACK_REQUIRED
+    assert _own(retry.heartbeats[-1], CallID(GMAIL_CALL_ID)) == Marker(
+        CallID(GMAIL_CALL_ID), 1, State.CLAIMED
+    )
+
+
+@pytest.mark.asyncio
+async def test_concurrent_fences_in_one_step_keep_every_entry() -> None:
+    """Concurrent tasks never lose each other's entries."""
+
+    class YieldingContext(FakeContext):
+        async def heartbeat(self, value: object) -> None:
+            await asyncio.sleep(0)
+            await super().heartbeat(value)
+
+    context = YieldingContext()
+    call_ids = [f"5af8fafa-06ff-5b2d-bb13-0469380900{index:02d}" for index in range(16)]
+
+    async def run(call_id: str) -> None:
+        fence = _call_fence(context, call_id, 3)
+        assert (await fence.decide()).kind == DecisionKind.SEND_ALLOWED
+        await fence.dispatch(lambda deadline: asyncio.sleep(0))
+        await fence.record_provider_id(f"object-{call_id[-2:]}")
+
+    await asyncio.gather(*(run(call_id) for call_id in call_ids))
+    markers = markers_from_heartbeat(context.heartbeats[-1])
+    assert sorted(markers) == sorted(call_ids)
+    for call_id, marker in markers.items():
+        assert marker == Marker(CallID(call_id), 1, State.CLAIMED, f"object-{call_id[-2:]}", 1)
+
+
+@pytest.mark.asyncio
+async def test_failed_heartbeat_does_not_commit_entry() -> None:
+    """A failed claim leaves no entry for later Fences to carry."""
+    context = FakeContext()
+    failing = _call_fence(context, str(CALL_ID), 3)
+    await failing.decide()
+    context.fail_heartbeat = True
+    with pytest.raises(CheckpointError):
+        await failing.dispatch(lambda deadline: asyncio.sleep(0))
+    context.fail_heartbeat = False
+    other = _call_fence(context, GMAIL_CALL_ID, 1)
+    await other.decide()
+    await other.dispatch(lambda deadline: asyncio.sleep(0))
+    assert list(markers_from_heartbeat(context.heartbeats[-1])) == [GMAIL_CALL_ID]
+
+
+def test_step_checkpoint_is_shared_per_attempt_and_released_with_context() -> None:
+    """Fences of one attempt share the checkpoint; a later attempt or a dropped context does not."""
+    import gc
+
+    from dex_connectors.sdk.singledispatch import checkpoint as checkpoint_module
+
+    context = FakeContext()
+    first = _call_fence(context, str(CALL_ID), 1)
+    second = _call_fence(context, GMAIL_CALL_ID, 1)
+    assert first._checkpoint is second._checkpoint
+    context.attempt = 2
+    assert _call_fence(context, str(CALL_ID), 1)._checkpoint is not first._checkpoint
+    count = len(checkpoint_module._step_checkpoints)
+    del first, second, context
+    gc.collect()
+    assert len(checkpoint_module._step_checkpoints) == count - 1

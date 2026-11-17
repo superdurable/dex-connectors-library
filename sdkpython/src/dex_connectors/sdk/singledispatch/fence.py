@@ -6,11 +6,12 @@ import asyncio
 import math
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import dex
 
 from ..types import Call
+from .checkpoint import step_checkpoint_for
 from .markers import (
     MINIMUM_MAX_SENDS,
     Decision,
@@ -53,8 +54,13 @@ class Fence:
     read-back is not found or inconclusive, or directly when the connector
     cannot read back. Pass the same cap on every attempt of a Step execution.
     With a cap of 2 or more, every marker records `send_count`; with the
-    default 1, markers omit it and match 0.9.0 bytes. A marker without the
-    count still yields a safe upper bound under any later cap.
+    default 1, markers omit it. A marker without the count still yields a
+    safe upper bound under any later cap.
+
+    One Step may run Fences for several Call IDs, also as concurrent tasks.
+    Every heartbeat holds one marker per Call ID the Step attempt knows, so
+    the Fences do not lose each other's entries. The heartbeat format is
+    internal to the connector SDKs and may change; hosts must not parse it.
     """
 
     def __init__(
@@ -79,6 +85,7 @@ class Fence:
         self._call = call
         self._max_sends = max_sends
         self._context: dex.AsyncContext = context
+        self._checkpoint = step_checkpoint_for(context)
         self.write_deadline = started_at + budget * write_window_fraction
         self._minimum_request_time = budget / 10
         self._heartbeat_interval = timedelta(seconds=5)
@@ -90,16 +97,21 @@ class Fence:
         self._marker: Marker | None = None
 
     async def decide(self) -> Decision:
-        """Read the prior heartbeat before any credential or provider lookup."""
+        """Read this call's prior checkpoint entry before any credential or provider lookup.
+
+        A heartbeat the Dex codec cannot map counts as no marker; any other
+        read error fails closed.
+        """
         async with self._lock:
             if self._decision is not None:
                 return self._decision
             try:
                 previous: object | None = None
                 if self._context.has_last_heartbeat_value():
-                    previous = self._context.get_last_heartbeat_value(Marker)
-                    if previous is None:
-                        raise ValueError("present heartbeat has no checkpoint")
+                    try:
+                        previous = self._context.get_last_heartbeat_value(dict[str, Any])
+                    except dex.ValueMappingError:
+                        previous = None
                 self._decision = decide_dispatch(
                     self._call.id, self._context.attempt, previous, max_sends=self._max_sends
                 )
@@ -212,14 +224,14 @@ class Fence:
         return self._decision.prior_send_upper_bound if self._decision is not None else 0
 
     def _attempt_marker(self, state: State, provider_id: str = "", *, send_count: int) -> Marker:
-        # A cap of 1 omits the count so markers stay byte-identical to 0.9.0.
+        # A cap of 1 omits the count, as Go does.
         recorded_send_count = send_count if self._max_sends > MINIMUM_MAX_SENDS else 0
         return Marker(
             self._call.id, self._context.attempt, state, provider_id, recorded_send_count
         )
 
     async def _record(self, marker: Marker) -> None:
-        await self._context.heartbeat(marker)
+        await self._checkpoint.record(self._context, marker)
         self._marker = marker
 
     async def _repeat_claim(self, claim: Marker, stop: asyncio.Event) -> None:
@@ -232,6 +244,6 @@ class Fence:
             async with self._lock:
                 if self._marker == claim:
                     try:
-                        await self._context.heartbeat(claim)
+                        await self._checkpoint.record(self._context, claim)
                     except Exception:
                         pass

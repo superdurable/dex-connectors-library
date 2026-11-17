@@ -2,10 +2,14 @@
 # SPDX-License-Identifier: MIT
 """Wire-compatible single-dispatch markers and conservative resend decisions."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
 
 from ..types import CallID
+
+CHECKPOINT_MARKERS_FIELD = "singleDispatchMarkers"
+"""Heartbeat field mapping each Call ID of a Step attempt to its marker."""
 
 MINIMUM_MAX_SENDS = 1
 """Smallest send cap; one send disables bounded resend."""
@@ -128,38 +132,29 @@ def decide_dispatch(
 ) -> Decision:
     """Permit a send only when proven safe or while the send cap allows another.
 
-    A missing marker on attempt one permits the first send, as does a
-    `notSent` or `canResend` marker without provider ID from the immediately
-    prior attempt. Any other same-call checkpoint demands read-back; when
-    `max_sends` is at least two and fewer than `max_sends` sends may have
-    happened, it permits a resend after read-back instead. Foreign or
-    malformed checkpoints fail closed. `max_sends` must be within 1..10; the
-    default 1 never permits a resend after a possible send.
+    `previous_heartbeat` is the previous attempt's whole heartbeat value, or
+    `None` when it recorded none. Only this call's entry in the checkpoint
+    map counts. A missing entry or an unreadable value, including a single
+    marker from an earlier release, counts as no marker.
+
+    No marker on attempt one permits the first send, as does a `notSent` or
+    `canResend` entry without provider ID from the immediately prior
+    attempt. No marker on a later attempt, or any other entry, demands
+    read-back; when `max_sends` is at least two and fewer than `max_sends`
+    sends may have happened, it permits a resend after read-back instead.
+    No marker assumes each earlier attempt sent once. An entry with an
+    impossible send count fails closed. `max_sends` must be within 1..10;
+    the default 1 never permits a resend after a possible send.
     """
     call_id.validate()
     if not _is_plain_int(attempt) or attempt < 1:
         raise ValueError("single dispatch requires a positive attempt")
     validate_max_sends(max_sends)
-    if previous_heartbeat is None:
+    marker = markers_from_heartbeat(previous_heartbeat).get(str(call_id))
+    if marker is None:
         if attempt == 1:
             return Decision(DecisionKind.SEND_ALLOWED)
         return _bounded_read_back(None, attempt - 1, max_sends)
-    try:
-        if isinstance(previous_heartbeat, Marker):
-            # The Dex codec decodes `call_id` as a plain str, so rebuild from fields.
-            marker = Marker.from_wire({
-                "callId": str(previous_heartbeat.call_id),
-                "attempt": previous_heartbeat.attempt,
-                "state": str(previous_heartbeat.state),
-                "providerId": previous_heartbeat.provider_id,
-                "sendCount": previous_heartbeat.send_count,
-            })
-        else:
-            marker = Marker.from_wire(previous_heartbeat)
-    except (ValueError, TypeError):
-        return Decision(DecisionKind.FAIL_CLOSED, error="invalid single-dispatch checkpoint")
-    if marker.call_id != call_id:
-        return Decision(DecisionKind.FAIL_CLOSED, marker, "foreign single-dispatch checkpoint")
     if not _has_possible_send_count(marker):
         return Decision(DecisionKind.FAIL_CLOSED, marker, "invalid single-dispatch checkpoint")
     if marker.attempt >= attempt:
@@ -179,6 +174,38 @@ def validate_max_sends(max_sends: int) -> None:
     """Reject a send cap outside 1..10, including booleans and non-integers."""
     if not _is_plain_int(max_sends) or not MINIMUM_MAX_SENDS <= max_sends <= MAXIMUM_MAX_SENDS:
         raise ValueError("single-dispatch max sends must be an integer within 1..10")
+
+
+def markers_from_heartbeat(heartbeat: object) -> dict[str, Marker]:
+    """Read the checkpoint map, keyed by Call ID, dropping every unreadable entry.
+
+    An entry is dropped when it is not a valid marker or its key differs from
+    its `callId`. Any value other than the map format yields no entries. The
+    format is internal to the connector SDKs and may change.
+    """
+    if not isinstance(heartbeat, dict):
+        return {}
+    entries = heartbeat.get(CHECKPOINT_MARKERS_FIELD)
+    if not isinstance(entries, dict):
+        return {}
+    markers: dict[str, Marker] = {}
+    for call_id, entry in entries.items():
+        try:
+            marker = Marker.from_wire(entry)
+        except (ValueError, TypeError):
+            continue
+        if isinstance(call_id, str) and str(marker.call_id) == call_id:
+            markers[call_id] = marker
+    return markers
+
+
+def checkpoint_heartbeat(markers: Mapping[str, Marker]) -> dict[str, object]:
+    """Encode the checkpoint map with Call IDs in sorted order, as Go does."""
+    return {
+        CHECKPOINT_MARKERS_FIELD: {
+            call_id: markers[call_id].to_wire() for call_id in sorted(markers)
+        }
+    }
 
 
 def _bounded_read_back(
