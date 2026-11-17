@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -33,14 +34,16 @@ CREATE_POST_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "WordPress created the post and returned its numeric ID.", False),
         BranchDefinition(PROVIDER_REJECTED, "WordPress conclusively rejected the new post.", True),
-        BranchDefinition(UNCERTAIN, "The request may have reached WordPress but no post ID was confirmed; do not resend automatically.", True),
-        BranchDefinition(DEFECT, "Local post input, connection credentials, or dispatch checkpoint is invalid.", True),
+        BranchDefinition(UNCERTAIN, "WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another.", True),
+        BranchDefinition(DEFECT, "Local post input, connection credentials, or dispatch fence is invalid before any send.", True),
     ),
     StepDefaults(
         timedelta(seconds=30),
         1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 GET_POST_DEFINITION = QueryDefinition(

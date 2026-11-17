@@ -66,6 +66,8 @@ from .models import (
 
 _Output = TypeVar("_Output", Post, PostPage)
 _CREATED_STATUSES = frozenset({"draft", "publish", "pending", "private", "future"})
+# Only these statuses prove WordPress refused a write; other 4xx statuses leave the outcome unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 
 
 class Config(_GeneratedConfig):
@@ -179,16 +181,12 @@ class CreatePostOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: CreatePostInput) -> MutationAttempt[CreatedPost]:
-        """Dispatch at most once unless WordPress definitely declined the write."""
-        try:
-            fence = Fence(call, CREATE_POST_DEFINITION.step_defaults.execute_method_timeout)
-            decision = await fence.decide()
-        except ValueError:
-            return _create_failure(
-                DEFECT, FailureKind.LOCAL_DEFECT, "WordPress dispatch fence is unavailable"
-            )
-        if decision.kind != DecisionKind.SEND_ALLOWED:
-            return _create_uncertain(FailureKind.TRANSPORT, "WordPress post outcome cannot be confirmed")
+        """Create under a single-dispatch fence, resending an unknown outcome below the send cap.
+
+        WordPress has no create idempotency key, so an unknown outcome retries while possible
+        sends stay below `call.max_sends` and selects uncertain at the cap. A definite refusal
+        is never resent.
+        """
         status = input.status or "draft"
         if not input.title.strip() or status not in {"draft", "publish"}:
             return _create_failure(DEFECT, FailureKind.VALIDATION, "title, content, or status is invalid")
@@ -198,9 +196,45 @@ class CreatePostOperation:
             return _create_failure(
                 DEFECT, FailureKind.VALIDATION, "post exceeds the configured request limit"
             )
+        try:
+            fence = Fence(
+                call, CREATE_POST_DEFINITION.step_defaults.execute_method_timeout, max_sends=call.max_sends
+            )
+            decision = await fence.decide()
+        except ValueError:
+            return _create_failure(
+                DEFECT, FailureKind.LOCAL_DEFECT, "WordPress dispatch fence is unavailable"
+            )
+        if decision.kind == DecisionKind.FAIL_CLOSED:
+            return _create_retry(
+                FailureKind.AVAILABILITY,
+                "WordPress dispatch checkpoint is unreadable; no post was created in this attempt",
+            )
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return _create_uncertain(
+                FailureKind.TRANSPORT,
+                "an earlier attempt may have created the WordPress post, and the send cap is reached",
+            )
+        if (
+            decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+            and decision.marker is not None
+            and decision.marker.provider_id
+        ):
+            # A saved post ID proves WordPress created the post, so it is never resent.
+            return _create_uncertain(
+                FailureKind.TRANSPORT,
+                "an earlier attempt created the WordPress post, but its confirmation was lost",
+            )
+        # This attempt's send would be the last one the cap allows when no further send remains.
+        can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # An earlier send may have created the post, so a refusal of a resend proves nothing.
+        has_possible_earlier_send = decision.prior_send_upper_bound > 0
         authorization = await self.client._authorization(call)
         if not authorization:
-            return _create_failure(DEFECT, FailureKind.AUTHENTICATION, "connection credentials are invalid")
+            return await _local_create_failure(
+                fence, has_possible_earlier_send, FailureKind.AUTHENTICATION,
+                "connection credentials are invalid",
+            )
         request = self.client.http_client.build_request(
             "POST", self.client.site_url + "/wp-json/wp/v2/posts",
             headers={"Accept": "application/json", "Content-Type": "application/json",
@@ -215,17 +249,19 @@ class CreatePostOperation:
         except (CheckpointError, InsufficientAttemptTimeError):
             return _create_retry(FailureKind.TRANSPORT, "WordPress dispatch was not started")
         except Exception:
-            return _create_uncertain(FailureKind.TRANSPORT, "WordPress post outcome is unknown")
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "WordPress post outcome is unknown"
+            )
         if exchange.error == "request":
             if not exchange.request_sent:
                 try:
                     await fence.record_can_resend()
-                    return _create_retry(
-                        FailureKind.TRANSPORT, "WordPress could not be reached before sending"
-                    )
                 except Exception:
-                    pass
-            return _create_uncertain(FailureKind.TRANSPORT, "WordPress post outcome is unknown")
+                    pass  # A lost canResend checkpoint leaves the claim, which the next attempt counts.
+                return _create_retry(FailureKind.TRANSPORT, "WordPress could not be reached before sending")
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "WordPress post outcome is unknown"
+            )
         if exchange.status in (429, 503):
             try:
                 await fence.record_can_resend()
@@ -233,29 +269,48 @@ class CreatePostOperation:
                 return _create_retry(FailureKind.AVAILABILITY, "WordPress retry checkpoint is unavailable")
             kind = FailureKind.RATE_LIMIT if exchange.status == 429 else FailureKind.AVAILABILITY
             return _create_retry(kind, "WordPress did not create the post", exchange.retry_after)
-        if exchange.status >= 500 or exchange.status in (408, 409):
-            return _create_uncertain(FailureKind.AVAILABILITY, "WordPress post outcome is unknown")
-        if exchange.status in (401, 403):
-            kind = FailureKind.AUTHENTICATION if exchange.status == 401 else FailureKind.AUTHORIZATION
-            return _create_failure(PROVIDER_REJECTED, kind, "WordPress rejected post creation")
-        if 400 <= exchange.status < 500:
-            return _create_failure(PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION,
-                                   f"WordPress rejected HTTP {exchange.status}")
-        if exchange.status != 201:
-            return _create_uncertain(FailureKind.PROTOCOL, "WordPress did not confirm post creation")
+        is_definite_refusal_status = exchange.status in _DEFINITE_REFUSAL_STATUSES
+        if not is_definite_refusal_status and not 200 <= exchange.status < 300:
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome,
+                FailureKind.AVAILABILITY,
+                f"WordPress post outcome is unknown after HTTP {exchange.status}",
+                exchange.retry_after,
+            )
         if exchange.error:
-            return _create_uncertain(FailureKind.TRANSPORT, "WordPress post response could not be read")
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.TRANSPORT, "WordPress post response could not be read"
+            )
         try:
             body = json.loads(exchange.body)
         except (ValueError, UnicodeDecodeError):
             body = None
-        if not isinstance(body, dict) or type(body.get("id")) is not int or body["id"] <= 0 or \
-                body.get("status") not in _CREATED_STATUSES:
-            return _create_uncertain(FailureKind.PROTOCOL, "WordPress returned no usable post ID")
+        # A positive post ID in the body means WordPress created the post.
+        is_accepted = isinstance(body, dict) and type(body.get("id")) is int and body["id"] > 0
+        if is_definite_refusal_status:
+            if is_accepted:
+                return _create_uncertain(
+                    FailureKind.PROTOCOL, "WordPress returned a contradictory post response"
+                )
+            return await _reject_or_select_uncertain(
+                fence,
+                has_possible_earlier_send,
+                _rejection_kind(exchange.status),
+                f"WordPress rejected the post with HTTP {exchange.status}",
+            )
+        if not isinstance(body, dict) or not is_accepted:
+            return _resend_or_select_uncertain(
+                can_resend_unknown_outcome, FailureKind.PROTOCOL, "WordPress post response is malformed"
+            )
         try:
             await fence.record_provider_id(str(body["id"]))
         except Exception:
-            pass  # A claimed dispatch still forbids another send.
+            pass  # A lost provider-ID checkpoint leaves the claim, which still counts this send.
+        if exchange.status != 201 or body.get("status") not in _CREATED_STATUSES:
+            # WordPress reported a post ID, so a resend could duplicate the post.
+            return _create_uncertain(
+                FailureKind.PROTOCOL, "WordPress created a post but returned an unexpected response"
+            )
         return MutationAttempt.branch_result(CREATED, CreatedPost(body["id"], body["status"]), Receipt())
 
 
@@ -402,6 +457,51 @@ def _create_uncertain(kind: FailureKind, message: str) -> MutationAttempt[Create
     return MutationAttempt.uncertain(
         CreatedPost(), Failure(kind, CONNECTOR_ID, "createPost", message), Receipt()
     )
+
+
+def _rejection_kind(status: int) -> FailureKind:
+    if status == 401:
+        return FailureKind.AUTHENTICATION
+    if status == 403:
+        return FailureKind.AUTHORIZATION
+    return FailureKind.PROVIDER_REJECTION
+
+
+def _resend_or_select_uncertain(
+    can_resend_unknown_outcome: bool, kind: FailureKind, message: str, after: float = 0
+) -> MutationAttempt[CreatedPost]:
+    """Retry a possibly created post while the send cap allows another send."""
+    if can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return _create_retry(kind, message, after)
+    return _create_uncertain(kind, message)
+
+
+async def _reject_or_select_uncertain(
+    fence: Fence, has_possible_earlier_send: bool, kind: FailureKind, message: str
+) -> MutationAttempt[CreatedPost]:
+    """Select providerRejected only when no earlier send may have created the post."""
+    if has_possible_earlier_send:
+        return _create_uncertain(kind, message)
+    try:
+        await fence.record_can_resend()
+    except Exception:
+        pass  # The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+    return _create_failure(PROVIDER_REJECTED, kind, message)
+
+
+async def _local_create_failure(
+    fence: Fence, has_possible_earlier_send: bool, kind: FailureKind, message: str
+) -> MutationAttempt[CreatedPost]:
+    """Select defect only when no earlier send may have created the post."""
+    if has_possible_earlier_send:
+        # notSent would hide the earlier possible send, so nothing is recorded.
+        return _create_retry(kind, message + "; no post was created in this attempt")
+    try:
+        await fence.record_not_sent()
+    except Exception:
+        pass  # The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+    return _create_failure(DEFECT, kind, message)
 
 
 def _query_failure(operation: str, branch: str, kind: FailureKind,
