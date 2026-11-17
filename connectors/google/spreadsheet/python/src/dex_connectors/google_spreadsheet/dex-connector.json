@@ -1,10 +1,10 @@
 {
   "connectorId": "google-sheets",
-  "releaseTag": "connectors/google/spreadsheet/go/v0.26.0",
+  "releaseTag": "connectors/google/spreadsheet/go/v0.26.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-spreadsheet",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -145,7 +145,7 @@
       "kind": "mutation",
       "operationId": "upsertRow",
       "inputType": "UpsertRowInput",
-      "description": "Query by a stable key and replace or append one row; synchronous durability persists the append dispatch fence before Google receives a non-repeatable write.",
+      "description": "Query by a stable key and replace or append one row; synchronous durability persists the append dispatch fence, and an unconfirmed append is read back by its key and resent up to the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

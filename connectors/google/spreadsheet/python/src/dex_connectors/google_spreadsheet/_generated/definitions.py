@@ -72,7 +72,7 @@ UPSERT_ROW_DEFINITION = MutationDefinition(
         BranchDefinition(CONFLICT, "Existing duplicate key rows prevent a safe write.", True),
         BranchDefinition(PROVIDER_REJECTED, "Google conclusively rejected the row write.", True),
         BranchDefinition(INVALID_RESPONSE, "Google returned an invalid or oversized pre-write response.", True),
-        BranchDefinition(UNCERTAIN, "The dispatched write outcome cannot be confirmed.", True),
+        BranchDefinition(UNCERTAIN, "The dispatched append was still not confirmed by its key when the send cap was reached.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
