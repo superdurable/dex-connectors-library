@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getCustomer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "getPaymentMethod/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+			return err
+		}},
+		{name: "getRefund/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.RefundProfile](`{"id":"refund-1","status":"SETTLED"}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braintree.TransactionProfile](`{"id":"txn-1","status":"SETTLED"}`)
 			return err
@@ -30,6 +42,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
+		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.GetPaymentMethod().Definition().Operation.OperationID != "getPaymentMethod" {
+		t.Errorf("getPaymentMethod mock has another definition")
+	}
+	if mock.GetRefund().Definition().Operation.OperationID != "getRefund" {
+		t.Errorf("getRefund mock has another definition")
+	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")
 	}

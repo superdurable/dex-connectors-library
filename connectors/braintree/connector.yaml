@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: braintree
   displayName: Braintree
-  description: Read one Braintree transaction by GraphQL ID.
+  description: Read Braintree transactions, customers, payment methods, and refunds by GraphQL ID.
   company: Braintree
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: braintree
   languages:
@@ -63,8 +63,71 @@ spec:
       startURL: https://developer.paypal.com/braintree/articles/control-panel/important-gateway-credentials
       steps:
         - Choose the sandbox or production Control Panel, open the gear icon > API > API Keys, and generate an API key if needed. Copy its Public Key into publicKey and open View under Private Key to copy the secret into privateKey. Blank prevents calls; never mix sandbox and production keys.
-        - Leave baseUrl blank for sandbox, or enter https://payments.braintree-api.com for production. Leave apiVersion, timeout, and maxResponseBytes blank for their displayed defaults. Copy a transaction GraphQL ID from a Braintree API result and enter it as transactionId; blank is invalid. Legacy SDK IDs may differ from GraphQL IDs.
+        - Leave baseUrl blank for sandbox, or enter https://payments.braintree-api.com for production. Leave apiVersion, timeout, and maxResponseBytes blank for their displayed defaults. Copy a transaction, customer, payment method, or refund GraphQL ID from a Braintree API result into the matching operation field; blank is invalid. Legacy SDK IDs may differ from GraphQL IDs.
   operations:
+    - name: getCustomer
+      goName: GetCustomer
+      inputType: GetCustomerInput
+      outputType: CustomerProfile
+      kind: query
+      description: Read a Braintree customer ID, name, and email.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braintree returned the customer.}
+        - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample customer is returned.
+          output: {id: customer-1, firstName: Ada, lastName: Lovelace, email: ada@example.com}
+    - name: getPaymentMethod
+      goName: GetPaymentMethod
+      inputType: GetPaymentMethodInput
+      outputType: PaymentMethodProfile
+      kind: query
+      description: Read a Braintree payment method ID and usage.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braintree returned the payment method.}
+        - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample vaulted payment method is returned.
+          output: {id: payment-method-1, usage: MULTI_USE}
+    - name: getRefund
+      goName: GetRefund
+      inputType: GetRefundInput
+      outputType: RefundProfile
+      kind: query
+      description: Read a Braintree refund ID and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braintree returned the refund.}
+        - {id: notFound, goName: NotFound, description: The node is absent or has another type., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample refund is returned.
+          output: {id: refund-1, status: SETTLED}
     - name: getTransaction
       goName: GetTransaction
       inputType: GetTransactionInput

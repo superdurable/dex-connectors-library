@@ -17,8 +17,11 @@ import (
 
 // Mock is a scripted braintree connection. Script each operation through its accessor.
 type Mock struct {
-	connection     braintree.Connection
-	getTransaction *connectormock.Query[braintree.GetTransactionInput, braintree.TransactionProfile]
+	connection       braintree.Connection
+	getCustomer      *connectormock.Query[braintree.GetCustomerInput, braintree.CustomerProfile]
+	getPaymentMethod *connectormock.Query[braintree.GetPaymentMethodInput, braintree.PaymentMethodProfile]
+	getRefund        *connectormock.Query[braintree.GetRefundInput, braintree.RefundProfile]
+	getTransaction   *connectormock.Query[braintree.GetTransactionInput, braintree.TransactionProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +29,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getTransaction: connectormock.NewQuery[braintree.GetTransactionInput, braintree.TransactionProfile](t, braintree.GetTransactionDefinition),
+		getCustomer:      connectormock.NewQuery[braintree.GetCustomerInput, braintree.CustomerProfile](t, braintree.GetCustomerDefinition),
+		getPaymentMethod: connectormock.NewQuery[braintree.GetPaymentMethodInput, braintree.PaymentMethodProfile](t, braintree.GetPaymentMethodDefinition),
+		getRefund:        connectormock.NewQuery[braintree.GetRefundInput, braintree.RefundProfile](t, braintree.GetRefundDefinition),
+		getTransaction:   connectormock.NewQuery[braintree.GetTransactionInput, braintree.TransactionProfile](t, braintree.GetTransactionDefinition),
 	}
+	mock.getCustomer.Default(GetCustomerDefault())
+	mock.getPaymentMethod.Default(GetPaymentMethodDefault())
+	mock.getRefund.Default(GetRefundDefault())
 	mock.getTransaction.Default(GetTransactionDefault())
 	connection, err := braintree.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "braintree", Name: connectionName})
 	if err != nil {
@@ -40,6 +49,21 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() braintree.Connection { return mock.connection }
 
+// GetCustomer returns the getCustomer script.
+func (mock *Mock) GetCustomer() *connectormock.Query[braintree.GetCustomerInput, braintree.CustomerProfile] {
+	return mock.getCustomer
+}
+
+// GetPaymentMethod returns the getPaymentMethod script.
+func (mock *Mock) GetPaymentMethod() *connectormock.Query[braintree.GetPaymentMethodInput, braintree.PaymentMethodProfile] {
+	return mock.getPaymentMethod
+}
+
+// GetRefund returns the getRefund script.
+func (mock *Mock) GetRefund() *connectormock.Query[braintree.GetRefundInput, braintree.RefundProfile] {
+	return mock.getRefund
+}
+
 // GetTransaction returns the getTransaction script.
 func (mock *Mock) GetTransaction() *connectormock.Query[braintree.GetTransactionInput, braintree.TransactionProfile] {
 	return mock.getTransaction
@@ -47,9 +71,139 @@ func (mock *Mock) GetTransaction() *connectormock.Query[braintree.GetTransaction
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetCustomer() sdkgo.Query[braintree.GetCustomerInput, braintree.CustomerProfile] {
+	return operations.mock.getCustomer
+}
+func (operations mockOperations) GetPaymentMethod() sdkgo.Query[braintree.GetPaymentMethodInput, braintree.PaymentMethodProfile] {
+	return operations.mock.getPaymentMethod
+}
+func (operations mockOperations) GetRefund() sdkgo.Query[braintree.GetRefundInput, braintree.RefundProfile] {
+	return operations.mock.getRefund
+}
 func (operations mockOperations) GetTransaction() sdkgo.Query[braintree.GetTransactionInput, braintree.TransactionProfile] {
 	return operations.mock.getTransaction
 }
+
+// GetCustomerFound selects the found branch: Braintree returned the customer.
+func GetCustomerFound(value braintree.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[braintree.CustomerProfile] {
+	return connectormock.Branch(braintree.GetCustomerBranchFound, value, failure)
+}
+
+// GetCustomerNotFound selects the notFound branch: The node is absent or has another type.
+func GetCustomerNotFound(value braintree.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[braintree.CustomerProfile] {
+	return connectormock.Branch(braintree.GetCustomerBranchNotFound, value, failure)
+}
+
+// GetCustomerProviderRejected selects the providerRejected branch: Braintree definitively rejected the query.
+func GetCustomerProviderRejected(value braintree.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[braintree.CustomerProfile] {
+	return connectormock.Branch(braintree.GetCustomerBranchProviderRejected, value, failure)
+}
+
+// GetCustomerInvalidResponse selects the invalidResponse branch: Braintree returned malformed or oversized JSON.
+func GetCustomerInvalidResponse(value braintree.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[braintree.CustomerProfile] {
+	return connectormock.Branch(braintree.GetCustomerBranchInvalidResponse, value, failure)
+}
+
+// GetCustomerDefect selects the defect branch: Local input or credentials are invalid.
+func GetCustomerDefect(value braintree.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[braintree.CustomerProfile] {
+	return connectormock.Branch(braintree.GetCustomerBranchDefect, value, failure)
+}
+
+// GetCustomerRetry asks Dex to retry the getCustomer Step, after the delay when it is positive.
+func GetCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.CustomerProfile] {
+	return connectormock.Retry[braintree.CustomerProfile](failure, after)
+}
+
+// GetCustomerFoundDefault is the manifest mock foundDefault: One sample customer is returned.
+func GetCustomerFoundDefault() connectormock.Case[braintree.CustomerProfile] {
+	value := connectormock.MustDecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
+	return connectormock.Branch(braintree.GetCustomerBranchFound, value, nil)
+}
+
+// GetCustomerDefault is the manifest default, foundDefault, which New installs.
+func GetCustomerDefault() connectormock.Case[braintree.CustomerProfile] {
+	return GetCustomerFoundDefault()
+}
+
+// GetPaymentMethodFound selects the found branch: Braintree returned the payment method.
+func GetPaymentMethodFound(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.GetPaymentMethodBranchFound, value, failure)
+}
+
+// GetPaymentMethodNotFound selects the notFound branch: The node is absent or has another type.
+func GetPaymentMethodNotFound(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.GetPaymentMethodBranchNotFound, value, failure)
+}
+
+// GetPaymentMethodProviderRejected selects the providerRejected branch: Braintree definitively rejected the query.
+func GetPaymentMethodProviderRejected(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.GetPaymentMethodBranchProviderRejected, value, failure)
+}
+
+// GetPaymentMethodInvalidResponse selects the invalidResponse branch: Braintree returned malformed or oversized JSON.
+func GetPaymentMethodInvalidResponse(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.GetPaymentMethodBranchInvalidResponse, value, failure)
+}
+
+// GetPaymentMethodDefect selects the defect branch: Local input or credentials are invalid.
+func GetPaymentMethodDefect(value braintree.PaymentMethodProfile, failure *sdkgo.Failure) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Branch(braintree.GetPaymentMethodBranchDefect, value, failure)
+}
+
+// GetPaymentMethodRetry asks Dex to retry the getPaymentMethod Step, after the delay when it is positive.
+func GetPaymentMethodRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.PaymentMethodProfile] {
+	return connectormock.Retry[braintree.PaymentMethodProfile](failure, after)
+}
+
+// GetPaymentMethodFoundDefault is the manifest mock foundDefault: One sample vaulted payment method is returned.
+func GetPaymentMethodFoundDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	value := connectormock.MustDecodeOutput[braintree.PaymentMethodProfile](`{"id":"payment-method-1","usage":"MULTI_USE"}`)
+	return connectormock.Branch(braintree.GetPaymentMethodBranchFound, value, nil)
+}
+
+// GetPaymentMethodDefault is the manifest default, foundDefault, which New installs.
+func GetPaymentMethodDefault() connectormock.Case[braintree.PaymentMethodProfile] {
+	return GetPaymentMethodFoundDefault()
+}
+
+// GetRefundFound selects the found branch: Braintree returned the refund.
+func GetRefundFound(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.GetRefundBranchFound, value, failure)
+}
+
+// GetRefundNotFound selects the notFound branch: The node is absent or has another type.
+func GetRefundNotFound(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.GetRefundBranchNotFound, value, failure)
+}
+
+// GetRefundProviderRejected selects the providerRejected branch: Braintree definitively rejected the query.
+func GetRefundProviderRejected(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.GetRefundBranchProviderRejected, value, failure)
+}
+
+// GetRefundInvalidResponse selects the invalidResponse branch: Braintree returned malformed or oversized JSON.
+func GetRefundInvalidResponse(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.GetRefundBranchInvalidResponse, value, failure)
+}
+
+// GetRefundDefect selects the defect branch: Local input or credentials are invalid.
+func GetRefundDefect(value braintree.RefundProfile, failure *sdkgo.Failure) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Branch(braintree.GetRefundBranchDefect, value, failure)
+}
+
+// GetRefundRetry asks Dex to retry the getRefund Step, after the delay when it is positive.
+func GetRefundRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[braintree.RefundProfile] {
+	return connectormock.Retry[braintree.RefundProfile](failure, after)
+}
+
+// GetRefundFoundDefault is the manifest mock foundDefault: One sample refund is returned.
+func GetRefundFoundDefault() connectormock.Case[braintree.RefundProfile] {
+	value := connectormock.MustDecodeOutput[braintree.RefundProfile](`{"id":"refund-1","status":"SETTLED"}`)
+	return connectormock.Branch(braintree.GetRefundBranchFound, value, nil)
+}
+
+// GetRefundDefault is the manifest default, foundDefault, which New installs.
+func GetRefundDefault() connectormock.Case[braintree.RefundProfile] { return GetRefundFoundDefault() }
 
 // GetTransactionFound selects the found branch: Braintree returned the transaction.
 func GetTransactionFound(value braintree.TransactionProfile, failure *sdkgo.Failure) connectormock.Case[braintree.TransactionProfile] {

@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{transactionread.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{transactionread.NewFlow(connection), transactionread.NewCustomerFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Braintree worker inspection Flow: %w", err)
 	}

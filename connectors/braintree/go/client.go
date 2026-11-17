@@ -76,6 +76,10 @@ type providerResponse struct {
 const getTransactionGraphQL = "query GetTransaction($id: ID!) { node(id: $id) { __typename ... on Transaction { id status } } }"
 
 func (client *Client) get(call sdkgo.Call, input GetTransactionInput) providerResponse {
+	return client.getNode(call, getTransactionGraphQL, input.TransactionID)
+}
+
+func (client *Client) getNode(call sdkgo.Call, query, nodeID string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -90,9 +94,9 @@ func (client *Client) get(call sdkgo.Call, input GetTransactionInput) providerRe
 		Variables struct {
 			ID string `json:"id"`
 		} `json:"variables"`
-	}{Query: getTransactionGraphQL, Variables: struct {
+	}{Query: query, Variables: struct {
 		ID string `json:"id"`
-	}{ID: input.TransactionID}})
+	}{ID: nodeID}})
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

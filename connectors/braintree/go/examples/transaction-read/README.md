@@ -25,3 +25,6 @@ GOWORK=off go run ./examples/transaction-read
 Start `BraintreeTransactionRead` with a unique Flow ID and input `{"transactionId":"txn-1"}`. Replace the sample IDs with GraphQL transaction ID from your Braintree account. The Worker connects to Dex Server without an inbound listener.
 
 CI runs the fixture-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Braintree authorization and lookup remain unverified.
+# Customer read
+
+The same worker registers `BraintreeCustomerRead`. Start it with a `GetCustomerInput` containing a GraphQL `customerId` from a Braintree API result. Its `CallGetCustomer` Step reads the customer and completes with a `CustomerProfile`. It uses the static `braintree` Dex Web connection.

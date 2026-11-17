@@ -42,11 +42,23 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetCustomer() sdkgo.Query[GetCustomerInput, CustomerProfile]
+	GetPaymentMethod() sdkgo.Query[GetPaymentMethodInput, PaymentMethodProfile]
+	GetRefund() sdkgo.Query[GetRefundInput, RefundProfile]
 	GetTransaction() sdkgo.Query[GetTransactionInput, TransactionProfile]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetCustomer() sdkgo.Query[GetCustomerInput, CustomerProfile] {
+	return operations.client.GetCustomer()
+}
+func (operations clientOperations) GetPaymentMethod() sdkgo.Query[GetPaymentMethodInput, PaymentMethodProfile] {
+	return operations.client.GetPaymentMethod()
+}
+func (operations clientOperations) GetRefund() sdkgo.Query[GetRefundInput, RefundProfile] {
+	return operations.client.GetRefund()
+}
 func (operations clientOperations) GetTransaction() sdkgo.Query[GetTransactionInput, TransactionProfile] {
 	return operations.client.GetTransaction()
 }
@@ -195,6 +207,237 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential privateKey is required")
 	}
 	return nil
+}
+
+const GetCustomerBranchFound sdkgo.BranchID = "found"
+const GetCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const GetCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCustomerDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCustomerBranchFound, Description: "Braintree returned the customer."},
+		{ID: GetCustomerBranchNotFound, Description: "The node is absent or has another type.", Optional: true},
+		{ID: GetCustomerBranchProviderRejected, Description: "Braintree definitively rejected the query.", Optional: true},
+		{ID: GetCustomerBranchInvalidResponse, Description: "Braintree returned malformed or oversized JSON.", Optional: true},
+		{ID: GetCustomerBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCustomerResult = sdkgo.QueryResult[CustomerProfile]
+
+type GetCustomerStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=braintree"`
+	operationID                    struct{}                                           `connector:"operationId=getCustomer"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCustomerInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCustomerResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCustomerResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCustomerResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCustomerResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCustomerResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomerProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetCustomerStep[IN any](config GetCustomerStepConfig[IN]) sdkgo.QueryStep[IN, GetCustomerInput, CustomerProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCustomerInput, CustomerProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[GetCustomerResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCustomerBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPaymentMethodBranchFound sdkgo.BranchID = "found"
+const GetPaymentMethodBranchNotFound sdkgo.BranchID = "notFound"
+const GetPaymentMethodBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPaymentMethodBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPaymentMethodBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPaymentMethodDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPaymentMethod"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPaymentMethodBranchFound, Description: "Braintree returned the payment method."},
+		{ID: GetPaymentMethodBranchNotFound, Description: "The node is absent or has another type.", Optional: true},
+		{ID: GetPaymentMethodBranchProviderRejected, Description: "Braintree definitively rejected the query.", Optional: true},
+		{ID: GetPaymentMethodBranchInvalidResponse, Description: "Braintree returned malformed or oversized JSON.", Optional: true},
+		{ID: GetPaymentMethodBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPaymentMethodResult = sdkgo.QueryResult[PaymentMethodProfile]
+
+type GetPaymentMethodStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=braintree"`
+	operationID                    struct{}                                                `connector:"operationId=getPaymentMethod"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPaymentMethodInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetPaymentMethodStep[IN any](config GetPaymentMethodStepConfig[IN]) sdkgo.QueryStep[IN, GetPaymentMethodInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPaymentMethodInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPaymentMethod(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPaymentMethodResult] {
+			branches := make([]sdkgo.BranchTarget[GetPaymentMethodResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPaymentMethodBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPaymentMethodBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPaymentMethodBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPaymentMethodBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPaymentMethodBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetRefundBranchFound sdkgo.BranchID = "found"
+const GetRefundBranchNotFound sdkgo.BranchID = "notFound"
+const GetRefundBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetRefundBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetRefundBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetRefundDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRefund"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetRefundBranchFound, Description: "Braintree returned the refund."},
+		{ID: GetRefundBranchNotFound, Description: "The node is absent or has another type.", Optional: true},
+		{ID: GetRefundBranchProviderRejected, Description: "Braintree definitively rejected the query.", Optional: true},
+		{ID: GetRefundBranchInvalidResponse, Description: "Braintree returned malformed or oversized JSON.", Optional: true},
+		{ID: GetRefundBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetRefundResult = sdkgo.QueryResult[RefundProfile]
+
+type GetRefundStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=braintree"`
+	operationID                    struct{}                                         `connector:"operationId=getRefund"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetRefundInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetRefundResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetRefundResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetRefundResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetRefundResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetRefundResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RefundProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetRefundStep[IN any](config GetRefundStepConfig[IN]) sdkgo.QueryStep[IN, GetRefundInput, RefundProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetRefundInput, RefundProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRefund(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetRefundResult] {
+			branches := make([]sdkgo.BranchTarget[GetRefundResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetRefundBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetRefundBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetRefundBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetRefundBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetRefundBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetTransactionBranchFound sdkgo.BranchID = "found"
