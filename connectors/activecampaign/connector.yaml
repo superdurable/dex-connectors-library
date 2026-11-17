@@ -53,8 +53,70 @@ spec:
       steps:
         - Sign in to the ActiveCampaign account at https://www.activecampaign.com/login, click Settings (gear), then Developer.
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
-        - Ensure this API user can view and edit the intended contacts and lists; existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, and deal operations need Deals and pipeline management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, and deal operations need Deals and pipeline management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listContactListMemberships
+      goName: ListContactListMemberships
+      inputType: ListContactListMembershipsInput
+      outputType: ContactListMembershipsPage
+      kind: query
+      description: List one page of a contact's list memberships.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the list-membership operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact-list result.
+          output: {memberships: [{id: '42', contactId: '68', listId: '11', status: 1}], contactId: '68', offset: 0, limit: 20, total: 1}
+    - name: subscribeContactToList
+      goName: SubscribeContactToList
+      inputType: SetContactListMembershipInput
+      outputType: ContactListMembership
+      kind: mutation
+      description: Subscribe a contact to an email list with bounded sends and read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: subscribed, goName: Subscribed, description: ActiveCampaign completed the list-membership operation.}
+        - {id: uncertain, goName: Uncertain, description: A bounded subscription change could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: subscribedDefault
+          branch: subscribed
+          default: true
+          description: One sample contact-list result.
+          output: {id: '42', contactId: '68', listId: '11', status: 1}
+    - name: unsubscribeContactFromList
+      goName: UnsubscribeContactFromList
+      inputType: SetContactListMembershipInput
+      outputType: ContactListMembership
+      kind: mutation
+      description: Unsubscribe a contact from an email list with bounded sends and read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: unsubscribed, goName: Unsubscribed, description: ActiveCampaign completed the list-membership operation.}
+        - {id: uncertain, goName: Uncertain, description: A bounded subscription change could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: unsubscribedDefault
+          branch: unsubscribed
+          default: true
+          description: One sample contact-list result.
+          output: {id: '42', contactId: '68', listId: '11', status: 2}
     - name: listContactTags
       goName: ListContactTags
       inputType: ListContactTagsInput

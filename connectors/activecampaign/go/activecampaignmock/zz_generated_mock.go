@@ -17,30 +17,33 @@ import (
 
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
-	connection           activecampaign.Connection
-	listContactTags      *connectormock.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations]
-	applyTagToContact    *connectormock.Mutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation]
-	removeTagFromContact *connectormock.Mutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval]
-	listDealNotes        *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage]
-	getDealNote          *connectormock.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata]
-	createDealNote       *connectormock.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata]
-	updateDealNote       *connectormock.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata]
-	listDeals            *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
-	getDeal              *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
-	createDeal           *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
-	updateDeal           *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
-	deleteDeal           *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
-	listTags             *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
-	getTag               *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
-	createTag            *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
-	updateTag            *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
-	deleteTag            *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
-	listLists            *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
-	getList              *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
-	listContacts         *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
-	getContact           *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
-	syncContact          *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
-	updateContact        *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
+	connection                 activecampaign.Connection
+	listContactListMemberships *connectormock.Query[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage]
+	subscribeContactToList     *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership]
+	unsubscribeContactFromList *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership]
+	listContactTags            *connectormock.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations]
+	applyTagToContact          *connectormock.Mutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation]
+	removeTagFromContact       *connectormock.Mutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval]
+	listDealNotes              *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage]
+	getDealNote                *connectormock.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata]
+	createDealNote             *connectormock.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata]
+	updateDealNote             *connectormock.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata]
+	listDeals                  *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
+	getDeal                    *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
+	createDeal                 *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
+	updateDeal                 *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
+	deleteDeal                 *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
+	listTags                   *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
+	getTag                     *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
+	createTag                  *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
+	updateTag                  *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
+	deleteTag                  *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
+	listLists                  *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
+	getList                    *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
+	listContacts               *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
+	getContact                 *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
+	syncContact                *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
+	updateContact              *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -48,30 +51,36 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listContactTags:      connectormock.NewQuery[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations](t, activecampaign.ListContactTagsDefinition),
-		applyTagToContact:    connectormock.NewMutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation](t, activecampaign.ApplyTagToContactDefinition),
-		removeTagFromContact: connectormock.NewMutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval](t, activecampaign.RemoveTagFromContactDefinition),
-		listDealNotes:        connectormock.NewQuery[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage](t, activecampaign.ListDealNotesDefinition),
-		getDealNote:          connectormock.NewQuery[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.GetDealNoteDefinition),
-		createDealNote:       connectormock.NewMutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.CreateDealNoteDefinition),
-		updateDealNote:       connectormock.NewMutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.UpdateDealNoteDefinition),
-		listDeals:            connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
-		getDeal:              connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
-		createDeal:           connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
-		updateDeal:           connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
-		deleteDeal:           connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
-		listTags:             connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
-		getTag:               connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
-		createTag:            connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
-		updateTag:            connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
-		deleteTag:            connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
-		listLists:            connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
-		getList:              connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
-		listContacts:         connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
-		getContact:           connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
-		syncContact:          connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
-		updateContact:        connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
+		listContactListMemberships: connectormock.NewQuery[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage](t, activecampaign.ListContactListMembershipsDefinition),
+		subscribeContactToList:     connectormock.NewMutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership](t, activecampaign.SubscribeContactToListDefinition),
+		unsubscribeContactFromList: connectormock.NewMutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership](t, activecampaign.UnsubscribeContactFromListDefinition),
+		listContactTags:            connectormock.NewQuery[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations](t, activecampaign.ListContactTagsDefinition),
+		applyTagToContact:          connectormock.NewMutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation](t, activecampaign.ApplyTagToContactDefinition),
+		removeTagFromContact:       connectormock.NewMutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval](t, activecampaign.RemoveTagFromContactDefinition),
+		listDealNotes:              connectormock.NewQuery[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage](t, activecampaign.ListDealNotesDefinition),
+		getDealNote:                connectormock.NewQuery[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.GetDealNoteDefinition),
+		createDealNote:             connectormock.NewMutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.CreateDealNoteDefinition),
+		updateDealNote:             connectormock.NewMutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.UpdateDealNoteDefinition),
+		listDeals:                  connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
+		getDeal:                    connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
+		createDeal:                 connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
+		updateDeal:                 connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
+		deleteDeal:                 connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
+		listTags:                   connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
+		getTag:                     connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
+		createTag:                  connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
+		updateTag:                  connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
+		deleteTag:                  connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
+		listLists:                  connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
+		getList:                    connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
+		listContacts:               connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
+		getContact:                 connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
+		syncContact:                connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
+		updateContact:              connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listContactListMemberships.Default(ListContactListMembershipsDefault())
+	mock.subscribeContactToList.Default(SubscribeContactToListDefault())
+	mock.unsubscribeContactFromList.Default(UnsubscribeContactFromListDefault())
 	mock.listContactTags.Default(ListContactTagsDefault())
 	mock.applyTagToContact.Default(ApplyTagToContactDefault())
 	mock.removeTagFromContact.Default(RemoveTagFromContactDefault())
@@ -105,6 +114,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListContactListMemberships returns the listContactListMemberships script.
+func (mock *Mock) ListContactListMemberships() *connectormock.Query[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage] {
+	return mock.listContactListMemberships
+}
+
+// SubscribeContactToList returns the subscribeContactToList script.
+func (mock *Mock) SubscribeContactToList() *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership] {
+	return mock.subscribeContactToList
+}
+
+// UnsubscribeContactFromList returns the unsubscribeContactFromList script.
+func (mock *Mock) UnsubscribeContactFromList() *connectormock.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership] {
+	return mock.unsubscribeContactFromList
+}
 
 // ListContactTags returns the listContactTags script.
 func (mock *Mock) ListContactTags() *connectormock.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations] {
@@ -223,6 +247,15 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListContactListMemberships() sdkgo.Query[activecampaign.ListContactListMembershipsInput, activecampaign.ContactListMembershipsPage] {
+	return operations.mock.listContactListMemberships
+}
+func (operations mockOperations) SubscribeContactToList() sdkgo.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership] {
+	return operations.mock.subscribeContactToList
+}
+func (operations mockOperations) UnsubscribeContactFromList() sdkgo.Mutation[activecampaign.SetContactListMembershipInput, activecampaign.ContactListMembership] {
+	return operations.mock.unsubscribeContactFromList
+}
 func (operations mockOperations) ListContactTags() sdkgo.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations] {
 	return operations.mock.listContactTags
 }
@@ -291,6 +324,124 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// ListContactListMembershipsListed selects the listed branch: ActiveCampaign completed the list-membership operation.
+func ListContactListMembershipsListed(value activecampaign.ContactListMembershipsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembershipsPage] {
+	return connectormock.Branch(activecampaign.ListContactListMembershipsBranchListed, value, failure)
+}
+
+// ListContactListMembershipsProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListContactListMembershipsProviderRejected(value activecampaign.ContactListMembershipsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembershipsPage] {
+	return connectormock.Branch(activecampaign.ListContactListMembershipsBranchProviderRejected, value, failure)
+}
+
+// ListContactListMembershipsInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListContactListMembershipsInvalidResponse(value activecampaign.ContactListMembershipsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembershipsPage] {
+	return connectormock.Branch(activecampaign.ListContactListMembershipsBranchInvalidResponse, value, failure)
+}
+
+// ListContactListMembershipsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListContactListMembershipsDefect(value activecampaign.ContactListMembershipsPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembershipsPage] {
+	return connectormock.Branch(activecampaign.ListContactListMembershipsBranchDefect, value, failure)
+}
+
+// ListContactListMembershipsRetry asks Dex to retry the listContactListMemberships Step, after the delay when it is positive.
+func ListContactListMembershipsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ContactListMembershipsPage] {
+	return connectormock.Retry[activecampaign.ContactListMembershipsPage](failure, after)
+}
+
+// ListContactListMembershipsListedDefault is the manifest mock listedDefault: One sample contact-list result.
+func ListContactListMembershipsListedDefault() connectormock.Case[activecampaign.ContactListMembershipsPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.ContactListMembershipsPage](`{"memberships":[{"id":"42","contactId":"68","listId":"11","status":1}],"contactId":"68","offset":0,"limit":20,"total":1}`)
+	return connectormock.Branch(activecampaign.ListContactListMembershipsBranchListed, value, nil)
+}
+
+// ListContactListMembershipsDefault is the manifest default, listedDefault, which New installs.
+func ListContactListMembershipsDefault() connectormock.Case[activecampaign.ContactListMembershipsPage] {
+	return ListContactListMembershipsListedDefault()
+}
+
+// SubscribeContactToListSubscribed selects the subscribed branch: ActiveCampaign completed the list-membership operation.
+func SubscribeContactToListSubscribed(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Branch(activecampaign.SubscribeContactToListBranchSubscribed, value, failure)
+}
+
+// SubscribeContactToListUncertain returns an uncertain subscribeContactToList outcome.
+func SubscribeContactToListUncertain(value activecampaign.ContactListMembership, failure sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SubscribeContactToListProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func SubscribeContactToListProviderRejected(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Branch(activecampaign.SubscribeContactToListBranchProviderRejected, value, failure)
+}
+
+// SubscribeContactToListInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func SubscribeContactToListInvalidResponse(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Branch(activecampaign.SubscribeContactToListBranchInvalidResponse, value, failure)
+}
+
+// SubscribeContactToListDefect selects the defect branch: Local input or connection credentials are invalid.
+func SubscribeContactToListDefect(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Branch(activecampaign.SubscribeContactToListBranchDefect, value, failure)
+}
+
+// SubscribeContactToListRetry asks Dex to retry the subscribeContactToList Step, after the delay when it is positive.
+func SubscribeContactToListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Retry[activecampaign.ContactListMembership](failure, after)
+}
+
+// SubscribeContactToListSubscribedDefault is the manifest mock subscribedDefault: One sample contact-list result.
+func SubscribeContactToListSubscribedDefault() connectormock.Case[activecampaign.ContactListMembership] {
+	value := connectormock.MustDecodeOutput[activecampaign.ContactListMembership](`{"id":"42","contactId":"68","listId":"11","status":1}`)
+	return connectormock.Branch(activecampaign.SubscribeContactToListBranchSubscribed, value, nil)
+}
+
+// SubscribeContactToListDefault is the manifest default, subscribedDefault, which New installs.
+func SubscribeContactToListDefault() connectormock.Case[activecampaign.ContactListMembership] {
+	return SubscribeContactToListSubscribedDefault()
+}
+
+// UnsubscribeContactFromListUnsubscribed selects the unsubscribed branch: ActiveCampaign completed the list-membership operation.
+func UnsubscribeContactFromListUnsubscribed(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Branch(activecampaign.UnsubscribeContactFromListBranchUnsubscribed, value, failure)
+}
+
+// UnsubscribeContactFromListUncertain returns an uncertain unsubscribeContactFromList outcome.
+func UnsubscribeContactFromListUncertain(value activecampaign.ContactListMembership, failure sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// UnsubscribeContactFromListProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func UnsubscribeContactFromListProviderRejected(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Branch(activecampaign.UnsubscribeContactFromListBranchProviderRejected, value, failure)
+}
+
+// UnsubscribeContactFromListInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func UnsubscribeContactFromListInvalidResponse(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Branch(activecampaign.UnsubscribeContactFromListBranchInvalidResponse, value, failure)
+}
+
+// UnsubscribeContactFromListDefect selects the defect branch: Local input or connection credentials are invalid.
+func UnsubscribeContactFromListDefect(value activecampaign.ContactListMembership, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Branch(activecampaign.UnsubscribeContactFromListBranchDefect, value, failure)
+}
+
+// UnsubscribeContactFromListRetry asks Dex to retry the unsubscribeContactFromList Step, after the delay when it is positive.
+func UnsubscribeContactFromListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ContactListMembership] {
+	return connectormock.Retry[activecampaign.ContactListMembership](failure, after)
+}
+
+// UnsubscribeContactFromListUnsubscribedDefault is the manifest mock unsubscribedDefault: One sample contact-list result.
+func UnsubscribeContactFromListUnsubscribedDefault() connectormock.Case[activecampaign.ContactListMembership] {
+	value := connectormock.MustDecodeOutput[activecampaign.ContactListMembership](`{"id":"42","contactId":"68","listId":"11","status":2}`)
+	return connectormock.Branch(activecampaign.UnsubscribeContactFromListBranchUnsubscribed, value, nil)
+}
+
+// UnsubscribeContactFromListDefault is the manifest default, unsubscribedDefault, which New installs.
+func UnsubscribeContactFromListDefault() connectormock.Case[activecampaign.ContactListMembership] {
+	return UnsubscribeContactFromListUnsubscribedDefault()
 }
 
 // ListContactTagsListed selects the listed branch: ActiveCampaign completed the contact-tag operation.

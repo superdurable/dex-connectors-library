@@ -40,6 +40,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListContactListMemberships() sdkgo.Query[ListContactListMembershipsInput, ContactListMembershipsPage]
+	SubscribeContactToList() sdkgo.Mutation[SetContactListMembershipInput, ContactListMembership]
+	UnsubscribeContactFromList() sdkgo.Mutation[SetContactListMembershipInput, ContactListMembership]
 	ListContactTags() sdkgo.Query[ListContactTagsInput, ContactTagAssociations]
 	ApplyTagToContact() sdkgo.Mutation[ApplyTagToContactInput, ContactTagAssociation]
 	RemoveTagFromContact() sdkgo.Mutation[RemoveTagFromContactInput, ContactTagRemoval]
@@ -67,6 +70,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListContactListMemberships() sdkgo.Query[ListContactListMembershipsInput, ContactListMembershipsPage] {
+	return operations.client.ListContactListMemberships()
+}
+func (operations clientOperations) SubscribeContactToList() sdkgo.Mutation[SetContactListMembershipInput, ContactListMembership] {
+	return operations.client.SubscribeContactToList()
+}
+func (operations clientOperations) UnsubscribeContactFromList() sdkgo.Mutation[SetContactListMembershipInput, ContactListMembership] {
+	return operations.client.UnsubscribeContactFromList()
+}
 func (operations clientOperations) ListContactTags() sdkgo.Query[ListContactTagsInput, ContactTagAssociations] {
 	return operations.client.ListContactTags()
 }
@@ -271,6 +283,241 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListContactListMembershipsBranchListed sdkgo.BranchID = "listed"
+const ListContactListMembershipsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactListMembershipsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactListMembershipsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactListMembershipsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContactListMemberships"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactListMembershipsBranchListed, Description: "ActiveCampaign completed the list-membership operation."},
+		{ID: ListContactListMembershipsBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: ListContactListMembershipsBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: ListContactListMembershipsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactListMembershipsResult = sdkgo.QueryResult[ContactListMembershipsPage]
+
+type ListContactListMembershipsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                      `connector:"connectorId=activecampaign"`
+	operationID                    struct{}                                                      `connector:"operationId=listContactListMemberships"`
+	StepType                       string                                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                     Connection                                                    `connector:"connection"`
+	ConnectionName                 string                                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactListMembershipsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactListMembershipsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContactListMembershipsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactListMembershipsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactListMembershipsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactListMembershipsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewListContactListMembershipsStep[IN any](config ListContactListMembershipsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactListMembershipsInput, ContactListMembershipsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactListMembershipsInput, ContactListMembershipsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContactListMemberships(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactListMembershipsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactListMembershipsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactListMembershipsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactListMembershipsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactListMembershipsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactListMembershipsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SubscribeContactToListBranchSubscribed sdkgo.BranchID = "subscribed"
+const SubscribeContactToListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SubscribeContactToListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SubscribeContactToListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SubscribeContactToListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SubscribeContactToListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "subscribeContactToList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SubscribeContactToListBranchSubscribed, Description: "ActiveCampaign completed the list-membership operation."},
+		{ID: SubscribeContactToListBranchUncertain, Description: "A bounded subscription change could not be confirmed.", Optional: true},
+		{ID: SubscribeContactToListBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: SubscribeContactToListBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: SubscribeContactToListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SubscribeContactToListResult = sdkgo.MutationResult[ContactListMembership]
+
+type SubscribeContactToListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                    `connector:"operationId=subscribeContactToList"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetContactListMembershipInput                      `connector:"mapToOperationInput"`
+	Subscribed                        sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=subscribed"`
+	Uncertain                         sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SubscribeContactToListResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactListMembership]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSubscribeContactToListStep[IN any](config SubscribeContactToListStepConfig[IN]) sdkgo.MutationStep[IN, SetContactListMembershipInput, ContactListMembership] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetContactListMembershipInput, ContactListMembership]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SubscribeContactToList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SubscribeContactToListResult] {
+			branches := make([]sdkgo.BranchTarget[SubscribeContactToListResult], 0, 5)
+			if config.Subscribed.HasStep() {
+				branches = append(branches, config.Subscribed.BranchTarget(SubscribeContactToListBranchSubscribed))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SubscribeContactToListBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SubscribeContactToListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SubscribeContactToListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SubscribeContactToListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UnsubscribeContactFromListBranchUnsubscribed sdkgo.BranchID = "unsubscribed"
+const UnsubscribeContactFromListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const UnsubscribeContactFromListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnsubscribeContactFromListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UnsubscribeContactFromListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnsubscribeContactFromListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unsubscribeContactFromList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnsubscribeContactFromListBranchUnsubscribed, Description: "ActiveCampaign completed the list-membership operation."},
+		{ID: UnsubscribeContactFromListBranchUncertain, Description: "A bounded subscription change could not be confirmed.", Optional: true},
+		{ID: UnsubscribeContactFromListBranchProviderRejected, Description: "ActiveCampaign conclusively rejected the request.", Optional: true},
+		{ID: UnsubscribeContactFromListBranchInvalidResponse, Description: "ActiveCampaign returned malformed or oversized JSON.", Optional: true},
+		{ID: UnsubscribeContactFromListBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type UnsubscribeContactFromListResult = sdkgo.MutationResult[ContactListMembership]
+
+type UnsubscribeContactFromListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=activecampaign"`
+	operationID                       struct{}                                                    `connector:"operationId=unsubscribeContactFromList"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetContactListMembershipInput                      `connector:"mapToOperationInput"`
+	Unsubscribed                      sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=unsubscribed"`
+	Uncertain                         sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=uncertain,optional"`
+	ProviderRejected                  sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UnsubscribeContactFromListResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactListMembership]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewUnsubscribeContactFromListStep[IN any](config UnsubscribeContactFromListStepConfig[IN]) sdkgo.MutationStep[IN, SetContactListMembershipInput, ContactListMembership] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("activecampaign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetContactListMembershipInput, ContactListMembership]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnsubscribeContactFromList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnsubscribeContactFromListResult] {
+			branches := make([]sdkgo.BranchTarget[UnsubscribeContactFromListResult], 0, 5)
+			if config.Unsubscribed.HasStep() {
+				branches = append(branches, config.Unsubscribed.BranchTarget(UnsubscribeContactFromListBranchUnsubscribed))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UnsubscribeContactFromListBranchUncertain))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnsubscribeContactFromListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UnsubscribeContactFromListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnsubscribeContactFromListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const ListContactTagsBranchListed sdkgo.BranchID = "listed"

@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listContactListMemberships/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactListMembershipsPage](`{"memberships":[{"id":"42","contactId":"68","listId":"11","status":1}],"contactId":"68","offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "subscribeContactToList/subscribedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactListMembership](`{"id":"42","contactId":"68","listId":"11","status":1}`)
+			return err
+		}},
+		{name: "unsubscribeContactFromList/unsubscribedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactListMembership](`{"id":"42","contactId":"68","listId":"11","status":2}`)
+			return err
+		}},
 		{name: "listContactTags/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.ContactTagAssociations](`{"contactId":"68","tags":[{"associationId":"22","contactId":"68","tagId":"16"}]}`)
 			return err
@@ -118,6 +130,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListContactListMemberships().Definition().Operation.OperationID != "listContactListMemberships" {
+		t.Errorf("listContactListMemberships mock has another definition")
+	}
+	if mock.SubscribeContactToList().Definition().Operation.OperationID != "subscribeContactToList" {
+		t.Errorf("subscribeContactToList mock has another definition")
+	}
+	if mock.UnsubscribeContactFromList().Definition().Operation.OperationID != "unsubscribeContactFromList" {
+		t.Errorf("unsubscribeContactFromList mock has another definition")
+	}
 	if mock.ListContactTags().Definition().Operation.OperationID != "listContactTags" {
 		t.Errorf("listContactTags mock has another definition")
 	}

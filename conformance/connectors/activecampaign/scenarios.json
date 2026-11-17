@@ -7487,6 +7487,1755 @@
       },
       "name": "removeTagFromContact-transportFailure",
       "operation": "removeTagFromContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}],\"meta\":{\"total\":\"12\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contactId": "68",
+          "limit": 3,
+          "memberships": [
+            {
+              "contactId": "68",
+              "id": "42",
+              "listId": "11",
+              "status": 1
+            }
+          ],
+          "offset": 2,
+          "total": 12
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "68",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listContactListMemberships-success",
+      "operation": "listContactListMemberships"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "limit": 0,
+          "memberships": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "68",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listContactListMemberships-providerRejected",
+      "operation": "listContactListMemberships"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":{},\"meta\":{\"total\":\"12\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "limit": 0,
+          "memberships": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "68",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listContactListMemberships-invalidResponse",
+      "operation": "listContactListMemberships"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "limit": 0,
+          "memberships": [],
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "../"
+      },
+      "name": "listContactListMemberships-defect",
+      "operation": "listContactListMemberships"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "68",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listContactListMemberships-rateLimit",
+      "operation": "listContactListMemberships"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "68",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listContactListMemberships-serverUnavailable",
+      "operation": "listContactListMemberships"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "68",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listContactListMemberships-transportFailure",
+      "operation": "listContactListMemberships"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[],\"meta\":{\"total\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"contactList\":{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+          "providerId": "42",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "68",
+          "id": "42",
+          "listId": "11",
+          "status": 1
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-success",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "output": {
+          "contactId": "68",
+          "id": "42",
+          "listId": "11",
+          "status": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-alreadyDesired",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[],\"meta\":{\"total\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "listId": "",
+          "status": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-providerRejected",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[],\"meta\":{\"total\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "listId": "",
+          "status": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-uncertain",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "listId": "",
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-invalidResponse",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "listId": "",
+          "status": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "../",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-defect",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[],\"meta\":{\"total\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-rateLimit",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[],\"meta\":{\"total\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-serverUnavailable",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-transportFailure",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"contactList\":{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":2}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "unsubscribed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+          "providerId": "42",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "68",
+          "id": "42",
+          "listId": "11",
+          "status": 2
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-success",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":2}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsubscribed",
+        "failureKind": "",
+        "output": {
+          "contactId": "68",
+          "id": "42",
+          "listId": "11",
+          "status": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-alreadyDesired",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[],\"meta\":{\"total\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsubscribed",
+        "failureKind": "",
+        "output": {
+          "contactId": "68",
+          "id": "",
+          "listId": "11",
+          "status": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-alreadyAbsent",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "listId": "",
+          "status": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-providerRejected",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactId": "",
+          "id": "",
+          "listId": "",
+          "status": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-uncertain",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "listId": "",
+          "status": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-invalidResponse",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "id": "",
+          "listId": "",
+          "status": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "../"
+      },
+      "name": "unsubscribeContactFromList-defect",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-rateLimit",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{\"contactLists\":[{\"id\":\"42\",\"contact\":\"68\",\"list\":\"11\",\"status\":1}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contactLists",
+          "requestBody": {
+            "contactList": {
+              "contact": "68",
+              "list": "11",
+              "status": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-serverUnavailable",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-transportFailure",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-preReadRateLimit",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "85b63ad5-4534-5547-b835-85afe5e5e7ee",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "subscribeContactToList-preReadUnavailable",
+      "operation": "subscribeContactToList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-preReadRateLimit",
+      "operation": "unsubscribeContactFromList"
+    },
+    {
+      "callId": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contactLists",
+          "query": {
+            "contact": [
+              "68"
+            ],
+            "limit": [
+              "100"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "820e4f81-bbbe-5379-9dd6-b38455f1bd0f",
+      "input": {
+        "contactId": "68",
+        "listId": "11"
+      },
+      "name": "unsubscribeContactFromList-preReadUnavailable",
+      "operation": "unsubscribeContactFromList"
     }
   ],
   "schemaVersion": 1
