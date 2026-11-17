@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{sendmessage.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{sendmessage.NewFlow(connection), sendmessage.NewEditMessageFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Telegram message send Flow: %w", err)
 	}

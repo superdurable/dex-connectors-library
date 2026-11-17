@@ -3174,6 +3174,1747 @@
       },
       "name": "getFile-transportFailure",
       "operation": "getFile"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{\"message_id\":52}}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ],
+            "text": [
+              "Edited"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/editMessageText",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "edited",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team",
+          "messageId": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52,
+        "text": "Edited"
+      },
+      "name": "editMessageText-success",
+      "operation": "editMessageText"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":403,\"description\":\"Forbidden\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ],
+            "text": [
+              "Edited"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/editMessageText",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52,
+        "text": "Edited"
+      },
+      "name": "editMessageText-providerRejected",
+      "operation": "editMessageText"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{}}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ],
+            "text": [
+              "Edited"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/editMessageText",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52,
+        "text": "Edited"
+      },
+      "name": "editMessageText-invalidResponse",
+      "operation": "editMessageText"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52,
+        "text": ""
+      },
+      "name": "editMessageText-defect",
+      "operation": "editMessageText"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ],
+            "text": [
+              "Edited"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/editMessageText",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52,
+        "text": "Edited"
+      },
+      "name": "editMessageText-rateLimit",
+      "operation": "editMessageText"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ],
+            "text": [
+              "Edited"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/editMessageText",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52,
+        "text": "Edited"
+      },
+      "name": "editMessageText-serverFailure",
+      "operation": "editMessageText"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "exchanges": [
+        {
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ],
+            "text": [
+              "Edited"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/editMessageText",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52,
+        "text": "Edited"
+      },
+      "name": "editMessageText-transportFailure",
+      "operation": "editMessageText"
+    },
+    {
+      "attempts": 1,
+      "callId": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":400,\"description\":\"message is not modified\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ],
+            "text": [
+              "Edited"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/editMessageText",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "edited",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team",
+          "messageId": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c458dc2-c0e4-551a-9abd-e8ac51211995",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52,
+        "text": "Edited"
+      },
+      "name": "editMessageText-alreadyDone",
+      "operation": "editMessageText"
+    },
+    {
+      "attempts": 1,
+      "callId": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":true}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/deleteMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team",
+          "messageId": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "deleteMessage-success",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":403,\"description\":\"Forbidden\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/deleteMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "deleteMessage-providerRejected",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{}}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/deleteMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "deleteMessage-invalidResponse",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "input": {
+        "chatId": "",
+        "messageId": 52
+      },
+      "name": "deleteMessage-defect",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/deleteMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "deleteMessage-rateLimit",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/deleteMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "deleteMessage-serverFailure",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "exchanges": [
+        {
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/deleteMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "deleteMessage-transportFailure",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":400,\"description\":\"message to delete not found\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/deleteMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team",
+          "messageId": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b8a2aecd-c9c1-54dd-92f7-75fc5d3a18e0",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "deleteMessage-alreadyDone",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":true}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/pinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "pinned",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team",
+          "messageId": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "pinChatMessage-success",
+      "operation": "pinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":403,\"description\":\"Forbidden\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/pinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "pinChatMessage-providerRejected",
+      "operation": "pinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{}}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/pinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "pinChatMessage-invalidResponse",
+      "operation": "pinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "input": {
+        "chatId": "",
+        "messageId": 52
+      },
+      "name": "pinChatMessage-defect",
+      "operation": "pinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/pinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "pinChatMessage-rateLimit",
+      "operation": "pinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/pinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "pinChatMessage-serverFailure",
+      "operation": "pinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "exchanges": [
+        {
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/pinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "pinChatMessage-transportFailure",
+      "operation": "pinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":400,\"description\":\"already pinned\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/pinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "pinned",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team",
+          "messageId": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ec55d02e-c3d6-5a4d-ab13-cfcf63e3f822",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "pinChatMessage-alreadyDone",
+      "operation": "pinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":true}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/unpinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unpinned",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team",
+          "messageId": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "unpinChatMessage-success",
+      "operation": "unpinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":403,\"description\":\"Forbidden\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/unpinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "unpinChatMessage-providerRejected",
+      "operation": "unpinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{}}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/unpinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "unpinChatMessage-invalidResponse",
+      "operation": "unpinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "chatId": "",
+          "messageId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "input": {
+        "chatId": "",
+        "messageId": 52
+      },
+      "name": "unpinChatMessage-defect",
+      "operation": "unpinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/unpinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "unpinChatMessage-rateLimit",
+      "operation": "unpinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/unpinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "unpinChatMessage-serverFailure",
+      "operation": "unpinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "exchanges": [
+        {
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/unpinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "unpinChatMessage-transportFailure",
+      "operation": "unpinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":400,\"description\":\"not pinned\"}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "message_id": [
+              "52"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/unpinChatMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "unpinned",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team",
+          "messageId": 52
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "614c47fc-10bd-5de5-aea2-a887bfc938cf",
+      "input": {
+        "chatId": "@meridian_team",
+        "messageId": 52
+      },
+      "name": "unpinChatMessage-alreadyDone",
+      "operation": "unpinChatMessage"
+    },
+    {
+      "attempts": 1,
+      "callId": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":true}",
+          "form": {
+            "action": [
+              "typing"
+            ],
+            "chat_id": [
+              "@meridian_team"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendChatAction",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "chatId": "@meridian_team"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "input": {
+        "action": "typing",
+        "chatId": "@meridian_team"
+      },
+      "name": "sendChatAction-success",
+      "operation": "sendChatAction"
+    },
+    {
+      "attempts": 1,
+      "callId": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":403,\"description\":\"Forbidden\"}",
+          "form": {
+            "action": [
+              "typing"
+            ],
+            "chat_id": [
+              "@meridian_team"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendChatAction",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "chatId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "input": {
+        "action": "typing",
+        "chatId": "@meridian_team"
+      },
+      "name": "sendChatAction-providerRejected",
+      "operation": "sendChatAction"
+    },
+    {
+      "attempts": 1,
+      "callId": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"result\":{}}",
+          "form": {
+            "action": [
+              "typing"
+            ],
+            "chat_id": [
+              "@meridian_team"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendChatAction",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "chatId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "input": {
+        "action": "typing",
+        "chatId": "@meridian_team"
+      },
+      "name": "sendChatAction-invalidResponse",
+      "operation": "sendChatAction"
+    },
+    {
+      "attempts": 1,
+      "callId": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "chatId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "input": {
+        "action": "typing",
+        "chatId": ""
+      },
+      "name": "sendChatAction-defect",
+      "operation": "sendChatAction"
+    },
+    {
+      "attempts": 1,
+      "callId": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "action": [
+              "typing"
+            ],
+            "chat_id": [
+              "@meridian_team"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendChatAction",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "input": {
+        "action": "typing",
+        "chatId": "@meridian_team"
+      },
+      "name": "sendChatAction-rateLimit",
+      "operation": "sendChatAction"
+    },
+    {
+      "attempts": 1,
+      "callId": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "action": [
+              "typing"
+            ],
+            "chat_id": [
+              "@meridian_team"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendChatAction",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "input": {
+        "action": "typing",
+        "chatId": "@meridian_team"
+      },
+      "name": "sendChatAction-serverFailure",
+      "operation": "sendChatAction"
+    },
+    {
+      "attempts": 1,
+      "callId": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "exchanges": [
+        {
+          "form": {
+            "action": [
+              "typing"
+            ],
+            "chat_id": [
+              "@meridian_team"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendChatAction",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59a1d33d-0732-58a4-bb9a-c3e02b86ebfc",
+      "input": {
+        "action": "typing",
+        "chatId": "@meridian_team"
+      },
+      "name": "sendChatAction-transportFailure",
+      "operation": "sendChatAction"
     }
   ],
   "schemaVersion": 1

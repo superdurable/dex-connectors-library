@@ -55,6 +55,106 @@ spec:
         - For an existing bot, open BotFather > /mybots > your bot > API Token. Save the token only in bot_token, never in Flow input. Use BotFather to revoke and replace a leaked token.
         - Add the bot to the target chat and grant access needed to read its metadata or send text. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: editMessageText
+      goName: EditMessageText
+      inputType: EditMessageTextInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Replace the plain text of a bot-editable chat message.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: edited, goName: Edited, description: Telegram confirmed the message text.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the edit., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local message ID, chat ID, text, or credentials are invalid.", optional: true}
+      mocks:
+        - name: editedDefault
+          branch: edited
+          default: true
+          description: The message text was replaced.
+          output: {chatId: "-1001234567890", messageId: 52}
+    - name: deleteMessage
+      goName: DeleteMessage
+      inputType: MessageReferenceInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Delete a chat message within Telegram's deletion limits.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Telegram confirmed deletion or the message is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat or message ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: The message was deleted.
+          output: {chatId: "-1001234567890", messageId: 52}
+    - name: pinChatMessage
+      goName: PinChatMessage
+      inputType: MessageReferenceInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Add a message to the chat's pinned messages.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: pinned, goName: Pinned, description: Telegram confirmed the message is pinned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the pin., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat or message ID or credentials are invalid., optional: true}
+      mocks:
+        - name: pinnedDefault
+          branch: pinned
+          default: true
+          description: The message was pinned.
+          output: {chatId: "-1001234567890", messageId: 52}
+    - name: unpinChatMessage
+      goName: UnpinChatMessage
+      inputType: MessageReferenceInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Remove one selected message from the chat's pinned messages.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unpinned, goName: Unpinned, description: Telegram confirmed the message is unpinned.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the unpin., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local chat or message ID or credentials are invalid., optional: true}
+      mocks:
+        - name: unpinnedDefault
+          branch: unpinned
+          default: true
+          description: The message was unpinned.
+          output: {chatId: "-1001234567890", messageId: 52}
+    - name: sendChatAction
+      goName: SendChatAction
+      inputType: SendChatActionInput
+      outputType: ChatActionResult
+      kind: mutation
+      description: Show a transient typing or upload status in a chat.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the transient status.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the action., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: "Local chat ID, action, or credentials are invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Typing status was shown.
+          output: {chatId: "-1001234567890"}
     - name: answerCallbackQuery
       goName: AnswerCallbackQuery
       inputType: AnswerCallbackQueryInput

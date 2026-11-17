@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	EditMessageText() sdkgo.Mutation[EditMessageTextInput, MessageActionResult]
+	DeleteMessage() sdkgo.Mutation[MessageReferenceInput, MessageActionResult]
+	PinChatMessage() sdkgo.Mutation[MessageReferenceInput, MessageActionResult]
+	UnpinChatMessage() sdkgo.Mutation[MessageReferenceInput, MessageActionResult]
+	SendChatAction() sdkgo.Mutation[SendChatActionInput, ChatActionResult]
 	AnswerCallbackQuery() sdkgo.Mutation[AnswerCallbackQueryInput, AnsweredQuery]
 	AnswerInlineQuery() sdkgo.Mutation[AnswerInlineQueryInput, AnsweredQuery]
 	GetFile() sdkgo.Query[GetFileInput, TelegramFile]
@@ -54,6 +59,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) EditMessageText() sdkgo.Mutation[EditMessageTextInput, MessageActionResult] {
+	return operations.client.EditMessageText()
+}
+func (operations clientOperations) DeleteMessage() sdkgo.Mutation[MessageReferenceInput, MessageActionResult] {
+	return operations.client.DeleteMessage()
+}
+func (operations clientOperations) PinChatMessage() sdkgo.Mutation[MessageReferenceInput, MessageActionResult] {
+	return operations.client.PinChatMessage()
+}
+func (operations clientOperations) UnpinChatMessage() sdkgo.Mutation[MessageReferenceInput, MessageActionResult] {
+	return operations.client.UnpinChatMessage()
+}
+func (operations clientOperations) SendChatAction() sdkgo.Mutation[SendChatActionInput, ChatActionResult] {
+	return operations.client.SendChatAction()
+}
 func (operations clientOperations) AnswerCallbackQuery() sdkgo.Mutation[AnswerCallbackQueryInput, AnsweredQuery] {
 	return operations.client.AnswerCallbackQuery()
 }
@@ -220,6 +240,361 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential bot_token is required")
 	}
 	return nil
+}
+
+const EditMessageTextBranchEdited sdkgo.BranchID = "edited"
+const EditMessageTextBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const EditMessageTextBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const EditMessageTextBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var EditMessageTextDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "editMessageText"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: EditMessageTextBranchEdited, Description: "Telegram confirmed the message text."},
+		{ID: EditMessageTextBranchProviderRejected, Description: "Telegram conclusively rejected the edit.", Optional: true},
+		{ID: EditMessageTextBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: EditMessageTextBranchDefect, Description: "Local message ID, chat ID, text, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type EditMessageTextResult = sdkgo.MutationResult[MessageActionResult]
+
+type EditMessageTextStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=telegram"`
+	operationID                       struct{}                                                  `connector:"operationId=editMessageText"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) EditMessageTextInput                             `connector:"mapToOperationInput"`
+	Edited                            sdkgo.Target[EditMessageTextResult]                       `connector:"branch=edited"`
+	ProviderRejected                  sdkgo.Target[EditMessageTextResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[EditMessageTextResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[EditMessageTextResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessageActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewEditMessageTextStep[IN any](config EditMessageTextStepConfig[IN]) sdkgo.MutationStep[IN, EditMessageTextInput, MessageActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, EditMessageTextInput, MessageActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.EditMessageText(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[EditMessageTextResult] {
+			branches := make([]sdkgo.BranchTarget[EditMessageTextResult], 0, 4)
+			if config.Edited.HasStep() {
+				branches = append(branches, config.Edited.BranchTarget(EditMessageTextBranchEdited))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(EditMessageTextBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(EditMessageTextBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(EditMessageTextBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteMessageBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteMessageBranchDeleted, Description: "Telegram confirmed deletion or the message is already absent."},
+		{ID: DeleteMessageBranchProviderRejected, Description: "Telegram conclusively rejected the delete.", Optional: true},
+		{ID: DeleteMessageBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: DeleteMessageBranchDefect, Description: "Local chat or message ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteMessageResult = sdkgo.MutationResult[MessageActionResult]
+
+type DeleteMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=telegram"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteMessage"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) MessageReferenceInput                            `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteMessageResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteMessageResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteMessageResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteMessageResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessageActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteMessageStep[IN any](config DeleteMessageStepConfig[IN]) sdkgo.MutationStep[IN, MessageReferenceInput, MessageActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, MessageReferenceInput, MessageActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteMessageResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteMessageResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteMessageBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PinChatMessageBranchPinned sdkgo.BranchID = "pinned"
+const PinChatMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PinChatMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PinChatMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PinChatMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "pinChatMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PinChatMessageBranchPinned, Description: "Telegram confirmed the message is pinned."},
+		{ID: PinChatMessageBranchProviderRejected, Description: "Telegram conclusively rejected the pin.", Optional: true},
+		{ID: PinChatMessageBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: PinChatMessageBranchDefect, Description: "Local chat or message ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type PinChatMessageResult = sdkgo.MutationResult[MessageActionResult]
+
+type PinChatMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=telegram"`
+	operationID                       struct{}                                                  `connector:"operationId=pinChatMessage"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) MessageReferenceInput                            `connector:"mapToOperationInput"`
+	Pinned                            sdkgo.Target[PinChatMessageResult]                        `connector:"branch=pinned"`
+	ProviderRejected                  sdkgo.Target[PinChatMessageResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PinChatMessageResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PinChatMessageResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessageActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewPinChatMessageStep[IN any](config PinChatMessageStepConfig[IN]) sdkgo.MutationStep[IN, MessageReferenceInput, MessageActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, MessageReferenceInput, MessageActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PinChatMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PinChatMessageResult] {
+			branches := make([]sdkgo.BranchTarget[PinChatMessageResult], 0, 4)
+			if config.Pinned.HasStep() {
+				branches = append(branches, config.Pinned.BranchTarget(PinChatMessageBranchPinned))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PinChatMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PinChatMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PinChatMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UnpinChatMessageBranchUnpinned sdkgo.BranchID = "unpinned"
+const UnpinChatMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnpinChatMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UnpinChatMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnpinChatMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unpinChatMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnpinChatMessageBranchUnpinned, Description: "Telegram confirmed the message is unpinned."},
+		{ID: UnpinChatMessageBranchProviderRejected, Description: "Telegram conclusively rejected the unpin.", Optional: true},
+		{ID: UnpinChatMessageBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: UnpinChatMessageBranchDefect, Description: "Local chat or message ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UnpinChatMessageResult = sdkgo.MutationResult[MessageActionResult]
+
+type UnpinChatMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=telegram"`
+	operationID                       struct{}                                                  `connector:"operationId=unpinChatMessage"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) MessageReferenceInput                            `connector:"mapToOperationInput"`
+	Unpinned                          sdkgo.Target[UnpinChatMessageResult]                      `connector:"branch=unpinned"`
+	ProviderRejected                  sdkgo.Target[UnpinChatMessageResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UnpinChatMessageResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UnpinChatMessageResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessageActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUnpinChatMessageStep[IN any](config UnpinChatMessageStepConfig[IN]) sdkgo.MutationStep[IN, MessageReferenceInput, MessageActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, MessageReferenceInput, MessageActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnpinChatMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnpinChatMessageResult] {
+			branches := make([]sdkgo.BranchTarget[UnpinChatMessageResult], 0, 4)
+			if config.Unpinned.HasStep() {
+				branches = append(branches, config.Unpinned.BranchTarget(UnpinChatMessageBranchUnpinned))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnpinChatMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UnpinChatMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnpinChatMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendChatActionBranchSent sdkgo.BranchID = "sent"
+const SendChatActionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendChatActionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SendChatActionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendChatActionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendChatAction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendChatActionBranchSent, Description: "Telegram confirmed the transient status."},
+		{ID: SendChatActionBranchProviderRejected, Description: "Telegram conclusively rejected the action.", Optional: true},
+		{ID: SendChatActionBranchInvalidResponse, Description: "Telegram returned malformed or oversized data.", Optional: true},
+		{ID: SendChatActionBranchDefect, Description: "Local chat ID, action, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SendChatActionResult = sdkgo.MutationResult[ChatActionResult]
+
+type SendChatActionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=telegram"`
+	operationID                       struct{}                                               `connector:"operationId=sendChatAction"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendChatActionInput                           `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendChatActionResult]                     `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendChatActionResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SendChatActionResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SendChatActionResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ChatActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewSendChatActionStep[IN any](config SendChatActionStepConfig[IN]) sdkgo.MutationStep[IN, SendChatActionInput, ChatActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendChatActionInput, ChatActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendChatAction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendChatActionResult] {
+			branches := make([]sdkgo.BranchTarget[SendChatActionResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendChatActionBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendChatActionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SendChatActionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendChatActionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const AnswerCallbackQueryBranchAnswered sdkgo.BranchID = "answered"

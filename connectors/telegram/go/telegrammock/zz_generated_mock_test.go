@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "editMessageText/editedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.MessageActionResult](`{"chatId":"-1001234567890","messageId":52}`)
+			return err
+		}},
+		{name: "deleteMessage/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.MessageActionResult](`{"chatId":"-1001234567890","messageId":52}`)
+			return err
+		}},
+		{name: "pinChatMessage/pinnedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.MessageActionResult](`{"chatId":"-1001234567890","messageId":52}`)
+			return err
+		}},
+		{name: "unpinChatMessage/unpinnedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.MessageActionResult](`{"chatId":"-1001234567890","messageId":52}`)
+			return err
+		}},
+		{name: "sendChatAction/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.ChatActionResult](`{"chatId":"-1001234567890"}`)
+			return err
+		}},
 		{name: "answerCallbackQuery/answeredDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[telegram.AnsweredQuery](`{"answered":true}`)
 			return err
@@ -66,6 +86,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.EditMessageText().Definition().Operation.OperationID != "editMessageText" {
+		t.Errorf("editMessageText mock has another definition")
+	}
+	if mock.DeleteMessage().Definition().Operation.OperationID != "deleteMessage" {
+		t.Errorf("deleteMessage mock has another definition")
+	}
+	if mock.PinChatMessage().Definition().Operation.OperationID != "pinChatMessage" {
+		t.Errorf("pinChatMessage mock has another definition")
+	}
+	if mock.UnpinChatMessage().Definition().Operation.OperationID != "unpinChatMessage" {
+		t.Errorf("unpinChatMessage mock has another definition")
+	}
+	if mock.SendChatAction().Definition().Operation.OperationID != "sendChatAction" {
+		t.Errorf("sendChatAction mock has another definition")
+	}
 	if mock.AnswerCallbackQuery().Definition().Operation.OperationID != "answerCallbackQuery" {
 		t.Errorf("answerCallbackQuery mock has another definition")
 	}
