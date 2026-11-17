@@ -8,6 +8,8 @@ Go also provides `addCandidateTag` and `removeCandidateTag` for existing candida
 
 Go `createCandidate` creates a candidate from a complete first and last display name, using a bounded `limited` send tier. Ashby has no documented idempotency key or stable lookup identity for a name-only create, so a timeout or lost response can cause a duplicate candidate on resend. The connector permits at most three possible sends and selects `uncertain` if the cap is reached without a confirmed result. Use a disposable candidate for a live test. See [candidate.create](https://developers.ashbyhq.com/reference/candidatecreate).
 
+Go `searchCandidates` searches by a candidate name, a complete email address, or both. At least one search field is required; `limit` is 1–100, with zero using Ashby's default of 100. Find names or email addresses under **Candidates > Search** in Ashby. Search results expose only candidate IDs, names, and timestamps. See [candidate.search](https://developers.ashbyhq.com/reference/candidatesearch).
+
 ## Connect
 
 In [Ashby](https://app.ashbyhq.com), an administrator opens **Admin > API Keys** and creates an API key with **Candidates read** permission, plus **Candidates write** for `updateCandidate`. Copy the complete opaque secret into the Dex Web connection's `api_key` field. The connector sends it as the HTTP Basic username with an empty password. Revoke or rotate the key from the same page. Confidential candidates require the additional confidential jobs/projects permission. See [Ashby authentication](https://developers.ashbyhq.com/reference/authentication).

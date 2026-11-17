@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Create and read candidates, replace names, and manage candidate tags in Ashby.
+  description: Create, search, and read candidates, replace names, and manage candidate tags in Ashby.
   company: Ashby
   categories: [hr-recruiting]
   version: v0.2.0
@@ -55,6 +55,26 @@ spec:
         - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write permissions for these operations. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. Results omit email, phone, and resume data.
   operations:
+    - name: searchCandidates
+      goName: SearchCandidates
+      inputType: SearchCandidatesInput
+      outputType: CandidateSearchResults
+      kind: query
+      description: Search candidate identities by name or email, omitting contact information from results.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Ashby returned matching candidates.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby definitively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Search fields or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample candidate matches the search.
+          output: {candidates: [{id: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, name: Example Candidate, createdAt: '2024-01-15T10:30:00.000Z', updatedAt: '2024-01-16T10:30:00.000Z'}]}
     - name: createCandidate
       goName: CreateCandidate
       inputType: CreateCandidateInput

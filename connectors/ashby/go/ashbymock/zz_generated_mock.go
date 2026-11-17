@@ -18,6 +18,7 @@ import (
 // Mock is a scripted ashby connection. Script each operation through its accessor.
 type Mock struct {
 	connection         ashby.Connection
+	searchCandidates   *connectormock.Query[ashby.SearchCandidatesInput, ashby.CandidateSearchResults]
 	createCandidate    *connectormock.Mutation[ashby.CreateCandidateInput, ashby.CandidateProfile]
 	addCandidateTag    *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
 	removeCandidateTag *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
@@ -31,6 +32,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		searchCandidates:   connectormock.NewQuery[ashby.SearchCandidatesInput, ashby.CandidateSearchResults](t, ashby.SearchCandidatesDefinition),
 		createCandidate:    connectormock.NewMutation[ashby.CreateCandidateInput, ashby.CandidateProfile](t, ashby.CreateCandidateDefinition),
 		addCandidateTag:    connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.AddCandidateTagDefinition),
 		removeCandidateTag: connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.RemoveCandidateTagDefinition),
@@ -38,6 +40,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateCandidate:    connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
 		getCandidate:       connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
 	}
+	mock.searchCandidates.Default(SearchCandidatesDefault())
 	mock.createCandidate.Default(CreateCandidateDefault())
 	mock.addCandidateTag.Default(AddCandidateTagDefault())
 	mock.removeCandidateTag.Default(RemoveCandidateTagDefault())
@@ -54,6 +57,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ashby.Connection { return mock.connection }
+
+// SearchCandidates returns the searchCandidates script.
+func (mock *Mock) SearchCandidates() *connectormock.Query[ashby.SearchCandidatesInput, ashby.CandidateSearchResults] {
+	return mock.searchCandidates
+}
 
 // CreateCandidate returns the createCandidate script.
 func (mock *Mock) CreateCandidate() *connectormock.Mutation[ashby.CreateCandidateInput, ashby.CandidateProfile] {
@@ -87,6 +95,9 @@ func (mock *Mock) GetCandidate() *connectormock.Query[ashby.GetCandidateInput, a
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) SearchCandidates() sdkgo.Query[ashby.SearchCandidatesInput, ashby.CandidateSearchResults] {
+	return operations.mock.searchCandidates
+}
 func (operations mockOperations) CreateCandidate() sdkgo.Mutation[ashby.CreateCandidateInput, ashby.CandidateProfile] {
 	return operations.mock.createCandidate
 }
@@ -104,6 +115,42 @@ func (operations mockOperations) UpdateCandidate() sdkgo.Mutation[ashby.UpdateCa
 }
 func (operations mockOperations) GetCandidate() sdkgo.Query[ashby.GetCandidateInput, ashby.CandidateProfile] {
 	return operations.mock.getCandidate
+}
+
+// SearchCandidatesFound selects the found branch: Ashby returned matching candidates.
+func SearchCandidatesFound(value ashby.CandidateSearchResults, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateSearchResults] {
+	return connectormock.Branch(ashby.SearchCandidatesBranchFound, value, failure)
+}
+
+// SearchCandidatesProviderRejected selects the providerRejected branch: Ashby definitively rejected the search.
+func SearchCandidatesProviderRejected(value ashby.CandidateSearchResults, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateSearchResults] {
+	return connectormock.Branch(ashby.SearchCandidatesBranchProviderRejected, value, failure)
+}
+
+// SearchCandidatesInvalidResponse selects the invalidResponse branch: Ashby returned malformed or oversized JSON.
+func SearchCandidatesInvalidResponse(value ashby.CandidateSearchResults, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateSearchResults] {
+	return connectormock.Branch(ashby.SearchCandidatesBranchInvalidResponse, value, failure)
+}
+
+// SearchCandidatesDefect selects the defect branch: Search fields or credentials are invalid.
+func SearchCandidatesDefect(value ashby.CandidateSearchResults, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateSearchResults] {
+	return connectormock.Branch(ashby.SearchCandidatesBranchDefect, value, failure)
+}
+
+// SearchCandidatesRetry asks Dex to retry the searchCandidates Step, after the delay when it is positive.
+func SearchCandidatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.CandidateSearchResults] {
+	return connectormock.Retry[ashby.CandidateSearchResults](failure, after)
+}
+
+// SearchCandidatesFoundDefault is the manifest mock foundDefault: A sample candidate matches the search.
+func SearchCandidatesFoundDefault() connectormock.Case[ashby.CandidateSearchResults] {
+	value := connectormock.MustDecodeOutput[ashby.CandidateSearchResults](`{"candidates":[{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}]}`)
+	return connectormock.Branch(ashby.SearchCandidatesBranchFound, value, nil)
+}
+
+// SearchCandidatesDefault is the manifest default, foundDefault, which New installs.
+func SearchCandidatesDefault() connectormock.Case[ashby.CandidateSearchResults] {
+	return SearchCandidatesFoundDefault()
 }
 
 // CreateCandidateCreated selects the created branch: Ashby returned the new candidate.

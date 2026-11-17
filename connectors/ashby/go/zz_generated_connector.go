@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	SearchCandidates() sdkgo.Query[SearchCandidatesInput, CandidateSearchResults]
 	CreateCandidate() sdkgo.Mutation[CreateCandidateInput, CandidateProfile]
 	AddCandidateTag() sdkgo.Mutation[CandidateTagInput, CandidateProfile]
 	RemoveCandidateTag() sdkgo.Mutation[CandidateTagInput, CandidateProfile]
@@ -50,6 +51,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) SearchCandidates() sdkgo.Query[SearchCandidatesInput, CandidateSearchResults] {
+	return operations.client.SearchCandidates()
+}
 func (operations clientOperations) CreateCandidate() sdkgo.Mutation[CreateCandidateInput, CandidateProfile] {
 	return operations.client.CreateCandidate()
 }
@@ -204,6 +208,77 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const SearchCandidatesBranchFound sdkgo.BranchID = "found"
+const SearchCandidatesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchCandidatesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchCandidatesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchCandidatesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchCandidates"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchCandidatesBranchFound, Description: "Ashby returned matching candidates."},
+		{ID: SearchCandidatesBranchProviderRejected, Description: "Ashby definitively rejected the search.", Optional: true},
+		{ID: SearchCandidatesBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: SearchCandidatesBranchDefect, Description: "Search fields or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchCandidatesResult = sdkgo.QueryResult[CandidateSearchResults]
+
+type SearchCandidatesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=ashby"`
+	operationID                    struct{}                                                  `connector:"operationId=searchCandidates"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchCandidatesInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[SearchCandidatesResult]                      `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[SearchCandidatesResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchCandidatesResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchCandidatesResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CandidateSearchResults]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewSearchCandidatesStep[IN any](config SearchCandidatesStepConfig[IN]) sdkgo.QueryStep[IN, SearchCandidatesInput, CandidateSearchResults] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchCandidatesInput, CandidateSearchResults]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchCandidates(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchCandidatesResult] {
+			branches := make([]sdkgo.BranchTarget[SearchCandidatesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(SearchCandidatesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchCandidatesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchCandidatesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchCandidatesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CreateCandidateBranchCreated sdkgo.BranchID = "created"

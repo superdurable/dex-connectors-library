@@ -2,6 +2,306 @@
   "connector": "ashby",
   "scenarios": [
     {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":[{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\",\"name\":\"Example Candidate\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.search",
+          "requestBody": {
+            "email": "example@example.com",
+            "limit": 20,
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "candidates": [
+            {
+              "createdAt": "2024-01-15T10:30:00.000Z",
+              "id": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+              "name": "Example Candidate",
+              "updatedAt": "2024-01-16T10:30:00.000Z"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "example@example.com",
+        "limit": 20,
+        "name": "Example Candidate"
+      },
+      "name": "searchCandidates-found",
+      "operation": "searchCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errorInfo\":{\"code\":\"missing_endpoint_permission\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.search",
+          "requestBody": {
+            "email": "example@example.com",
+            "limit": 20,
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "candidates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "example@example.com",
+        "limit": 20,
+        "name": "Example Candidate"
+      },
+      "name": "searchCandidates-providerRejected",
+      "operation": "searchCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.search",
+          "requestBody": {
+            "email": "example@example.com",
+            "limit": 20,
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "candidates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "example@example.com",
+        "limit": 20,
+        "name": "Example Candidate"
+      },
+      "name": "searchCandidates-invalidResponse",
+      "operation": "searchCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "candidates": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "",
+        "limit": 20,
+        "name": ""
+      },
+      "name": "searchCandidates-defect",
+      "operation": "searchCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.search",
+          "requestBody": {
+            "email": "example@example.com",
+            "limit": 20,
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "example@example.com",
+        "limit": 20,
+        "name": "Example Candidate"
+      },
+      "name": "searchCandidates-rateLimit",
+      "operation": "searchCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.search",
+          "requestBody": {
+            "email": "example@example.com",
+            "limit": 20,
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "example@example.com",
+        "limit": 20,
+        "name": "Example Candidate"
+      },
+      "name": "searchCandidates-unavailable",
+      "operation": "searchCandidates"
+    },
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.search",
+          "requestBody": {
+            "email": "example@example.com",
+            "limit": 20,
+            "name": "Example Candidate"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "example@example.com",
+        "limit": 20,
+        "name": "Example Candidate"
+      },
+      "name": "searchCandidates-transportFailure",
+      "operation": "searchCandidates"
+    },
+    {
       "callId": "da286f25-0a1d-5ae4-971c-62c3dcc0f845",
       "exchanges": [
         {
