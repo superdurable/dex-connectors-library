@@ -4,6 +4,7 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -96,7 +97,7 @@ func (operation CreateIndexOperation) Invoke(call sdkgo.Call, input IndexNameInp
 	if !validIndexName(input.Index) {
 		return indexManagementMutationFailure("createIndex", CreateIndexBranchDefect, sdkgo.FailureValidation, "index name is invalid")
 	}
-	exchange := exchangeIndex(operation.client, call, http.MethodPut, "/"+input.Index)
+	exchange := exchangeIndex(operation.client, call, http.MethodPut, "/"+input.Index, nil)
 	if exchange.requestFailure != nil {
 		return indexManagementMutationFailure("createIndex", CreateIndexBranchDefect, exchange.requestFailure.Kind, exchange.requestFailure.Message)
 	}
@@ -120,7 +121,7 @@ func (operation DeleteIndexOperation) Invoke(call sdkgo.Call, input IndexNameInp
 	if !validIndexName(input.Index) {
 		return indexManagementMutationFailure("deleteIndex", DeleteIndexBranchDefect, sdkgo.FailureValidation, "index name is invalid")
 	}
-	exchange := exchangeIndex(operation.client, call, http.MethodDelete, "/"+input.Index)
+	exchange := exchangeIndex(operation.client, call, http.MethodDelete, "/"+input.Index, nil)
 	if exchange.requestFailure != nil {
 		return indexManagementMutationFailure("deleteIndex", DeleteIndexBranchDefect, exchange.requestFailure.Kind, exchange.requestFailure.Message)
 	}
@@ -141,7 +142,7 @@ func (operation GetIndexOperation) Invoke(call sdkgo.Call, input IndexNameInput)
 	if !validIndexName(input.Index) {
 		return indexManagementQueryFailure[IndexDetails]("getIndex", GetIndexBranchDefect, sdkgo.FailureValidation, "index name is invalid")
 	}
-	exchange := exchangeIndex(operation.client, call, http.MethodGet, "/"+input.Index)
+	exchange := exchangeIndex(operation.client, call, http.MethodGet, "/"+input.Index, nil)
 	if exchange.requestFailure != nil {
 		return indexManagementQueryFailure[IndexDetails]("getIndex", GetIndexBranchDefect, exchange.requestFailure.Kind, exchange.requestFailure.Message)
 	}
@@ -166,7 +167,7 @@ func (operation GetIndexOperation) Invoke(call sdkgo.Call, input IndexNameInput)
 
 // Invoke lists accessible indices through the application-oriented index API.
 func (operation ListIndicesOperation) Invoke(call sdkgo.Call, _ ListIndicesInput) sdkgo.QueryAttempt[IndexList] {
-	exchange := exchangeIndex(operation.client, call, http.MethodGet, "/*?expand_wildcards=open,closed&allow_no_indices=true")
+	exchange := exchangeIndex(operation.client, call, http.MethodGet, "/*?expand_wildcards=open,closed&allow_no_indices=true", nil)
 	if exchange.requestFailure != nil {
 		return indexManagementQueryFailure[IndexList]("listIndices", ListIndicesBranchDefect, exchange.requestFailure.Kind, exchange.requestFailure.Message)
 	}
@@ -186,17 +187,20 @@ func (operation ListIndicesOperation) Invoke(call sdkgo.Call, _ ListIndicesInput
 	return sdkgo.NewQueryBranch(ListIndicesBranchFound, IndexList{Indices: indices}, nil, sdkgo.Receipt{})
 }
 
-func exchangeIndex(client *Client, call sdkgo.Call, method, path string) documentExchange {
+func exchangeIndex(client *Client, call sdkgo.Call, method, path string, body []byte) documentExchange {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil || !validUsername(credentials.Username) || !providerhttp.IsHeaderSafeCredential(credentials.Password.Reveal()) {
 		return documentExchange{requestFailure: &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Provider: "elasticsearch", Message: "Elasticsearch credentials are unavailable or invalid"}}
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.clusterURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.clusterURL+path, bytes.NewReader(body))
 	if err != nil {
 		return documentExchange{requestFailure: &sdkgo.Failure{Kind: sdkgo.FailureLocalDefect, Provider: "elasticsearch", Message: "index request could not be built"}}
 	}
 	request.SetBasicAuth(credentials.Username, credentials.Password.Reveal())
 	request.Header.Set("Accept", "application/json")
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return documentExchange{shouldRetry: true, retryKind: sdkgo.FailureTransport, retryMessage: "Elasticsearch index request failed"}
@@ -209,14 +213,14 @@ func exchangeIndex(client *Client, call sdkgo.Call, method, path string) documen
 		}
 		return documentExchange{shouldRetry: true, retryKind: kind, retryMessage: "Elasticsearch index operation is temporarily unavailable", retryAfter: providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())}
 	}
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	responseBody, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
 		return documentExchange{shouldRetry: true, retryKind: sdkgo.FailureResponseTooLarge, retryMessage: "Elasticsearch index response exceeded the configured limit"}
 	}
 	if err != nil {
 		return documentExchange{shouldRetry: true, retryKind: sdkgo.FailureTransport, retryMessage: "Elasticsearch index response was interrupted"}
 	}
-	return documentExchange{status: response.StatusCode, body: body}
+	return documentExchange{status: response.StatusCode, body: responseBody}
 }
 
 func decodeIndexMetadata(body []byte) ([]IndexDetails, bool) {

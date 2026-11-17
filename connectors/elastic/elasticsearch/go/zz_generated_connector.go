@@ -48,6 +48,7 @@ type Operations interface {
 	ListIndices() sdkgo.Query[ListIndicesInput, IndexList]
 	GetDocument() sdkgo.Query[GetDocumentInput, RetrievedDocument]
 	IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument]
+	UpdateDocument() sdkgo.Mutation[UpdateDocumentInput, IndexedDocument]
 	DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DeletedDocument]
 	SearchDocuments() sdkgo.Query[SearchDocumentsInput, SearchPage]
 }
@@ -71,6 +72,9 @@ func (operations clientOperations) GetDocument() sdkgo.Query[GetDocumentInput, R
 }
 func (operations clientOperations) IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument] {
 	return operations.client.IndexDocument()
+}
+func (operations clientOperations) UpdateDocument() sdkgo.Mutation[UpdateDocumentInput, IndexedDocument] {
+	return operations.client.UpdateDocument()
 }
 func (operations clientOperations) DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DeletedDocument] {
 	return operations.client.DeleteDocument()
@@ -639,6 +643,77 @@ func NewIndexDocumentStep[IN any](config IndexDocumentStepConfig[IN]) sdkgo.Muta
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(IndexDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateDocumentBranchUpdated sdkgo.BranchID = "updated"
+const UpdateDocumentBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateDocumentBranchUpdated, Description: "Elasticsearch merged the document fields."},
+		{ID: UpdateDocumentBranchNotFound, Description: "The document or index does not exist.", Optional: true},
+		{ID: UpdateDocumentBranchProviderRejected, Description: "Elasticsearch conclusively rejected the update.", Optional: true},
+		{ID: UpdateDocumentBranchDefect, Description: "The index, document ID, fields, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateDocumentResult = sdkgo.MutationResult[IndexedDocument]
+
+type UpdateDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=elasticsearch"`
+	operationID                       struct{}                                              `connector:"operationId=updateDocument"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateDocumentInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateDocumentResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateDocumentResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateDocumentResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateDocumentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IndexedDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateDocumentStep[IN any](config UpdateDocumentStepConfig[IN]) sdkgo.MutationStep[IN, UpdateDocumentInput, IndexedDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elasticsearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateDocumentInput, IndexedDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateDocumentResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateDocumentBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateDocumentBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateDocumentBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateDocumentBranchDefect))
 			}
 			return branches
 		}(),

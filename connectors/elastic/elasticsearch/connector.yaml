@@ -175,6 +175,22 @@ spec:
           description: A sample product document was stored under its SKU.
           default: true
           output: {index: products, id: sku-42}
+    - name: updateDocument
+      goName: UpdateDocument
+      inputType: UpdateDocumentInput
+      outputType: IndexedDocument
+      kind: mutation
+      description: Merge absolute JSON field values into an existing document; scripts and increments are not accepted.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Elasticsearch merged the document fields.}
+        - {id: notFound, goName: NotFound, description: The document or index does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: "The index, document ID, fields, or credentials are invalid.", optional: true}
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - {name: updatedProduct, branch: updated, description: Product fields were updated., default: true, output: {index: products, id: sku-42}}
     - name: deleteDocument
       goName: DeleteDocument
       inputType: DeleteDocumentInput
