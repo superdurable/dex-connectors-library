@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: box
   displayName: Box
-  description: Download bounded files and replace existing file content through typed Dex operations.
+  description: Inspect, search, download, replace, and delete Box files and folders through typed Dex operations.
   company: Box
   categories: [files-documents]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: box
   languages:
@@ -147,3 +147,148 @@ spec:
           default: true
           description: One existing file has the requested content.
           output: {fileId: '12345', name: example.txt, sha1: F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0}
+    - name: getFile
+      goName: GetFile
+      inputType: GetFileInput
+      outputType: BoxFile
+      kind: query
+      description: Retrieve one Box file's metadata.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: getFileDefault
+          branch: found
+          default: true
+          description: A representative Box response.
+          output: {id: '12345', type: file, name: example.txt}
+    - name: getFolder
+      goName: GetFolder
+      inputType: GetFolderInput
+      outputType: BoxFolder
+      kind: query
+      description: Retrieve one Box folder's metadata.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: getFolderDefault
+          branch: found
+          default: true
+          description: A representative Box response.
+          output: {id: '54321', type: folder, name: Documents}
+    - name: listFolderItems
+      goName: ListFolderItems
+      inputType: ListFolderItemsInput
+      outputType: BoxItemPage
+      kind: query
+      description: List one page of files and folders in a Box folder.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listFolderItemsDefault
+          branch: listed
+          default: true
+          description: A representative Box response.
+          output: {entries: [{id: '12345', type: file, name: example.txt}], limit: 100, offset: 0, total_count: 1}
+    - name: searchFiles
+      goName: SearchFiles
+      inputType: SearchFilesInput
+      outputType: BoxItemPage
+      kind: query
+      description: Search accessible Box files by a text query.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Box returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: searchFilesDefault
+          branch: found
+          default: true
+          description: A representative Box response.
+          output: {entries: [{id: '12345', type: file, name: example.txt}], limit: 30, offset: 0, total_count: 1}
+    - name: searchFolders
+      goName: SearchFolders
+      inputType: SearchFoldersInput
+      outputType: BoxItemPage
+      kind: query
+      description: Search accessible Box folders by a text query.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Box returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: searchFoldersDefault
+          branch: found
+          default: true
+          description: A representative Box response.
+          output: {entries: [{id: '54321', type: folder, name: Documents}], limit: 30, offset: 0, total_count: 1}
+    - name: deleteFile
+      goName: DeleteFile
+      inputType: DeleteFileInput
+      outputType: DeletedBoxItem
+      kind: mutation
+      description: Delete one Box file by ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deleteFileDefault
+          branch: deleted
+          default: true
+          description: A representative Box response.
+          output: {id: '12345'}
+    - name: deleteFolder
+      goName: DeleteFolder
+      inputType: DeleteFolderInput
+      outputType: DeletedBoxItem
+      kind: mutation
+      description: Delete one empty Box folder by ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Box returned the requested result.}
+        - {id: notFound, goName: NotFound, description: Box did not find the requested item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deleteFolderDefault
+          branch: deleted
+          default: true
+          description: A representative Box response.
+          output: {id: '54321'}

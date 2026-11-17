@@ -17,9 +17,16 @@ import (
 
 // Mock is a scripted box connection. Script each operation through its accessor.
 type Mock struct {
-	connection   box.Connection
-	downloadFile *connectormock.Query[box.DownloadFileInput, box.DownloadedFile]
-	uploadFile   *connectormock.Mutation[box.UploadFileInput, box.UploadedFile]
+	connection      box.Connection
+	downloadFile    *connectormock.Query[box.DownloadFileInput, box.DownloadedFile]
+	uploadFile      *connectormock.Mutation[box.UploadFileInput, box.UploadedFile]
+	getFile         *connectormock.Query[box.GetFileInput, box.BoxFile]
+	getFolder       *connectormock.Query[box.GetFolderInput, box.BoxFolder]
+	listFolderItems *connectormock.Query[box.ListFolderItemsInput, box.BoxItemPage]
+	searchFiles     *connectormock.Query[box.SearchFilesInput, box.BoxItemPage]
+	searchFolders   *connectormock.Query[box.SearchFoldersInput, box.BoxItemPage]
+	deleteFile      *connectormock.Mutation[box.DeleteFileInput, box.DeletedBoxItem]
+	deleteFolder    *connectormock.Mutation[box.DeleteFolderInput, box.DeletedBoxItem]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +34,25 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		downloadFile: connectormock.NewQuery[box.DownloadFileInput, box.DownloadedFile](t, box.DownloadFileDefinition),
-		uploadFile:   connectormock.NewMutation[box.UploadFileInput, box.UploadedFile](t, box.UploadFileDefinition),
+		downloadFile:    connectormock.NewQuery[box.DownloadFileInput, box.DownloadedFile](t, box.DownloadFileDefinition),
+		uploadFile:      connectormock.NewMutation[box.UploadFileInput, box.UploadedFile](t, box.UploadFileDefinition),
+		getFile:         connectormock.NewQuery[box.GetFileInput, box.BoxFile](t, box.GetFileDefinition),
+		getFolder:       connectormock.NewQuery[box.GetFolderInput, box.BoxFolder](t, box.GetFolderDefinition),
+		listFolderItems: connectormock.NewQuery[box.ListFolderItemsInput, box.BoxItemPage](t, box.ListFolderItemsDefinition),
+		searchFiles:     connectormock.NewQuery[box.SearchFilesInput, box.BoxItemPage](t, box.SearchFilesDefinition),
+		searchFolders:   connectormock.NewQuery[box.SearchFoldersInput, box.BoxItemPage](t, box.SearchFoldersDefinition),
+		deleteFile:      connectormock.NewMutation[box.DeleteFileInput, box.DeletedBoxItem](t, box.DeleteFileDefinition),
+		deleteFolder:    connectormock.NewMutation[box.DeleteFolderInput, box.DeletedBoxItem](t, box.DeleteFolderDefinition),
 	}
 	mock.downloadFile.Default(DownloadFileDefault())
 	mock.uploadFile.Default(UploadFileDefault())
+	mock.getFile.Default(GetFileDefault())
+	mock.getFolder.Default(GetFolderDefault())
+	mock.listFolderItems.Default(ListFolderItemsDefault())
+	mock.searchFiles.Default(SearchFilesDefault())
+	mock.searchFolders.Default(SearchFoldersDefault())
+	mock.deleteFile.Default(DeleteFileDefault())
+	mock.deleteFolder.Default(DeleteFolderDefault())
 	connection, err := box.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "box", Name: connectionName})
 	if err != nil {
 		t.Fatalf("box mock connection: %v", err)
@@ -53,6 +74,39 @@ func (mock *Mock) UploadFile() *connectormock.Mutation[box.UploadFileInput, box.
 	return mock.uploadFile
 }
 
+// GetFile returns the getFile script.
+func (mock *Mock) GetFile() *connectormock.Query[box.GetFileInput, box.BoxFile] { return mock.getFile }
+
+// GetFolder returns the getFolder script.
+func (mock *Mock) GetFolder() *connectormock.Query[box.GetFolderInput, box.BoxFolder] {
+	return mock.getFolder
+}
+
+// ListFolderItems returns the listFolderItems script.
+func (mock *Mock) ListFolderItems() *connectormock.Query[box.ListFolderItemsInput, box.BoxItemPage] {
+	return mock.listFolderItems
+}
+
+// SearchFiles returns the searchFiles script.
+func (mock *Mock) SearchFiles() *connectormock.Query[box.SearchFilesInput, box.BoxItemPage] {
+	return mock.searchFiles
+}
+
+// SearchFolders returns the searchFolders script.
+func (mock *Mock) SearchFolders() *connectormock.Query[box.SearchFoldersInput, box.BoxItemPage] {
+	return mock.searchFolders
+}
+
+// DeleteFile returns the deleteFile script.
+func (mock *Mock) DeleteFile() *connectormock.Mutation[box.DeleteFileInput, box.DeletedBoxItem] {
+	return mock.deleteFile
+}
+
+// DeleteFolder returns the deleteFolder script.
+func (mock *Mock) DeleteFolder() *connectormock.Mutation[box.DeleteFolderInput, box.DeletedBoxItem] {
+	return mock.deleteFolder
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) DownloadFile() sdkgo.Query[box.DownloadFileInput, box.DownloadedFile] {
@@ -60,6 +114,27 @@ func (operations mockOperations) DownloadFile() sdkgo.Query[box.DownloadFileInpu
 }
 func (operations mockOperations) UploadFile() sdkgo.Mutation[box.UploadFileInput, box.UploadedFile] {
 	return operations.mock.uploadFile
+}
+func (operations mockOperations) GetFile() sdkgo.Query[box.GetFileInput, box.BoxFile] {
+	return operations.mock.getFile
+}
+func (operations mockOperations) GetFolder() sdkgo.Query[box.GetFolderInput, box.BoxFolder] {
+	return operations.mock.getFolder
+}
+func (operations mockOperations) ListFolderItems() sdkgo.Query[box.ListFolderItemsInput, box.BoxItemPage] {
+	return operations.mock.listFolderItems
+}
+func (operations mockOperations) SearchFiles() sdkgo.Query[box.SearchFilesInput, box.BoxItemPage] {
+	return operations.mock.searchFiles
+}
+func (operations mockOperations) SearchFolders() sdkgo.Query[box.SearchFoldersInput, box.BoxItemPage] {
+	return operations.mock.searchFolders
+}
+func (operations mockOperations) DeleteFile() sdkgo.Mutation[box.DeleteFileInput, box.DeletedBoxItem] {
+	return operations.mock.deleteFile
+}
+func (operations mockOperations) DeleteFolder() sdkgo.Mutation[box.DeleteFolderInput, box.DeletedBoxItem] {
+	return operations.mock.deleteFolder
 }
 
 // DownloadFileDownloaded selects the downloaded branch: Box returned the selected file content.
@@ -146,3 +221,272 @@ func UploadFileUploadedDefault() connectormock.Case[box.UploadedFile] {
 
 // UploadFileDefault is the manifest default, uploadedDefault, which New installs.
 func UploadFileDefault() connectormock.Case[box.UploadedFile] { return UploadFileUploadedDefault() }
+
+// GetFileFound selects the found branch: Box returned the requested result.
+func GetFileFound(value box.BoxFile, failure *sdkgo.Failure) connectormock.Case[box.BoxFile] {
+	return connectormock.Branch(box.GetFileBranchFound, value, failure)
+}
+
+// GetFileNotFound selects the notFound branch: Box did not find the requested item.
+func GetFileNotFound(value box.BoxFile, failure *sdkgo.Failure) connectormock.Case[box.BoxFile] {
+	return connectormock.Branch(box.GetFileBranchNotFound, value, failure)
+}
+
+// GetFileProviderRejected selects the providerRejected branch: Box definitively rejected the request.
+func GetFileProviderRejected(value box.BoxFile, failure *sdkgo.Failure) connectormock.Case[box.BoxFile] {
+	return connectormock.Branch(box.GetFileBranchProviderRejected, value, failure)
+}
+
+// GetFileInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func GetFileInvalidResponse(value box.BoxFile, failure *sdkgo.Failure) connectormock.Case[box.BoxFile] {
+	return connectormock.Branch(box.GetFileBranchInvalidResponse, value, failure)
+}
+
+// GetFileDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetFileDefect(value box.BoxFile, failure *sdkgo.Failure) connectormock.Case[box.BoxFile] {
+	return connectormock.Branch(box.GetFileBranchDefect, value, failure)
+}
+
+// GetFileRetry asks Dex to retry the getFile Step, after the delay when it is positive.
+func GetFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.BoxFile] {
+	return connectormock.Retry[box.BoxFile](failure, after)
+}
+
+// GetFileGetFileDefault is the manifest mock getFileDefault: A representative Box response.
+func GetFileGetFileDefault() connectormock.Case[box.BoxFile] {
+	value := connectormock.MustDecodeOutput[box.BoxFile](`{"id":"12345","type":"file","name":"example.txt"}`)
+	return connectormock.Branch(box.GetFileBranchFound, value, nil)
+}
+
+// GetFileDefault is the manifest default, getFileDefault, which New installs.
+func GetFileDefault() connectormock.Case[box.BoxFile] { return GetFileGetFileDefault() }
+
+// GetFolderFound selects the found branch: Box returned the requested result.
+func GetFolderFound(value box.BoxFolder, failure *sdkgo.Failure) connectormock.Case[box.BoxFolder] {
+	return connectormock.Branch(box.GetFolderBranchFound, value, failure)
+}
+
+// GetFolderNotFound selects the notFound branch: Box did not find the requested item.
+func GetFolderNotFound(value box.BoxFolder, failure *sdkgo.Failure) connectormock.Case[box.BoxFolder] {
+	return connectormock.Branch(box.GetFolderBranchNotFound, value, failure)
+}
+
+// GetFolderProviderRejected selects the providerRejected branch: Box definitively rejected the request.
+func GetFolderProviderRejected(value box.BoxFolder, failure *sdkgo.Failure) connectormock.Case[box.BoxFolder] {
+	return connectormock.Branch(box.GetFolderBranchProviderRejected, value, failure)
+}
+
+// GetFolderInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func GetFolderInvalidResponse(value box.BoxFolder, failure *sdkgo.Failure) connectormock.Case[box.BoxFolder] {
+	return connectormock.Branch(box.GetFolderBranchInvalidResponse, value, failure)
+}
+
+// GetFolderDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetFolderDefect(value box.BoxFolder, failure *sdkgo.Failure) connectormock.Case[box.BoxFolder] {
+	return connectormock.Branch(box.GetFolderBranchDefect, value, failure)
+}
+
+// GetFolderRetry asks Dex to retry the getFolder Step, after the delay when it is positive.
+func GetFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.BoxFolder] {
+	return connectormock.Retry[box.BoxFolder](failure, after)
+}
+
+// GetFolderGetFolderDefault is the manifest mock getFolderDefault: A representative Box response.
+func GetFolderGetFolderDefault() connectormock.Case[box.BoxFolder] {
+	value := connectormock.MustDecodeOutput[box.BoxFolder](`{"id":"54321","type":"folder","name":"Documents"}`)
+	return connectormock.Branch(box.GetFolderBranchFound, value, nil)
+}
+
+// GetFolderDefault is the manifest default, getFolderDefault, which New installs.
+func GetFolderDefault() connectormock.Case[box.BoxFolder] { return GetFolderGetFolderDefault() }
+
+// ListFolderItemsListed selects the listed branch: Box returned the requested result.
+func ListFolderItemsListed(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.ListFolderItemsBranchListed, value, failure)
+}
+
+// ListFolderItemsNotFound selects the notFound branch: Box did not find the requested item.
+func ListFolderItemsNotFound(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.ListFolderItemsBranchNotFound, value, failure)
+}
+
+// ListFolderItemsProviderRejected selects the providerRejected branch: Box definitively rejected the request.
+func ListFolderItemsProviderRejected(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.ListFolderItemsBranchProviderRejected, value, failure)
+}
+
+// ListFolderItemsInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func ListFolderItemsInvalidResponse(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.ListFolderItemsBranchInvalidResponse, value, failure)
+}
+
+// ListFolderItemsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListFolderItemsDefect(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.ListFolderItemsBranchDefect, value, failure)
+}
+
+// ListFolderItemsRetry asks Dex to retry the listFolderItems Step, after the delay when it is positive.
+func ListFolderItemsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Retry[box.BoxItemPage](failure, after)
+}
+
+// ListFolderItemsListFolderItemsDefault is the manifest mock listFolderItemsDefault: A representative Box response.
+func ListFolderItemsListFolderItemsDefault() connectormock.Case[box.BoxItemPage] {
+	value := connectormock.MustDecodeOutput[box.BoxItemPage](`{"entries":[{"id":"12345","type":"file","name":"example.txt"}],"limit":100,"offset":0,"total_count":1}`)
+	return connectormock.Branch(box.ListFolderItemsBranchListed, value, nil)
+}
+
+// ListFolderItemsDefault is the manifest default, listFolderItemsDefault, which New installs.
+func ListFolderItemsDefault() connectormock.Case[box.BoxItemPage] {
+	return ListFolderItemsListFolderItemsDefault()
+}
+
+// SearchFilesFound selects the found branch: Box returned the requested result.
+func SearchFilesFound(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.SearchFilesBranchFound, value, failure)
+}
+
+// SearchFilesProviderRejected selects the providerRejected branch: Box definitively rejected the request.
+func SearchFilesProviderRejected(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.SearchFilesBranchProviderRejected, value, failure)
+}
+
+// SearchFilesInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func SearchFilesInvalidResponse(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.SearchFilesBranchInvalidResponse, value, failure)
+}
+
+// SearchFilesDefect selects the defect branch: Local input or connection credentials are invalid.
+func SearchFilesDefect(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.SearchFilesBranchDefect, value, failure)
+}
+
+// SearchFilesRetry asks Dex to retry the searchFiles Step, after the delay when it is positive.
+func SearchFilesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Retry[box.BoxItemPage](failure, after)
+}
+
+// SearchFilesSearchFilesDefault is the manifest mock searchFilesDefault: A representative Box response.
+func SearchFilesSearchFilesDefault() connectormock.Case[box.BoxItemPage] {
+	value := connectormock.MustDecodeOutput[box.BoxItemPage](`{"entries":[{"id":"12345","type":"file","name":"example.txt"}],"limit":30,"offset":0,"total_count":1}`)
+	return connectormock.Branch(box.SearchFilesBranchFound, value, nil)
+}
+
+// SearchFilesDefault is the manifest default, searchFilesDefault, which New installs.
+func SearchFilesDefault() connectormock.Case[box.BoxItemPage] { return SearchFilesSearchFilesDefault() }
+
+// SearchFoldersFound selects the found branch: Box returned the requested result.
+func SearchFoldersFound(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.SearchFoldersBranchFound, value, failure)
+}
+
+// SearchFoldersProviderRejected selects the providerRejected branch: Box definitively rejected the request.
+func SearchFoldersProviderRejected(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.SearchFoldersBranchProviderRejected, value, failure)
+}
+
+// SearchFoldersInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func SearchFoldersInvalidResponse(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.SearchFoldersBranchInvalidResponse, value, failure)
+}
+
+// SearchFoldersDefect selects the defect branch: Local input or connection credentials are invalid.
+func SearchFoldersDefect(value box.BoxItemPage, failure *sdkgo.Failure) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Branch(box.SearchFoldersBranchDefect, value, failure)
+}
+
+// SearchFoldersRetry asks Dex to retry the searchFolders Step, after the delay when it is positive.
+func SearchFoldersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.BoxItemPage] {
+	return connectormock.Retry[box.BoxItemPage](failure, after)
+}
+
+// SearchFoldersSearchFoldersDefault is the manifest mock searchFoldersDefault: A representative Box response.
+func SearchFoldersSearchFoldersDefault() connectormock.Case[box.BoxItemPage] {
+	value := connectormock.MustDecodeOutput[box.BoxItemPage](`{"entries":[{"id":"54321","type":"folder","name":"Documents"}],"limit":30,"offset":0,"total_count":1}`)
+	return connectormock.Branch(box.SearchFoldersBranchFound, value, nil)
+}
+
+// SearchFoldersDefault is the manifest default, searchFoldersDefault, which New installs.
+func SearchFoldersDefault() connectormock.Case[box.BoxItemPage] {
+	return SearchFoldersSearchFoldersDefault()
+}
+
+// DeleteFileDeleted selects the deleted branch: Box returned the requested result.
+func DeleteFileDeleted(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFileBranchDeleted, value, failure)
+}
+
+// DeleteFileNotFound selects the notFound branch: Box did not find the requested item.
+func DeleteFileNotFound(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFileBranchNotFound, value, failure)
+}
+
+// DeleteFileProviderRejected selects the providerRejected branch: Box definitively rejected the request.
+func DeleteFileProviderRejected(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFileBranchProviderRejected, value, failure)
+}
+
+// DeleteFileInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func DeleteFileInvalidResponse(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFileBranchInvalidResponse, value, failure)
+}
+
+// DeleteFileDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteFileDefect(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFileBranchDefect, value, failure)
+}
+
+// DeleteFileRetry asks Dex to retry the deleteFile Step, after the delay when it is positive.
+func DeleteFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Retry[box.DeletedBoxItem](failure, after)
+}
+
+// DeleteFileDeleteFileDefault is the manifest mock deleteFileDefault: A representative Box response.
+func DeleteFileDeleteFileDefault() connectormock.Case[box.DeletedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.DeletedBoxItem](`{"id":"12345"}`)
+	return connectormock.Branch(box.DeleteFileBranchDeleted, value, nil)
+}
+
+// DeleteFileDefault is the manifest default, deleteFileDefault, which New installs.
+func DeleteFileDefault() connectormock.Case[box.DeletedBoxItem] { return DeleteFileDeleteFileDefault() }
+
+// DeleteFolderDeleted selects the deleted branch: Box returned the requested result.
+func DeleteFolderDeleted(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFolderBranchDeleted, value, failure)
+}
+
+// DeleteFolderNotFound selects the notFound branch: Box did not find the requested item.
+func DeleteFolderNotFound(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFolderBranchNotFound, value, failure)
+}
+
+// DeleteFolderProviderRejected selects the providerRejected branch: Box definitively rejected the request.
+func DeleteFolderProviderRejected(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFolderBranchProviderRejected, value, failure)
+}
+
+// DeleteFolderInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized JSON.
+func DeleteFolderInvalidResponse(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFolderBranchInvalidResponse, value, failure)
+}
+
+// DeleteFolderDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteFolderDefect(value box.DeletedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Branch(box.DeleteFolderBranchDefect, value, failure)
+}
+
+// DeleteFolderRetry asks Dex to retry the deleteFolder Step, after the delay when it is positive.
+func DeleteFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.DeletedBoxItem] {
+	return connectormock.Retry[box.DeletedBoxItem](failure, after)
+}
+
+// DeleteFolderDeleteFolderDefault is the manifest mock deleteFolderDefault: A representative Box response.
+func DeleteFolderDeleteFolderDefault() connectormock.Case[box.DeletedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.DeletedBoxItem](`{"id":"54321"}`)
+	return connectormock.Branch(box.DeleteFolderBranchDeleted, value, nil)
+}
+
+// DeleteFolderDefault is the manifest default, deleteFolderDefault, which New installs.
+func DeleteFolderDefault() connectormock.Case[box.DeletedBoxItem] {
+	return DeleteFolderDeleteFolderDefault()
+}

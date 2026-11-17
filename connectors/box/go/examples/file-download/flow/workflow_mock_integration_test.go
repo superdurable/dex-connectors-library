@@ -58,4 +58,7 @@ func TestFileDownloadUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "SGVsbG8=", output.ContentBase64)
 	require.Equal(t, 5, output.ContentBytes)
 	require.Len(t, mock.DownloadFile().Calls(), 1)
+	require.Len(t, mock.GetFile().Calls(), 1)
+	require.Equal(t, box.GetFileInput{FileID: "12345"}, mock.GetFile().Calls()[0].Input)
+	require.Equal(t, box.GetFileBranchFound, mock.GetFile().Calls()[0].Branch)
 }
