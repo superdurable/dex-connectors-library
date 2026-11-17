@@ -30,5 +30,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listAdAccounts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAdAccounts(), reference),
+		"listCampaignGroups": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaignGroups(), reference),
+		"listCampaigns": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
+		"listCreatives": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCreatives(), reference),
 	}}
 }

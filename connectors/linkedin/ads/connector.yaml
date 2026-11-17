@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: linkedin-ads
   displayName: LinkedIn Ads
-  description: Discover LinkedIn Advertising accounts accessible to an authorized member.
+  description: Read LinkedIn Advertising accounts, campaign groups, campaigns, and creatives accessible to an authorized member.
   company: LinkedIn
   categories: [marketing, social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: linkedin-ads
   languages:
@@ -75,7 +75,7 @@ spec:
         - In LinkedIn Developer > My Apps, create or select an app, open Products, and request Advertising API access. Development-tier approval supplies r_ads for reading ad accounts; the consenting member also needs an Ad Account role.
         - Open Auth > OAuth 2.0 settings and register the exact redirect URL displayed by Dex Web under Authorized redirect URLs. Confirm r_ads appears among the app's OAuth permissions before authorization.
         - Copy Client ID and Client Secret from Auth > Application credentials into Dex Web. The Client Secret is secret. Authorize the member with r_ads; Dex stores the access token, and a refresh token only if LinkedIn grants programmatic refresh.
-        - Run listAdAccounts to discover numeric account IDs and names. Leave baseUrl, marketingVersion, timeout, and maxResponseBytes blank for their displayed defaults; reauthorize when a non-refreshable token expires.
+        - Run listAdAccounts to discover numeric account IDs and names. Use an ID from that response for campaign-group and campaign searches; use a returned campaign ID for creative searches. Leave baseUrl, marketingVersion, timeout, and maxResponseBytes blank for their displayed defaults; reauthorize when a non-refreshable token expires.
     oauth2:
       authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization
       tokenEndpoint: https://www.linkedin.com/oauth/v2/accessToken
@@ -114,3 +114,63 @@ spec:
           default: true
           description: One example ad account is visible.
           output: {accounts: [{id: '507404993', name: Example Account}], nextPageToken: ''}
+    - name: listCampaignGroups
+      goName: ListCampaignGroups
+      inputType: ListCampaignGroupsInput
+      outputType: CampaignGroupsPage
+      kind: query
+      description: Search one page of campaign groups in an account by status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: LinkedIn returned the matching campaign groups.}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Search input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One active campaign group is visible.
+          output: {groups: [{id: '603407684', name: Example Group, status: ACTIVE}], nextPageToken: ''}
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: CampaignsPage
+      kind: query
+      description: Search one page of campaigns in an account by status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: LinkedIn returned the matching campaigns.}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Search input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One active campaign is visible.
+          output: {campaigns: [{id: '360035215', name: Example Campaign, status: ACTIVE}], nextPageToken: ''}
+    - name: listCreatives
+      goName: ListCreatives
+      inputType: ListCreativesInput
+      outputType: CreativesPage
+      kind: query
+      description: Search one page of creatives in an account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: LinkedIn returned the matching creatives.}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Search input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One draft creative is visible.
+          output: {creatives: [{id: 'urn:li:sponsoredCreative:119962155', campaign: 'urn:li:sponsoredCampaign:360035215', intendedStatus: DRAFT}], nextPageToken: ''}

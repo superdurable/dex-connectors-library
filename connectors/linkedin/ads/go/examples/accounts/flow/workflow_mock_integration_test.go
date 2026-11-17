@@ -24,7 +24,8 @@ import (
 func TestAccountsUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := adsmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	groupsFlow := NewCampaignGroupsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, groupsFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestAccountsUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "507404993", output.Accounts[0].ID)
 	require.Len(t, mock.ListAdAccounts().Calls(), 1)
+	groupsFlowID := "linkedin-ads-groups-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, groupsFlow, groupsFlowID, ads.ListCampaignGroupsInput{AccountID: "507404993", Status: "ACTIVE"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	groupsResult, err := client.WaitForFlow(ctx, groupsFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, groupsResult.Status, groupsResult.ErrorMessage)
+	var groupsOutput ads.CampaignGroupsPage
+	require.NoError(t, groupsResult.DecodeSingleOutput(&groupsOutput))
+	require.Equal(t, "603407684", groupsOutput.Groups[0].ID)
+	require.Len(t, mock.ListCampaignGroups().Calls(), 1)
 }

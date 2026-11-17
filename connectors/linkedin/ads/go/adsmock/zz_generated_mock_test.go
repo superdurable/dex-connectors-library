@@ -20,6 +20,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[ads.AdAccountsPage](`{"accounts":[{"id":"507404993","name":"Example Account"}],"nextPageToken":""}`)
 			return err
 		}},
+		{name: "listCampaignGroups/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CampaignGroupsPage](`{"groups":[{"id":"603407684","name":"Example Group","status":"ACTIVE"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "listCampaigns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CampaignsPage](`{"campaigns":[{"id":"360035215","name":"Example Campaign","status":"ACTIVE"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "listCreatives/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CreativesPage](`{"creatives":[{"id":"urn:li:sponsoredCreative:119962155","campaign":"urn:li:sponsoredCampaign:360035215","intendedStatus":"DRAFT"}],"nextPageToken":""}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +44,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.ListAdAccounts().Definition().Operation.OperationID != "listAdAccounts" {
 		t.Errorf("listAdAccounts mock has another definition")
+	}
+	if mock.ListCampaignGroups().Definition().Operation.OperationID != "listCampaignGroups" {
+		t.Errorf("listCampaignGroups mock has another definition")
+	}
+	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
+		t.Errorf("listCampaigns mock has another definition")
+	}
+	if mock.ListCreatives().Definition().Operation.OperationID != "listCreatives" {
+		t.Errorf("listCreatives mock has another definition")
 	}
 }
