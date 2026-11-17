@@ -23,8 +23,17 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}
 	client, err := New(Config{BaseURL: endpoint}, credentials, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listLeads": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeads(), reference),
-		"getLead":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
+	writeContext := newSellWriteContext()
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { writeContext.attempt = int32(attempt) }, actions: map[string]conformanceOperationInvocation{
+		"listLeads":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeads(), reference),
+		"getLead":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
+		"listRecords":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListRecords(), reference),
+		"getRecord":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetRecord(), reference),
+		"createLead":   newConformanceMutationInvocation(t, scenario.Input, writeContext, client.CreateLead(), reference, scenario.CallID),
+		"updateLead":   newConformanceMutationInvocation(t, scenario.Input, writeContext, client.UpdateLead(), reference, scenario.CallID),
+		"deleteLead":   newConformanceMutationInvocation(t, scenario.Input, writeContext, client.DeleteLead(), reference, scenario.CallID),
+		"createRecord": newConformanceMutationInvocation(t, scenario.Input, writeContext, client.CreateRecord(), reference, scenario.CallID),
+		"updateRecord": newConformanceMutationInvocation(t, scenario.Input, writeContext, client.UpdateRecord(), reference, scenario.CallID),
+		"deleteRecord": newConformanceMutationInvocation(t, scenario.Input, writeContext, client.DeleteRecord(), reference, scenario.CallID),
 	}}
 }
