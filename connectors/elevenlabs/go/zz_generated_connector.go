@@ -40,12 +40,20 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetVoice() sdkgo.Query[GetVoiceInput, Voice]
+	UpdateVoiceSettings() sdkgo.Mutation[UpdateVoiceSettingsInput, UpdatedVoiceSettings]
 	ListVoices() sdkgo.Query[ListVoicesInput, ListVoicesOutput]
 	CreateSpeech() sdkgo.Query[CreateSpeechInput, CreateSpeechOutput]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetVoice() sdkgo.Query[GetVoiceInput, Voice] {
+	return operations.client.GetVoice()
+}
+func (operations clientOperations) UpdateVoiceSettings() sdkgo.Mutation[UpdateVoiceSettingsInput, UpdatedVoiceSettings] {
+	return operations.client.UpdateVoiceSettings()
+}
 func (operations clientOperations) ListVoices() sdkgo.Query[ListVoicesInput, ListVoicesOutput] {
 	return operations.client.ListVoices()
 }
@@ -188,6 +196,154 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const GetVoiceBranchFound sdkgo.BranchID = "found"
+const GetVoiceBranchNotFound sdkgo.BranchID = "notFound"
+const GetVoiceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetVoiceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetVoiceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetVoiceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getVoice"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetVoiceBranchFound, Description: "ElevenLabs returned the requested voice."},
+		{ID: GetVoiceBranchNotFound, Description: "The voice does not exist.", Optional: true},
+		{ID: GetVoiceBranchProviderRejected, Description: "ElevenLabs conclusively rejected the read.", Optional: true},
+		{ID: GetVoiceBranchInvalidResponse, Description: "ElevenLabs returned malformed or oversized voice data.", Optional: true},
+		{ID: GetVoiceBranchDefect, Description: "Local voice ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetVoiceResult = sdkgo.QueryResult[Voice]
+
+type GetVoiceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=elevenlabs"`
+	operationID                    struct{}                                 `connector:"operationId=getVoice"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetVoiceInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetVoiceResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetVoiceResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetVoiceResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetVoiceResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetVoiceResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Voice]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetVoiceStep[IN any](config GetVoiceStepConfig[IN]) sdkgo.QueryStep[IN, GetVoiceInput, Voice] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetVoiceInput, Voice]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetVoice(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetVoiceResult] {
+			branches := make([]sdkgo.BranchTarget[GetVoiceResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetVoiceBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetVoiceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetVoiceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetVoiceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetVoiceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateVoiceSettingsBranchUpdated sdkgo.BranchID = "updated"
+const UpdateVoiceSettingsBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateVoiceSettingsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateVoiceSettingsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateVoiceSettingsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateVoiceSettings"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateVoiceSettingsBranchUpdated, Description: "ElevenLabs confirmed the voice settings replacement."},
+		{ID: UpdateVoiceSettingsBranchNotFound, Description: "The voice does not exist.", Optional: true},
+		{ID: UpdateVoiceSettingsBranchProviderRejected, Description: "ElevenLabs conclusively rejected the settings.", Optional: true},
+		{ID: UpdateVoiceSettingsBranchDefect, Description: "Local settings or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateVoiceSettingsResult = sdkgo.MutationResult[UpdatedVoiceSettings]
+
+type UpdateVoiceSettingsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=elevenlabs"`
+	operationID                       struct{}                                                   `connector:"operationId=updateVoiceSettings"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateVoiceSettingsInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateVoiceSettingsResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateVoiceSettingsResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateVoiceSettingsResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateVoiceSettingsResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdatedVoiceSettings]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateVoiceSettingsStep[IN any](config UpdateVoiceSettingsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateVoiceSettingsInput, UpdatedVoiceSettings] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateVoiceSettingsInput, UpdatedVoiceSettings]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateVoiceSettings(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateVoiceSettingsResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateVoiceSettingsResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateVoiceSettingsBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateVoiceSettingsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateVoiceSettingsBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateVoiceSettingsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListVoicesBranchListed sdkgo.BranchID = "listed"

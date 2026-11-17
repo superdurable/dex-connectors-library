@@ -20,7 +20,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listVoices":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListVoices(), testConnection),
-		"createSpeech": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.CreateSpeech(), testConnection),
+		"getVoice":            newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetVoice(), testConnection),
+		"updateVoiceSettings": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateVoiceSettings(), testConnection, scenario.CallID),
+		"listVoices":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListVoices(), testConnection),
+		"createSpeech":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.CreateSpeech(), testConnection),
 	}}
 }

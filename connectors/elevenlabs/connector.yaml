@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: elevenlabs
   displayName: ElevenLabs
-  description: List voices and generate bounded audio through ElevenLabs.
+  description: List, inspect, and configure voices, and generate bounded audio through ElevenLabs.
   company: ElevenLabs
   categories: [ai]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: elevenlabs
   languages:
@@ -52,9 +52,56 @@ spec:
       startURL: https://elevenlabs.io/app/developers/api-keys
       steps:
         - Open https://elevenlabs.io/app/developers/api-keys and sign in or create an account.
-        - Navigate to ElevenLabs > Developers > API Keys > Create API Key; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
+        - Navigate to ElevenLabs > Developers > API Keys > Create API Key; create or select a key with voice read, voice write, or speech generation permission for the operations you use, and copy its provider-issued string.
         - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+    - name: getVoice
+      goName: GetVoice
+      inputType: GetVoiceInput
+      outputType: Voice
+      kind: query
+      description: Read one voice's stable ID and display name.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: ElevenLabs returned the requested voice.}
+        - {id: notFound, goName: NotFound, description: The voice does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned malformed or oversized voice data., optional: true}
+        - {id: defect, goName: Defect, description: Local voice ID or credentials are invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundDefault
+          branch: found
+          description: A representative voice was found by ID.
+          default: true
+          output: {voiceId: voice_meridian, name: Meridian Narrator}
+    - name: updateVoiceSettings
+      goName: UpdateVoiceSettings
+      inputType: UpdateVoiceSettingsInput
+      outputType: UpdatedVoiceSettings
+      kind: mutation
+      description: Replace a voice's five primary generation settings with absolute values.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: ElevenLabs confirmed the voice settings replacement.}
+        - {id: notFound, goName: NotFound, description: The voice does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs conclusively rejected the settings., optional: true}
+        - {id: defect, goName: Defect, description: Local settings or credentials are invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          description: Representative voice settings were replaced.
+          default: true
+          output: {voiceId: voice_meridian}
     - name: listVoices
       goName: ListVoices
       inputType: ListVoicesInput

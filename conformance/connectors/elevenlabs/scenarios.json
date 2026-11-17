@@ -621,6 +621,662 @@
       },
       "name": "createSpeech-transport",
       "operation": "createSpeech"
+    },
+    {
+      "callId": "b7f95d3a-38e8-5b16-a8fd-c3aa7026315e",
+      "exchanges": [
+        {
+          "body": "{\"voice_id\":\"voice_meridian\",\"name\":\"Meridian Narrator\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "name": "Meridian Narrator",
+          "voiceId": "voice_meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "getVoice-found",
+      "operation": "getVoice"
+    },
+    {
+      "callId": "b7f95d3a-38e8-5b16-a8fd-c3aa7026315e",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "name": "",
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "getVoice-not-found",
+      "operation": "getVoice"
+    },
+    {
+      "callId": "b7f95d3a-38e8-5b16-a8fd-c3aa7026315e",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": "",
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "getVoice-provider-rejected",
+      "operation": "getVoice"
+    },
+    {
+      "callId": "b7f95d3a-38e8-5b16-a8fd-c3aa7026315e",
+      "exchanges": [
+        {
+          "body": "{\"voice_id\":\"\",\"name\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": "",
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "getVoice-invalid-response",
+      "operation": "getVoice"
+    },
+    {
+      "callId": "b7f95d3a-38e8-5b16-a8fd-c3aa7026315e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": "",
+          "voiceId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "voiceId": "bad/voice"
+      },
+      "name": "getVoice-defect",
+      "operation": "getVoice"
+    },
+    {
+      "callId": "b7f95d3a-38e8-5b16-a8fd-c3aa7026315e",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "getVoice-http-429",
+      "operation": "getVoice"
+    },
+    {
+      "callId": "b7f95d3a-38e8-5b16-a8fd-c3aa7026315e",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "getVoice-http-503",
+      "operation": "getVoice"
+    },
+    {
+      "callId": "b7f95d3a-38e8-5b16-a8fd-c3aa7026315e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/voices/voice_meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "voiceId": "voice_meridian"
+      },
+      "name": "getVoice-transport",
+      "operation": "getVoice"
+    },
+    {
+      "callId": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/settings/edit",
+          "requestBody": {
+            "similarity_boost": 0.75,
+            "speed": 1,
+            "stability": 0.5,
+            "style": 0.1,
+            "use_speaker_boost": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "voiceId": "voice_meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "input": {
+        "similarityBoost": 0.75,
+        "speed": 1,
+        "stability": 0.5,
+        "style": 0.1,
+        "useSpeakerBoost": true,
+        "voiceId": "voice_meridian"
+      },
+      "name": "updateVoiceSettings-updated",
+      "operation": "updateVoiceSettings"
+    },
+    {
+      "callId": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/settings/edit",
+          "requestBody": {
+            "similarity_boost": 0.75,
+            "speed": 1,
+            "stability": 0.5,
+            "style": 0.1,
+            "use_speaker_boost": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "input": {
+        "similarityBoost": 0.75,
+        "speed": 1,
+        "stability": 0.5,
+        "style": 0.1,
+        "useSpeakerBoost": true,
+        "voiceId": "voice_meridian"
+      },
+      "name": "updateVoiceSettings-not-found",
+      "operation": "updateVoiceSettings"
+    },
+    {
+      "callId": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"invalid settings\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/settings/edit",
+          "requestBody": {
+            "similarity_boost": 0.75,
+            "speed": 1,
+            "stability": 0.5,
+            "style": 0.1,
+            "use_speaker_boost": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "voiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "input": {
+        "similarityBoost": 0.75,
+        "speed": 1,
+        "stability": 0.5,
+        "style": 0.1,
+        "useSpeakerBoost": true,
+        "voiceId": "voice_meridian"
+      },
+      "name": "updateVoiceSettings-provider-rejected",
+      "operation": "updateVoiceSettings"
+    },
+    {
+      "callId": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "voiceId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "input": {
+        "similarityBoost": 0.75,
+        "speed": 1,
+        "stability": 2,
+        "style": 0.1,
+        "useSpeakerBoost": true,
+        "voiceId": "voice_meridian"
+      },
+      "name": "updateVoiceSettings-defect",
+      "operation": "updateVoiceSettings"
+    },
+    {
+      "callId": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/settings/edit",
+          "requestBody": {
+            "similarity_boost": 0.75,
+            "speed": 1,
+            "stability": 0.5,
+            "style": 0.1,
+            "use_speaker_boost": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "input": {
+        "similarityBoost": 0.75,
+        "speed": 1,
+        "stability": 0.5,
+        "style": 0.1,
+        "useSpeakerBoost": true,
+        "voiceId": "voice_meridian"
+      },
+      "name": "updateVoiceSettings-http-429",
+      "operation": "updateVoiceSettings"
+    },
+    {
+      "callId": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/settings/edit",
+          "requestBody": {
+            "similarity_boost": 0.75,
+            "speed": 1,
+            "stability": 0.5,
+            "style": 0.1,
+            "use_speaker_boost": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "input": {
+        "similarityBoost": 0.75,
+        "speed": 1,
+        "stability": 0.5,
+        "style": 0.1,
+        "useSpeakerBoost": true,
+        "voiceId": "voice_meridian"
+      },
+      "name": "updateVoiceSettings-http-503",
+      "operation": "updateVoiceSettings"
+    },
+    {
+      "callId": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "exchanges": [
+        {
+          "body": "{\"detail\":\"internal\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/settings/edit",
+          "requestBody": {
+            "similarity_boost": 0.75,
+            "speed": 1,
+            "stability": 0.5,
+            "style": 0.1,
+            "use_speaker_boost": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "input": {
+        "similarityBoost": 0.75,
+        "speed": 1,
+        "stability": 0.5,
+        "style": 0.1,
+        "useSpeakerBoost": true,
+        "voiceId": "voice_meridian"
+      },
+      "name": "updateVoiceSettings-http-500",
+      "operation": "updateVoiceSettings"
+    },
+    {
+      "callId": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/voices/voice_meridian/settings/edit",
+          "requestBody": {
+            "similarity_boost": 0.75,
+            "speed": 1,
+            "stability": 0.5,
+            "style": 0.1,
+            "use_speaker_boost": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Xi-Api-Key": [
+              "test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "90e8c5ff-2b88-5c2d-b8c7-a1d7448964c2",
+      "input": {
+        "similarityBoost": 0.75,
+        "speed": 1,
+        "stability": 0.5,
+        "style": 0.1,
+        "useSpeakerBoost": true,
+        "voiceId": "voice_meridian"
+      },
+      "name": "updateVoiceSettings-transport",
+      "operation": "updateVoiceSettings"
     }
   ],
   "schemaVersion": 1

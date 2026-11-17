@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getVoice/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elevenlabs.Voice](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
+			return err
+		}},
+		{name: "updateVoiceSettings/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elevenlabs.UpdatedVoiceSettings](`{"voiceId":"voice_meridian"}`)
+			return err
+		}},
 		{name: "listVoices/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[elevenlabs.ListVoicesOutput](`{"voices":[{"voiceId":"voice_meridian","name":"Meridian Narrator"}],"hasMore":false}`)
 			return err
@@ -34,6 +42,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetVoice().Definition().Operation.OperationID != "getVoice" {
+		t.Errorf("getVoice mock has another definition")
+	}
+	if mock.UpdateVoiceSettings().Definition().Operation.OperationID != "updateVoiceSettings" {
+		t.Errorf("updateVoiceSettings mock has another definition")
+	}
 	if mock.ListVoices().Definition().Operation.OperationID != "listVoices" {
 		t.Errorf("listVoices mock has another definition")
 	}

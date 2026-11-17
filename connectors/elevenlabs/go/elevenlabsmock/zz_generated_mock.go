@@ -17,9 +17,11 @@ import (
 
 // Mock is a scripted elevenlabs connection. Script each operation through its accessor.
 type Mock struct {
-	connection   elevenlabs.Connection
-	listVoices   *connectormock.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput]
-	createSpeech *connectormock.Query[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput]
+	connection          elevenlabs.Connection
+	getVoice            *connectormock.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice]
+	updateVoiceSettings *connectormock.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings]
+	listVoices          *connectormock.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput]
+	createSpeech        *connectormock.Query[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +29,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listVoices:   connectormock.NewQuery[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput](t, elevenlabs.ListVoicesDefinition),
-		createSpeech: connectormock.NewQuery[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput](t, elevenlabs.CreateSpeechDefinition),
+		getVoice:            connectormock.NewQuery[elevenlabs.GetVoiceInput, elevenlabs.Voice](t, elevenlabs.GetVoiceDefinition),
+		updateVoiceSettings: connectormock.NewMutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings](t, elevenlabs.UpdateVoiceSettingsDefinition),
+		listVoices:          connectormock.NewQuery[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput](t, elevenlabs.ListVoicesDefinition),
+		createSpeech:        connectormock.NewQuery[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput](t, elevenlabs.CreateSpeechDefinition),
 	}
+	mock.getVoice.Default(GetVoiceDefault())
+	mock.updateVoiceSettings.Default(UpdateVoiceSettingsDefault())
 	mock.listVoices.Default(ListVoicesDefault())
 	mock.createSpeech.Default(CreateSpeechDefault())
 	connection, err := elevenlabs.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "elevenlabs", Name: connectionName})
@@ -43,6 +49,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() elevenlabs.Connection { return mock.connection }
 
+// GetVoice returns the getVoice script.
+func (mock *Mock) GetVoice() *connectormock.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice] {
+	return mock.getVoice
+}
+
+// UpdateVoiceSettings returns the updateVoiceSettings script.
+func (mock *Mock) UpdateVoiceSettings() *connectormock.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings] {
+	return mock.updateVoiceSettings
+}
+
 // ListVoices returns the listVoices script.
 func (mock *Mock) ListVoices() *connectormock.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput] {
 	return mock.listVoices
@@ -55,11 +71,92 @@ func (mock *Mock) CreateSpeech() *connectormock.Query[elevenlabs.CreateSpeechInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetVoice() sdkgo.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice] {
+	return operations.mock.getVoice
+}
+func (operations mockOperations) UpdateVoiceSettings() sdkgo.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings] {
+	return operations.mock.updateVoiceSettings
+}
 func (operations mockOperations) ListVoices() sdkgo.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput] {
 	return operations.mock.listVoices
 }
 func (operations mockOperations) CreateSpeech() sdkgo.Query[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput] {
 	return operations.mock.createSpeech
+}
+
+// GetVoiceFound selects the found branch: ElevenLabs returned the requested voice.
+func GetVoiceFound(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchFound, value, failure)
+}
+
+// GetVoiceNotFound selects the notFound branch: The voice does not exist.
+func GetVoiceNotFound(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchNotFound, value, failure)
+}
+
+// GetVoiceProviderRejected selects the providerRejected branch: ElevenLabs conclusively rejected the read.
+func GetVoiceProviderRejected(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchProviderRejected, value, failure)
+}
+
+// GetVoiceInvalidResponse selects the invalidResponse branch: ElevenLabs returned malformed or oversized voice data.
+func GetVoiceInvalidResponse(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchInvalidResponse, value, failure)
+}
+
+// GetVoiceDefect selects the defect branch: Local voice ID or credentials are invalid.
+func GetVoiceDefect(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchDefect, value, failure)
+}
+
+// GetVoiceRetry asks Dex to retry the getVoice Step, after the delay when it is positive.
+func GetVoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Retry[elevenlabs.Voice](failure, after)
+}
+
+// GetVoiceFoundDefault is the manifest mock foundDefault: A representative voice was found by ID.
+func GetVoiceFoundDefault() connectormock.Case[elevenlabs.Voice] {
+	value := connectormock.MustDecodeOutput[elevenlabs.Voice](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
+	return connectormock.Branch(elevenlabs.GetVoiceBranchFound, value, nil)
+}
+
+// GetVoiceDefault is the manifest default, foundDefault, which New installs.
+func GetVoiceDefault() connectormock.Case[elevenlabs.Voice] { return GetVoiceFoundDefault() }
+
+// UpdateVoiceSettingsUpdated selects the updated branch: ElevenLabs confirmed the voice settings replacement.
+func UpdateVoiceSettingsUpdated(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchUpdated, value, failure)
+}
+
+// UpdateVoiceSettingsNotFound selects the notFound branch: The voice does not exist.
+func UpdateVoiceSettingsNotFound(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchNotFound, value, failure)
+}
+
+// UpdateVoiceSettingsProviderRejected selects the providerRejected branch: ElevenLabs conclusively rejected the settings.
+func UpdateVoiceSettingsProviderRejected(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchProviderRejected, value, failure)
+}
+
+// UpdateVoiceSettingsDefect selects the defect branch: Local settings or credentials are invalid.
+func UpdateVoiceSettingsDefect(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchDefect, value, failure)
+}
+
+// UpdateVoiceSettingsRetry asks Dex to retry the updateVoiceSettings Step, after the delay when it is positive.
+func UpdateVoiceSettingsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Retry[elevenlabs.UpdatedVoiceSettings](failure, after)
+}
+
+// UpdateVoiceSettingsUpdatedDefault is the manifest mock updatedDefault: Representative voice settings were replaced.
+func UpdateVoiceSettingsUpdatedDefault() connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	value := connectormock.MustDecodeOutput[elevenlabs.UpdatedVoiceSettings](`{"voiceId":"voice_meridian"}`)
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchUpdated, value, nil)
+}
+
+// UpdateVoiceSettingsDefault is the manifest default, updatedDefault, which New installs.
+func UpdateVoiceSettingsDefault() connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return UpdateVoiceSettingsUpdatedDefault()
 }
 
 // ListVoicesListed selects the listed branch: ElevenLabs returned the requested result.

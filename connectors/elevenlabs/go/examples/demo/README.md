@@ -2,6 +2,8 @@
 
 This runnable Flow calls `listVoices` with the static `elevenlabs` connection. The start input passes through to the generated operation Step; its happy-path result completes the Flow. Dex Web summary and display RPCs show the persisted provider result. Optional provider branches are unwired and fail the Flow when selected.
 
+The Worker also registers `ElevenLabsVoiceSettings`. Start it with `voiceId`, `stability`, `similarityBoost`, `style`, `speed`, and `useSpeakerBoost`; the five values replace the target voice's generation settings. `TestVoiceSettingsUsesDefaultMockWithRealDex` exercises this Flow against a real local Dex with the connector mock.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/elevenlabs`, run:
@@ -9,6 +11,7 @@ From `connectors/elevenlabs`, run:
 ```bash
 mkdir -p build
 dexcli visualize ./examples/demo/flow/workflow.go --schema-version 2.0 --json --out ./build/demo
+dexcli visualize ./examples/demo/flow/voice_settings_flow.go --schema-version 2.0 --lint app --json --out ./build/voice-settings
 ```
 
 The command must report `valid: true`. A local unpublished module may report `connector_release_required` until its release metadata is supplied.
