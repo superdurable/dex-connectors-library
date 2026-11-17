@@ -8,13 +8,23 @@ import { MarkerSchema, decideDispatch, type Marker } from '../src/singledispatch
 const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
 const foreignCallId = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
 
+/** Wraps one entry in the map format a Fence records; an undefined entry means no heartbeat. */
+function checkpointOf(entry: unknown): unknown {
+  if (entry === undefined) return undefined;
+  const key = (entry as { callId?: unknown }).callId;
+  return { singleDispatchMarkers: { [typeof key === 'string' ? key : callId]: entry } };
+}
+
+function decide(attempt: number, entry: unknown, readError?: Error, maxSends?: number) {
+  return decideDispatch(callId, attempt, checkpointOf(entry), readError, maxSends);
+}
+
 describe('single-dispatch marker decisions', () => {
   it('round-trips the Go heartbeat marker fixture byte for byte', async () => {
     const committed = await readFile(new URL('../../conformance/single-dispatch-markers.json', import.meta.url), 'utf8');
-    const markers: unknown[] = JSON.parse(committed);
+    const markers: unknown[] = JSON.parse(committed).markers;
     const parsed = MarkerSchema.array().parse(markers);
     expect(parsed).toHaveLength(8);
-    expect(`${JSON.stringify(parsed, null, 2)}\n`).toBe(committed);
     parsed.forEach((marker, index) => expect(JSON.stringify(marker)).toBe(JSON.stringify(markers[index])));
     expect(parsed.slice(4)).toEqual([
       { callId, attempt: 5, state: 'claimed', sendCount: 2 },
@@ -25,22 +35,34 @@ describe('single-dispatch marker decisions', () => {
   });
 
   it('allows a first send and a proven not-sent or unprocessed retry', () => {
-    expect(decideDispatch(callId, 1, undefined).kind).toBe('sendAllowed');
-    expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'notSent' }).kind).toBe('sendAllowed');
-    expect(decideDispatch(callId, 3, { callId, attempt: 2, state: 'canResend' }).kind).toBe('sendAllowed');
+    expect(decide(1, undefined).kind).toBe('sendAllowed');
+    expect(decide(2, { callId, attempt: 1, state: 'notSent' }).kind).toBe('sendAllowed');
+    expect(decide(3, { callId, attempt: 2, state: 'canResend' }).kind).toBe('sendAllowed');
   });
 
   it('requires read-back after a claim or missing later checkpoint', () => {
-    expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'claimed' }).kind).toBe('readBackRequired');
-    expect(decideDispatch(callId, 2, undefined).kind).toBe('readBackRequired');
-    expect(decideDispatch(callId, 3, { callId, attempt: 1, state: 'notSent' }).kind).toBe('readBackRequired');
-    expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'canResend', providerId: 'item-1' }).kind).toBe('readBackRequired');
+    expect(decide(2, { callId, attempt: 1, state: 'claimed' }).kind).toBe('readBackRequired');
+    expect(decide(2, undefined).kind).toBe('readBackRequired');
+    expect(decide(3, { callId, attempt: 1, state: 'notSent' }).kind).toBe('readBackRequired');
+    expect(decide(2, { callId, attempt: 1, state: 'canResend', providerId: 'item-1' }).kind).toBe('readBackRequired');
   });
 
-  it('fails closed for unreadable, invalid, or foreign checkpoints', () => {
-    expect(decideDispatch(callId, 1, undefined, new Error('heartbeat failed')).kind).toBe('failClosed');
-    expect(decideDispatch(callId, 2, { callId: foreignCallId, attempt: 1, state: 'notSent' }).kind).toBe('failClosed');
-    expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'unknown' }).kind).toBe('failClosed');
+  it('fails closed only for a read error', () => {
+    expect(decide(1, undefined, new Error('heartbeat failed')).kind).toBe('failClosed');
+    expect(decide(2, { callId: foreignCallId, attempt: 1, state: 'notSent' }).kind).toBe('readBackRequired');
+    expect(decide(2, { callId, attempt: 1, state: 'unknown' }).kind).toBe('readBackRequired');
+  });
+
+  it('treats legacy, garbage, and mismatched heartbeats as no marker', () => {
+    const proven = { callId, attempt: 1, state: 'notSent' };
+    for (const heartbeat of [
+      proven, 'garbage', [1, 2], 3, null, { progress: 1 }, { singleDispatchMarkers: null },
+      { singleDispatchMarkers: { [foreignCallId]: proven } },
+      { singleDispatchMarkers: { [callId]: { ...proven, extra: true } } },
+    ]) {
+      expect(decideDispatch(callId, 1, heartbeat, undefined, 3)).toEqual({ kind: 'sendAllowed', priorSendUpperBound: 0 });
+      expect(decideDispatch(callId, 3, heartbeat, undefined, 3)).toEqual({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
+    }
   });
 });
 
@@ -57,49 +79,49 @@ describe('single-dispatch bounded resend', () => {
   it('keeps the earlier decisions when maxSends is 1', () => {
     const expectedKinds = ['sendAllowed', 'readBackRequired', 'readBackRequired', 'sendAllowed', 'sendAllowed', 'readBackRequired', 'readBackRequired',
       'readBackRequired', 'readBackRequired', 'readBackRequired', 'readBackRequired', 'readBackRequired', 'readBackRequired'];
-    expect(vectors.map(([attempt, marker]) => decideDispatch(callId, attempt, marker).kind)).toEqual(expectedKinds);
-    expect(vectors.map(([attempt, marker]) => decideDispatch(callId, attempt, marker, undefined, 1).kind)).toEqual(expectedKinds);
+    expect(vectors.map(([attempt, marker]) => decide(attempt, marker).kind)).toEqual(expectedKinds);
+    expect(vectors.map(([attempt, marker]) => decide(attempt, marker, undefined, 1).kind)).toEqual(expectedKinds);
   });
 
   it('bounds sends without a marker by one per earlier attempt', () => {
-    expect(decideDispatch(callId, 1, undefined, undefined, 3)).toEqual({ kind: 'sendAllowed', priorSendUpperBound: 0 });
-    expect(decideDispatch(callId, 3, undefined, undefined, 3)).toEqual({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
-    expect(decideDispatch(callId, 3, undefined, undefined, 2)).toEqual({ kind: 'readBackRequired', priorSendUpperBound: 2 });
+    expect(decide(1, undefined, undefined, 3)).toEqual({ kind: 'sendAllowed', priorSendUpperBound: 0 });
+    expect(decide(3, undefined, undefined, 3)).toEqual({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
+    expect(decide(3, undefined, undefined, 2)).toEqual({ kind: 'readBackRequired', priorSendUpperBound: 2 });
   });
 
   it('adds each later attempt without a checkpoint to a recorded send count', () => {
     const claimed = { callId, attempt: 2, state: 'claimed', sendCount: 2 } as const;
-    expect(decideDispatch(callId, 3, claimed, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2, marker: claimed });
-    expect(decideDispatch(callId, 3, claimed, undefined, 2)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
-    expect(decideDispatch(callId, 4, claimed, undefined, 3)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 3 });
-    expect(decideDispatch(callId, 4, claimed, undefined, 4)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 3 });
-    expect(decideDispatch(callId, 5, { callId, attempt: 2, state: 'notSent', sendCount: 1 }, undefined, 4)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 3 });
+    expect(decide(3, claimed, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2, marker: claimed });
+    expect(decide(3, claimed, undefined, 2)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
+    expect(decide(4, claimed, undefined, 3)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 3 });
+    expect(decide(4, claimed, undefined, 4)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 3 });
+    expect(decide(5, { callId, attempt: 2, state: 'notSent', sendCount: 1 }, undefined, 4)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 3 });
   });
 
-  it('reads a legacy marker as a claim for every attempt up to its own', () => {
-    expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'claimed' }, undefined, 2)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 1 });
-    expect(decideDispatch(callId, 3, { callId, attempt: 2, state: 'claimed' }, undefined, 2)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
-    expect(decideDispatch(callId, 4, { callId, attempt: 2, state: 'notSent' }, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
-    expect(decideDispatch(callId, 4, { callId, attempt: 2, state: 'canResend' }, undefined, 2)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
-    expect(decideDispatch(callId, 3, { callId, attempt: 2, state: 'claimed', sendCount: 0 }, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
+  it('reads an entry without sendCount as a claim for every attempt up to its own', () => {
+    expect(decide(2, { callId, attempt: 1, state: 'claimed' }, undefined, 2)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 1 });
+    expect(decide(3, { callId, attempt: 2, state: 'claimed' }, undefined, 2)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
+    expect(decide(4, { callId, attempt: 2, state: 'notSent' }, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
+    expect(decide(4, { callId, attempt: 2, state: 'canResend' }, undefined, 2)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
+    expect(decide(3, { callId, attempt: 2, state: 'claimed', sendCount: 0 }, undefined, 3)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 2 });
   });
 
   it('keeps a proven not-sent or unprocessed retry send-allowed and carries its count', () => {
-    expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'notSent' }, undefined, 3)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 0 });
-    expect(decideDispatch(callId, 7, { callId, attempt: 6, state: 'notSent', sendCount: 2 }, undefined, 3)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 2 });
-    expect(decideDispatch(callId, 8, { callId, attempt: 7, state: 'canResend', sendCount: 2 }, undefined, 2)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 2 });
+    expect(decide(2, { callId, attempt: 1, state: 'notSent' }, undefined, 3)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 0 });
+    expect(decide(7, { callId, attempt: 6, state: 'notSent', sendCount: 2 }, undefined, 3)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 2 });
+    expect(decide(8, { callId, attempt: 7, state: 'canResend', sendCount: 2 }, undefined, 2)).toMatchObject({ kind: 'sendAllowed', priorSendUpperBound: 2 });
   });
 
   it('reads back a provider ID and permits a resend only below the cap', () => {
     const accepted = { callId, attempt: 8, state: 'claimed', providerId: 'object-43', sendCount: 3 } as const;
-    expect(decideDispatch(callId, 9, accepted, undefined, 4)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 3, marker: { providerId: 'object-43' } });
-    expect(decideDispatch(callId, 9, accepted, undefined, 3)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 3, marker: { providerId: 'object-43' } });
-    expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'canResend', providerId: 'item-1' }, undefined, 2)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 0 });
+    expect(decide(9, accepted, undefined, 4)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 3, marker: { providerId: 'object-43' } });
+    expect(decide(9, accepted, undefined, 3)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 3, marker: { providerId: 'object-43' } });
+    expect(decide(2, { callId, attempt: 1, state: 'canResend', providerId: 'item-1' }, undefined, 2)).toMatchObject({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 0 });
   });
 
   it('never resends from a checkpoint of the current or a later attempt', () => {
-    expect(decideDispatch(callId, 2, { callId, attempt: 2, state: 'claimed', sendCount: 1 }, undefined, 10)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 1 });
-    expect(decideDispatch(callId, 2, { callId, attempt: 3, state: 'notSent' }, undefined, 10)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
+    expect(decide(2, { callId, attempt: 2, state: 'claimed', sendCount: 1 }, undefined, 10)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 1 });
+    expect(decide(2, { callId, attempt: 3, state: 'notSent' }, undefined, 10)).toMatchObject({ kind: 'readBackRequired', priorSendUpperBound: 2 });
   });
 
   it('fails closed on a send count one send per attempt could not produce, as Go does', () => {
@@ -119,7 +141,7 @@ describe('single-dispatch bounded resend', () => {
       [3, { callId, attempt: 2, state: 'claimed', sendCount: 2 }, 1, 'readBackRequired', 2],
     ];
     for (const [attempt, marker, maxSends, kind, priorSendUpperBound] of countVectors) {
-      const decision = decideDispatch(callId, attempt, marker, undefined, maxSends);
+      const decision = decide(attempt, marker, undefined, maxSends);
       expect(decision.kind).toBe(kind);
       expect(decision.priorSendUpperBound).toBe(priorSendUpperBound);
       expect(decision.marker).toEqual(marker);
@@ -128,11 +150,11 @@ describe('single-dispatch bounded resend', () => {
     }
   });
 
-  it('fails closed for foreign or invalid checkpoints and invalid caps', () => {
-    expect(decideDispatch(callId, 2, { callId: foreignCallId, attempt: 1, state: 'claimed', sendCount: 1 }, undefined, 10).kind).toBe('failClosed');
-    for (const sendCount of [-1, 1.5, '2', null]) expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'claimed', sendCount }, undefined, 10).kind).toBe('failClosed');
-    expect(decideDispatch(callId, 2, undefined, new Error('heartbeat failed'), 10).kind).toBe('failClosed');
-    for (const maxSends of [0, 11, 2.5, Number.NaN]) expect(decideDispatch(callId, 1, undefined, undefined, maxSends)).toMatchObject({ kind: 'failClosed', error: expect.any(TypeError) });
-    expect(decideDispatch(callId, 2, { callId, attempt: 1, state: 'claimed' }, new Error('heartbeat failed'), 3).priorSendUpperBound).toBeUndefined();
+  it('ignores foreign or unreadable entries and fails closed for read errors and invalid caps', () => {
+    expect(decide(2, { callId: foreignCallId, attempt: 1, state: 'claimed', sendCount: 1 }, undefined, 10)).toEqual({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 1 });
+    for (const sendCount of [-1, 1.5, '2', null]) expect(decide(2, { callId, attempt: 1, state: 'claimed', sendCount }, undefined, 10)).toEqual({ kind: 'readBackThenResendAllowed', priorSendUpperBound: 1 });
+    expect(decide(2, undefined, new Error('heartbeat failed'), 10).kind).toBe('failClosed');
+    for (const maxSends of [0, 11, 2.5, Number.NaN]) expect(decide(1, undefined, undefined, maxSends)).toMatchObject({ kind: 'failClosed', error: expect.any(TypeError) });
+    expect(decide(2, { callId, attempt: 1, state: 'claimed' }, new Error('heartbeat failed'), 3).priorSendUpperBound).toBeUndefined();
   });
 });

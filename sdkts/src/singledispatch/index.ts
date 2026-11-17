@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { MaximumMaxSends, isValidMaxSends } from '../operation.js';
 import { CallIDSchema, type CallID } from '../types.js';
+import { markersFromHeartbeat } from './checkpoint.js';
 
 /** Last known write state of one Dex Execute attempt. */
 export const MarkerStateSchema = z.enum(['notSent', 'claimed', 'canResend']);
@@ -11,7 +12,8 @@ export const MarkerStateSchema = z.enum(['notSent', 'claimed', 'canResend']);
 export type MarkerState = z.infer<typeof MarkerStateSchema>;
 
 /**
- * Secret-free heartbeat marker shared with the Go single-dispatch fence.
+ * Secret-free checkpoint entry shared with the Go single-dispatch fence. A Fence records it as its
+ * call ID's entry in the Step attempt's heartbeat.
  *
  * `sendCount` is the number of possibly effective sends this call ID made up to and including the
  * marker's attempt. Only a Fence with a send cap of at least 2 writes it, and omits it when zero.
@@ -55,23 +57,24 @@ export interface Decision {
 }
 
 /**
- * Decide whether this attempt may dispatch from a prior heartbeat value.
+ * Decide whether this attempt may dispatch from the previous attempt's whole heartbeat value.
  *
- * `maxSends` is the send cap from 1 to 10. The default 1 disables bounded resend and keeps the
- * decisions of earlier releases. An invalid call ID, attempt, or cap fails closed.
+ * Only this call ID's entry in the checkpoint map counts. A missing entry or an unreadable value,
+ * including a single marker from an earlier release, counts as no marker: attempt one may send,
+ * and a later attempt assumes each earlier attempt sent once. `maxSends` is the send cap from 1
+ * to 10. The default 1 disables bounded resend. An invalid call ID, attempt, or cap, a read
+ * error, and an own entry with an impossible send count fail closed. The heartbeat format is
+ * internal to the connector SDKs and may change.
  */
 export function decideDispatch(callId: CallID, attempt: number, lastHeartbeat: unknown, readError?: Error, maxSends = 1): Decision {
   if (!CallIDSchema.safeParse(callId).success || !Number.isSafeInteger(attempt) || attempt < 1) return { kind: 'failClosed', error: new TypeError('single dispatch requires a call and positive attempt') };
   if (!isValidMaxSends(maxSends)) return { kind: 'failClosed', error: new TypeError(`single-dispatch maxSends must be an integer from 1 to ${MaximumMaxSends}`) };
   if (readError) return { kind: 'failClosed', error: readError };
-  if (lastHeartbeat === undefined || lastHeartbeat === null) {
+  const marker = markersFromHeartbeat(lastHeartbeat).get(callId);
+  if (!marker) {
     if (attempt === 1) return { kind: 'sendAllowed', priorSendUpperBound: 0 };
     return { kind: decideReadBack(attempt - 1, maxSends), priorSendUpperBound: attempt - 1 };
   }
-  const parsed = MarkerSchema.safeParse(lastHeartbeat);
-  if (!parsed.success) return { kind: 'failClosed', error: new TypeError('invalid single-dispatch checkpoint') };
-  const marker = parsed.data;
-  if (marker.callId !== callId) return { kind: 'failClosed', error: new TypeError('foreign single-dispatch checkpoint') };
   if (!hasPossibleSendCount(marker)) return { kind: 'failClosed', marker, error: new TypeError('invalid single-dispatch checkpoint') };
   const markerSendCount = sendCountOfMarker(marker);
   // A marker from this or a later attempt would make the gap negative and undercount sends.
