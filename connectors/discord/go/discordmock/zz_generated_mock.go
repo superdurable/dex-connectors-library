@@ -18,6 +18,10 @@ import (
 // Mock is a scripted discord connection. Script each operation through its accessor.
 type Mock struct {
 	connection          discord.Connection
+	listGuildChannels   *connectormock.Query[discord.ListGuildChannelsInput, discord.GuildChannels]
+	createGuildChannel  *connectormock.Mutation[discord.CreateGuildChannelInput, discord.Channel]
+	updateChannel       *connectormock.Mutation[discord.UpdateChannelInput, discord.Channel]
+	deleteChannel       *connectormock.Mutation[discord.DeleteChannelInput, discord.Channel]
 	getMessage          *connectormock.Query[discord.GetMessageInput, discord.Message]
 	deleteMessage       *connectormock.Mutation[discord.DeleteMessageInput, discord.DeletedMessage]
 	getChannel          *connectormock.Query[discord.GetChannelInput, discord.Channel]
@@ -31,6 +35,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listGuildChannels:   connectormock.NewQuery[discord.ListGuildChannelsInput, discord.GuildChannels](t, discord.ListGuildChannelsDefinition),
+		createGuildChannel:  connectormock.NewMutation[discord.CreateGuildChannelInput, discord.Channel](t, discord.CreateGuildChannelDefinition),
+		updateChannel:       connectormock.NewMutation[discord.UpdateChannelInput, discord.Channel](t, discord.UpdateChannelDefinition),
+		deleteChannel:       connectormock.NewMutation[discord.DeleteChannelInput, discord.Channel](t, discord.DeleteChannelDefinition),
 		getMessage:          connectormock.NewQuery[discord.GetMessageInput, discord.Message](t, discord.GetMessageDefinition),
 		deleteMessage:       connectormock.NewMutation[discord.DeleteMessageInput, discord.DeletedMessage](t, discord.DeleteMessageDefinition),
 		getChannel:          connectormock.NewQuery[discord.GetChannelInput, discord.Channel](t, discord.GetChannelDefinition),
@@ -38,6 +46,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		createMessage:       connectormock.NewMutation[discord.CreateMessageInput, discord.Message](t, discord.CreateMessageDefinition),
 		addReaction:         connectormock.NewMutation[discord.AddReactionInput, discord.AddedReaction](t, discord.AddReactionDefinition),
 	}
+	mock.listGuildChannels.Default(ListGuildChannelsDefault())
+	mock.createGuildChannel.Default(CreateGuildChannelDefault())
+	mock.updateChannel.Default(UpdateChannelDefault())
+	mock.deleteChannel.Default(DeleteChannelDefault())
 	mock.getMessage.Default(GetMessageDefault())
 	mock.deleteMessage.Default(DeleteMessageDefault())
 	mock.getChannel.Default(GetChannelDefault())
@@ -54,6 +66,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() discord.Connection { return mock.connection }
+
+// ListGuildChannels returns the listGuildChannels script.
+func (mock *Mock) ListGuildChannels() *connectormock.Query[discord.ListGuildChannelsInput, discord.GuildChannels] {
+	return mock.listGuildChannels
+}
+
+// CreateGuildChannel returns the createGuildChannel script.
+func (mock *Mock) CreateGuildChannel() *connectormock.Mutation[discord.CreateGuildChannelInput, discord.Channel] {
+	return mock.createGuildChannel
+}
+
+// UpdateChannel returns the updateChannel script.
+func (mock *Mock) UpdateChannel() *connectormock.Mutation[discord.UpdateChannelInput, discord.Channel] {
+	return mock.updateChannel
+}
+
+// DeleteChannel returns the deleteChannel script.
+func (mock *Mock) DeleteChannel() *connectormock.Mutation[discord.DeleteChannelInput, discord.Channel] {
+	return mock.deleteChannel
+}
 
 // GetMessage returns the getMessage script.
 func (mock *Mock) GetMessage() *connectormock.Query[discord.GetMessageInput, discord.Message] {
@@ -87,6 +119,18 @@ func (mock *Mock) AddReaction() *connectormock.Mutation[discord.AddReactionInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListGuildChannels() sdkgo.Query[discord.ListGuildChannelsInput, discord.GuildChannels] {
+	return operations.mock.listGuildChannels
+}
+func (operations mockOperations) CreateGuildChannel() sdkgo.Mutation[discord.CreateGuildChannelInput, discord.Channel] {
+	return operations.mock.createGuildChannel
+}
+func (operations mockOperations) UpdateChannel() sdkgo.Mutation[discord.UpdateChannelInput, discord.Channel] {
+	return operations.mock.updateChannel
+}
+func (operations mockOperations) DeleteChannel() sdkgo.Mutation[discord.DeleteChannelInput, discord.Channel] {
+	return operations.mock.deleteChannel
+}
 func (operations mockOperations) GetMessage() sdkgo.Query[discord.GetMessageInput, discord.Message] {
 	return operations.mock.getMessage
 }
@@ -104,6 +148,165 @@ func (operations mockOperations) CreateMessage() sdkgo.Mutation[discord.CreateMe
 }
 func (operations mockOperations) AddReaction() sdkgo.Mutation[discord.AddReactionInput, discord.AddedReaction] {
 	return operations.mock.addReaction
+}
+
+// ListGuildChannelsListed selects the listed branch: Discord returned the visible guild channels.
+func ListGuildChannelsListed(value discord.GuildChannels, failure *sdkgo.Failure) connectormock.Case[discord.GuildChannels] {
+	return connectormock.Branch(discord.ListGuildChannelsBranchListed, value, failure)
+}
+
+// ListGuildChannelsNotFound selects the notFound branch: Discord found no server with that ID.
+func ListGuildChannelsNotFound(value discord.GuildChannels, failure *sdkgo.Failure) connectormock.Case[discord.GuildChannels] {
+	return connectormock.Branch(discord.ListGuildChannelsBranchNotFound, value, failure)
+}
+
+// ListGuildChannelsProviderRejected selects the providerRejected branch: Discord denied access to the server.
+func ListGuildChannelsProviderRejected(value discord.GuildChannels, failure *sdkgo.Failure) connectormock.Case[discord.GuildChannels] {
+	return connectormock.Branch(discord.ListGuildChannelsBranchProviderRejected, value, failure)
+}
+
+// ListGuildChannelsInvalidResponse selects the invalidResponse branch: Discord returned invalid or oversized channel data.
+func ListGuildChannelsInvalidResponse(value discord.GuildChannels, failure *sdkgo.Failure) connectormock.Case[discord.GuildChannels] {
+	return connectormock.Branch(discord.ListGuildChannelsBranchInvalidResponse, value, failure)
+}
+
+// ListGuildChannelsDefect selects the defect branch: Local input or credentials are invalid.
+func ListGuildChannelsDefect(value discord.GuildChannels, failure *sdkgo.Failure) connectormock.Case[discord.GuildChannels] {
+	return connectormock.Branch(discord.ListGuildChannelsBranchDefect, value, failure)
+}
+
+// ListGuildChannelsRetry asks Dex to retry the listGuildChannels Step, after the delay when it is positive.
+func ListGuildChannelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.GuildChannels] {
+	return connectormock.Retry[discord.GuildChannels](failure, after)
+}
+
+// ListGuildChannelsAnnouncementChannels is the manifest mock announcementChannels: One visible created channel.
+func ListGuildChannelsAnnouncementChannels() connectormock.Case[discord.GuildChannels] {
+	value := connectormock.MustDecodeOutput[discord.GuildChannels](`{"channels":[{"id":"100000000000000003","type":0,"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}]}`)
+	return connectormock.Branch(discord.ListGuildChannelsBranchListed, value, nil)
+}
+
+// ListGuildChannelsDefault is the manifest default, announcementChannels, which New installs.
+func ListGuildChannelsDefault() connectormock.Case[discord.GuildChannels] {
+	return ListGuildChannelsAnnouncementChannels()
+}
+
+// CreateGuildChannelCreated selects the created branch: Discord created the channel and returned its ID.
+func CreateGuildChannelCreated(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.CreateGuildChannelBranchCreated, value, failure)
+}
+
+// CreateGuildChannelProviderRejected selects the providerRejected branch: Discord denied channel creation.
+func CreateGuildChannelProviderRejected(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.CreateGuildChannelBranchProviderRejected, value, failure)
+}
+
+// CreateGuildChannelUncertain returns an uncertain createGuildChannel outcome.
+func CreateGuildChannelUncertain(value discord.Channel, failure sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateGuildChannelDefect selects the defect branch: Local input or credentials are invalid.
+func CreateGuildChannelDefect(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.CreateGuildChannelBranchDefect, value, failure)
+}
+
+// CreateGuildChannelRetry asks Dex to retry the createGuildChannel Step, after the delay when it is positive.
+func CreateGuildChannelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.Channel] {
+	return connectormock.Retry[discord.Channel](failure, after)
+}
+
+// CreateGuildChannelCreatedTextChannel is the manifest mock createdTextChannel: Create an example text channel.
+func CreateGuildChannelCreatedTextChannel() connectormock.Case[discord.Channel] {
+	value := connectormock.MustDecodeOutput[discord.Channel](`{"id":"100000000000000003","type":0,"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}`)
+	return connectormock.Branch(discord.CreateGuildChannelBranchCreated, value, nil)
+}
+
+// CreateGuildChannelDefault is the manifest default, createdTextChannel, which New installs.
+func CreateGuildChannelDefault() connectormock.Case[discord.Channel] {
+	return CreateGuildChannelCreatedTextChannel()
+}
+
+// UpdateChannelUpdated selects the updated branch: Discord returned the updated channel.
+func UpdateChannelUpdated(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.UpdateChannelBranchUpdated, value, failure)
+}
+
+// UpdateChannelNotFound selects the notFound branch: Discord found no channel with that ID.
+func UpdateChannelNotFound(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.UpdateChannelBranchNotFound, value, failure)
+}
+
+// UpdateChannelProviderRejected selects the providerRejected branch: Discord denied the update.
+func UpdateChannelProviderRejected(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.UpdateChannelBranchProviderRejected, value, failure)
+}
+
+// UpdateChannelInvalidResponse selects the invalidResponse branch: Discord returned invalid channel data.
+func UpdateChannelInvalidResponse(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.UpdateChannelBranchInvalidResponse, value, failure)
+}
+
+// UpdateChannelDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateChannelDefect(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.UpdateChannelBranchDefect, value, failure)
+}
+
+// UpdateChannelRetry asks Dex to retry the updateChannel Step, after the delay when it is positive.
+func UpdateChannelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.Channel] {
+	return connectormock.Retry[discord.Channel](failure, after)
+}
+
+// UpdateChannelUpdatedTextChannel is the manifest mock updatedTextChannel: Update the example channel.
+func UpdateChannelUpdatedTextChannel() connectormock.Case[discord.Channel] {
+	value := connectormock.MustDecodeOutput[discord.Channel](`{"id":"100000000000000003","type":0,"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}`)
+	return connectormock.Branch(discord.UpdateChannelBranchUpdated, value, nil)
+}
+
+// UpdateChannelDefault is the manifest default, updatedTextChannel, which New installs.
+func UpdateChannelDefault() connectormock.Case[discord.Channel] {
+	return UpdateChannelUpdatedTextChannel()
+}
+
+// DeleteChannelDeleted selects the deleted branch: Discord returned the deleted channel.
+func DeleteChannelDeleted(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.DeleteChannelBranchDeleted, value, failure)
+}
+
+// DeleteChannelNotFound selects the notFound branch: Discord found no channel with that ID.
+func DeleteChannelNotFound(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.DeleteChannelBranchNotFound, value, failure)
+}
+
+// DeleteChannelProviderRejected selects the providerRejected branch: Discord denied channel deletion.
+func DeleteChannelProviderRejected(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.DeleteChannelBranchProviderRejected, value, failure)
+}
+
+// DeleteChannelInvalidResponse selects the invalidResponse branch: Discord returned invalid channel data.
+func DeleteChannelInvalidResponse(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.DeleteChannelBranchInvalidResponse, value, failure)
+}
+
+// DeleteChannelDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteChannelDefect(value discord.Channel, failure *sdkgo.Failure) connectormock.Case[discord.Channel] {
+	return connectormock.Branch(discord.DeleteChannelBranchDefect, value, failure)
+}
+
+// DeleteChannelRetry asks Dex to retry the deleteChannel Step, after the delay when it is positive.
+func DeleteChannelRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[discord.Channel] {
+	return connectormock.Retry[discord.Channel](failure, after)
+}
+
+// DeleteChannelDeletedTextChannel is the manifest mock deletedTextChannel: Delete the example channel.
+func DeleteChannelDeletedTextChannel() connectormock.Case[discord.Channel] {
+	value := connectormock.MustDecodeOutput[discord.Channel](`{"id":"100000000000000003","type":0,"guildId":"200000000000000001","name":"dex-updates","topic":"Dex updates"}`)
+	return connectormock.Branch(discord.DeleteChannelBranchDeleted, value, nil)
+}
+
+// DeleteChannelDefault is the manifest default, deletedTextChannel, which New installs.
+func DeleteChannelDefault() connectormock.Case[discord.Channel] {
+	return DeleteChannelDeletedTextChannel()
 }
 
 // GetMessageFound selects the found branch: Discord returned the requested message.

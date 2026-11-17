@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: discord
   displayName: Discord
-  description: Read Discord channels and messages, send and delete bot messages, and add reactions.
+  description: Read and manage Discord channels and messages, send and delete bot messages, and add reactions.
   company: Discord
   categories: [communication]
   version: v0.4.0
@@ -52,8 +52,76 @@ spec:
         - Open Bot, choose Reset Token, and copy the token Discord shows once into the secret field below; resetting it again on the same page rejects the old value, so paste any replacement here.
         - Under Bot > Privileged Gateway Intents enable Message Content Intent when Flows read message content in servers; without it Discord returns empty content for messages that do not mention the bot.
         - Open OAuth2 > URL Generator, select the bot scope and the View Channels, Read Message History, Send Messages, and Add Reactions permissions, open the generated URL, and add the bot to the server whose channels the Flows use.
+        - For channel creation, updates, or deletion, the server owner must additionally grant the bot Manage Channels in Server Settings > Roles; existing tokens remain valid, and missing permission selects providerRejected.
         - In Discord, enable User Settings > Advanced > Developer Mode, then right-click a channel and choose Copy Channel ID to find the 17 to 20 digit channel IDs that Flow input names.
   operations:
+    - name: listGuildChannels
+      goName: ListGuildChannels
+      inputType: ListGuildChannelsInput
+      outputType: GuildChannels
+      kind: query
+      description: List visible channels in one Discord server, excluding threads.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Discord returned the visible guild channels.}
+        - {id: notFound, goName: NotFound, description: Discord found no server with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied access to the server., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned invalid or oversized channel data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: announcementChannels, branch: listed, default: true, description: One visible created channel., output: {channels: [{id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}]}}
+    - name: createGuildChannel
+      goName: CreateGuildChannel
+      inputType: CreateGuildChannelInput
+      outputType: Channel
+      kind: mutation
+      description: Create one server text channel with bounded repeat sends.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Discord created the channel and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied channel creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A channel may exist without a confirmed ID after bounded sends., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 2}
+      mocks:
+        - {name: createdTextChannel, branch: created, default: true, description: Create an example text channel., output: {id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}}
+    - name: updateChannel
+      goName: UpdateChannel
+      inputType: UpdateChannelInput
+      outputType: Channel
+      kind: mutation
+      description: Replace the name or topic of one guild channel.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Discord returned the updated channel.}
+        - {id: notFound, goName: NotFound, description: Discord found no channel with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned invalid channel data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: updatedTextChannel, branch: updated, default: true, description: Update the example channel., output: {id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}}
+    - name: deleteChannel
+      goName: DeleteChannel
+      inputType: DeleteChannelInput
+      outputType: Channel
+      kind: mutation
+      description: Delete one guild channel by ID.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Discord returned the deleted channel.}
+        - {id: notFound, goName: NotFound, description: Discord found no channel with that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Discord denied channel deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Discord returned invalid channel data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: deletedTextChannel, branch: deleted, default: true, description: Delete the example channel., output: {id: "100000000000000003", type: 0, guildId: "200000000000000001", name: dex-updates, topic: Dex updates}}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput

@@ -50,3 +50,25 @@ func TestChannelAnnouncementRunsOnMockDefaultsWithRealDex(t *testing.T) {
 	require.Len(t, readBackCalls, 1)
 	require.Equal(t, discord.ListChannelMessagesInput{ChannelID: "100000000000000001", Limit: 10}, readBackCalls[0].Input)
 }
+
+func TestChannelLifecycleRunsOnMockDefaultsWithRealDex(t *testing.T) {
+	mock := discordmock.New(t, ConnectionName)
+	_, harness := newAnnouncementIntegrationHarnessWithConnection(t, mock.Connection())
+	lifecycle := NewChannelLifecycleFlow(mock.Connection())
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	flowID := "discord-channel-lifecycle-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err := harness.client.StartFlow(ctx, lifecycle, flowID, discord.CreateGuildChannelInput{GuildID: "200000000000000001", Name: "dex-updates", Topic: "Dex updates"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var deleted discord.Channel
+	require.NoError(t, result.DecodeSingleOutput(&deleted))
+	require.Equal(t, "100000000000000003", deleted.ID)
+	require.Len(t, mock.CreateGuildChannel().Calls(), 1)
+	require.Len(t, mock.UpdateChannel().Calls(), 1)
+	require.Len(t, mock.ListGuildChannels().Calls(), 1)
+	require.Len(t, mock.DeleteChannel().Calls(), 1)
+}

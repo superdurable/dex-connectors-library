@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/discord/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/api/v10"
@@ -21,7 +22,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, discord.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := newStepDexContext("conformance")
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	createContext := singledispatchtest.NewContext("discord-conformance", "create-guild-channel")
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if scenario.Operation == "createGuildChannel" && attempt > 1 {
+			createContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listGuildChannels":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListGuildChannels(), discordConnection),
+		"createGuildChannel":  newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateGuildChannel(), discordConnection, scenario.CallID),
+		"updateChannel":       newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateChannel(), discordConnection, scenario.CallID),
+		"deleteChannel":       newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteChannel(), discordConnection, scenario.CallID),
 		"getMessage":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetMessage(), discordConnection),
 		"deleteMessage":       newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteMessage(), discordConnection, scenario.CallID),
 		"getChannel":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetChannel(), discordConnection),

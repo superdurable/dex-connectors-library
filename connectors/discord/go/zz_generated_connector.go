@@ -39,6 +39,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListGuildChannels() sdkgo.Query[ListGuildChannelsInput, GuildChannels]
+	CreateGuildChannel() sdkgo.Mutation[CreateGuildChannelInput, Channel]
+	UpdateChannel() sdkgo.Mutation[UpdateChannelInput, Channel]
+	DeleteChannel() sdkgo.Mutation[DeleteChannelInput, Channel]
 	GetMessage() sdkgo.Query[GetMessageInput, Message]
 	DeleteMessage() sdkgo.Mutation[DeleteMessageInput, DeletedMessage]
 	GetChannel() sdkgo.Query[GetChannelInput, Channel]
@@ -49,6 +53,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListGuildChannels() sdkgo.Query[ListGuildChannelsInput, GuildChannels] {
+	return operations.client.ListGuildChannels()
+}
+func (operations clientOperations) CreateGuildChannel() sdkgo.Mutation[CreateGuildChannelInput, Channel] {
+	return operations.client.CreateGuildChannel()
+}
+func (operations clientOperations) UpdateChannel() sdkgo.Mutation[UpdateChannelInput, Channel] {
+	return operations.client.UpdateChannel()
+}
+func (operations clientOperations) DeleteChannel() sdkgo.Mutation[DeleteChannelInput, Channel] {
+	return operations.client.DeleteChannel()
+}
 func (operations clientOperations) GetMessage() sdkgo.Query[GetMessageInput, Message] {
 	return operations.client.GetMessage()
 }
@@ -198,6 +214,315 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const ListGuildChannelsBranchListed sdkgo.BranchID = "listed"
+const ListGuildChannelsBranchNotFound sdkgo.BranchID = "notFound"
+const ListGuildChannelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListGuildChannelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListGuildChannelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListGuildChannelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listGuildChannels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListGuildChannelsBranchListed, Description: "Discord returned the visible guild channels."},
+		{ID: ListGuildChannelsBranchNotFound, Description: "Discord found no server with that ID.", Optional: true},
+		{ID: ListGuildChannelsBranchProviderRejected, Description: "Discord denied access to the server.", Optional: true},
+		{ID: ListGuildChannelsBranchInvalidResponse, Description: "Discord returned invalid or oversized channel data.", Optional: true},
+		{ID: ListGuildChannelsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListGuildChannelsResult = sdkgo.QueryResult[GuildChannels]
+
+type ListGuildChannelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=discord"`
+	operationID                    struct{}                                         `connector:"operationId=listGuildChannels"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListGuildChannelsInput                  `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListGuildChannelsResult]            `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListGuildChannelsResult]            `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListGuildChannelsResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListGuildChannelsResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListGuildChannelsResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GuildChannels]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListGuildChannelsStep[IN any](config ListGuildChannelsStepConfig[IN]) sdkgo.QueryStep[IN, ListGuildChannelsInput, GuildChannels] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("discord connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListGuildChannelsInput, GuildChannels]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListGuildChannels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListGuildChannelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListGuildChannelsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListGuildChannelsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListGuildChannelsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListGuildChannelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListGuildChannelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListGuildChannelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateGuildChannelBranchCreated sdkgo.BranchID = "created"
+const CreateGuildChannelBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateGuildChannelBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateGuildChannelBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateGuildChannelDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createGuildChannel"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateGuildChannelBranchCreated, Description: "Discord created the channel and returned its ID."},
+		{ID: CreateGuildChannelBranchProviderRejected, Description: "Discord denied channel creation.", Optional: true},
+		{ID: CreateGuildChannelBranchUncertain, Description: "A channel may exist without a confirmed ID after bounded sends.", Optional: true},
+		{ID: CreateGuildChannelBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        2,
+}
+
+type CreateGuildChannelResult = sdkgo.MutationResult[Channel]
+
+type CreateGuildChannelStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=discord"`
+	operationID                       struct{}                                      `connector:"operationId=createGuildChannel"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateGuildChannelInput              `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateGuildChannelResult]        `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateGuildChannelResult]        `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateGuildChannelResult]        `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateGuildChannelResult]        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Channel]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateGuildChannelStep[IN any](config CreateGuildChannelStepConfig[IN]) sdkgo.MutationStep[IN, CreateGuildChannelInput, Channel] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("discord connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateGuildChannelInput, Channel]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateGuildChannel(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateGuildChannelResult] {
+			branches := make([]sdkgo.BranchTarget[CreateGuildChannelResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateGuildChannelBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateGuildChannelBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateGuildChannelBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateGuildChannelBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateChannelBranchUpdated sdkgo.BranchID = "updated"
+const UpdateChannelBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateChannelBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateChannelBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateChannelBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateChannelDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateChannel"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateChannelBranchUpdated, Description: "Discord returned the updated channel."},
+		{ID: UpdateChannelBranchNotFound, Description: "Discord found no channel with that ID.", Optional: true},
+		{ID: UpdateChannelBranchProviderRejected, Description: "Discord denied the update.", Optional: true},
+		{ID: UpdateChannelBranchInvalidResponse, Description: "Discord returned invalid channel data.", Optional: true},
+		{ID: UpdateChannelBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateChannelResult = sdkgo.MutationResult[Channel]
+
+type UpdateChannelStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=discord"`
+	operationID                       struct{}                                      `connector:"operationId=updateChannel"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateChannelInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateChannelResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateChannelResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateChannelResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateChannelResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateChannelResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Channel]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateChannelStep[IN any](config UpdateChannelStepConfig[IN]) sdkgo.MutationStep[IN, UpdateChannelInput, Channel] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("discord connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateChannelInput, Channel]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateChannel(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateChannelResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateChannelResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateChannelBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateChannelBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateChannelBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateChannelBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateChannelBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteChannelBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteChannelBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteChannelBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteChannelBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteChannelBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteChannelDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteChannel"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteChannelBranchDeleted, Description: "Discord returned the deleted channel."},
+		{ID: DeleteChannelBranchNotFound, Description: "Discord found no channel with that ID.", Optional: true},
+		{ID: DeleteChannelBranchProviderRejected, Description: "Discord denied channel deletion.", Optional: true},
+		{ID: DeleteChannelBranchInvalidResponse, Description: "Discord returned invalid channel data.", Optional: true},
+		{ID: DeleteChannelBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteChannelResult = sdkgo.MutationResult[Channel]
+
+type DeleteChannelStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=discord"`
+	operationID                       struct{}                                      `connector:"operationId=deleteChannel"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteChannelInput                   `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteChannelResult]             `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteChannelResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteChannelResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteChannelResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteChannelResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Channel]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteChannelStep[IN any](config DeleteChannelStepConfig[IN]) sdkgo.MutationStep[IN, DeleteChannelInput, Channel] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("discord connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteChannelInput, Channel]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteChannel(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteChannelResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteChannelResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteChannelBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteChannelBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteChannelBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteChannelBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteChannelBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const GetMessageBranchFound sdkgo.BranchID = "found"
 const GetMessageBranchNotFound sdkgo.BranchID = "notFound"
 const GetMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -293,6 +618,7 @@ var DeleteMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteMessageResult = sdkgo.MutationResult[DeletedMessage]
@@ -520,6 +846,8 @@ var CreateMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateMessageResult = sdkgo.MutationResult[Message]
@@ -540,6 +868,8 @@ type CreateMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateMessageResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Message]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateMessageStep[IN any](config CreateMessageStepConfig[IN]) sdkgo.MutationStep[IN, CreateMessageInput, Message] {
@@ -574,6 +904,7 @@ func NewCreateMessageStep[IN any](config CreateMessageStepConfig[IN]) sdkgo.Muta
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -595,6 +926,8 @@ var AddReactionDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AddReactionResult = sdkgo.MutationResult[AddedReaction]
@@ -614,6 +947,8 @@ type AddReactionStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AddReactionResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AddedReaction]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAddReactionStep[IN any](config AddReactionStepConfig[IN]) sdkgo.MutationStep[IN, AddReactionInput, AddedReaction] {
@@ -645,5 +980,6 @@ func NewAddReactionStep[IN any](config AddReactionStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

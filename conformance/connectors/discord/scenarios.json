@@ -5,6 +5,1476 @@
       "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
+          "body": "[{\"id\":\"100000000000000001\",\"type\":0,\"guild_id\":\"200000000000000001\",\"name\":\"announcements\",\"topic\":\"Release news\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/guilds/200000000000000001/channels",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channels": [
+            {
+              "guildId": "200000000000000001",
+              "id": "100000000000000001",
+              "name": "announcements",
+              "topic": "Release news",
+              "type": 0
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "guildId": "200000000000000001"
+      },
+      "name": "listGuildChannels-success",
+      "operation": "listGuildChannels"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"code\":50013,\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/guilds/200000000000000001/channels",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "guildId": "200000000000000001"
+      },
+      "name": "listGuildChannels-provider-rejected",
+      "operation": "listGuildChannels"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/guilds/200000000000000001/channels",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "guildId": "200000000000000001"
+      },
+      "name": "listGuildChannels-invalid-response",
+      "operation": "listGuildChannels"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "channels": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "guildId": "bad"
+      },
+      "name": "listGuildChannels-defect",
+      "operation": "listGuildChannels"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"retry_after\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/guilds/200000000000000001/channels",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 1000,
+        "uncertain": false
+      },
+      "input": {
+        "guildId": "200000000000000001"
+      },
+      "name": "listGuildChannels-rate-limit",
+      "operation": "listGuildChannels"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/guilds/200000000000000001/channels",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "guildId": "200000000000000001"
+      },
+      "name": "listGuildChannels-unavailable",
+      "operation": "listGuildChannels"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/guilds/200000000000000001/channels",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "guildId": "200000000000000001"
+      },
+      "name": "listGuildChannels-server-error",
+      "operation": "listGuildChannels"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/guilds/200000000000000001/channels",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "guildId": "200000000000000001"
+      },
+      "name": "listGuildChannels-transport",
+      "operation": "listGuildChannels"
+    },
+    {
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"100000000000000003\",\"type\":0,\"guild_id\":\"200000000000000001\",\"name\":\"dex-updates\",\"topic\":\"Dex updates\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+          "providerId": "100000000000000003",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "guildId": "200000000000000001",
+          "id": "100000000000000003",
+          "name": "dex-updates",
+          "topic": "Dex updates",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "200000000000000001",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "name": "createGuildChannel-success",
+      "operation": "createGuildChannel"
+    },
+    {
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [
+        {
+          "body": "{\"code\":50013,\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "200000000000000001",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "name": "createGuildChannel-provider-rejected",
+      "operation": "createGuildChannel"
+    },
+    {
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "200000000000000001",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "name": "createGuildChannel-invalid-response",
+      "operation": "createGuildChannel"
+    },
+    {
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "bad",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "name": "createGuildChannel-defect",
+      "operation": "createGuildChannel"
+    },
+    {
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [
+        {
+          "body": "{\"retry_after\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 1000,
+        "uncertain": false
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "200000000000000001",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "name": "createGuildChannel-rate-limit",
+      "operation": "createGuildChannel"
+    },
+    {
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "200000000000000001",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "name": "createGuildChannel-unavailable",
+      "operation": "createGuildChannel"
+    },
+    {
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "200000000000000001",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "name": "createGuildChannel-server-error",
+      "operation": "createGuildChannel"
+    },
+    {
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "200000000000000001",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "name": "createGuildChannel-transport",
+      "operation": "createGuildChannel"
+    },
+    {
+      "attempts": 2,
+      "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/guilds/200000000000000001/channels",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Dex updates",
+            "type": 0
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "df7601c4-5430-54a9-b669-6145d4e23d96",
+      "input": {
+        "guildId": "200000000000000001",
+        "name": "dex-updates",
+        "topic": "Dex updates"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "df7601c4-5430-54a9-b669-6145d4e23d96",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createGuildChannel-uncertain-after-cap",
+      "operation": "createGuildChannel"
+    },
+    {
+      "callId": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"100000000000000001\",\"type\":0,\"guild_id\":\"200000000000000001\",\"name\":\"dex-updates\",\"topic\":\"Release news\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/channels/100000000000000001",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Release news"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "guildId": "200000000000000001",
+          "id": "100000000000000001",
+          "name": "dex-updates",
+          "topic": "Release news",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "input": {
+        "channelId": "100000000000000001",
+        "name": "dex-updates",
+        "topic": "Release news"
+      },
+      "name": "updateChannel-success",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "exchanges": [
+        {
+          "body": "{\"code\":50013,\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/channels/100000000000000001",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Release news"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "input": {
+        "channelId": "100000000000000001",
+        "name": "dex-updates",
+        "topic": "Release news"
+      },
+      "name": "updateChannel-provider-rejected",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/channels/100000000000000001",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Release news"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "input": {
+        "channelId": "100000000000000001",
+        "name": "dex-updates",
+        "topic": "Release news"
+      },
+      "name": "updateChannel-invalid-response",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "input": {
+        "channelId": "bad",
+        "name": "dex-updates",
+        "topic": "Release news"
+      },
+      "name": "updateChannel-defect",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "exchanges": [
+        {
+          "body": "{\"retry_after\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/channels/100000000000000001",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Release news"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 1000,
+        "uncertain": false
+      },
+      "idempotencyKey": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "input": {
+        "channelId": "100000000000000001",
+        "name": "dex-updates",
+        "topic": "Release news"
+      },
+      "name": "updateChannel-rate-limit",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/channels/100000000000000001",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Release news"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "input": {
+        "channelId": "100000000000000001",
+        "name": "dex-updates",
+        "topic": "Release news"
+      },
+      "name": "updateChannel-unavailable",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/channels/100000000000000001",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Release news"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "input": {
+        "channelId": "100000000000000001",
+        "name": "dex-updates",
+        "topic": "Release news"
+      },
+      "name": "updateChannel-server-error",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/channels/100000000000000001",
+          "requestBody": {
+            "name": "dex-updates",
+            "topic": "Release news"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4cd9608b-d1e0-5ba2-b977-eb055dfd08e4",
+      "input": {
+        "channelId": "100000000000000001",
+        "name": "dex-updates",
+        "topic": "Release news"
+      },
+      "name": "updateChannel-transport",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"100000000000000001\",\"type\":0,\"guild_id\":\"200000000000000001\",\"name\":\"announcements\",\"topic\":\"Release news\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "guildId": "200000000000000001",
+          "id": "100000000000000001",
+          "name": "announcements",
+          "topic": "Release news",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "deleteChannel-success",
+      "operation": "deleteChannel"
+    },
+    {
+      "callId": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "exchanges": [
+        {
+          "body": "{\"code\":50013,\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "deleteChannel-provider-rejected",
+      "operation": "deleteChannel"
+    },
+    {
+      "callId": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "deleteChannel-invalid-response",
+      "operation": "deleteChannel"
+    },
+    {
+      "callId": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "input": {
+        "channelId": "bad"
+      },
+      "name": "deleteChannel-defect",
+      "operation": "deleteChannel"
+    },
+    {
+      "callId": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "exchanges": [
+        {
+          "body": "{\"retry_after\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 1000,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "deleteChannel-rate-limit",
+      "operation": "deleteChannel"
+    },
+    {
+      "callId": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "deleteChannel-unavailable",
+      "operation": "deleteChannel"
+    },
+    {
+      "callId": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "deleteChannel-server-error",
+      "operation": "deleteChannel"
+    },
+    {
+      "callId": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd213cf2-7663-588d-a59d-e707d5c10670",
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "deleteChannel-transport",
+      "operation": "deleteChannel"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
           "body": "{\"id\":\"998877665544332211\",\"channel_id\":\"112233445566778899\",\"type\":0,\"content\":\"release\",\"timestamp\":\"2026-10-13T20:00:00Z\",\"author\":{\"id\":\"123456789012345678\",\"username\":\"dex-bot\",\"bot\":true}}",
           "headers": {},
           "keyMode": "absent",
