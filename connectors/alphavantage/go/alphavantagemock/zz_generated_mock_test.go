@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "searchSymbols/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[alphavantage.SymbolSearchOutput](`{"matches":[{"symbol":"IBM","name":"International Business Machines","region":"United States"}]}`)
+			return err
+		}},
+		{name: "getCurrencyExchangeRate/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[alphavantage.CurrencyExchangeRateOutput](`{"fromCurrency":"USD","toCurrency":"JPY","rate":"159.17723289","lastRefreshed":"2026-11-17 04:29:14"}`)
+			return err
+		}},
+		{name: "getMarketStatus/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[alphavantage.MarketStatusOutput](`{"markets":[{"marketType":"Equity","region":"United States","primaryExchanges":"NYSE","currentStatus":"closed"}]}`)
+			return err
+		}},
+		{name: "getTopGainersLosers/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[alphavantage.MarketMoversOutput](`{"lastUpdated":"2026-11-16 16:16:00 US/Eastern","topGainers":[{"ticker":"IBM","price":"255.25"}],"topLosers":[{"ticker":"XYZ","price":"2.15"}],"mostActivelyTraded":[{"ticker":"ABC","price":"9.11"}]}`)
+			return err
+		}},
 		{name: "getGlobalQuote/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[alphavantage.GlobalQuoteOutput](`{"symbol":"IBM","price":"255.25","latestTradingDay":"2026-10-28"}`)
 			return err
@@ -34,6 +50,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.SearchSymbols().Definition().Operation.OperationID != "searchSymbols" {
+		t.Errorf("searchSymbols mock has another definition")
+	}
+	if mock.GetCurrencyExchangeRate().Definition().Operation.OperationID != "getCurrencyExchangeRate" {
+		t.Errorf("getCurrencyExchangeRate mock has another definition")
+	}
+	if mock.GetMarketStatus().Definition().Operation.OperationID != "getMarketStatus" {
+		t.Errorf("getMarketStatus mock has another definition")
+	}
+	if mock.GetTopGainersLosers().Definition().Operation.OperationID != "getTopGainersLosers" {
+		t.Errorf("getTopGainersLosers mock has another definition")
+	}
 	if mock.GetGlobalQuote().Definition().Operation.OperationID != "getGlobalQuote" {
 		t.Errorf("getGlobalQuote mock has another definition")
 	}
