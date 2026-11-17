@@ -21,12 +21,17 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		OAuthClientID: "test-client", OAuthClientSecret: sdkgo.NewSecretString("test-client-secret"),
 		AccessToken: sdkgo.NewSecretString("test-analytics-token"), RefreshToken: sdkgo.NewSecretString("test-refresh-token"),
 	}
-	if scenario.Name == "getProperty-defect" { credentials.AccessToken = sdkgo.NewSecretString("") }
+	if scenario.Name == "getProperty-defect" {
+		credentials.AccessToken = sdkgo.NewSecretString("")
+	}
 	client, err := New(Config{DataBaseURL: endpoint, AdminBaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"runReport": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.RunReport(), reference),
-		"getProperty": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProperty(), reference),
-		"listAudiences": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAudiences(), reference),
+		"runReport":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.RunReport(), reference),
+		"getProperty":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetProperty(), reference),
+		"listAudiences":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAudiences(), reference),
+		"runRealtimeReport": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.RunRealtimeReport(), reference),
+		"listProperties":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListProperties(), reference),
+		"listDataStreams":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListDataStreams(), reference),
 	}}
 }
