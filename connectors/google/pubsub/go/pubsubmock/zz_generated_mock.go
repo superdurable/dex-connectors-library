@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted google-pubsub connection. Script each operation through its accessor.
 type Mock struct {
-	connection pubsub.Connection
-	listTopics *connectormock.Query[pubsub.ListTopicsInput, pubsub.TopicsPage]
+	connection        pubsub.Connection
+	getTopic          *connectormock.Query[pubsub.GetTopicInput, pubsub.Topic]
+	createTopic       *connectormock.Mutation[pubsub.CreateTopicInput, pubsub.Topic]
+	updateTopicLabels *connectormock.Mutation[pubsub.UpdateTopicLabelsInput, pubsub.Topic]
+	deleteTopic       *connectormock.Mutation[pubsub.DeleteTopicInput, pubsub.DeletedTopic]
+	listTopics        *connectormock.Query[pubsub.ListTopicsInput, pubsub.TopicsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +30,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listTopics: connectormock.NewQuery[pubsub.ListTopicsInput, pubsub.TopicsPage](t, pubsub.ListTopicsDefinition),
+		getTopic:          connectormock.NewQuery[pubsub.GetTopicInput, pubsub.Topic](t, pubsub.GetTopicDefinition),
+		createTopic:       connectormock.NewMutation[pubsub.CreateTopicInput, pubsub.Topic](t, pubsub.CreateTopicDefinition),
+		updateTopicLabels: connectormock.NewMutation[pubsub.UpdateTopicLabelsInput, pubsub.Topic](t, pubsub.UpdateTopicLabelsDefinition),
+		deleteTopic:       connectormock.NewMutation[pubsub.DeleteTopicInput, pubsub.DeletedTopic](t, pubsub.DeleteTopicDefinition),
+		listTopics:        connectormock.NewQuery[pubsub.ListTopicsInput, pubsub.TopicsPage](t, pubsub.ListTopicsDefinition),
 	}
+	mock.getTopic.Default(GetTopicDefault())
+	mock.createTopic.Default(CreateTopicDefault())
+	mock.updateTopicLabels.Default(UpdateTopicLabelsDefault())
+	mock.deleteTopic.Default(DeleteTopicDefault())
 	mock.listTopics.Default(ListTopicsDefault())
 	connection, err := pubsub.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-pubsub", Name: connectionName})
 	if err != nil {
@@ -40,6 +52,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() pubsub.Connection { return mock.connection }
 
+// GetTopic returns the getTopic script.
+func (mock *Mock) GetTopic() *connectormock.Query[pubsub.GetTopicInput, pubsub.Topic] {
+	return mock.getTopic
+}
+
+// CreateTopic returns the createTopic script.
+func (mock *Mock) CreateTopic() *connectormock.Mutation[pubsub.CreateTopicInput, pubsub.Topic] {
+	return mock.createTopic
+}
+
+// UpdateTopicLabels returns the updateTopicLabels script.
+func (mock *Mock) UpdateTopicLabels() *connectormock.Mutation[pubsub.UpdateTopicLabelsInput, pubsub.Topic] {
+	return mock.updateTopicLabels
+}
+
+// DeleteTopic returns the deleteTopic script.
+func (mock *Mock) DeleteTopic() *connectormock.Mutation[pubsub.DeleteTopicInput, pubsub.DeletedTopic] {
+	return mock.deleteTopic
+}
+
 // ListTopics returns the listTopics script.
 func (mock *Mock) ListTopics() *connectormock.Query[pubsub.ListTopicsInput, pubsub.TopicsPage] {
 	return mock.listTopics
@@ -47,9 +79,164 @@ func (mock *Mock) ListTopics() *connectormock.Query[pubsub.ListTopicsInput, pubs
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetTopic() sdkgo.Query[pubsub.GetTopicInput, pubsub.Topic] {
+	return operations.mock.getTopic
+}
+func (operations mockOperations) CreateTopic() sdkgo.Mutation[pubsub.CreateTopicInput, pubsub.Topic] {
+	return operations.mock.createTopic
+}
+func (operations mockOperations) UpdateTopicLabels() sdkgo.Mutation[pubsub.UpdateTopicLabelsInput, pubsub.Topic] {
+	return operations.mock.updateTopicLabels
+}
+func (operations mockOperations) DeleteTopic() sdkgo.Mutation[pubsub.DeleteTopicInput, pubsub.DeletedTopic] {
+	return operations.mock.deleteTopic
+}
 func (operations mockOperations) ListTopics() sdkgo.Query[pubsub.ListTopicsInput, pubsub.TopicsPage] {
 	return operations.mock.listTopics
 }
+
+// GetTopicFound selects the found branch: Pub/Sub returned the topic.
+func GetTopicFound(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchFound, value, failure)
+}
+
+// GetTopicNotFound selects the notFound branch: No topic has that name.
+func GetTopicNotFound(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchNotFound, value, failure)
+}
+
+// GetTopicProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the read.
+func GetTopicProviderRejected(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchProviderRejected, value, failure)
+}
+
+// GetTopicInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed or oversized topic JSON.
+func GetTopicInvalidResponse(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchInvalidResponse, value, failure)
+}
+
+// GetTopicDefect selects the defect branch: Local topic name or credentials are invalid.
+func GetTopicDefect(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.GetTopicBranchDefect, value, failure)
+}
+
+// GetTopicRetry asks Dex to retry the getTopic Step, after the delay when it is positive.
+func GetTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Topic] {
+	return connectormock.Retry[pubsub.Topic](failure, after)
+}
+
+// GetTopicFoundDefault is the manifest mock foundDefault: An events topic exists.
+func GetTopicFoundDefault() connectormock.Case[pubsub.Topic] {
+	value := connectormock.MustDecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+	return connectormock.Branch(pubsub.GetTopicBranchFound, value, nil)
+}
+
+// GetTopicDefault is the manifest default, foundDefault, which New installs.
+func GetTopicDefault() connectormock.Case[pubsub.Topic] { return GetTopicFoundDefault() }
+
+// CreateTopicCreated selects the created branch: Pub/Sub created the topic or a retry confirmed it exists.
+func CreateTopicCreated(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.CreateTopicBranchCreated, value, failure)
+}
+
+// CreateTopicProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the create.
+func CreateTopicProviderRejected(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.CreateTopicBranchProviderRejected, value, failure)
+}
+
+// CreateTopicInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed topic JSON.
+func CreateTopicInvalidResponse(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.CreateTopicBranchInvalidResponse, value, failure)
+}
+
+// CreateTopicDefect selects the defect branch: Local topic name, labels, or credentials are invalid.
+func CreateTopicDefect(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.CreateTopicBranchDefect, value, failure)
+}
+
+// CreateTopicRetry asks Dex to retry the createTopic Step, after the delay when it is positive.
+func CreateTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Topic] {
+	return connectormock.Retry[pubsub.Topic](failure, after)
+}
+
+// CreateTopicCreatedDefault is the manifest mock createdDefault: Pub/Sub created an events topic.
+func CreateTopicCreatedDefault() connectormock.Case[pubsub.Topic] {
+	value := connectormock.MustDecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+	return connectormock.Branch(pubsub.CreateTopicBranchCreated, value, nil)
+}
+
+// CreateTopicDefault is the manifest default, createdDefault, which New installs.
+func CreateTopicDefault() connectormock.Case[pubsub.Topic] { return CreateTopicCreatedDefault() }
+
+// UpdateTopicLabelsUpdated selects the updated branch: Pub/Sub replaced the topic labels.
+func UpdateTopicLabelsUpdated(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchUpdated, value, failure)
+}
+
+// UpdateTopicLabelsNotFound selects the notFound branch: The topic does not exist.
+func UpdateTopicLabelsNotFound(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchNotFound, value, failure)
+}
+
+// UpdateTopicLabelsProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the update.
+func UpdateTopicLabelsProviderRejected(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchProviderRejected, value, failure)
+}
+
+// UpdateTopicLabelsInvalidResponse selects the invalidResponse branch: Pub/Sub returned malformed topic JSON.
+func UpdateTopicLabelsInvalidResponse(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchInvalidResponse, value, failure)
+}
+
+// UpdateTopicLabelsDefect selects the defect branch: Local topic name, labels, or credentials are invalid.
+func UpdateTopicLabelsDefect(value pubsub.Topic, failure *sdkgo.Failure) connectormock.Case[pubsub.Topic] {
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchDefect, value, failure)
+}
+
+// UpdateTopicLabelsRetry asks Dex to retry the updateTopicLabels Step, after the delay when it is positive.
+func UpdateTopicLabelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.Topic] {
+	return connectormock.Retry[pubsub.Topic](failure, after)
+}
+
+// UpdateTopicLabelsUpdatedDefault is the manifest mock updatedDefault: Pub/Sub replaced the topic labels.
+func UpdateTopicLabelsUpdatedDefault() connectormock.Case[pubsub.Topic] {
+	value := connectormock.MustDecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+	return connectormock.Branch(pubsub.UpdateTopicLabelsBranchUpdated, value, nil)
+}
+
+// UpdateTopicLabelsDefault is the manifest default, updatedDefault, which New installs.
+func UpdateTopicLabelsDefault() connectormock.Case[pubsub.Topic] {
+	return UpdateTopicLabelsUpdatedDefault()
+}
+
+// DeleteTopicDeleted selects the deleted branch: Pub/Sub deleted the topic or it was already absent.
+func DeleteTopicDeleted(value pubsub.DeletedTopic, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedTopic] {
+	return connectormock.Branch(pubsub.DeleteTopicBranchDeleted, value, failure)
+}
+
+// DeleteTopicProviderRejected selects the providerRejected branch: Pub/Sub conclusively rejected the delete.
+func DeleteTopicProviderRejected(value pubsub.DeletedTopic, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedTopic] {
+	return connectormock.Branch(pubsub.DeleteTopicBranchProviderRejected, value, failure)
+}
+
+// DeleteTopicDefect selects the defect branch: Local topic name or credentials are invalid.
+func DeleteTopicDefect(value pubsub.DeletedTopic, failure *sdkgo.Failure) connectormock.Case[pubsub.DeletedTopic] {
+	return connectormock.Branch(pubsub.DeleteTopicBranchDefect, value, failure)
+}
+
+// DeleteTopicRetry asks Dex to retry the deleteTopic Step, after the delay when it is positive.
+func DeleteTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pubsub.DeletedTopic] {
+	return connectormock.Retry[pubsub.DeletedTopic](failure, after)
+}
+
+// DeleteTopicDeletedDefault is the manifest mock deletedDefault: Pub/Sub deleted the events topic.
+func DeleteTopicDeletedDefault() connectormock.Case[pubsub.DeletedTopic] {
+	value := connectormock.MustDecodeOutput[pubsub.DeletedTopic](`{"name":"projects/sample-project/topics/events"}`)
+	return connectormock.Branch(pubsub.DeleteTopicBranchDeleted, value, nil)
+}
+
+// DeleteTopicDefault is the manifest default, deletedDefault, which New installs.
+func DeleteTopicDefault() connectormock.Case[pubsub.DeletedTopic] { return DeleteTopicDeletedDefault() }
 
 // ListTopicsListed selects the listed branch: Pub/Sub returned the selected topic page.
 func ListTopicsListed(value pubsub.TopicsPage, failure *sdkgo.Failure) connectormock.Case[pubsub.TopicsPage] {

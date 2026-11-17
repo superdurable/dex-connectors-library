@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getTopic/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+			return err
+		}},
+		{name: "createTopic/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+			return err
+		}},
+		{name: "updateTopicLabels/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.Topic](`{"name":"projects/sample-project/topics/events","labels":{"team":"operations"}}`)
+			return err
+		}},
+		{name: "deleteTopic/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pubsub.DeletedTopic](`{"name":"projects/sample-project/topics/events"}`)
+			return err
+		}},
 		{name: "listTopics/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[pubsub.TopicsPage](`{"topics":[{"name":"projects/sample-project/topics/events"}],"nextPageToken":""}`)
 			return err
@@ -30,6 +46,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetTopic().Definition().Operation.OperationID != "getTopic" {
+		t.Errorf("getTopic mock has another definition")
+	}
+	if mock.CreateTopic().Definition().Operation.OperationID != "createTopic" {
+		t.Errorf("createTopic mock has another definition")
+	}
+	if mock.UpdateTopicLabels().Definition().Operation.OperationID != "updateTopicLabels" {
+		t.Errorf("updateTopicLabels mock has another definition")
+	}
+	if mock.DeleteTopic().Definition().Operation.OperationID != "deleteTopic" {
+		t.Errorf("deleteTopic mock has another definition")
+	}
 	if mock.ListTopics().Definition().Operation.OperationID != "listTopics" {
 		t.Errorf("listTopics mock has another definition")
 	}

@@ -2,6 +2,1242 @@
   "connector": "google/pubsub",
   "scenarios": [
     {
+      "callId": "pubsub-getTopic-success",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"projects/sample-project/topics/events\",\"labels\":{\"team\":\"operations\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "labels": {
+            "team": "operations"
+          },
+          "name": "projects/sample-project/topics/events"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "getTopic-success",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "pubsub-getTopic-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "getTopic-rejected",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "pubsub-getTopic-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "getTopic-retry-429",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "pubsub-getTopic-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "getTopic-retry-503",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "pubsub-getTopic-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "getTopic-transport",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "pubsub-getTopic-invalid",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "getTopic-invalid",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "pubsub-getTopic-not-found",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "getTopic-not-found",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "pubsub-getTopic-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "invalid"
+      },
+      "name": "getTopic-defect",
+      "operation": "getTopic"
+    },
+    {
+      "callId": "788de680-88c4-54f6-8798-cfce0b753845",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"projects/sample-project/topics/events\",\"labels\":{\"team\":\"operations\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "labels": {
+              "team": "operations"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "labels": {
+            "team": "operations"
+          },
+          "name": "projects/sample-project/topics/events"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "788de680-88c4-54f6-8798-cfce0b753845",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "createTopic-success",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "788de680-88c4-54f6-8798-cfce0b753845",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "labels": {
+              "team": "operations"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "788de680-88c4-54f6-8798-cfce0b753845",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "createTopic-rejected",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "788de680-88c4-54f6-8798-cfce0b753845",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "labels": {
+              "team": "operations"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "788de680-88c4-54f6-8798-cfce0b753845",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "createTopic-retry-429",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "788de680-88c4-54f6-8798-cfce0b753845",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "labels": {
+              "team": "operations"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "788de680-88c4-54f6-8798-cfce0b753845",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "createTopic-retry-503",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "788de680-88c4-54f6-8798-cfce0b753845",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "labels": {
+              "team": "operations"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "788de680-88c4-54f6-8798-cfce0b753845",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "createTopic-transport",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "788de680-88c4-54f6-8798-cfce0b753845",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "labels": {
+              "team": "operations"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "788de680-88c4-54f6-8798-cfce0b753845",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "createTopic-invalid",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "788de680-88c4-54f6-8798-cfce0b753845",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "788de680-88c4-54f6-8798-cfce0b753845",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "invalid"
+      },
+      "name": "createTopic-defect",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"projects/sample-project/topics/events\",\"labels\":{\"team\":\"operations\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "topic": {
+              "labels": {
+                "team": "operations"
+              },
+              "name": "projects/sample-project/topics/events"
+            },
+            "updateMask": "labels"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "labels": {
+            "team": "operations"
+          },
+          "name": "projects/sample-project/topics/events"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "updateTopicLabels-success",
+      "operation": "updateTopicLabels"
+    },
+    {
+      "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "topic": {
+              "labels": {
+                "team": "operations"
+              },
+              "name": "projects/sample-project/topics/events"
+            },
+            "updateMask": "labels"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "updateTopicLabels-rejected",
+      "operation": "updateTopicLabels"
+    },
+    {
+      "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "topic": {
+              "labels": {
+                "team": "operations"
+              },
+              "name": "projects/sample-project/topics/events"
+            },
+            "updateMask": "labels"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "updateTopicLabels-retry-429",
+      "operation": "updateTopicLabels"
+    },
+    {
+      "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "topic": {
+              "labels": {
+                "team": "operations"
+              },
+              "name": "projects/sample-project/topics/events"
+            },
+            "updateMask": "labels"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "updateTopicLabels-retry-503",
+      "operation": "updateTopicLabels"
+    },
+    {
+      "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "topic": {
+              "labels": {
+                "team": "operations"
+              },
+              "name": "projects/sample-project/topics/events"
+            },
+            "updateMask": "labels"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "updateTopicLabels-transport",
+      "operation": "updateTopicLabels"
+    },
+    {
+      "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "topic": {
+              "labels": {
+                "team": "operations"
+              },
+              "name": "projects/sample-project/topics/events"
+            },
+            "updateMask": "labels"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "updateTopicLabels-invalid",
+      "operation": "updateTopicLabels"
+    },
+    {
+      "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":404}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "topic": {
+              "labels": {
+                "team": "operations"
+              },
+              "name": "projects/sample-project/topics/events"
+            },
+            "updateMask": "labels"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "updateTopicLabels-not-found",
+      "operation": "updateTopicLabels"
+    },
+    {
+      "callId": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dc4b304-e111-572c-86a8-3facebe8ac25",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "invalid"
+      },
+      "name": "updateTopicLabels-defect",
+      "operation": "updateTopicLabels"
+    },
+    {
+      "callId": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "projects/sample-project/topics/events"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "deleteTopic-success",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":403}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "deleteTopic-rejected",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":429}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "deleteTopic-retry-429",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":503}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "deleteTopic-retry-503",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "input": {
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "deleteTopic-transport",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "928049ae-09fe-51fa-b068-11ccf4c9666d",
+      "input": {
+        "name": "invalid"
+      },
+      "name": "deleteTopic-defect",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "788de680-88c4-54f6-8798-cfce0b753845",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":409}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestBody": {
+            "labels": {
+              "team": "operations"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"name\":\"projects/sample-project/topics/events\",\"labels\":{\"team\":\"operations\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics/events",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "labels": {
+            "team": "operations"
+          },
+          "name": "projects/sample-project/topics/events"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "788de680-88c4-54f6-8798-cfce0b753845",
+      "input": {
+        "labels": {
+          "team": "operations"
+        },
+        "name": "projects/sample-project/topics/events"
+      },
+      "name": "createTopic-conflict-match",
+      "operation": "createTopic"
+    },
+    {
       "callId": "eda6745b-47ea-5e34-b49d-b642989816c6",
       "exchanges": [
         {

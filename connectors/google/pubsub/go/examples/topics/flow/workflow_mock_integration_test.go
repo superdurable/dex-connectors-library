@@ -24,7 +24,8 @@ import (
 func TestTopicsUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := pubsubmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	detailFlow := NewTopicDetailFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, detailFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestTopicsUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "projects/sample-project/topics/events", output.Topics[0].Name)
 	require.Len(t, mock.ListTopics().Calls(), 1)
+	detailFlowID := "google-pubsub-detail-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, detailFlow, detailFlowID, pubsub.GetTopicInput{Name: "projects/sample-project/topics/events"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	detailResult, err := client.WaitForFlow(ctx, detailFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, detailResult.Status, detailResult.ErrorMessage)
+	var detail pubsub.Topic
+	require.NoError(t, detailResult.DecodeSingleOutput(&detail))
+	require.Equal(t, "projects/sample-project/topics/events", detail.Name)
+	require.Len(t, mock.GetTopic().Calls(), 1)
 }

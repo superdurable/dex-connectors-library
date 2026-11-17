@@ -43,11 +43,27 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetTopic() sdkgo.Query[GetTopicInput, Topic]
+	CreateTopic() sdkgo.Mutation[CreateTopicInput, Topic]
+	UpdateTopicLabels() sdkgo.Mutation[UpdateTopicLabelsInput, Topic]
+	DeleteTopic() sdkgo.Mutation[DeleteTopicInput, DeletedTopic]
 	ListTopics() sdkgo.Query[ListTopicsInput, TopicsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetTopic() sdkgo.Query[GetTopicInput, Topic] {
+	return operations.client.GetTopic()
+}
+func (operations clientOperations) CreateTopic() sdkgo.Mutation[CreateTopicInput, Topic] {
+	return operations.client.CreateTopic()
+}
+func (operations clientOperations) UpdateTopicLabels() sdkgo.Mutation[UpdateTopicLabelsInput, Topic] {
+	return operations.client.UpdateTopicLabels()
+}
+func (operations clientOperations) DeleteTopic() sdkgo.Mutation[DeleteTopicInput, DeletedTopic] {
+	return operations.client.DeleteTopic()
+}
 func (operations clientOperations) ListTopics() sdkgo.Query[ListTopicsInput, TopicsPage] {
 	return operations.client.ListTopics()
 }
@@ -250,6 +266,296 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetTopicBranchFound sdkgo.BranchID = "found"
+const GetTopicBranchNotFound sdkgo.BranchID = "notFound"
+const GetTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTopicBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTopicDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTopicBranchFound, Description: "Pub/Sub returned the topic."},
+		{ID: GetTopicBranchNotFound, Description: "No topic has that name.", Optional: true},
+		{ID: GetTopicBranchProviderRejected, Description: "Pub/Sub conclusively rejected the read.", Optional: true},
+		{ID: GetTopicBranchInvalidResponse, Description: "Pub/Sub returned malformed or oversized topic JSON.", Optional: true},
+		{ID: GetTopicBranchDefect, Description: "Local topic name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTopicResult = sdkgo.QueryResult[Topic]
+
+type GetTopicStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                 `connector:"connectorId=google-pubsub"`
+	operationID                    struct{}                                 `connector:"operationId=getTopic"`
+	StepType                       string                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                    `connector:"annotations"`
+	Connection                     Connection                               `connector:"connection"`
+	ConnectionName                 string                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTopicInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTopicResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTopicResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTopicResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTopicResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTopicResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Topic]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                         `connector:"stepOptionsOverride"`
+}
+
+func NewGetTopicStep[IN any](config GetTopicStepConfig[IN]) sdkgo.QueryStep[IN, GetTopicInput, Topic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTopicInput, Topic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTopicResult] {
+			branches := make([]sdkgo.BranchTarget[GetTopicResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTopicBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTopicBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTopicBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTopicBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTopicBranchCreated sdkgo.BranchID = "created"
+const CreateTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTopicBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateTopicDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTopicBranchCreated, Description: "Pub/Sub created the topic or a retry confirmed it exists."},
+		{ID: CreateTopicBranchProviderRejected, Description: "Pub/Sub conclusively rejected the create.", Optional: true},
+		{ID: CreateTopicBranchInvalidResponse, Description: "Pub/Sub returned malformed topic JSON.", Optional: true},
+		{ID: CreateTopicBranchDefect, Description: "Local topic name, labels, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreateTopicResult = sdkgo.MutationResult[Topic]
+
+type CreateTopicStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                    `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                    `connector:"operationId=createTopic"`
+	StepType                          string                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                        Connection                                  `connector:"connection"`
+	ConnectionName                    string                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTopicInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTopicResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTopicResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateTopicResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateTopicResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Topic]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewCreateTopicStep[IN any](config CreateTopicStepConfig[IN]) sdkgo.MutationStep[IN, CreateTopicInput, Topic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTopicInput, Topic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTopicResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTopicResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTopicBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTopicBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateTopicBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateTopicLabelsBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTopicLabelsBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTopicLabelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTopicLabelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTopicLabelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTopicLabelsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTopicLabels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTopicLabelsBranchUpdated, Description: "Pub/Sub replaced the topic labels."},
+		{ID: UpdateTopicLabelsBranchNotFound, Description: "The topic does not exist.", Optional: true},
+		{ID: UpdateTopicLabelsBranchProviderRejected, Description: "Pub/Sub conclusively rejected the update.", Optional: true},
+		{ID: UpdateTopicLabelsBranchInvalidResponse, Description: "Pub/Sub returned malformed topic JSON.", Optional: true},
+		{ID: UpdateTopicLabelsBranchDefect, Description: "Local topic name, labels, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateTopicLabelsResult = sdkgo.MutationResult[Topic]
+
+type UpdateTopicLabelsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                    `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                    `connector:"operationId=updateTopicLabels"`
+	StepType                          string                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                        Connection                                  `connector:"connection"`
+	ConnectionName                    string                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTopicLabelsInput             `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTopicLabelsResult]       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Topic]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTopicLabelsStep[IN any](config UpdateTopicLabelsStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTopicLabelsInput, Topic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTopicLabelsInput, Topic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTopicLabels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTopicLabelsResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTopicLabelsResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTopicLabelsBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTopicLabelsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTopicLabelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTopicLabelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTopicLabelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTopicBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTopicBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTopicBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTopicDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTopic"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTopicBranchDeleted, Description: "Pub/Sub deleted the topic or it was already absent."},
+		{ID: DeleteTopicBranchProviderRejected, Description: "Pub/Sub conclusively rejected the delete.", Optional: true},
+		{ID: DeleteTopicBranchDefect, Description: "Local topic name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteTopicResult = sdkgo.MutationResult[DeletedTopic]
+
+type DeleteTopicStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=google-pubsub"`
+	operationID                       struct{}                                           `connector:"operationId=deleteTopic"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteTopicInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTopicResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteTopicResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteTopicResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedTopic]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTopicStep[IN any](config DeleteTopicStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTopicInput, DeletedTopic] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-pubsub connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteTopicInput, DeletedTopic]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTopic(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTopicResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTopicResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTopicBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTopicBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTopicBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListTopicsBranchListed sdkgo.BranchID = "listed"

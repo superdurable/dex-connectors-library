@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-pubsub
   displayName: Google Cloud Pub/Sub
-  description: Discover Pub/Sub topics in one Google Cloud project.
+  description: List, read, create, update, and delete Google Cloud Pub/Sub topics.
   company: Google
   categories: [developer-tools]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   languages:
     python:
@@ -90,6 +90,71 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getTopic
+      goName: GetTopic
+      inputType: GetTopicInput
+      outputType: Topic
+      kind: query
+      description: Read a Pub/Sub topic by its full resource name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Pub/Sub returned the topic.}
+        - {id: notFound, goName: NotFound, description: No topic has that name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed or oversized topic JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local topic name or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: An events topic exists., output: {name: projects/sample-project/topics/events, labels: {team: operations}}}
+    - name: createTopic
+      goName: CreateTopic
+      inputType: CreateTopicInput
+      outputType: Topic
+      kind: mutation
+      description: Create a topic at a caller-chosen stable resource name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Pub/Sub created the topic or a retry confirmed it exists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the create., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed topic JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local topic name, labels, or credentials are invalid.", optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Pub/Sub created an events topic., output: {name: projects/sample-project/topics/events, labels: {team: operations}}}
+    - name: updateTopicLabels
+      goName: UpdateTopicLabels
+      inputType: UpdateTopicLabelsInput
+      outputType: Topic
+      kind: mutation
+      description: Replace a topic's labels absolutely with a Pub/Sub update mask.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Pub/Sub replaced the topic labels.}
+        - {id: notFound, goName: NotFound, description: The topic does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pub/Sub returned malformed topic JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local topic name, labels, or credentials are invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Pub/Sub replaced the topic labels., output: {name: projects/sample-project/topics/events, labels: {team: operations}}}
+    - name: deleteTopic
+      goName: DeleteTopic
+      inputType: DeleteTopicInput
+      outputType: DeletedTopic
+      kind: mutation
+      description: Delete a topic by its full resource name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Pub/Sub deleted the topic or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pub/Sub conclusively rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: Local topic name or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Pub/Sub deleted the events topic., output: {name: projects/sample-project/topics/events}}
     - name: listTopics
       goName: ListTopics
       inputType: ListTopicsInput
