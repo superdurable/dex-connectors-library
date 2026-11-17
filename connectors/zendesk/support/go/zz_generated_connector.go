@@ -43,6 +43,8 @@ type Operations interface {
 	ListTickets() sdkgo.Query[ListTicketsInput, ListTicketsOutput]
 	DeleteTicket() sdkgo.Mutation[DeleteTicketInput, DeleteTicketOutput]
 	RecoverSuspendedTicket() sdkgo.Mutation[RecoverSuspendedTicketInput, RecoverSuspendedTicketOutput]
+	ListTicketFields() sdkgo.Query[ListTicketFieldsInput, ListTicketFieldsOutput]
+	GetTicketField() sdkgo.Query[GetTicketFieldInput, GetTicketFieldOutput]
 	SearchTickets() sdkgo.Query[SearchTicketsInput, SearchTicketsOutput]
 	GetTicket() sdkgo.Query[GetTicketInput, TicketDetails]
 	CreateTicket() sdkgo.Mutation[CreateTicketInput, CreateTicketOutput]
@@ -59,6 +61,12 @@ func (operations clientOperations) DeleteTicket() sdkgo.Mutation[DeleteTicketInp
 }
 func (operations clientOperations) RecoverSuspendedTicket() sdkgo.Mutation[RecoverSuspendedTicketInput, RecoverSuspendedTicketOutput] {
 	return operations.client.RecoverSuspendedTicket()
+}
+func (operations clientOperations) ListTicketFields() sdkgo.Query[ListTicketFieldsInput, ListTicketFieldsOutput] {
+	return operations.client.ListTicketFields()
+}
+func (operations clientOperations) GetTicketField() sdkgo.Query[GetTicketFieldInput, GetTicketFieldOutput] {
+	return operations.client.GetTicketField()
 }
 func (operations clientOperations) SearchTickets() sdkgo.Query[SearchTicketsInput, SearchTicketsOutput] {
 	return operations.client.SearchTickets()
@@ -474,6 +482,154 @@ func NewRecoverSuspendedTicketStep[IN any](config RecoverSuspendedTicketStepConf
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListTicketFieldsBranchListed sdkgo.BranchID = "listed"
+const ListTicketFieldsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTicketFieldsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTicketFieldsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTicketFieldsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTicketFields"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTicketFieldsBranchListed, Description: "Zendesk returned one ticket-field page."},
+		{ID: ListTicketFieldsBranchProviderRejected, Description: "Zendesk rejected the request.", Optional: true},
+		{ID: ListTicketFieldsBranchInvalidResponse, Description: "Zendesk returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTicketFieldsBranchDefect, Description: "Page input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTicketFieldsResult = sdkgo.QueryResult[ListTicketFieldsOutput]
+
+type ListTicketFieldsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=zendesk-support"`
+	operationID                    struct{}                                                  `connector:"operationId=listTicketFields"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTicketFieldsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTicketFieldsResult]                      `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTicketFieldsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTicketFieldsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTicketFieldsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListTicketFieldsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewListTicketFieldsStep[IN any](config ListTicketFieldsStepConfig[IN]) sdkgo.QueryStep[IN, ListTicketFieldsInput, ListTicketFieldsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTicketFieldsInput, ListTicketFieldsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTicketFields(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTicketFieldsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTicketFieldsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTicketFieldsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTicketFieldsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTicketFieldsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTicketFieldsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTicketFieldBranchFound sdkgo.BranchID = "found"
+const GetTicketFieldBranchNotFound sdkgo.BranchID = "notFound"
+const GetTicketFieldBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTicketFieldBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTicketFieldBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTicketFieldDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTicketField"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTicketFieldBranchFound, Description: "Zendesk returned the ticket field."},
+		{ID: GetTicketFieldBranchNotFound, Description: "The ticket field does not exist.", Optional: true},
+		{ID: GetTicketFieldBranchProviderRejected, Description: "Zendesk rejected the request.", Optional: true},
+		{ID: GetTicketFieldBranchInvalidResponse, Description: "Zendesk returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTicketFieldBranchDefect, Description: "Field ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTicketFieldResult = sdkgo.QueryResult[GetTicketFieldOutput]
+
+type GetTicketFieldStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=zendesk-support"`
+	operationID                    struct{}                                                `connector:"operationId=getTicketField"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTicketFieldInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTicketFieldResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTicketFieldResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTicketFieldResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTicketFieldResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTicketFieldResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetTicketFieldOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetTicketFieldStep[IN any](config GetTicketFieldStepConfig[IN]) sdkgo.QueryStep[IN, GetTicketFieldInput, GetTicketFieldOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-support connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTicketFieldInput, GetTicketFieldOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTicketField(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTicketFieldResult] {
+			branches := make([]sdkgo.BranchTarget[GetTicketFieldResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTicketFieldBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTicketFieldBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTicketFieldBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTicketFieldBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTicketFieldBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }
 

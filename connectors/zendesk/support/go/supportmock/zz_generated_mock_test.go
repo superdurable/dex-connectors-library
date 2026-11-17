@@ -36,6 +36,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[support.RecoverSuspendedTicketOutput](`{"ticket":{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Customer issue","status":"open","requesterId":7701,"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}}`)
 			return err
 		}},
+		{name: "listTicketFields/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListTicketFieldsOutput](`{"fields":[{"id":34,"title":"Subject","type":"subject","active":true,"required":true}],"nextCursor":"cursor-1"}`)
+			return err
+		}},
+		{name: "listTicketFields/listedDefault/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListTicketFieldsOutput](`{"fields":[{"id":35,"title":"Priority","type":"priority","active":true,"required":false}],"nextCursor":"cursor-2"}`)
+			return err
+		}},
+		{name: "listTicketFields/listedDefault/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.ListTicketFieldsOutput](`{"fields":[],"nextCursor":""}`)
+			return err
+		}},
+		{name: "getTicketField/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[support.GetTicketFieldOutput](`{"field":{"id":34,"title":"Subject","type":"subject","active":true,"required":true}}`)
+			return err
+		}},
 		{name: "searchTickets/customerIssueTickets/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35435,"agentUrl":"https://acme.zendesk.com/agent/tickets/35435","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-20T08:00:00Z","updatedAt":"2026-10-21T08:00:00Z"},{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}],"nextCursor":"cursor-1"}`)
 			return err
@@ -82,6 +98,12 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.RecoverSuspendedTicket().Definition().Operation.OperationID != "recoverSuspendedTicket" {
 		t.Errorf("recoverSuspendedTicket mock has another definition")
+	}
+	if mock.ListTicketFields().Definition().Operation.OperationID != "listTicketFields" {
+		t.Errorf("listTicketFields mock has another definition")
+	}
+	if mock.GetTicketField().Definition().Operation.OperationID != "getTicketField" {
+		t.Errorf("getTicketField mock has another definition")
 	}
 	if mock.SearchTickets().Definition().Operation.OperationID != "searchTickets" {
 		t.Errorf("searchTickets mock has another definition")

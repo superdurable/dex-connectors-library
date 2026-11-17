@@ -20,6 +20,8 @@ Flows. It exposes these operation-specific Dex Step factories:
 | `support.NewListTicketsStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | `support.NewDeleteTicketStep` | Mutation | `deleted` | `notFound`, `providerRejected`, `defect` |
 | `support.NewRecoverSuspendedTicketStep` | Mutation | `recovered` | `notFound`, `providerRejected`, `defect`, `uncertain` |
+| `support.NewListTicketFieldsStep` | Query | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| `support.NewGetTicketFieldStep` | Query | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
@@ -111,6 +113,8 @@ against the documented values before any request.
 ## Operations
 
 `listTickets` reads one cursor page of up to 100 non-archived tickets visible to the connection's agent. Pass the returned `nextCursor` to read another page; the first page is used when it is blank. For a complete account export, use the incremental export API instead.
+
+`listTicketFields` reads one cursor page of up to 100 system and custom field definitions; `getTicketField` reads one by positive ID. They return field ID, title, type, active, and required status. Provider field descriptions and other configuration are excluded from Flow results.
 
 `deleteTicket` soft-deletes one ticket by ID. Zendesk requires an administrator or an agent with deletion permission. `recoverSuspendedTicket` converts one suspended ticket to a regular ticket; Zendesk changes its requester to the authenticated agent. Recovery has a three-send cap and selects `uncertain` after an unconfirmed final attempt. Operators can inspect the suspended-ticket queue and the recovered ticket before manually retrying.
 

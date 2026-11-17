@@ -4334,6 +4334,678 @@
       ],
       "name": "recoverSuspendedTicket-uncertain-cap",
       "operation": "recoverSuspendedTicket"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{\"ticket_fields\":[{\"id\":34,\"title\":\"Subject\",\"type\":\"subject\",\"active\":true,\"required\":true}],\"meta\":{\"has_more\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "fields": [
+            {
+              "active": true,
+              "id": 34,
+              "required": true,
+              "title": "Subject",
+              "type": "subject"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listTicketFields-success",
+      "operation": "listTicketFields"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listTicketFields-rate-limit",
+      "operation": "listTicketFields"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000103",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listTicketFields-service-unavailable",
+      "operation": "listTicketFields"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000104",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listTicketFields-server-error",
+      "operation": "listTicketFields"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000105",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listTicketFields-transport",
+      "operation": "listTicketFields"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "fields": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listTicketFields-rejected",
+      "operation": "listTicketFields"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields",
+          "query": {
+            "page[after]": [
+              "next-page"
+            ],
+            "page[size]": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "pageSize": 2
+      },
+      "name": "listTicketFields-invalid-response",
+      "operation": "listTicketFields"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000108",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101
+      },
+      "name": "listTicketFields-defect",
+      "operation": "listTicketFields"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000109",
+      "exchanges": [
+        {
+          "body": "{\"ticket_field\":{\"id\":34,\"title\":\"Subject\",\"type\":\"subject\",\"active\":true,\"required\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields/34",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "field": {
+            "active": true,
+            "id": 34,
+            "required": true,
+            "title": "Subject",
+            "type": "subject"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 34
+      },
+      "name": "getTicketField-success",
+      "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000110",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields/34",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 34
+      },
+      "name": "getTicketField-rate-limit",
+      "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields/34",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 34
+      },
+      "name": "getTicketField-service-unavailable",
+      "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000112",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields/34",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 34
+      },
+      "name": "getTicketField-server-error",
+      "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000113",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields/34",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 34
+      },
+      "name": "getTicketField-transport",
+      "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000114",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields/34",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "field": {
+            "active": false,
+            "id": 0,
+            "required": false,
+            "title": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 34
+      },
+      "name": "getTicketField-not-found",
+      "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000115",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields/34",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "field": {
+            "active": false,
+            "id": 0,
+            "required": false,
+            "title": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 34
+      },
+      "name": "getTicketField-rejected",
+      "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000116",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ticket_fields/34",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbS90b2tlbjp6ZW5kZXNrVGVzdFRva2VuMDEyMzQ1Njc4OWFiY2RlZg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "field": {
+            "active": false,
+            "id": 0,
+            "required": false,
+            "title": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 34
+      },
+      "name": "getTicketField-invalid-response",
+      "operation": "getTicketField"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000117",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "field": {
+            "active": false,
+            "id": 0,
+            "required": false,
+            "title": "",
+            "type": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fieldId": 0
+      },
+      "name": "getTicketField-defect",
+      "operation": "getTicketField"
     }
   ],
   "schemaVersion": 1

@@ -133,6 +133,49 @@ spec:
           default: true
           description: One sample suspended ticket is recovered.
           output: {ticket: {id: 35436, agentUrl: "https://acme.zendesk.com/agent/tickets/35436", subject: Customer issue, status: open, requesterId: 7701, createdAt: "2026-10-21T08:00:00Z", updatedAt: "2026-10-22T08:00:00Z"}}
+    - name: listTicketFields
+      goName: ListTicketFields
+      inputType: ListTicketFieldsInput
+      outputType: ListTicketFieldsOutput
+      kind: query
+      description: List one cursor page of system and custom ticket fields visible to the agent.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Zendesk returned one ticket-field page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Page input or credentials are invalid., optional: true}
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample ticket field is listed.
+          pages:
+            - {fields: [{id: 34, title: Subject, type: subject, active: true, required: true}], nextCursor: cursor-1}
+            - {fields: [{id: 35, title: Priority, type: priority, active: true, required: false}], nextCursor: cursor-2}
+            - {fields: [], nextCursor: ""}
+    - name: getTicketField
+      goName: GetTicketField
+      inputType: GetTicketFieldInput
+      outputType: GetTicketFieldOutput
+      kind: query
+      description: Read one ticket field by its numeric Zendesk ID.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Zendesk returned the ticket field.}
+        - {id: notFound, goName: NotFound, description: The ticket field does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Field ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample ticket field is read.
+          output: {field: {id: 34, title: Subject, type: subject, active: true, required: true}}
     - name: searchTickets
       goName: SearchTickets
       inputType: SearchTicketsInput
