@@ -237,6 +237,30 @@ type UpdateObjectInput struct {
 	Properties map[string]string `json:"properties"`
 }
 
+// CreateObjectInput defines a new contact, company, or deal.
+type CreateObjectInput struct {
+	// ObjectType selects the CRM record type.
+	ObjectType ObjectType `json:"objectType"`
+	// Properties are HubSpot internal property names and their values.
+	Properties map[string]string `json:"properties"`
+}
+
+// DeleteObjectInput identifies a CRM record to archive.
+type DeleteObjectInput struct {
+	// ObjectType selects the CRM record type.
+	ObjectType ObjectType `json:"objectType"`
+	// ObjectID is HubSpot's decimal record ID.
+	ObjectID string `json:"objectId"`
+}
+
+// DeletedObject reports the archived record identity.
+type DeletedObject struct {
+	// ObjectType is the archived record type.
+	ObjectType ObjectType `json:"objectType"`
+	// ObjectID is the archived record ID.
+	ObjectID string `json:"objectId"`
+}
+
 // SearchObjectsOperation implements the CRM search Query.
 type SearchObjectsOperation struct{ client *Client }
 
@@ -248,6 +272,12 @@ type UpsertObjectOperation struct{ client *Client }
 
 // UpdateObjectOperation implements the record update Mutation.
 type UpdateObjectOperation struct{ client *Client }
+
+// CreateObjectOperation implements the bounded-repeat CRM create Mutation.
+type CreateObjectOperation struct{ client *Client }
+
+// DeleteObjectOperation implements the CRM archive Mutation.
+type DeleteObjectOperation struct{ client *Client }
 
 type hubspotObject struct {
 	ID         string             `json:"id"`
@@ -657,6 +687,10 @@ func validatePropertyValues(properties map[string]string, isRequired bool) error
 
 func objectsPath(objectType ObjectType, suffix string) string {
 	return "crm/objects/" + crmAPIVersion + "/" + string(objectType) + "/" + suffix
+}
+
+func objectsCollectionPath(objectType ObjectType) string {
+	return "crm/objects/" + crmAPIVersion + "/" + string(objectType)
 }
 
 func decodeObjectPage(objectType ObjectType, body []byte) (ObjectPage, error) {

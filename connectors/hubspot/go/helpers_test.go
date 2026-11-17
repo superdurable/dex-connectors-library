@@ -5,6 +5,7 @@ package hubspot_test
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -105,26 +106,41 @@ func (transport tokenEndpointTransport) RoundTrip(request *http.Request) (*http.
 
 type stepDexContext struct {
 	context.Context
-	step string
+	step               string
+	attempt            int32
+	heartbeat          json.RawMessage
+	persistedHeartbeat json.RawMessage
 }
 
 func newStepDexContext(step string) *stepDexContext {
-	return &stepDexContext{Context: context.Background(), step: step}
+	return &stepDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 
-func (*stepDexContext) FlowID() string                                  { return "lead-flow" }
-func (*stepDexContext) RunID() string                                   { return "run" }
-func (*stepDexContext) FlowStartedAt() time.Time                        { return time.Unix(1, 0) }
-func (ctx *stepDexContext) StepExecutionID() string                     { return ctx.step }
-func (*stepDexContext) FromStepExecutionID() string                     { return "" }
-func (*stepDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
-func (*stepDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*stepDexContext) Attempt() int32                                  { return 1 }
-func (*stepDexContext) HasTimerFired() bool                             { return false }
-func (*stepDexContext) HasTimerFiredByIndex(int) bool                   { return false }
-func (*stepDexContext) WaitForMethodFailed() bool                       { return false }
-func (*stepDexContext) RecordHeartbeat(any) error                       { return nil }
-func (*stepDexContext) GetLastHeartbeatValue(any) (bool, error)         { return false, nil }
+func (*stepDexContext) FlowID() string                        { return "lead-flow" }
+func (*stepDexContext) RunID() string                         { return "run" }
+func (*stepDexContext) FlowStartedAt() time.Time              { return time.Unix(1, 0) }
+func (ctx *stepDexContext) StepExecutionID() string           { return ctx.step }
+func (*stepDexContext) FromStepExecutionID() string           { return "" }
+func (*stepDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (*stepDexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
+func (ctx *stepDexContext) Attempt() int32                    { return ctx.attempt }
+func (*stepDexContext) HasTimerFired() bool                   { return false }
+func (*stepDexContext) HasTimerFiredByIndex(int) bool         { return false }
+func (*stepDexContext) WaitForMethodFailed() bool             { return false }
+func (ctx *stepDexContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	ctx.heartbeat = encoded
+	return nil
+}
+func (ctx *stepDexContext) GetLastHeartbeatValue(value any) (bool, error) {
+	if len(ctx.persistedHeartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(ctx.persistedHeartbeat, value)
+}
 func (*stepDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*stepDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
 func (*stepDexContext) RecordEvent(string, any) error                   { return nil }

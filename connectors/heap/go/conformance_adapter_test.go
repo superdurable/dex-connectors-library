@@ -16,6 +16,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint, AppID: "12345", MaxResponseBytes: 8}, nil, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"trackEvent": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.TrackEvent(), testConnection, scenario.CallID),
+		"setAccountProperties": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.SetAccountProperties(), testConnection, scenario.CallID),
 		"setUserProperties": newConformanceMutationInvocation(t, scenario.Input, providerContext{}, client.SetUserProperties(), testConnection, scenario.CallID),
 	}}
 }

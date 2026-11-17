@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getMessage/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hootsuite.OutboundMessage](`{"id":"4138476039","state":"SCHEDULED","socialProfileId":"115185509","scheduledSendTime":"2026-11-15T14:00:00Z"}`)
+			return err
+		}},
+		{name: "deleteMessage/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hootsuite.DeletedMessage](`{"id":"4138476039"}`)
+			return err
+		}},
 		{name: "listSocialProfiles/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[hootsuite.SocialProfilesPage](`{"profiles":[{"id":"115185509","type":"FACEBOOK","username":"Example Page"}]}`)
 			return err
@@ -38,6 +46,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetMessage().Definition().Operation.OperationID != "getMessage" {
+		t.Errorf("getMessage mock has another definition")
+	}
+	if mock.DeleteMessage().Definition().Operation.OperationID != "deleteMessage" {
+		t.Errorf("deleteMessage mock has another definition")
+	}
 	if mock.ListSocialProfiles().Definition().Operation.OperationID != "listSocialProfiles" {
 		t.Errorf("listSocialProfiles mock has another definition")
 	}

@@ -2,12 +2,15 @@
 
 This runnable Flow calls `listContacts` with the static `insightly` Dex Web connection. It stores a bounded contact page in an Attribute and completes with the typed result. Start input `{"top":20,"skip":0}` reads the first page; increase `skip` to read another page. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
 
+The same Worker registers `InsightlyLeadLifecycle`. Start it with `{"firstName":"Ada","lastName":"Lovelace","email":"ada@example.com","updatedLastName":"Byron"}` using a unique Flow ID. It creates a temporary lead, reads it back, updates the surname, deletes it, lists remaining leads, and searches by the submitted email. Use an address and lead you intend to delete. The checked-in mock-backed real Dex test exercises all six new Go operations; Python and TypeScript retain the contact identity Flow.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/insightly/go`, run:
 
 ```bash
 dexcli visualize ./examples/contact-discovery/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/insightly-contact-discovery-fdg
+dexcli visualize ./examples/contact-discovery/flow/lead_lifecycle.go --schema-version 2.0 --lint app --json --out /tmp/insightly-lead-lifecycle-fdg
 ```
 
 The command must report `valid: true`. Before the first release, `connector_release_required` may warn that automatic Dex Web configuration requires a published release.
@@ -22,6 +25,6 @@ With the project's `DEX_PROJECT_*` environment set, run from `connectors/insight
 GOWORK=off go run ./examples/contact-discovery
 ```
 
-Start `InsightlyContactDiscovery` with a unique Flow ID and input `{"top":20,"skip":0}`. The Worker has no inbound listener. The provider connection name is fixed in `flow/workflow.go`.
+Start either registered Flow with a unique Flow ID. The Worker has no inbound listener. The provider connection name is fixed as `insightly`.
 
 With `dexcli dev` serving at `127.0.0.1:8905`, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8905 GOWORK=off go test -race -tags=integration ./examples/contact-discovery/flow -count=1`. Live provider authorization remains unverified.

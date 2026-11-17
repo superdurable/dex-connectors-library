@@ -8,7 +8,9 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { HubSpotClient } from '../src/client.js';
 import { GetObjectInputSchema, SearchObjectsInputSchema, UpdateObjectInputSchema, UpsertObjectInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hubspot/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hubspot/scenarios.json', import.meta.url)).filter(
+  scenario => ['searchObjects', 'getObject', 'upsertObject', 'updateObject'].includes(scenario.operation),
+);
 const connection = { provider: 'hubspot', name: 'hubspot-crm' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeHubSpot));
