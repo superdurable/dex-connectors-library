@@ -6,6 +6,7 @@ package mailgun
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -59,6 +60,10 @@ var errCredential = errors.New("provider credential unavailable")
 var errRequest = errors.New("provider request failed")
 
 func (client *Client) do(call sdkgo.Call, method, path string, query url.Values, payload []byte) ([]byte, int, time.Duration, error) {
+	return client.doWithContext(call, call.Context, method, path, query, payload, "application/json")
+}
+
+func (client *Client) doWithContext(call sdkgo.Call, requestContext context.Context, method, path string, query url.Values, payload []byte, contentType string) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, 0, 0, errCredential
@@ -74,14 +79,14 @@ func (client *Client) do(call sdkgo.Call, method, path string, query url.Values,
 	if encoded := query.Encode(); encoded != "" {
 		endpoint += "?" + encoded
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, endpoint, bytes.NewReader(payload))
+	request, err := http.NewRequestWithContext(requestContext, method, endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
 	request.SetBasicAuth("api", credentials.APIKey.Reveal())
 	request.Header.Set("Accept", "application/json")
 	if payload != nil {
-		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Content-Type", contentType)
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
