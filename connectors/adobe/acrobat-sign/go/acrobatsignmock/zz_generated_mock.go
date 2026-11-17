@@ -18,6 +18,7 @@ import (
 // Mock is a scripted adobe-acrobat-sign connection. Script each operation through its accessor.
 type Mock struct {
 	connection                acrobatsign.Connection
+	cancelAgreement           *connectormock.Mutation[acrobatsign.CancelAgreementInput, acrobatsign.CancelledAgreement]
 	getAgreement              *connectormock.Query[acrobatsign.GetAgreementInput, acrobatsign.AgreementStatus]
 	listAgreements            *connectormock.Query[acrobatsign.ListAgreementsInput, acrobatsign.AgreementPage]
 	updateAgreementVisibility *connectormock.Mutation[acrobatsign.UpdateAgreementVisibilityInput, acrobatsign.AgreementVisibility]
@@ -28,10 +29,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		cancelAgreement:           connectormock.NewMutation[acrobatsign.CancelAgreementInput, acrobatsign.CancelledAgreement](t, acrobatsign.CancelAgreementDefinition),
 		getAgreement:              connectormock.NewQuery[acrobatsign.GetAgreementInput, acrobatsign.AgreementStatus](t, acrobatsign.GetAgreementDefinition),
 		listAgreements:            connectormock.NewQuery[acrobatsign.ListAgreementsInput, acrobatsign.AgreementPage](t, acrobatsign.ListAgreementsDefinition),
 		updateAgreementVisibility: connectormock.NewMutation[acrobatsign.UpdateAgreementVisibilityInput, acrobatsign.AgreementVisibility](t, acrobatsign.UpdateAgreementVisibilityDefinition),
 	}
+	mock.cancelAgreement.Default(CancelAgreementDefault())
 	mock.getAgreement.Default(GetAgreementDefault())
 	mock.listAgreements.Default(ListAgreementsDefault())
 	mock.updateAgreementVisibility.Default(UpdateAgreementVisibilityDefault())
@@ -45,6 +48,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() acrobatsign.Connection { return mock.connection }
+
+// CancelAgreement returns the cancelAgreement script.
+func (mock *Mock) CancelAgreement() *connectormock.Mutation[acrobatsign.CancelAgreementInput, acrobatsign.CancelledAgreement] {
+	return mock.cancelAgreement
+}
 
 // GetAgreement returns the getAgreement script.
 func (mock *Mock) GetAgreement() *connectormock.Query[acrobatsign.GetAgreementInput, acrobatsign.AgreementStatus] {
@@ -63,6 +71,9 @@ func (mock *Mock) UpdateAgreementVisibility() *connectormock.Mutation[acrobatsig
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CancelAgreement() sdkgo.Mutation[acrobatsign.CancelAgreementInput, acrobatsign.CancelledAgreement] {
+	return operations.mock.cancelAgreement
+}
 func (operations mockOperations) GetAgreement() sdkgo.Query[acrobatsign.GetAgreementInput, acrobatsign.AgreementStatus] {
 	return operations.mock.getAgreement
 }
@@ -71,6 +82,47 @@ func (operations mockOperations) ListAgreements() sdkgo.Query[acrobatsign.ListAg
 }
 func (operations mockOperations) UpdateAgreementVisibility() sdkgo.Mutation[acrobatsign.UpdateAgreementVisibilityInput, acrobatsign.AgreementVisibility] {
 	return operations.mock.updateAgreementVisibility
+}
+
+// CancelAgreementCancelled selects the cancelled branch: The agreement is cancelled or was already cancelled.
+func CancelAgreementCancelled(value acrobatsign.CancelledAgreement, failure *sdkgo.Failure) connectormock.Case[acrobatsign.CancelledAgreement] {
+	return connectormock.Branch(acrobatsign.CancelAgreementBranchCancelled, value, failure)
+}
+
+// CancelAgreementNotFound selects the notFound branch: Acrobat Sign did not expose the agreement.
+func CancelAgreementNotFound(value acrobatsign.CancelledAgreement, failure *sdkgo.Failure) connectormock.Case[acrobatsign.CancelledAgreement] {
+	return connectormock.Branch(acrobatsign.CancelAgreementBranchNotFound, value, failure)
+}
+
+// CancelAgreementProviderRejected selects the providerRejected branch: Acrobat Sign refused cancellation of this agreement.
+func CancelAgreementProviderRejected(value acrobatsign.CancelledAgreement, failure *sdkgo.Failure) connectormock.Case[acrobatsign.CancelledAgreement] {
+	return connectormock.Branch(acrobatsign.CancelAgreementBranchProviderRejected, value, failure)
+}
+
+// CancelAgreementInvalidResponse selects the invalidResponse branch: Acrobat Sign returned malformed or unsafe metadata.
+func CancelAgreementInvalidResponse(value acrobatsign.CancelledAgreement, failure *sdkgo.Failure) connectormock.Case[acrobatsign.CancelledAgreement] {
+	return connectormock.Branch(acrobatsign.CancelAgreementBranchInvalidResponse, value, failure)
+}
+
+// CancelAgreementDefect selects the defect branch: The agreement ID or connection is invalid.
+func CancelAgreementDefect(value acrobatsign.CancelledAgreement, failure *sdkgo.Failure) connectormock.Case[acrobatsign.CancelledAgreement] {
+	return connectormock.Branch(acrobatsign.CancelAgreementBranchDefect, value, failure)
+}
+
+// CancelAgreementRetry asks Dex to retry the cancelAgreement Step, after the delay when it is positive.
+func CancelAgreementRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[acrobatsign.CancelledAgreement] {
+	return connectormock.Retry[acrobatsign.CancelledAgreement](failure, after)
+}
+
+// CancelAgreementCancelledDefault is the manifest mock cancelledDefault: A sample agreement was cancelled.
+func CancelAgreementCancelledDefault() connectormock.Case[acrobatsign.CancelledAgreement] {
+	value := connectormock.MustDecodeOutput[acrobatsign.CancelledAgreement](`{"agreementId":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","status":"CANCELLED"}`)
+	return connectormock.Branch(acrobatsign.CancelAgreementBranchCancelled, value, nil)
+}
+
+// CancelAgreementDefault is the manifest default, cancelledDefault, which New installs.
+func CancelAgreementDefault() connectormock.Case[acrobatsign.CancelledAgreement] {
+	return CancelAgreementCancelledDefault()
 }
 
 // GetAgreementFound selects the found branch: Acrobat Sign returned the agreement.

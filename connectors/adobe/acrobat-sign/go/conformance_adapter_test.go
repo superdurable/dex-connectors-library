@@ -25,5 +25,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getAgreement":              newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAgreement(), reference),
 		"listAgreements":            newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAgreements(), reference),
 		"updateAgreementVisibility": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateAgreementVisibility(), reference, scenario.CallID),
+		"cancelAgreement":           newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelAgreement(), reference, scenario.CallID),
 	}}
 }

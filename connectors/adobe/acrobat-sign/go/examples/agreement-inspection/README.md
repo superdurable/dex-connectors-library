@@ -1,6 +1,6 @@
 # Adobe Acrobat Sign agreement inspection Flow
 
-The Worker also registers `AdobeAcrobatSignAgreementList`. Start it with an optional `cursor` and `pageSize` to retrieve one metadata page. Its checked-in mock integration test exercises `listAgreements` against a real local Dex Server.
+The Worker also registers `AdobeAcrobatSignAgreementList` and `AdobeAcrobatSignAgreementCancel`. The list Flow reads one metadata page; the cancel Flow uses an agreement ID and requires `agreement_write`. Checked-in mock integration tests exercise both on a real local Dex Server.
 
 This runnable Flow calls `getAgreement` through the static `adobe-acrobat-sign` connection. It saves the selected agreement status in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
@@ -10,6 +10,7 @@ From `connectors/adobe/acrobat-sign/go`, run:
 
 ```bash
 dexcli visualize ./examples/agreement-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/adobe-acrobat-sign-agreement-inspection-fdg
+dexcli visualize ./examples/agreement-inspection/flow/cancel_agreement_workflow.go --schema-version 2.0 --lint app --json --out /tmp/adobe-acrobat-sign-agreement-cancel-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

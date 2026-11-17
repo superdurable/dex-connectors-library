@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "cancelAgreement/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[acrobatsign.CancelledAgreement](`{"agreementId":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","status":"CANCELLED"}`)
+			return err
+		}},
 		{name: "getAgreement/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[acrobatsign.AgreementStatus](`{"id":"3AAABLblqZNOTREALAGREEMENTID5_BjiH","name":"Example agreement","status":"SIGNED"}`)
 			return err
@@ -38,6 +42,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CancelAgreement().Definition().Operation.OperationID != "cancelAgreement" {
+		t.Errorf("cancelAgreement mock has another definition")
+	}
 	if mock.GetAgreement().Definition().Operation.OperationID != "getAgreement" {
 		t.Errorf("getAgreement mock has another definition")
 	}

@@ -1199,6 +1199,546 @@
       },
       "name": "updateAgreementVisibility-transportFailure",
       "operation": "updateAgreementVisibility"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"3AAABLblqZNOTREALAGREEMENTID5_BjiH\",\"status\":\"OUT_FOR_SIGNATURE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH/state",
+          "requestBody": {
+            "state": "CANCELLED"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "status": "CANCELLED"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-cancelled",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"3AAABLblqZNOTREALAGREEMENTID5_BjiH\",\"status\":\"ABORTED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "cancelled",
+        "failureKind": "",
+        "output": {
+          "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "status": "CANCELLED"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-alreadyCancelled",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "agreementId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-notFound",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "agreementId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-providerRejected",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "agreementId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-invalidResponse",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "agreementId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "bad/ID"
+      },
+      "name": "cancelAgreement-defect",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-rateLimit",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-unavailable",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-transportFailure",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-rateLimitDiscovery",
+      "operation": "cancelAgreement"
+    },
+    {
+      "callId": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "04890ba4-0e68-5ccd-ac43-27c04ef1bb61",
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "cancelAgreement-unavailableDiscovery",
+      "operation": "cancelAgreement"
     }
   ],
   "schemaVersion": 1

@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CancelAgreement() sdkgo.Mutation[CancelAgreementInput, CancelledAgreement]
 	GetAgreement() sdkgo.Query[GetAgreementInput, AgreementStatus]
 	ListAgreements() sdkgo.Query[ListAgreementsInput, AgreementPage]
 	UpdateAgreementVisibility() sdkgo.Mutation[UpdateAgreementVisibilityInput, AgreementVisibility]
@@ -47,6 +48,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CancelAgreement() sdkgo.Mutation[CancelAgreementInput, CancelledAgreement] {
+	return operations.client.CancelAgreement()
+}
 func (operations clientOperations) GetAgreement() sdkgo.Query[GetAgreementInput, AgreementStatus] {
 	return operations.client.GetAgreement()
 }
@@ -192,6 +196,83 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential integration_key is required")
 	}
 	return nil
+}
+
+const CancelAgreementBranchCancelled sdkgo.BranchID = "cancelled"
+const CancelAgreementBranchNotFound sdkgo.BranchID = "notFound"
+const CancelAgreementBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelAgreementBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelAgreementBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelAgreementDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelAgreement"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelAgreementBranchCancelled, Description: "The agreement is cancelled or was already cancelled."},
+		{ID: CancelAgreementBranchNotFound, Description: "Acrobat Sign did not expose the agreement.", Optional: true},
+		{ID: CancelAgreementBranchProviderRejected, Description: "Acrobat Sign refused cancellation of this agreement.", Optional: true},
+		{ID: CancelAgreementBranchInvalidResponse, Description: "Acrobat Sign returned malformed or unsafe metadata.", Optional: true},
+		{ID: CancelAgreementBranchDefect, Description: "The agreement ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CancelAgreementResult = sdkgo.MutationResult[CancelledAgreement]
+
+type CancelAgreementStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=adobe-acrobat-sign"`
+	operationID                       struct{}                                                 `connector:"operationId=cancelAgreement"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelAgreementInput                            `connector:"mapToOperationInput"`
+	Cancelled                         sdkgo.Target[CancelAgreementResult]                      `connector:"branch=cancelled"`
+	NotFound                          sdkgo.Target[CancelAgreementResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelAgreementResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelAgreementResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelAgreementResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CancelledAgreement]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewCancelAgreementStep[IN any](config CancelAgreementStepConfig[IN]) sdkgo.MutationStep[IN, CancelAgreementInput, CancelledAgreement] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adobe-acrobat-sign connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelAgreementInput, CancelledAgreement]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelAgreement(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelAgreementResult] {
+			branches := make([]sdkgo.BranchTarget[CancelAgreementResult], 0, 5)
+			if config.Cancelled.HasStep() {
+				branches = append(branches, config.Cancelled.BranchTarget(CancelAgreementBranchCancelled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelAgreementBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelAgreementBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelAgreementBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelAgreementBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetAgreementBranchFound sdkgo.BranchID = "found"
