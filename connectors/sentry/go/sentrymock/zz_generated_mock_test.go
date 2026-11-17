@@ -28,6 +28,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sentry.Issue](`{"id":"123","shortId":"APP-1","title":"ExampleError","status":"resolved"}`)
 			return err
 		}},
+		{name: "listIssueEvents/listIssueEventsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.IssueEventPage](`{"events":[{"id":"event-1","title":"ExampleError"}]}`)
+			return err
+		}},
+		{name: "getIssueEvent/getIssueEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.IssueEvent](`{"id":"event-1","title":"ExampleError"}`)
+			return err
+		}},
+		{name: "listProjects/listProjectsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.ProjectPage](`{"projects":[{"id":"456","slug":"example","name":"Example"}]}`)
+			return err
+		}},
+		{name: "getProject/getProjectDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Project](`{"id":"456","slug":"example","name":"Example"}`)
+			return err
+		}},
+		{name: "listOrganizations/listOrganizationsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.OrganizationPage](`{"organizations":[{"id":"789","slug":"acme","name":"Acme"}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -46,5 +66,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdateIssueStatus().Definition().Operation.OperationID != "updateIssueStatus" {
 		t.Errorf("updateIssueStatus mock has another definition")
+	}
+	if mock.ListIssueEvents().Definition().Operation.OperationID != "listIssueEvents" {
+		t.Errorf("listIssueEvents mock has another definition")
+	}
+	if mock.GetIssueEvent().Definition().Operation.OperationID != "getIssueEvent" {
+		t.Errorf("getIssueEvent mock has another definition")
+	}
+	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
+		t.Errorf("listProjects mock has another definition")
+	}
+	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
+		t.Errorf("getProject mock has another definition")
+	}
+	if mock.ListOrganizations().Definition().Operation.OperationID != "listOrganizations" {
+		t.Errorf("listOrganizations mock has another definition")
 	}
 }

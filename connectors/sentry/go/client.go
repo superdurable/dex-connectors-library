@@ -80,6 +80,98 @@ type IssuePage struct {
 	Issues []Issue `json:"issues"`
 }
 
+// ListIssueEventsInput selects one issue's events and an optional Sentry cursor.
+type ListIssueEventsInput struct {
+	// Organization is the Sentry organization slug.
+	Organization string `json:"organization"`
+	// IssueID is the stable Sentry issue ID.
+	IssueID string `json:"issueId"`
+	// Cursor is the opaque next-page cursor; blank starts at the first page.
+	Cursor string `json:"cursor,omitempty"`
+}
+
+// GetIssueEventInput selects one issue event by ID or latest, oldest, or recommended.
+type GetIssueEventInput struct {
+	// Organization is the Sentry organization slug.
+	Organization string `json:"organization"`
+	// IssueID is the stable Sentry issue ID.
+	IssueID string `json:"issueId"`
+	// EventID is the event ID or latest, oldest, or recommended.
+	EventID string `json:"eventId"`
+}
+
+// IssueEvent contains selected Sentry event fields.
+type IssueEvent struct {
+	// ID is the stable Sentry event ID.
+	ID string `json:"id"`
+	// Title is the event's display title.
+	Title string `json:"title"`
+	// Message is the event's short message.
+	Message string `json:"message"`
+}
+
+// IssueEventPage contains one Sentry issue event page.
+type IssueEventPage struct {
+	// Events contains the returned issue events.
+	Events []IssueEvent `json:"events"`
+}
+
+// ListProjectsInput selects an organization's projects.
+type ListProjectsInput struct {
+	// Organization is the Sentry organization slug.
+	Organization string `json:"organization"`
+	// Cursor is the opaque next-page cursor; blank starts at the first page.
+	Cursor string `json:"cursor,omitempty"`
+	// Query filters projects by name or slug; blank lists all accessible projects.
+	Query string `json:"query,omitempty"`
+}
+
+// GetProjectInput selects one organization project.
+type GetProjectInput struct {
+	// Organization is the Sentry organization slug.
+	Organization string `json:"organization"`
+	// Slug is the project slug.
+	Slug string `json:"slug"`
+}
+
+// Project contains selected Sentry project fields.
+type Project struct {
+	// ID is the stable Sentry project ID.
+	ID string `json:"id"`
+	// Slug is the project URL slug.
+	Slug string `json:"slug"`
+	// Name is the project display name.
+	Name string `json:"name"`
+}
+
+// ProjectPage contains one Sentry project page.
+type ProjectPage struct {
+	// Projects contains the returned projects.
+	Projects []Project `json:"projects"`
+}
+
+// ListOrganizationsInput selects organizations visible to the token.
+type ListOrganizationsInput struct {
+	// Cursor is the opaque next-page cursor; blank starts at the first page.
+	Cursor string `json:"cursor,omitempty"`
+}
+
+// Organization contains selected Sentry organization fields.
+type Organization struct {
+	// ID is the stable Sentry organization ID.
+	ID string `json:"id"`
+	// Slug is the organization URL slug.
+	Slug string `json:"slug"`
+	// Name is the organization display name.
+	Name string `json:"name"`
+}
+
+// OrganizationPage contains one Sentry organization page.
+type OrganizationPage struct {
+	// Organizations contains the returned organizations.
+	Organizations []Organization `json:"organizations"`
+}
+
 // ListIssuesOperation invokes Sentry's listIssues endpoint.
 type ListIssuesOperation struct {
 	client *Client
@@ -104,6 +196,38 @@ type UpdateIssueStatusOperation struct {
 // Definition returns the generated updateIssueStatus contract.
 func (UpdateIssueStatusOperation) Definition() sdkgo.MutationDefinition {
 	return UpdateIssueStatusDefinition
+}
+
+// ListIssueEventsOperation invokes Sentry's listIssueEvents endpoint.
+type ListIssueEventsOperation struct{ client *Client }
+
+// Definition returns the generated listIssueEvents contract.
+func (ListIssueEventsOperation) Definition() sdkgo.QueryDefinition { return ListIssueEventsDefinition }
+
+// GetIssueEventOperation invokes Sentry's getIssueEvent endpoint.
+type GetIssueEventOperation struct{ client *Client }
+
+// Definition returns the generated getIssueEvent contract.
+func (GetIssueEventOperation) Definition() sdkgo.QueryDefinition { return GetIssueEventDefinition }
+
+// ListProjectsOperation invokes Sentry's listProjects endpoint.
+type ListProjectsOperation struct{ client *Client }
+
+// Definition returns the generated listProjects contract.
+func (ListProjectsOperation) Definition() sdkgo.QueryDefinition { return ListProjectsDefinition }
+
+// GetProjectOperation invokes Sentry's getProject endpoint.
+type GetProjectOperation struct{ client *Client }
+
+// Definition returns the generated getProject contract.
+func (GetProjectOperation) Definition() sdkgo.QueryDefinition { return GetProjectDefinition }
+
+// ListOrganizationsOperation invokes Sentry's listOrganizations endpoint.
+type ListOrganizationsOperation struct{ client *Client }
+
+// Definition returns the generated listOrganizations contract.
+func (ListOrganizationsOperation) Definition() sdkgo.QueryDefinition {
+	return ListOrganizationsDefinition
 }
 
 // New validates configuration without a network call. Zero settings use manifest defaults.
@@ -136,6 +260,25 @@ func (client *Client) GetIssue() GetIssueOperation { return GetIssueOperation{cl
 // UpdateIssueStatus binds updateIssueStatus to this client.
 func (client *Client) UpdateIssueStatus() UpdateIssueStatusOperation {
 	return UpdateIssueStatusOperation{client}
+}
+
+// ListIssueEvents binds listIssueEvents to this client.
+func (client *Client) ListIssueEvents() ListIssueEventsOperation {
+	return ListIssueEventsOperation{client}
+}
+
+// GetIssueEvent binds getIssueEvent to this client.
+func (client *Client) GetIssueEvent() GetIssueEventOperation { return GetIssueEventOperation{client} }
+
+// ListProjects binds listProjects to this client.
+func (client *Client) ListProjects() ListProjectsOperation { return ListProjectsOperation{client} }
+
+// GetProject binds getProject to this client.
+func (client *Client) GetProject() GetProjectOperation { return GetProjectOperation{client} }
+
+// ListOrganizations binds listOrganizations to this client.
+func (client *Client) ListOrganizations() ListOrganizationsOperation {
+	return ListOrganizationsOperation{client}
 }
 
 // Invoke runs this provider operation.
@@ -195,6 +338,96 @@ func decodeIssue(body []byte) (Issue, error) {
 		err = fmt.Errorf("issue ID missing")
 	}
 	return issue, err
+}
+
+// Invoke lists events recorded for one Sentry issue.
+func (operation ListIssueEventsOperation) Invoke(call sdkgo.Call, input ListIssueEventsInput) sdkgo.QueryAttempt[IssueEventPage] {
+	if input.Organization == "" || input.IssueID == "" {
+		return queryFailure[IssueEventPage]("listIssueEvents", ListIssueEventsBranchDefect, sdkgo.FailureValidation, "organization and issue ID are required")
+	}
+	path := "/organizations/" + url.PathEscape(input.Organization) + "/issues/" + url.PathEscape(input.IssueID) + "/events/"
+	if input.Cursor != "" {
+		path += "?cursor=" + url.QueryEscape(input.Cursor)
+	}
+	return runQuery(operation.client, call, "listIssueEvents", path, ListIssueEventsBranchListed, "", ListIssueEventsBranchProviderRejected, ListIssueEventsBranchInvalidResponse, ListIssueEventsBranchDefect, func(body []byte) (IssueEventPage, error) {
+		events, err := decodeSentryList[IssueEvent](body)
+		return IssueEventPage{Events: events}, err
+	})
+}
+
+// Invoke retrieves one issue event by ID or provider selector.
+func (operation GetIssueEventOperation) Invoke(call sdkgo.Call, input GetIssueEventInput) sdkgo.QueryAttempt[IssueEvent] {
+	if input.Organization == "" || input.IssueID == "" || input.EventID == "" {
+		return queryFailure[IssueEvent]("getIssueEvent", GetIssueEventBranchDefect, sdkgo.FailureValidation, "organization, issue ID, and event ID are required")
+	}
+	path := "/organizations/" + url.PathEscape(input.Organization) + "/issues/" + url.PathEscape(input.IssueID) + "/events/" + url.PathEscape(input.EventID) + "/"
+	return runQuery(operation.client, call, "getIssueEvent", path, GetIssueEventBranchFound, GetIssueEventBranchNotFound, GetIssueEventBranchProviderRejected, GetIssueEventBranchInvalidResponse, GetIssueEventBranchDefect, func(body []byte) (IssueEvent, error) {
+		var event IssueEvent
+		err := json.Unmarshal(body, &event)
+		if err == nil && event.ID == "" {
+			err = fmt.Errorf("event ID missing")
+		}
+		return event, err
+	})
+}
+
+// Invoke lists projects in one Sentry organization.
+func (operation ListProjectsOperation) Invoke(call sdkgo.Call, input ListProjectsInput) sdkgo.QueryAttempt[ProjectPage] {
+	if input.Organization == "" {
+		return queryFailure[ProjectPage]("listProjects", ListProjectsBranchDefect, sdkgo.FailureValidation, "organization slug is required")
+	}
+	path := "/organizations/" + url.PathEscape(input.Organization) + "/projects/"
+	query := url.Values{}
+	if input.Cursor != "" {
+		query.Set("cursor", input.Cursor)
+	}
+	if input.Query != "" {
+		query.Set("query", input.Query)
+	}
+	if len(query) > 0 {
+		path += "?" + query.Encode()
+	}
+	return runQuery(operation.client, call, "listProjects", path, ListProjectsBranchListed, "", ListProjectsBranchProviderRejected, ListProjectsBranchInvalidResponse, ListProjectsBranchDefect, func(body []byte) (ProjectPage, error) {
+		projects, err := decodeSentryList[Project](body)
+		return ProjectPage{Projects: projects}, err
+	})
+}
+
+// Invoke retrieves one Sentry project by slug.
+func (operation GetProjectOperation) Invoke(call sdkgo.Call, input GetProjectInput) sdkgo.QueryAttempt[Project] {
+	if input.Organization == "" || input.Slug == "" {
+		return queryFailure[Project]("getProject", GetProjectBranchDefect, sdkgo.FailureValidation, "organization and project slug are required")
+	}
+	path := "/projects/" + url.PathEscape(input.Organization) + "/" + url.PathEscape(input.Slug) + "/"
+	return runQuery(operation.client, call, "getProject", path, GetProjectBranchFound, GetProjectBranchNotFound, GetProjectBranchProviderRejected, GetProjectBranchInvalidResponse, GetProjectBranchDefect, func(body []byte) (Project, error) {
+		var project Project
+		err := json.Unmarshal(body, &project)
+		if err == nil && (project.ID == "" || project.Slug == "") {
+			err = fmt.Errorf("project ID or slug missing")
+		}
+		return project, err
+	})
+}
+
+// Invoke lists organizations visible to the Sentry token.
+func (operation ListOrganizationsOperation) Invoke(call sdkgo.Call, input ListOrganizationsInput) sdkgo.QueryAttempt[OrganizationPage] {
+	path := "/organizations/"
+	if input.Cursor != "" {
+		path += "?cursor=" + url.QueryEscape(input.Cursor)
+	}
+	return runQuery(operation.client, call, "listOrganizations", path, ListOrganizationsBranchListed, "", ListOrganizationsBranchProviderRejected, ListOrganizationsBranchInvalidResponse, ListOrganizationsBranchDefect, func(body []byte) (OrganizationPage, error) {
+		organizations, err := decodeSentryList[Organization](body)
+		return OrganizationPage{Organizations: organizations}, err
+	})
+}
+
+func decodeSentryList[T any](body []byte) ([]T, error) {
+	var items []T
+	err := json.Unmarshal(body, &items)
+	if err == nil && items == nil {
+		err = fmt.Errorf("list response missing")
+	}
+	return items, err
 }
 
 func (client *Client) newRequest(call sdkgo.Call, method, path string, body []byte) (*http.Request, error) {

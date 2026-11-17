@@ -1,11 +1,11 @@
 # Sentry connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/sentry/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/sentry/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/sentry`.
 
 This Dex connector calls the public Sentry JSON API. Its
-manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.3.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`issue-review` example](go/examples/issue-review/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
@@ -21,13 +21,26 @@ The Python package is [`dex-connector-sentry`](python/README.md), imported as
 | `listIssues` | query | IssuePage |
 | `getIssue` | query | Issue |
 | `updateIssueStatus` | mutation | Issue |
+| `listIssueEvents` | query | IssueEventPage |
+| `getIssueEvent` | query | IssueEvent |
+| `listProjects` | query | ProjectPage |
+| `getProject` | query | Project |
+| `listOrganizations` | query | OrganizationPage |
+
+The five new Go queries use the `safe` repeat tier. List operations return one
+provider page; pass a Sentry cursor to request a known later page. Sentry
+returns continuation cursors in its `Link` header, which these typed outputs
+do not yet expose. Python and TypeScript retain their declared issue operations.
 
 `listIssues` returns the first provider page (default unresolved query); cursor pagination is not exposed in this initial release. `updateIssueStatus` sends an absolute status in a PUT request. Repeating `resolved`, `unresolved`, or `ignored` sets the same state. Only the submitted status field is changed.
 
 ## Authorization
 
 Start at [https://sentry.io/settings/account/api/auth-tokens/](https://sentry.io/settings/account/api/auth-tokens/) and follow
-**User Settings > Auth Tokens > Create New Token**. Create an auth token with event:read for reads and event:write for status updates. Copy the opaque secret; blank prevents requests. Paste the token in the
+**User Settings > Auth Tokens > Create New Token**. Create an auth token with
+`event:read` for issues and events, `event:write` for status updates,
+`project:read` for project reads, and `org:read` for organization reads. Copy
+the opaque secret; blank prevents requests. Paste the token in the
 secret `api_key` field in Dex Web Connections.
 The key travels only in `Authorization`. Leave `baseUrl`, `timeout`,
 and `maxResponseBytes` blank for the displayed public endpoint and safety
@@ -66,6 +79,9 @@ flow := NewFlow(mock.Connection())
 - [https://docs.sentry.io/api/events/list-an-organizations-issues/](https://docs.sentry.io/api/events/list-an-organizations-issues/)
 - [https://docs.sentry.io/api/events/retrieve-an-issue/](https://docs.sentry.io/api/events/retrieve-an-issue/)
 - [https://docs.sentry.io/api/events/update-an-issue/](https://docs.sentry.io/api/events/update-an-issue/)
+- [https://docs.sentry.io/api/events/list-an-issues-events/](https://docs.sentry.io/api/events/list-an-issues-events/)
+- [https://docs.sentry.io/api/organizations/list-an-organizations-projects/](https://docs.sentry.io/api/organizations/list-an-organizations-projects/)
+- [https://docs.sentry.io/api/users/list-your-organizations/](https://docs.sentry.io/api/users/list-your-organizations/)
 
 The HTTP unit tests verify request shapes and local classification against
 an `httptest` server. The TypeScript example runs against a local HTTP fixture

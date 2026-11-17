@@ -1379,6 +1379,1508 @@
       },
       "name": "updateIssueStatus-conflict-rejected",
       "operation": "updateIssueStatus"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"event-1\",\"title\":\"ExampleError\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "id": "event-1",
+              "message": "",
+              "title": "ExampleError"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "listIssueEvents-success",
+      "operation": "listIssueEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "listIssueEvents-rejected",
+      "operation": "listIssueEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "listIssueEvents-invalid",
+      "operation": "listIssueEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "listIssueEvents-rate",
+      "operation": "listIssueEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "listIssueEvents-server",
+      "operation": "listIssueEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "listIssueEvents-transport",
+      "operation": "listIssueEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "123",
+        "organization": ""
+      },
+      "name": "listIssueEvents-defect",
+      "operation": "listIssueEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event-1\",\"title\":\"ExampleError\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/latest/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "event-1",
+          "message": "",
+          "title": "ExampleError"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "latest",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "getIssueEvent-success",
+      "operation": "getIssueEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/latest/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "message": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "latest",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "getIssueEvent-missing",
+      "operation": "getIssueEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/latest/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "message": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "latest",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "getIssueEvent-rejected",
+      "operation": "getIssueEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/latest/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "message": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "latest",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "getIssueEvent-invalid",
+      "operation": "getIssueEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/latest/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "latest",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "getIssueEvent-rate",
+      "operation": "getIssueEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/latest/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "latest",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "getIssueEvent-server",
+      "operation": "getIssueEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/123/events/latest/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "latest",
+        "issueId": "123",
+        "organization": "acme"
+      },
+      "name": "getIssueEvent-transport",
+      "operation": "getIssueEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "message": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "latest",
+        "issueId": "",
+        "organization": "acme"
+      },
+      "name": "getIssueEvent-defect",
+      "operation": "getIssueEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"456\",\"slug\":\"example\",\"name\":\"Example\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/projects/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "id": "456",
+              "name": "Example",
+              "slug": "example"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "example"
+      },
+      "name": "listProjects-success",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/projects/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "example"
+      },
+      "name": "listProjects-rejected",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/projects/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "example"
+      },
+      "name": "listProjects-invalid",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/projects/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "example"
+      },
+      "name": "listProjects-rate",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/projects/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "example"
+      },
+      "name": "listProjects-server",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/projects/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ],
+            "query": [
+              "example"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "acme",
+        "query": "example"
+      },
+      "name": "listProjects-transport",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1",
+        "organization": "",
+        "query": "example"
+      },
+      "name": "listProjects-defect",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"456\",\"slug\":\"example\",\"name\":\"Example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/example/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "456",
+          "name": "Example",
+          "slug": "example"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "example"
+      },
+      "name": "getProject-success",
+      "operation": "getProject"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/example/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "example"
+      },
+      "name": "getProject-missing",
+      "operation": "getProject"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/example/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "example"
+      },
+      "name": "getProject-rejected",
+      "operation": "getProject"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/example/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "example"
+      },
+      "name": "getProject-invalid",
+      "operation": "getProject"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/example/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "example"
+      },
+      "name": "getProject-rate",
+      "operation": "getProject"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/example/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "example"
+      },
+      "name": "getProject-server",
+      "operation": "getProject"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/example/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": "example"
+      },
+      "name": "getProject-transport",
+      "operation": "getProject"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "slug": ""
+      },
+      "name": "getProject-defect",
+      "operation": "getProject"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"789\",\"slug\":\"acme\",\"name\":\"Acme\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "organizations": [
+            {
+              "id": "789",
+              "name": "Acme",
+              "slug": "acme"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1"
+      },
+      "name": "listOrganizations-success",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1"
+      },
+      "name": "listOrganizations-rejected",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "organizations": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1"
+      },
+      "name": "listOrganizations-invalid",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1"
+      },
+      "name": "listOrganizations-rate",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1"
+      },
+      "name": "listOrganizations-server",
+      "operation": "listOrganizations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/",
+          "query": {
+            "cursor": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor-1"
+      },
+      "name": "listOrganizations-transport",
+      "operation": "listOrganizations"
     }
   ],
   "schemaVersion": 1

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: sentry
   displayName: Sentry
-  description: Read and act through the Sentry public API.
+  description: Inspect Sentry issues, events, projects, and organizations and update issue status.
   company: Sentry
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: sentry
   languages:
@@ -52,7 +52,8 @@ spec:
       required: true
       description: Secret Sentry token. Start at https://sentry.io/settings/account/api/auth-tokens/,
         follow User Settings > Auth Tokens > Create New Token. Create an auth token
-        with event:read for reads and event:write for status updates. Copy the opaque
+        with event:read for issues and events, event:write for status updates,
+        project:read for project reads, and org:read for organization reads. Copy the opaque
         secret; blank prevents requests. It is sent only in the Authorization header.
     guide:
       startURL: https://sentry.io/settings/account/api/auth-tokens/
@@ -60,7 +61,8 @@ spec:
       - Open https://sentry.io/settings/account/api/auth-tokens/ and sign in or create
         an account.
       - Follow User Settings > Auth Tokens > Create New Token. Create an auth token
-        with event:read for reads and event:write for status updates. Copy the opaque
+        with event:read for issues and events, event:write for status updates,
+        project:read for project reads, and org:read for organization reads. Copy the opaque
         secret; blank prevents requests.
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
@@ -185,3 +187,105 @@ spec:
         shortId: APP-1
         title: ExampleError
         status: resolved
+  - name: listIssueEvents
+    goName: ListIssueEvents
+    inputType: ListIssueEventsInput
+    outputType: IssueEventPage
+    kind: query
+    description: List recorded events for one issue.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Sentry returned the requested result.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: listIssueEventsDefault
+      branch: listed
+      description: A representative Sentry response.
+      default: true
+      output: {events: [{id: event-1, title: ExampleError}]}
+  - name: getIssueEvent
+    goName: GetIssueEvent
+    inputType: GetIssueEventInput
+    outputType: IssueEvent
+    kind: query
+    description: Retrieve a recorded issue event by ID or latest selector.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Sentry returned the requested result.}
+    - {id: notFound, goName: NotFound, description: Sentry did not find the requested resource., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: getIssueEventDefault
+      branch: found
+      description: A representative Sentry response.
+      default: true
+      output: {id: event-1, title: ExampleError}
+  - name: listProjects
+    goName: ListProjects
+    inputType: ListProjectsInput
+    outputType: ProjectPage
+    kind: query
+    description: List projects in one organization.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Sentry returned the requested result.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: listProjectsDefault
+      branch: listed
+      description: A representative Sentry response.
+      default: true
+      output: {projects: [{id: '456', slug: example, name: Example}]}
+  - name: getProject
+    goName: GetProject
+    inputType: GetProjectInput
+    outputType: Project
+    kind: query
+    description: Retrieve one organization project.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Sentry returned the requested result.}
+    - {id: notFound, goName: NotFound, description: Sentry did not find the requested resource., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: getProjectDefault
+      branch: found
+      description: A representative Sentry response.
+      default: true
+      output: {id: '456', slug: example, name: Example}
+  - name: listOrganizations
+    goName: ListOrganizations
+    inputType: ListOrganizationsInput
+    outputType: OrganizationPage
+    kind: query
+    description: List organizations available to the token.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Sentry returned the requested result.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - name: listOrganizationsDefault
+      branch: listed
+      description: A representative Sentry response.
+      default: true
+      output: {organizations: [{id: '789', slug: acme, name: Acme}]}

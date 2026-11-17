@@ -14,7 +14,8 @@ import (
 func TestFlowIdentityAndMapping(t *testing.T) {
 	require.Equal(t, "SentryIssueReview", dex.GetFinalFlowType(NewFlow(sentry.Connection{})))
 	require.Equal(t, "PrepareRequest", dex.GetFinalStepType[Request](prepareRequest{}))
-	require.Equal(t, "CompleteRequest", dex.GetFinalStepType[sentry.ListIssuesResult](completeRequest{}))
+	require.Equal(t, "RecordIssuePage", dex.GetFinalStepType[sentry.ListIssuesResult](recordIssuePage{}))
+	require.Equal(t, "CompleteRequest", dex.GetFinalStepType[sentry.ListOrganizationsResult](completeRequest{}))
 	request := Request(sentry.ListIssuesInput{Organization: "acme"})
 	mapped := sentry.ListIssuesInput(request)
 	require.Equal(t, request, Request(mapped))
