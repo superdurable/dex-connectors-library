@@ -441,13 +441,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -618,15 +615,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
       "input": {
@@ -1010,13 +1004,10 @@
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1187,15 +1178,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
-        "output": {
-          "id": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
       "input": {
@@ -1940,19 +1928,37 @@
             ]
           },
           "status": 200
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "invalidResponse",
+        "branch": "",
         "failureKind": "PROTOCOL",
-        "output": {
-          "amount": 0,
-          "currency": "",
-          "refundId": "",
-          "status": ""
-        },
-        "requestCount": 1,
-        "retry": false,
+        "requestCount": 2,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2077,18 +2083,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
-        "output": {
-          "amount": 0,
-          "currency": "",
-          "refundId": "",
-          "status": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
       "input": {
@@ -3326,18 +3326,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AVAILABILITY",
-        "output": {
-          "amount": 0,
-          "currency": "",
-          "refundId": "",
-          "status": ""
-        },
         "requestCount": 4,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
       "input": {
@@ -3482,18 +3476,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AUTHORIZATION",
-        "output": {
-          "amount": 0,
-          "currency": "",
-          "refundId": "",
-          "status": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
       "input": {
@@ -3563,18 +3551,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "AUTHENTICATION",
-        "output": {
-          "amount": 0,
-          "currency": "",
-          "refundId": "",
-          "status": ""
-        },
         "requestCount": 2,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
       "input": {

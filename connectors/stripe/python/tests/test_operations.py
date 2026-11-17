@@ -255,7 +255,7 @@ async def test_refund_success_request_and_reserved_marker() -> None:
     ],
 )
 async def test_malformed_provider_field_is_invalid_response(operation: str, body: dict[str, object]) -> None:
-    """Wrong provider field types select invalidResponse, matching Go JSON decoding."""
+    """Wrong field types select invalidResponse for reads and retry keyed writes, matching Go."""
     result: Any
     client = client_for(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
     if operation == "createCardCheckoutSession":
@@ -278,12 +278,15 @@ async def test_malformed_provider_field_is_invalid_response(operation: str, body
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    assert result.branch == "invalidResponse"
+    if operation.startswith("create"):
+        assert result.kind == "retry"
+    else:
+        assert result.branch == "invalidResponse"
     assert result.failure.kind == FailureKind.PROTOCOL
 
 
 async def test_checkout_redirect_does_not_forward_credentials() -> None:
-    """A provider redirect is terminal and never sends the key to its target."""
+    """A provider redirect retries under the same key and never sends the key to its target."""
     requests: list[httpx.Request] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -294,7 +297,7 @@ async def test_checkout_redirect_does_not_forward_credentials() -> None:
     result = await client.create_ach_checkout_session().invoke(
         make_call("createACHCheckoutSession", True), checkout_input()
     )
-    assert result.branch == "providerRejected"
+    assert result.kind == "retry" and result.failure.kind == FailureKind.PROTOCOL
     assert len(requests) == 1
 
 
@@ -330,14 +333,18 @@ async def test_missing_query_resource_is_not_found(operation: str) -> None:
     "status,body,kind",
     [
         (409, {}, "retry"),
-        (409, {"error": {"type": "idempotency_error"}}, "providerRejected"),
-        (500, {}, "uncertain"),
+        (409, {"error": {"type": "idempotency_error"}}, "retry"),
+        (500, {}, "retry"),
+        (408, {}, "retry"),
+        (402, {}, "retry"),
+        (402, {"error": {"type": "card_error"}}, "providerRejected"),
+        (422, {"error": {"type": "invalid_request_error"}}, "providerRejected"),
     ],
 )
 async def test_keyed_mutation_conflict_and_uncertainty(
     operation: str, status: int, body: dict[str, object], kind: str
 ) -> None:
-    """All keyed writes share 409 and unhinted 500 behavior."""
+    """Every unknown keyed write outcome retries; only listed 4xx refusals select providerRejected."""
     result: Any
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -358,7 +365,7 @@ async def test_keyed_mutation_conflict_and_uncertainty(
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    assert (result.kind if kind in ("retry", "uncertain") else result.branch) == kind
+    assert (result.kind if kind == "retry" else result.branch) == kind
 
 
 @pytest.mark.parametrize(
@@ -456,7 +463,10 @@ async def test_terminal_branches(operation: str, status: int, branch: str, kind:
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    assert result.branch == branch
+    if status == 200 and operation.startswith("create"):
+        assert result.kind == "retry"
+    else:
+        assert result.branch == branch
     assert result.failure.kind == kind
 
 
@@ -512,7 +522,7 @@ async def test_retry_after_and_availability(operation: str, status: int, kind: F
     ],
 )
 async def test_oversized_success_is_invalid_response(operation: str) -> None:
-    """Oversized successful responses never get decoded or persisted."""
+    """Oversized successful responses are never decoded; keyed writes retry them."""
     result: Any
     client = client_for(httpx.MockTransport(lambda request: httpx.Response(200, content=b"x" * 65)), 64)
     if operation == "createCardCheckoutSession":
@@ -535,7 +545,10 @@ async def test_oversized_success_is_invalid_response(operation: str) -> None:
         result = await client.create_refund().invoke(
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
-    assert result.branch == "invalidResponse"
+    if operation.startswith("create"):
+        assert result.kind == "retry"
+    else:
+        assert result.branch == "invalidResponse"
     assert result.failure.kind == FailureKind.RESPONSE_TOO_LARGE
 
 
@@ -588,24 +601,47 @@ async def test_invalid_input_is_defect_without_provider_call(operation: str) -> 
     "status,headers,body,expected",
     [
         (409, {}, {}, "retry"),
-        (409, {}, {"error": {"type": "idempotency_error"}}, "providerRejected"),
-        (409, {"Stripe-Should-Retry": "false"}, {}, "providerRejected"),
-        (500, {}, {}, "uncertain"),
+        (409, {}, {"error": {"type": "idempotency_error"}}, "retry"),
+        (409, {"Stripe-Should-Retry": "false"}, {}, "retry"),
+        (500, {}, {}, "retry"),
         (500, {"Stripe-Should-Retry": "true"}, {}, "retry"),
-        (503, {"Idempotent-Replayed": "true"}, {}, "uncertain"),
+        (503, {"Idempotent-Replayed": "true"}, {}, "retry"),
+        (503, {"Stripe-Should-Retry": "false"}, {}, "retry"),
+        (400, {}, {"error": {"type": "invalid_request_error"}}, "providerRejected"),
     ],
 )
 async def test_keyed_checkout_conflict_and_server_classification(
     status: int, headers: dict[str, str], body: dict[str, object], expected: str
 ) -> None:
-    """Keyed writes follow Stripe's replay, 409, and 500 classification."""
-    client = client_for(
-        httpx.MockTransport(lambda request: httpx.Response(status, json=body, headers=headers))
-    )
+    """Checkout resends every unknown outcome under the same key; a 400 is never resent."""
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(status, json=body, headers=headers)
+
+    client = client_for(httpx.MockTransport(answer))
     result = await client.create_card_checkout_session().invoke(
         make_call("createCardCheckoutSession", True), checkout_input(True)
     )
-    assert result.kind == expected if expected in ("retry", "uncertain") else result.branch == expected
+    assert (result.kind if expected == "retry" else result.branch) == expected
+    assert len(requests) == 1
+
+
+async def test_keyed_checkout_resend_reuses_key_and_returns_original_session() -> None:
+    """A retried unhinted 500 resends with the same key and returns Stripe's session."""
+    keys: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        keys.append(request.headers["Idempotency-Key"])
+        return httpx.Response(500) if len(keys) == 1 else httpx.Response(200, json=SESSION_BODY)
+
+    client = client_for(httpx.MockTransport(answer))
+    call = make_call("createCardCheckoutSession", True)
+    first = await client.create_card_checkout_session().invoke(call, checkout_input(True))
+    second = await client.create_card_checkout_session().invoke(call, checkout_input(True))
+    assert first.kind == "retry"
+    assert second.branch == "created" and keys == [CALL_ID, CALL_ID]
 
 
 async def test_refund_readback_finds_original_call_and_keeps_one_key() -> None:
@@ -645,7 +681,7 @@ async def test_refund_readback_finds_original_call_and_keeps_one_key() -> None:
     ],
 )
 async def test_refund_unconfirmed_and_readback_denial(readback_status: int, kind: FailureKind) -> None:
-    """Refund read-back absence, denial, and transient failure remain distinct."""
+    """Refund read-back absence, denial, and transient failure all retry under the same key."""
 
     def answer(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
@@ -658,13 +694,13 @@ async def test_refund_unconfirmed_and_readback_denial(readback_status: int, kind
     result = await client.create_refund().invoke(
         make_call("createRefund", True), CreateRefundInput("pi_test_123", 2500)
     )
-    assert result.kind == ("retry" if readback_status == 503 else "uncertain")
+    assert result.kind == "retry"
     assert result.failure is not None
     assert result.failure.kind == kind
 
 
 async def test_refund_readback_rejects_malformed_candidate_metadata() -> None:
-    """A malformed list item cannot prove the original refund succeeded."""
+    """A malformed list item cannot prove the original refund succeeded, so the write retries."""
 
     def answer(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
@@ -682,7 +718,7 @@ async def test_refund_readback_rejects_malformed_candidate_metadata() -> None:
     result = await client.create_refund().invoke(
         make_call("createRefund", True), CreateRefundInput("pi_test_123", 2500)
     )
-    assert result.kind == "uncertain"
+    assert result.kind == "retry"
 
 
 @pytest.mark.parametrize("match_on_third_page", [True, False])
@@ -716,7 +752,10 @@ async def test_refund_readback_is_bounded_to_three_pages(match_on_third_page: bo
         "re_page1",
         "re_page2",
     ]
-    assert result.branch == ("refunded" if match_on_third_page else "uncertain")
+    if match_on_third_page:
+        assert result.branch == "refunded"
+    else:
+        assert result.kind == "retry"
 
 
 @pytest.mark.parametrize(
@@ -761,6 +800,34 @@ async def test_missing_credentials_are_authentication_defects(operation: str) ->
             make_call(operation, True), CreateRefundInput("pi_test_123", 2500)
         )
     assert result.branch == "defect" and result.failure.kind == FailureKind.AUTHENTICATION
+
+
+class _LaterAttemptContext:
+    attempt = 2
+
+
+@pytest.mark.parametrize(
+    "operation", ["createCardCheckoutSession", "createACHCheckoutSession", "createRefund"]
+)
+async def test_missing_credentials_retry_after_first_attempt(operation: str) -> None:
+    """A later attempt may follow a send, so unavailable credentials retry instead of defect."""
+    result: Any
+    credentials: StaticCredentialProvider[Credentials] = StaticCredentialProvider({})
+    client = Client(
+        Config("http://127.0.0.1:12345/v1"),
+        credentials,
+        httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: pytest.fail("sent without credentials"))
+        ),
+    )
+    call = replace(make_call(operation, True), context=_LaterAttemptContext())  # type: ignore[arg-type]
+    if operation == "createCardCheckoutSession":
+        result = await client.create_card_checkout_session().invoke(call, checkout_input(True))
+    elif operation == "createACHCheckoutSession":
+        result = await client.create_ach_checkout_session().invoke(call, checkout_input())
+    else:
+        result = await client.create_refund().invoke(call, CreateRefundInput("pi_test_123", 2500))
+    assert result.kind == "retry" and result.failure.kind == FailureKind.AUTHENTICATION
 
 
 def test_definitions_match_manifest_branches() -> None:

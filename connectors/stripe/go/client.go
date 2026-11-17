@@ -228,49 +228,60 @@ func (CreateACHCheckoutSessionOperation) IdempotencyKey(callID sdkgo.CallID, _ C
 
 // Invoke creates one hosted Checkout Session that accepts US bank account payments.
 func (operation CreateACHCheckoutSessionOperation) Invoke(call sdkgo.Call, input CreateACHCheckoutSessionInput) sdkgo.MutationAttempt[CheckoutSession] {
-	if err := input.validate(); err != nil {
-		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchDefect, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
+	return operation.client.createCheckoutSession(call, checkoutSessionWrite{
+		operation: "createACHCheckoutSession", created: CreateACHCheckoutSessionBranchCreated,
+		providerRejected: CreateACHCheckoutSessionBranchProviderRejected, defect: CreateACHCheckoutSessionBranchDefect,
+	}, input.validate(), input.formValues)
+}
+
+// checkoutSessionWrite names one Checkout Session operation and its stable branches.
+type checkoutSessionWrite struct {
+	operation        string
+	created          sdkgo.BranchID
+	providerRejected sdkgo.BranchID
+	defect           sdkgo.BranchID
+}
+
+// createCheckoutSession sends one keyed Checkout Session create. Stripe's idempotency key makes a resend
+// return the original session, so every unknown outcome returns Retry.
+func (client *Client) createCheckoutSession(call sdkgo.Call, write checkoutSessionWrite, inputErr error, formValues func() url.Values) sdkgo.MutationAttempt[CheckoutSession] {
+	if inputErr != nil {
+		return sdkgo.NewMutationBranch(write.defect, CheckoutSession{}, stripeFailurePointer(write.operation, sdkgo.FailureValidation, inputErr.Error()), sdkgo.Receipt{})
 	}
-	credentials, failure := operation.client.resolveCredentials(call, "createACHCheckoutSession")
+	credentials, failure := client.resolveCredentials(call, write.operation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchDefect, CheckoutSession{}, failure, sdkgo.Receipt{})
+		return unavailableCredentialsAttempt[CheckoutSession](call, write.defect, failure)
 	}
-	values := input.formValues()
-	response, err := operation.client.request(call, credentials.SecretKey.Reveal(), http.MethodPost, "checkout/sessions", values)
+	response, err := client.request(call, credentials.SecretKey.Reveal(), http.MethodPost, "checkout/sessions", formValues())
 	isResponseTooLarge := errors.Is(err, errStripeResponseTooLarge)
 	if err != nil && !isResponseTooLarge {
 		if errors.Is(err, errStripeRequestInvalid) {
-			return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchDefect, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
+			return sdkgo.NewMutationBranch(write.defect, CheckoutSession{}, stripeFailurePointer(write.operation, sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 		}
-		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure(write.operation, sdkgo.FailureTransport, "Stripe Checkout Session response is unavailable"), retryAfter(response.header))
 	}
 	if response.statusCode == http.StatusTooManyRequests {
-		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure(write.operation, sdkgo.FailureRateLimit, "Stripe rate limited the Checkout Session request"), retryAfter(response.header))
 	}
-	if response.statusCode == http.StatusConflict && shouldRetryKeyedConflict(response) {
-		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureConflict, "Stripe reported a conflicting Checkout Session request with this idempotency key"), retryAfter(response.header))
-	}
-	if response.statusCode >= 500 {
-		if shouldRetryKeyedServerFailure(response) {
-			return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure("createACHCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session is temporarily unavailable"), retryAfter(response.header))
-		}
-		return sdkgo.NewMutationUncertain(CheckoutSession{}, stripeFailure("createACHCheckoutSession", sdkgo.FailureAvailability, "Stripe Checkout Session outcome cannot be confirmed after a server error"), operation.client.receipt(call, response, ""))
+	if isDefiniteStripeWriteRefusal(response, isCheckoutSessionBody) {
+		return sdkgo.NewMutationBranch(write.providerRejected, CheckoutSession{}, classifyStripeRejection(write.operation, response), client.receipt(call, response, ""))
 	}
 	if response.statusCode < 200 || response.statusCode >= 300 {
-		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchProviderRejected, CheckoutSession{}, classifyStripeRejection("createACHCheckoutSession", response), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[CheckoutSession](unknownStripeWriteFailure(write.operation, "Checkout Session", response), retryAfter(response.header))
 	}
 	if isResponseTooLarge {
-		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", sdkgo.FailureResponseTooLarge, err.Error()), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure(write.operation, sdkgo.FailureResponseTooLarge, err.Error()), 0)
 	}
 	session, err := decodeCheckoutSession(response.body)
 	if err != nil {
-		kind := sdkgo.FailureProtocol
-		if errors.Is(err, errStripeResponseTooLarge) {
-			kind = sdkgo.FailureResponseTooLarge
-		}
-		return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchInvalidResponse, CheckoutSession{}, stripeFailurePointer("createACHCheckoutSession", kind, err.Error()), operation.client.receipt(call, response, ""))
+		return sdkgo.NewMutationRetry[CheckoutSession](stripeFailure(write.operation, sdkgo.FailureProtocol, err.Error()), 0)
 	}
-	return sdkgo.NewMutationBranch(CreateACHCheckoutSessionBranchCreated, session, nil, operation.client.receipt(call, response, session.ID))
+	return sdkgo.NewMutationBranch(write.created, session, nil, client.receipt(call, response, session.ID))
+}
+
+func isCheckoutSessionBody(contents []byte) bool {
+	_, err := decodeCheckoutSession(contents)
+	return err == nil
 }
 
 // Definition returns the immutable connector operation definition.
@@ -433,6 +444,7 @@ func (client *Client) request(call sdkgo.Call, secretKey string, method string, 
 	return result, nil
 }
 
+// shouldRetryKeyedServerFailure reports whether a refund 5xx can be resent before reading back.
 func shouldRetryKeyedServerFailure(response providerResponse) bool {
 	if strings.EqualFold(response.header.Get("Idempotent-Replayed"), "true") ||
 		strings.EqualFold(response.header.Get("Stripe-Should-Retry"), "false") {
@@ -456,6 +468,41 @@ func shouldRetryKeyedConflict(response providerResponse) bool {
 		return false
 	}
 	return parseStripeAPIError(response.body).Type != stripeIdempotencyErrorType
+}
+
+// isDefiniteStripeWriteRefusal reports a conclusive Stripe refusal: a listed 4xx whose body is not the
+// created object. A 402 counts only with a Stripe error object, Stripe's explicit request-failed refusal.
+func isDefiniteStripeWriteRefusal(response providerResponse, isCreatedObject func([]byte) bool) bool {
+	switch response.statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return !isCreatedObject(response.body)
+	case http.StatusPaymentRequired:
+		return parseStripeAPIError(response.body).Type != ""
+	}
+	return false
+}
+
+// unknownStripeWriteFailure describes a keyed write outcome that a Retry resends under the same key.
+func unknownStripeWriteFailure(operation string, subject string, response providerResponse) sdkgo.Failure {
+	switch {
+	case response.statusCode == http.StatusConflict:
+		return stripeFailure(operation, sdkgo.FailureConflict, "Stripe reported a conflicting "+subject+" request with this idempotency key")
+	case response.statusCode >= 500:
+		return stripeFailure(operation, sdkgo.FailureAvailability, "Stripe "+subject+" is temporarily unavailable")
+	}
+	return stripeFailure(operation, sdkgo.FailureProtocol, fmt.Sprintf("Stripe returned unexpected HTTP status %d for the %s request", response.statusCode, subject))
+}
+
+// unavailableCredentialsAttempt selects defect only on attempt one; a later attempt may follow a send,
+// so it returns Retry and resends under the same idempotency key.
+func unavailableCredentialsAttempt[T any](call sdkgo.Call, defect sdkgo.BranchID, failure *sdkgo.Failure) sdkgo.MutationAttempt[T] {
+	var zero T
+	if call.Context != nil && call.Context.Attempt() > 1 {
+		return sdkgo.NewMutationRetry[T](*failure, 0)
+	}
+	return sdkgo.NewMutationBranch(defect, zero, failure, sdkgo.Receipt{})
 }
 
 func (client *Client) resolveCredentials(call sdkgo.Call, operation string) (Credentials, *sdkgo.Failure) {

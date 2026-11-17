@@ -93,8 +93,8 @@ for (const write of writes) {
       ['parameter mismatch', {}, { error: { type: 'idempotency_error' } }],
       ['Stripe no-retry hint', { 'stripe-should-retry': 'false' }, {}],
     ] as const) {
-      it(`selects providerRejected for 409 ${name}`, async () => {
-        expect(await write.invoke(client([response(409, body, headers)]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'CONFLICT' } });
+      it(`retries 409 ${name} under the same key`, async () => {
+        expect(await write.invoke(client(withReadback(write, response(409, body, headers))))).toMatchObject({ kind: 'retry', failure: { kind: 'CONFLICT' } });
       });
     }
 
@@ -112,23 +112,23 @@ for (const write of writes) {
       });
     }
 
-    it('retries a hinted 500 and treats a replayed 500 as unconfirmed', async () => {
+    it('retries a hinted 500 and a replayed 500 under the same key', async () => {
       expect(await write.invoke(client([response(500, {}, { 'stripe-should-retry': 'true' })]))).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
       const replayed = client(withReadback(write, response(500, {}, { 'stripe-should-retry': 'true', 'idempotent-replayed': 'true' })));
-      expect(await write.invoke(replayed)).toMatchObject({ kind: 'uncertain', failure: { kind: 'AVAILABILITY' } });
+      expect(await write.invoke(replayed)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
     });
 
-    it('treats 503 with an explicit no-retry hint as unconfirmed', async () => {
+    it('retries 503 with an explicit no-retry hint under the same key', async () => {
       const noRetry = client(withReadback(write, response(503, {}, { 'stripe-should-retry': 'false' })));
-      expect(await write.invoke(noRetry)).toMatchObject({ kind: 'uncertain', failure: { kind: 'AVAILABILITY' } });
+      expect(await write.invoke(noRetry)).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
     });
 
     for (const [status, expected] of [
-      [200, { kind: 'branch', branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE' } }],
+      [200, { kind: 'retry', failure: { kind: 'RESPONSE_TOO_LARGE' } }],
       [400, { kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION' } }],
       [429, { kind: 'retry', failure: { kind: 'RATE_LIMIT' } }],
       [409, { kind: 'retry', failure: { kind: 'CONFLICT' } }],
-      [500, { kind: 'uncertain', failure: { kind: 'AVAILABILITY' } }],
+      [500, { kind: 'retry', failure: { kind: 'AVAILABILITY' } }],
       [503, { kind: 'retry', failure: { kind: 'AVAILABILITY' } }],
     ] as const) {
       it(`classifies oversized ${status} by status and headers`, async () => {
@@ -137,13 +137,13 @@ for (const write of writes) {
       });
     }
 
-    it('uses an oversized 409 no-retry hint without reading its truncated body', async () => {
-      expect(await write.invoke(client([oversized(409, { 'stripe-should-retry': 'false' })])))
-        .toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'CONFLICT' } });
+    it('retries an oversized 409 no-retry hint without reading its truncated body', async () => {
+      expect(await write.invoke(client(withReadback(write, oversized(409, { 'stripe-should-retry': 'false' })))))
+        .toMatchObject({ kind: 'retry', failure: { kind: 'CONFLICT' } });
     });
 
-    it('selects invalidResponse for malformed success JSON', async () => {
-      expect(await write.invoke(client([{ status: 200, headers: {}, body: Buffer.from('{bad') }]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
+    it('retries malformed success JSON under the same key', async () => {
+      expect(await write.invoke(client(withReadback(write, { status: 200, headers: {}, body: Buffer.from('{bad') })))).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
     });
   });
 }

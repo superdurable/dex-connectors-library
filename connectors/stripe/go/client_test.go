@@ -189,9 +189,8 @@ func TestCreateACHCheckoutSessionDoesNotFollowRedirectsWithCredentials(t *testin
 	}))
 	defer server.Close()
 	client := newStripeClient(t, server.URL, stripe.Config{})
-	result, err := sdkgo.RunMutation(newStripeDexContext("redirect-checkout"), client.CreateACHCheckoutSession(), stripeConnection, validCreateInput())
-	require.NoError(t, err)
-	require.Equal(t, stripe.CreateACHCheckoutSessionBranchProviderRejected, result.Branch)
+	_, err := sdkgo.RunMutation(newStripeDexContext("redirect-checkout"), client.CreateACHCheckoutSession(), stripeConnection, validCreateInput())
+	requireStripeRetry(t, err, sdkgo.FailureProtocol)
 	require.False(t, receivedRedirect)
 }
 
@@ -216,11 +215,12 @@ func newStripeClient(t *testing.T, endpoint string, config stripe.Config, option
 
 type stripeDexContext struct {
 	context.Context
-	step string
+	step    string
+	attempt int32
 }
 
 func newStripeDexContext(step string) *stripeDexContext {
-	return &stripeDexContext{Context: context.Background(), step: step}
+	return &stripeDexContext{Context: context.Background(), step: step, attempt: 1}
 }
 
 func (*stripeDexContext) FlowID() string                                  { return "registration-123" }
@@ -230,7 +230,7 @@ func (context *stripeDexContext) StepExecutionID() string                 { retu
 func (*stripeDexContext) FromStepExecutionID() string                     { return "" }
 func (*stripeDexContext) RecoveryError() *dex.RecoveryErrorInfo           { return nil }
 func (*stripeDexContext) FirstAttemptAt() time.Time                       { return time.Unix(1, 0) }
-func (*stripeDexContext) Attempt() int32                                  { return 1 }
+func (context *stripeDexContext) Attempt() int32                          { return context.attempt }
 func (*stripeDexContext) HasTimerFired() bool                             { return false }
 func (*stripeDexContext) HasTimerFiredByIndex(int) bool                   { return false }
 func (*stripeDexContext) WaitForMethodFailed() bool                       { return false }

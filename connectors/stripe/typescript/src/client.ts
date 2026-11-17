@@ -140,10 +140,11 @@ export function shouldRetryKeyedConflict(response: StripeResponse): boolean {
   return stripeResponseHeader(response, 'stripe-should-retry').toLowerCase() !== 'false' && parseStripeAPIError(response.body).type !== 'idempotency_error';
 }
 
-interface StripeAPIError { type: string; code: string; message: string }
+/** Stripe's public error type, code, and message; each is empty when absent. */
+export interface StripeAPIError { type: string; code: string; message: string }
 
 /** Parse Stripe's public error code and message without retaining raw response bodies. */
-function parseStripeAPIError(body: Uint8Array): StripeAPIError {
+export function parseStripeAPIError(body: Uint8Array): StripeAPIError {
   try {
     const parsed = z.object({ error: z.object({ type: z.string().optional(), code: z.string().optional(), message: z.string().optional() }).optional() }).parse(JSON.parse(Buffer.from(body).toString('utf8')) as unknown);
     return { type: parsed.error?.type ?? '', code: parsed.error?.code ?? '', message: parsed.error?.message ?? '' };

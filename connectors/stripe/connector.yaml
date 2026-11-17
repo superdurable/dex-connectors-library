@@ -6,16 +6,16 @@ metadata:
   description: Create and reconcile hosted card or ACH Checkout Sessions, read PaymentIntents, refund payments, and receive signed Checkout Session events.
   company: Stripe
   categories: [finance-payments, ecommerce]
-  version: v0.25.1
+  version: v0.25.2
 spec:
   provider: stripe
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [createCardCheckoutSession, createACHCheckoutSession, getCheckoutSession, getPaymentIntent, createRefund]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       operations: [createCardCheckoutSession, createACHCheckoutSession, getCheckoutSession, getPaymentIntent, createRefund]
       triggers: []
   codegen:
@@ -107,12 +107,14 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Stripe returns the original Checkout Session for a resend with the same idempotency key.
+        repeatOnUnknown: safe
       mocks:
         - name: createdCardSession
           branch: created
@@ -144,12 +146,14 @@ spec:
       branches:
         - {id: created, goName: Created, description: Stripe created the Checkout Session.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the Checkout Session request., optional: true}
-        - {id: uncertain, goName: Uncertain, description: A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized Checkout Session response., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Stripe returns the original Checkout Session for a resend with the same idempotency key.
+        repeatOnUnknown: safe
       mocks:
         - name: createdSession
           branch: created
@@ -264,8 +268,8 @@ spec:
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large., optional: true}
-        - {id: uncertain, goName: Uncertain, description: A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Stripe returned an invalid or oversized refund response., optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Kept for stable identity; not selected, because an unknown outcome that read-back cannot confirm is resent under the same Stripe idempotency key.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Kept for stable identity; not selected, because an invalid or oversized response is read back and then resent under the same Stripe idempotency key.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

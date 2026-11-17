@@ -35,8 +35,8 @@ CREATE_CARD_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Stripe created the Checkout Session.", False),
         BranchDefinition(PROVIDER_REJECTED, "Stripe conclusively rejected the Checkout Session request.", True),
-        BranchDefinition(UNCERTAIN, "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.", True),
-        BranchDefinition(INVALID_RESPONSE, "Stripe returned an invalid or oversized Checkout Session response.", True),
+        BranchDefinition(UNCERTAIN, "Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -51,8 +51,8 @@ CREATE_ACH_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
     (
         BranchDefinition(CREATED, "Stripe created the Checkout Session.", False),
         BranchDefinition(PROVIDER_REJECTED, "Stripe conclusively rejected the Checkout Session request.", True),
-        BranchDefinition(UNCERTAIN, "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.", True),
-        BranchDefinition(INVALID_RESPONSE, "Stripe returned an invalid or oversized Checkout Session response.", True),
+        BranchDefinition(UNCERTAIN, "Kept for stable identity; not selected, because every unknown outcome is resent under the same Stripe idempotency key.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for stable identity; not selected, because an invalid or oversized response is resent under the same Stripe idempotency key.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -99,8 +99,8 @@ CREATE_REFUND_DEFINITION = MutationDefinition(
     (
         BranchDefinition(REFUNDED, "Stripe accepted the refund; read its status to tell succeeded from pending.", False),
         BranchDefinition(PROVIDER_REJECTED, "Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large.", True),
-        BranchDefinition(UNCERTAIN, "A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back.", True),
-        BranchDefinition(INVALID_RESPONSE, "Stripe returned an invalid or oversized refund response.", True),
+        BranchDefinition(UNCERTAIN, "Kept for stable identity; not selected, because an unknown outcome that read-back cannot confirm is resent under the same Stripe idempotency key.", True),
+        BranchDefinition(INVALID_RESPONSE, "Kept for stable identity; not selected, because an invalid or oversized response is read back and then resent under the same Stripe idempotency key.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

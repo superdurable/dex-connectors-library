@@ -95,25 +95,42 @@ describe('hosted Checkout mutations', () => {
         ? stripe.createCardCheckoutSession().invoke(call(operationId, true), input)
         : stripe.createACHCheckoutSession().invoke(call(operationId, true), input);
       expect(await invoke(client([response(400)]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION' } });
-      expect(await invoke(client([response(200, { wrong: true })]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
+      expect(await invoke(client([response(402, { error: { type: 'card_error' } })]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION' } });
       expect(await invoke(client([]), { ...checkoutInput, currency: 'USD' })).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'VALIDATION' } });
-      expect(await invoke(client([oversized(200)]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE' } });
       expect(await invoke(client([response(401)]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
       expect(await invoke(client([response(403)]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHORIZATION' } });
     });
 
-    it(`${operationId} retries only safe keyed responses and marks unconfirmed outcomes`, async () => {
+    it(`${operationId} resends every unknown keyed outcome under the same key`, async () => {
       const invoke = (stripe: StripeClient) => method === 'card'
         ? stripe.createCardCheckoutSession().invoke(call(operationId, true), checkoutInput)
         : stripe.createACHCheckoutSession().invoke(call(operationId, true), checkoutInput);
       expect(await invoke(client([response(429, {}, { 'retry-after': '3' })]))).toMatchObject({ kind: 'retry', failure: { kind: 'RATE_LIMIT' }, retryAfterMs: 3000 });
       expect(await invoke(client([response(409)]))).toMatchObject({ kind: 'retry', failure: { kind: 'CONFLICT' } });
-      expect(await invoke(client([response(409, { error: { type: 'idempotency_error' } })]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'CONFLICT' } });
+      expect(await invoke(client([response(409, { error: { type: 'idempotency_error' } })]))).toMatchObject({ kind: 'retry', failure: { kind: 'CONFLICT' } });
       expect(await invoke(client([response(503, {}, { 'retry-after': '999999' })]))).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' }, retryAfterMs: 3600000 });
-      expect(await invoke(client([response(500)]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'AVAILABILITY' } });
-      expect(await invoke(client([response(503, {}, { 'idempotent-replayed': 'true' })]))).toMatchObject({ kind: 'uncertain' });
-      expect(await invoke(client([oversized(500)]))).toMatchObject({ kind: 'uncertain' });
+      expect(await invoke(client([response(500)]))).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+      expect(await invoke(client([response(503, {}, { 'idempotent-replayed': 'true' })]))).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+      expect(await invoke(client([oversized(500)]))).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+      expect(await invoke(client([response(408)]))).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
+      expect(await invoke(client([response(402)]))).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
+      expect(await invoke(client([response(200, { wrong: true })]))).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
+      expect(await invoke(client([oversized(200)]))).toMatchObject({ kind: 'retry', failure: { kind: 'RESPONSE_TOO_LARGE' } });
       expect(await invoke(client([new Error('socket closed')]))).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
+      const requests: ProviderRequest[] = [];
+      const stripe = client([response(500), response(200, checkoutResponse)], requests);
+      expect(await invoke(stripe)).toMatchObject({ kind: 'retry' });
+      expect(await invoke(stripe)).toMatchObject({ kind: 'branch', branch: 'created', value: { id: 'cs_123' } });
+      expect(requests.map(request => request.headers?.['Idempotency-Key'])).toEqual([callId, callId]);
+    });
+
+    it(`${operationId} retries unavailable credentials after the first attempt`, async () => {
+      const noKey = client([], [], { authMethodId: 'api-key-only', secretKey: new SecretString('') });
+      const laterCall: Call = { ...call(operationId, true), context: { flowId: 'test-flow', attempt: 2 } as Call['context'] };
+      const attempt = method === 'card'
+        ? await noKey.createCardCheckoutSession().invoke(laterCall, checkoutInput)
+        : await noKey.createACHCheckoutSession().invoke(laterCall, checkoutInput);
+      expect(attempt).toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION' } });
     });
   }
 });
@@ -183,11 +200,15 @@ describe('refund mutation', () => {
   it('classifies rejection, invalid response, validation, and credentials', async () => {
     expect(await invoke(client([response(400, { error: { code: 'charge_already_refunded', message: 'Already refunded' } })]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'PROVIDER_REJECTION', message: 'Stripe rejected the refund: charge_already_refunded: Already refunded' } });
     expect(await invoke(client([response(401, { error: { message: 'rk_test_sensitive' } })]))).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION', message: 'Stripe rejected the refund' } });
-    expect(await invoke(client([response(200, {})]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
-    expect(await invoke(client([oversized(200)]))).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'RESPONSE_TOO_LARGE' } });
+    const emptyList = response(200, { object: 'list', data: [], has_more: false });
+    expect(await invoke(client([response(200, {}), emptyList]))).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
+    expect(await invoke(client([oversized(200), response(200, { object: 'list', data: [], has_more: false })]))).toMatchObject({ kind: 'retry', failure: { kind: 'RESPONSE_TOO_LARGE' } });
+    expect(await invoke(client([response(409, { error: { type: 'idempotency_error' } }), response(200, { object: 'list', data: [], has_more: false })]))).toMatchObject({ kind: 'retry', failure: { kind: 'CONFLICT' } });
     expect(await invoke(client([]), { ...refundInput, amount: 0 })).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'VALIDATION' } });
     const noKey = client([], [], { authMethodId: 'api-key-only', secretKey: new SecretString('') });
     expect(await invoke(noKey)).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
+    const laterCall: Call = { ...call('createRefund', true), context: { flowId: 'test-flow', attempt: 2 } as Call['context'] };
+    expect(await noKey.createRefund().invoke(laterCall, refundInput)).toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION' } });
   });
   it('retries safe keyed failures and read-back availability', async () => {
     expect(await invoke(client([response(429, {}, { 'retry-after': '3' })]))).toMatchObject({ kind: 'retry', failure: { kind: 'RATE_LIMIT' }, retryAfterMs: 3000 });
@@ -205,9 +226,9 @@ describe('refund mutation', () => {
     ], requests));
     expect(result).toMatchObject({ kind: 'branch', branch: 'refunded', value: { refundId: 're_123' } });
     expect(requests[2]?.url).toContain('starting_after=re_other');
-    expect(await invoke(client([response(500), response(200, { object: 'list', data: [], has_more: false })]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'AVAILABILITY' } });
-    expect(await invoke(client([response(500), response(403)]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'AUTHORIZATION' } });
-    expect(await invoke(client([response(500), response(401)]))).toMatchObject({ kind: 'uncertain', failure: { kind: 'AUTHENTICATION' } });
+    expect(await invoke(client([response(500), response(200, { object: 'list', data: [], has_more: false })]))).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(await invoke(client([response(500), response(403)]))).toMatchObject({ kind: 'retry', failure: { kind: 'AUTHORIZATION' } });
+    expect(await invoke(client([response(500), response(401)]))).toMatchObject({ kind: 'retry', failure: { kind: 'AUTHENTICATION' } });
   });
   it('stops read-back after three full pages without a matching call ID', async () => {
     const requests: ProviderRequest[] = [];
@@ -215,7 +236,7 @@ describe('refund mutation', () => {
       object: 'list', has_more: true, data: [{ id: `re_other_${page}`, metadata: {} }],
     }));
     const result = await invoke(client([response(500), ...pages], requests));
-    expect(result).toMatchObject({ kind: 'uncertain', failure: { kind: 'AVAILABILITY' } });
+    expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
     expect(requests).toHaveLength(4);
     expect(requests[3]?.url).toContain('starting_after=re_other_1');
   });
@@ -280,16 +301,16 @@ describe('refund read-back Go mirrors', () => {
       expect(requests[1]?.url).toContain('payment_intent=pi_123');
       expect(requests[1]?.url).toContain('limit=100');
     });
-    it(`returns uncertain when no matching refund follows ${name}`, async () => {
+    it(`retries under the same key when no matching refund follows ${name}`, async () => {
       expect(await invoke(client([initial, response(200, { object: 'list', data: [], has_more: false })])))
-        .toMatchObject({ kind: 'uncertain', failure: { kind: 'AVAILABILITY', message: 'Stripe refund outcome cannot be confirmed after a server error' } });
+        .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY', message: 'Stripe refund outcome cannot be confirmed after a server error' } });
     });
   }
 
   for (const [name, readback, expected] of [
-    ['malformed list', response(200, { wrong: true }), { kind: 'uncertain', failure: { kind: 'AVAILABILITY' } }],
-    ['malformed candidate', response(200, { object: 'list', data: [{ id: 'bad' }], has_more: false }), { kind: 'uncertain', failure: { kind: 'AVAILABILITY' } }],
-    ['oversized list', oversized(200), { kind: 'uncertain', failure: { kind: 'AVAILABILITY' } }],
+    ['malformed list', response(200, { wrong: true }), { kind: 'retry', failure: { kind: 'AVAILABILITY' } }],
+    ['malformed candidate', response(200, { object: 'list', data: [{ id: 'bad' }], has_more: false }), { kind: 'retry', failure: { kind: 'AVAILABILITY' } }],
+    ['oversized list', oversized(200), { kind: 'retry', failure: { kind: 'AVAILABILITY' } }],
     ['temporary unavailability', response(503, {}, { 'retry-after': '7' }), { kind: 'retry', failure: { kind: 'AVAILABILITY' }, retryAfterMs: 7000 }],
     ['oversized temporary unavailability', oversized(503), { kind: 'retry', failure: { kind: 'AVAILABILITY' } }],
     ['read-back transport loss', new Error('closed'), { kind: 'retry', failure: { kind: 'AVAILABILITY' } }],
@@ -305,7 +326,7 @@ describe('refund read-back Go mirrors', () => {
   ] as const) {
     it(`redacts the API key and explains a ${status} read-back denial`, async () => {
       const result = await invoke(client([response(500), response(status, { error: { message: 'rk_test_private' } })]));
-      expect(result).toMatchObject({ kind: 'uncertain', failure: { kind, message } });
+      expect(result).toMatchObject({ kind: 'retry', failure: { kind, message } });
       expect(JSON.stringify(result)).not.toContain('rk_test_private');
     });
   }
