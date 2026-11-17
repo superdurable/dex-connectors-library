@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: mailgun
   displayName: Mailgun
-  description: Read Mailgun domain events and account domains.
+  description: Read Mailgun events and domains, and send email through a verified sending domain.
   company: Mailgun
   categories: [communication, developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: mailgun
   languages:
@@ -52,8 +52,8 @@ spec:
       startURL: https://app.mailgun.com/settings/api_security
       steps:
         - Open https://app.mailgun.com/settings/api_security and sign in or create an account.
-        - Navigate to Mailgun > Settings > API Security > API Keys; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
-        - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+        - Navigate to Mailgun > Settings > API Security > API Keys; create or select a key with permission for domain reads and message sending, and copy its provider-issued string. A Domain Sending Key permits only sending for its domain and cannot run the read operations.
+        - Paste it into the secret api_key field and save the connection. In Mailgun > Send > Domains, select the verified sending domain for sendMessage and use its exact DNS name as domainName; use an authorized From address on that domain. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
     - name: getEvents
       goName: GetEvents
@@ -99,3 +99,23 @@ spec:
           description: A representative Mailgun result for the example Flow.
           default: true
           output: {"domains":[{"name":"example.test","state":"active"}],"totalCount":1}
+    - name: sendMessage
+      goName: SendMessage
+      inputType: SendMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: Queue one text or HTML email through a verified Mailgun sending domain.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Mailgun confirmed the queued message.}
+        - {id: providerRejected, goName: ProviderRejected, description: Mailgun conclusively rejected the message., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Mailgun may have queued the message but confirmation is unavailable at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Message input or credentials are invalid., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Mailgun queued one example message.
+          output: {id: '<20261116.example@example.test>'}

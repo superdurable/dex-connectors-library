@@ -1,13 +1,13 @@
 # Iterable user inspection Flow
 
-This runnable Flow calls `getUser` through the static `iterable` connection. It persists the selected user identity in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Flow calls `getUser` and then `getUserByID` through the static `iterable` connection. It persists the confirmed user identity in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
 From `connectors/iterable/go`, run:
 
 ```bash
-dexcli visualize ./examples/user-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/iterable-user-inspection-fdg
+dexcli visualize ./examples/user-inspection/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/iterable-user-inspection-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

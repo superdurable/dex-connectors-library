@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listLeads/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[facebookleadads.LeadsPage](`{"leads":[{"id":"987654321012345","formId":"123456789012345","adId":"112233445566778","createdTime":"2026-11-08T10:00:00+0000"}],"nextCursor":""}`)
+			return err
+		}},
 		{name: "listLeadForms/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[facebookleadads.LeadFormsPage](`{"forms":[{"id":"123456789012345","name":"Contact request","status":"ACTIVE"}],"nextCursor":""}`)
 			return err
@@ -34,6 +38,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListLeads().Definition().Operation.OperationID != "listLeads" {
+		t.Errorf("listLeads mock has another definition")
+	}
 	if mock.ListLeadForms().Definition().Operation.OperationID != "listLeadForms" {
 		t.Errorf("listLeadForms mock has another definition")
 	}

@@ -401,6 +401,677 @@
       },
       "name": "listDocuments-transportFailure",
       "operation": "listDocuments"
+    },
+    {
+      "callId": "1c2e99c1-289a-4ac9-988a-53ae34e5c101",
+      "exchanges": [
+        {
+          "body": "{\"documentId\":\"110808fd-4553-4316-bccf-4f25ff59a532\",\"title\":\"Example document\",\"product\":\"lucidchart\",\"version\":2,\"pageCount\":1,\"canEdit\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/110808fd-4553-4316-bccf-4f25ff59a532",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "canEdit": false,
+          "id": "110808fd-4553-4316-bccf-4f25ff59a532",
+          "pageCount": 1,
+          "product": "lucidchart",
+          "title": "Example document",
+          "version": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "110808fd-4553-4316-bccf-4f25ff59a532"
+      },
+      "name": "getDocument-found",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "1c2e99c1-289a-4ac9-988a-53ae34e5c102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/110808fd-4553-4316-bccf-4f25ff59a532",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "canEdit": false,
+          "id": "",
+          "pageCount": 0,
+          "product": "",
+          "title": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "110808fd-4553-4316-bccf-4f25ff59a532"
+      },
+      "name": "getDocument-notFound",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "1c2e99c1-289a-4ac9-988a-53ae34e5c103",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/110808fd-4553-4316-bccf-4f25ff59a532",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "canEdit": false,
+          "id": "",
+          "pageCount": 0,
+          "product": "",
+          "title": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "110808fd-4553-4316-bccf-4f25ff59a532"
+      },
+      "name": "getDocument-providerRejected",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "1c2e99c1-289a-4ac9-988a-53ae34e5c104",
+      "exchanges": [
+        {
+          "body": "{\"documentId\":\"wrong\",\"title\":\"Example\",\"product\":\"lucidchart\",\"version\":2,\"pageCount\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/110808fd-4553-4316-bccf-4f25ff59a532",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "canEdit": false,
+          "id": "",
+          "pageCount": 0,
+          "product": "",
+          "title": "",
+          "version": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "110808fd-4553-4316-bccf-4f25ff59a532"
+      },
+      "name": "getDocument-invalidResponse",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "1c2e99c1-289a-4ac9-988a-53ae34e5c105",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "canEdit": false,
+          "id": "",
+          "pageCount": 0,
+          "product": "",
+          "title": "",
+          "version": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "invalid"
+      },
+      "name": "getDocument-defect",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "1c2e99c1-289a-4ac9-988a-53ae34e5c106",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/110808fd-4553-4316-bccf-4f25ff59a532",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "110808fd-4553-4316-bccf-4f25ff59a532"
+      },
+      "name": "getDocument-final429",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "1c2e99c1-289a-4ac9-988a-53ae34e5c107",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/110808fd-4553-4316-bccf-4f25ff59a532",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "110808fd-4553-4316-bccf-4f25ff59a532"
+      },
+      "name": "getDocument-final503",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "1c2e99c1-289a-4ac9-988a-53ae34e5c108",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/documents/110808fd-4553-4316-bccf-4f25ff59a532",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "110808fd-4553-4316-bccf-4f25ff59a532"
+      },
+      "name": "getDocument-transportFailure",
+      "operation": "getDocument"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "[{\"documentId\":\"110808fd-4553-4316-bccf-4f25ff59a532\",\"title\":\"Example document\",\"owner\":{\"name\":\"private\"}}]",
+          "headers": {
+            "Link": "\u003chttps://api.lucid.co/v1/documents/search?pageSize=200\u0026pageToken=cursor-2\u003e; rel=\"next\""
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/search",
+          "query": {
+            "pageSize": [
+              "200"
+            ],
+            "pageToken": [
+              "cursor-1"
+            ]
+          },
+          "requestBody": {
+            "excludeTrashed": true,
+            "keywords": "roadmap"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "documents": [
+            {
+              "id": "110808fd-4553-4316-bccf-4f25ff59a532",
+              "title": "Example document"
+            }
+          ],
+          "nextPageToken": "cursor-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "roadmap",
+        "pageToken": "cursor-1"
+      },
+      "name": "searchDocuments-listed",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/search",
+          "query": {
+            "pageSize": [
+              "200"
+            ],
+            "pageToken": [
+              "cursor-1"
+            ]
+          },
+          "requestBody": {
+            "excludeTrashed": true,
+            "keywords": "roadmap"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "documents": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "roadmap",
+        "pageToken": "cursor-1"
+      },
+      "name": "searchDocuments-providerRejected",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/search",
+          "query": {
+            "pageSize": [
+              "200"
+            ],
+            "pageToken": [
+              "cursor-1"
+            ]
+          },
+          "requestBody": {
+            "excludeTrashed": true,
+            "keywords": "roadmap"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "documents": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "roadmap",
+        "pageToken": "cursor-1"
+      },
+      "name": "searchDocuments-invalidResponse",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "documents": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "",
+        "pageToken": "cursor-1"
+      },
+      "name": "searchDocuments-defect",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/search",
+          "query": {
+            "pageSize": [
+              "200"
+            ],
+            "pageToken": [
+              "cursor-1"
+            ]
+          },
+          "requestBody": {
+            "excludeTrashed": true,
+            "keywords": "roadmap"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "roadmap",
+        "pageToken": "cursor-1"
+      },
+      "name": "searchDocuments-final429",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/search",
+          "query": {
+            "pageSize": [
+              "200"
+            ],
+            "pageToken": [
+              "cursor-1"
+            ]
+          },
+          "requestBody": {
+            "excludeTrashed": true,
+            "keywords": "roadmap"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "roadmap",
+        "pageToken": "cursor-1"
+      },
+      "name": "searchDocuments-final503",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/documents/search",
+          "query": {
+            "pageSize": [
+              "200"
+            ],
+            "pageToken": [
+              "cursor-1"
+            ]
+          },
+          "requestBody": {
+            "excludeTrashed": true,
+            "keywords": "roadmap"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-lucid-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Lucid-Api-Version": [
+              "1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keywords": "roadmap",
+        "pageToken": "cursor-1"
+      },
+      "name": "searchDocuments-transportFailure",
+      "operation": "searchDocuments"
     }
   ],
   "schemaVersion": 1

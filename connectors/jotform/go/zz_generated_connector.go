@@ -40,12 +40,44 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateForm() sdkgo.Mutation[CreateFormInput, WriteResult]
+	UpdateFormTitle() sdkgo.Mutation[UpdateFormTitleInput, WriteResult]
+	DeleteForm() sdkgo.Mutation[GetFormInput, WriteResult]
+	CreateSubmission() sdkgo.Mutation[CreateSubmissionInput, WriteResult]
+	UpdateSubmission() sdkgo.Mutation[UpdateSubmissionInput, WriteResult]
+	DeleteSubmission() sdkgo.Mutation[GetSubmissionInput, WriteResult]
+	GetForm() sdkgo.Query[GetFormInput, FormMetadata]
+	ListFormSubmissions() sdkgo.Query[ListFormSubmissionsInput, SubmissionsPage]
 	ListForms() sdkgo.Query[ListFormsInput, FormsPage]
 	GetSubmission() sdkgo.Query[GetSubmissionInput, SubmissionMetadata]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateForm() sdkgo.Mutation[CreateFormInput, WriteResult] {
+	return operations.client.CreateForm()
+}
+func (operations clientOperations) UpdateFormTitle() sdkgo.Mutation[UpdateFormTitleInput, WriteResult] {
+	return operations.client.UpdateFormTitle()
+}
+func (operations clientOperations) DeleteForm() sdkgo.Mutation[GetFormInput, WriteResult] {
+	return operations.client.DeleteForm()
+}
+func (operations clientOperations) CreateSubmission() sdkgo.Mutation[CreateSubmissionInput, WriteResult] {
+	return operations.client.CreateSubmission()
+}
+func (operations clientOperations) UpdateSubmission() sdkgo.Mutation[UpdateSubmissionInput, WriteResult] {
+	return operations.client.UpdateSubmission()
+}
+func (operations clientOperations) DeleteSubmission() sdkgo.Mutation[GetSubmissionInput, WriteResult] {
+	return operations.client.DeleteSubmission()
+}
+func (operations clientOperations) GetForm() sdkgo.Query[GetFormInput, FormMetadata] {
+	return operations.client.GetForm()
+}
+func (operations clientOperations) ListFormSubmissions() sdkgo.Query[ListFormSubmissionsInput, SubmissionsPage] {
+	return operations.client.ListFormSubmissions()
+}
 func (operations clientOperations) ListForms() sdkgo.Query[ListFormsInput, FormsPage] {
 	return operations.client.ListForms()
 }
@@ -188,6 +220,624 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const CreateFormBranchCreated sdkgo.BranchID = "created"
+const CreateFormBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateFormBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateFormBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateFormDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createForm"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateFormBranchCreated, Description: "Jotform created the form."},
+		{ID: CreateFormBranchProviderRejected, Description: "Jotform conclusively rejected the form.", Optional: true},
+		{ID: CreateFormBranchUncertain, Description: "A possibly created form could not be confirmed.", Optional: true},
+		{ID: CreateFormBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateFormResult = sdkgo.MutationResult[WriteResult]
+
+type CreateFormStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=jotform"`
+	operationID                       struct{}                                          `connector:"operationId=createForm"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateFormInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateFormResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateFormResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateFormResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateFormResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateFormStep[IN any](config CreateFormStepConfig[IN]) sdkgo.MutationStep[IN, CreateFormInput, WriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("jotform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateFormInput, WriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateForm(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateFormResult] {
+			branches := make([]sdkgo.BranchTarget[CreateFormResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateFormBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateFormBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateFormBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateFormBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateFormTitleBranchUpdated sdkgo.BranchID = "updated"
+const UpdateFormTitleBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateFormTitleBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateFormTitleBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateFormTitleBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateFormTitleDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateFormTitle"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateFormTitleBranchUpdated, Description: "Jotform accepted the title update."},
+		{ID: UpdateFormTitleBranchNotFound, Description: "The form does not exist.", Optional: true},
+		{ID: UpdateFormTitleBranchProviderRejected, Description: "Jotform rejected the title update.", Optional: true},
+		{ID: UpdateFormTitleBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateFormTitleBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateFormTitleResult = sdkgo.MutationResult[WriteResult]
+
+type UpdateFormTitleStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=jotform"`
+	operationID                       struct{}                                          `connector:"operationId=updateFormTitle"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateFormTitleInput                     `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateFormTitleResult]               `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateFormTitleResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateFormTitleResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateFormTitleResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateFormTitleResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateFormTitleStep[IN any](config UpdateFormTitleStepConfig[IN]) sdkgo.MutationStep[IN, UpdateFormTitleInput, WriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("jotform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateFormTitleInput, WriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateFormTitle(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateFormTitleResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateFormTitleResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateFormTitleBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateFormTitleBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateFormTitleBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateFormTitleBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateFormTitleBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteFormBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteFormBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteFormBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteFormBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteFormBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteFormDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteForm"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteFormBranchDeleted, Description: "Jotform deleted the form."},
+		{ID: DeleteFormBranchNotFound, Description: "The form does not exist.", Optional: true},
+		{ID: DeleteFormBranchProviderRejected, Description: "Jotform rejected the deletion.", Optional: true},
+		{ID: DeleteFormBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteFormBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteFormResult = sdkgo.MutationResult[WriteResult]
+
+type DeleteFormStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=jotform"`
+	operationID                       struct{}                                          `connector:"operationId=deleteForm"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetFormInput                             `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteFormResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteFormResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteFormResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteFormResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteFormResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteFormStep[IN any](config DeleteFormStepConfig[IN]) sdkgo.MutationStep[IN, GetFormInput, WriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("jotform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetFormInput, WriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteForm(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteFormResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteFormResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteFormBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteFormBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteFormBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteFormBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteFormBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateSubmissionBranchCreated sdkgo.BranchID = "created"
+const CreateSubmissionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSubmissionBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateSubmissionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateSubmissionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSubmission"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSubmissionBranchCreated, Description: "Jotform created the submission."},
+		{ID: CreateSubmissionBranchProviderRejected, Description: "Jotform conclusively rejected the submission.", Optional: true},
+		{ID: CreateSubmissionBranchUncertain, Description: "A possibly created submission could not be confirmed.", Optional: true},
+		{ID: CreateSubmissionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateSubmissionResult = sdkgo.MutationResult[WriteResult]
+
+type CreateSubmissionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=jotform"`
+	operationID                       struct{}                                          `connector:"operationId=createSubmission"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSubmissionInput                    `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSubmissionResult]              `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSubmissionResult]              `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateSubmissionResult]              `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateSubmissionResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateSubmissionStep[IN any](config CreateSubmissionStepConfig[IN]) sdkgo.MutationStep[IN, CreateSubmissionInput, WriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("jotform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSubmissionInput, WriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateSubmission(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSubmissionResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSubmissionResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSubmissionBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSubmissionBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateSubmissionBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSubmissionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateSubmissionBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSubmissionBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSubmissionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSubmissionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateSubmissionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSubmissionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSubmission"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSubmissionBranchUpdated, Description: "Jotform accepted the answer update."},
+		{ID: UpdateSubmissionBranchNotFound, Description: "The submission does not exist.", Optional: true},
+		{ID: UpdateSubmissionBranchProviderRejected, Description: "Jotform rejected the answer update.", Optional: true},
+		{ID: UpdateSubmissionBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateSubmissionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSubmissionResult = sdkgo.MutationResult[WriteResult]
+
+type UpdateSubmissionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=jotform"`
+	operationID                       struct{}                                          `connector:"operationId=updateSubmission"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSubmissionInput                    `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSubmissionResult]              `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSubmissionResult]              `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSubmissionResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateSubmissionResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateSubmissionResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSubmissionStep[IN any](config UpdateSubmissionStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSubmissionInput, WriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("jotform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSubmissionInput, WriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSubmission(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSubmissionResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSubmissionResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSubmissionBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSubmissionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSubmissionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateSubmissionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSubmissionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSubmissionBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSubmissionBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteSubmissionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSubmissionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteSubmissionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSubmissionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSubmission"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSubmissionBranchDeleted, Description: "Jotform deleted the submission."},
+		{ID: DeleteSubmissionBranchNotFound, Description: "The submission does not exist.", Optional: true},
+		{ID: DeleteSubmissionBranchProviderRejected, Description: "Jotform rejected the deletion.", Optional: true},
+		{ID: DeleteSubmissionBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteSubmissionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSubmissionResult = sdkgo.MutationResult[WriteResult]
+
+type DeleteSubmissionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=jotform"`
+	operationID                       struct{}                                          `connector:"operationId=deleteSubmission"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetSubmissionInput                       `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSubmissionResult]              `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteSubmissionResult]              `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteSubmissionResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteSubmissionResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteSubmissionResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[WriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSubmissionStep[IN any](config DeleteSubmissionStepConfig[IN]) sdkgo.MutationStep[IN, GetSubmissionInput, WriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("jotform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetSubmissionInput, WriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSubmission(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSubmissionResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSubmissionResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSubmissionBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteSubmissionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSubmissionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteSubmissionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSubmissionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetFormBranchFound sdkgo.BranchID = "found"
+const GetFormBranchNotFound sdkgo.BranchID = "notFound"
+const GetFormBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetFormBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetFormBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetFormDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getForm"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetFormBranchFound, Description: "Jotform returned the form."},
+		{ID: GetFormBranchNotFound, Description: "Jotform did not find the form.", Optional: true},
+		{ID: GetFormBranchProviderRejected, Description: "Jotform rejected the form lookup.", Optional: true},
+		{ID: GetFormBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: GetFormBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetFormResult = sdkgo.QueryResult[FormMetadata]
+
+type GetFormStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=jotform"`
+	operationID                    struct{}                                        `connector:"operationId=getForm"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetFormInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetFormResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetFormResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetFormResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetFormResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetFormResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FormMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetFormStep[IN any](config GetFormStepConfig[IN]) sdkgo.QueryStep[IN, GetFormInput, FormMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("jotform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetFormInput, FormMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetForm(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetFormResult] {
+			branches := make([]sdkgo.BranchTarget[GetFormResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetFormBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetFormBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetFormBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetFormBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetFormBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListFormSubmissionsBranchListed sdkgo.BranchID = "listed"
+const ListFormSubmissionsBranchNotFound sdkgo.BranchID = "notFound"
+const ListFormSubmissionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFormSubmissionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFormSubmissionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFormSubmissionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listFormSubmissions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFormSubmissionsBranchListed, Description: "Jotform returned the submission page."},
+		{ID: ListFormSubmissionsBranchNotFound, Description: "Jotform did not find the form.", Optional: true},
+		{ID: ListFormSubmissionsBranchProviderRejected, Description: "Jotform rejected the submission list.", Optional: true},
+		{ID: ListFormSubmissionsBranchInvalidResponse, Description: "Jotform returned malformed or oversized JSON.", Optional: true},
+		{ID: ListFormSubmissionsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFormSubmissionsResult = sdkgo.QueryResult[SubmissionsPage]
+
+type ListFormSubmissionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=jotform"`
+	operationID                    struct{}                                           `connector:"operationId=listFormSubmissions"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListFormSubmissionsInput                  `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListFormSubmissionsResult]            `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListFormSubmissionsResult]            `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListFormSubmissionsResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFormSubmissionsResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFormSubmissionsResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubmissionsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListFormSubmissionsStep[IN any](config ListFormSubmissionsStepConfig[IN]) sdkgo.QueryStep[IN, ListFormSubmissionsInput, SubmissionsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("jotform connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListFormSubmissionsInput, SubmissionsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListFormSubmissions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFormSubmissionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListFormSubmissionsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListFormSubmissionsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListFormSubmissionsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFormSubmissionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFormSubmissionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFormSubmissionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListFormsBranchListed sdkgo.BranchID = "listed"

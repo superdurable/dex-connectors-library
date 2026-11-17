@@ -2,6 +2,392 @@
   "connector": "facebook-lead-ads",
   "scenarios": [
     {
+      "callId": "55555555-5555-4555-8555-555555555551",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"987654321012345\",\"form_id\":\"123456789012345\",\"ad_id\":\"112233445566778\",\"created_time\":\"2026-11-08T10:00:00+0000\"}],\"paging\":{\"cursors\":{\"after\":\"cursorDEF\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789012345/leads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,created_time,form_id,ad_id"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "leads": [
+            {
+              "adId": "112233445566778",
+              "createdTime": "2026-11-08T10:00:00+0000",
+              "formId": "123456789012345",
+              "id": "987654321012345"
+            }
+          ],
+          "nextCursor": "cursorDEF"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "formId": "123456789012345"
+      },
+      "name": "listLeads-listed",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555552",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789012345/leads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,created_time,form_id,ad_id"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "leads": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "formId": "123456789012345"
+      },
+      "name": "listLeads-notFound",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555553",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789012345/leads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,created_time,form_id,ad_id"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "leads": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "formId": "123456789012345"
+      },
+      "name": "listLeads-providerRejected",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555554",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789012345/leads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,created_time,form_id,ad_id"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "leads": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "formId": "123456789012345"
+      },
+      "name": "listLeads-invalidResponse",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555555",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "leads": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "formId": "../bad"
+      },
+      "name": "listLeads-defect",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555556",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789012345/leads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,created_time,form_id,ad_id"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "formId": "123456789012345"
+      },
+      "name": "listLeads-rateLimit",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555557",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789012345/leads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,created_time,form_id,ad_id"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "formId": "123456789012345"
+      },
+      "name": "listLeads-serverUnavailable",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555558",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789012345/leads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,created_time,form_id,ad_id"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursorABC",
+        "formId": "123456789012345"
+      },
+      "name": "listLeads-transportFailure",
+      "operation": "listLeads"
+    },
+    {
       "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
       "exchanges": [
         {

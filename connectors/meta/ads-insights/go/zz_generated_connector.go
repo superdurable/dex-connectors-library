@@ -40,11 +40,27 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListAds() sdkgo.Query[ListMarketingObjectsInput, MarketingObjectsPage]
+	ListAdSets() sdkgo.Query[ListMarketingObjectsInput, MarketingObjectsPage]
+	ListCampaigns() sdkgo.Query[ListMarketingObjectsInput, MarketingObjectsPage]
+	GetInsights() sdkgo.Query[GetInsightsInput, InsightsPage]
 	GetAd() sdkgo.Query[GetAdInput, AdMetadata]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListAds() sdkgo.Query[ListMarketingObjectsInput, MarketingObjectsPage] {
+	return operations.client.ListAds()
+}
+func (operations clientOperations) ListAdSets() sdkgo.Query[ListMarketingObjectsInput, MarketingObjectsPage] {
+	return operations.client.ListAdSets()
+}
+func (operations clientOperations) ListCampaigns() sdkgo.Query[ListMarketingObjectsInput, MarketingObjectsPage] {
+	return operations.client.ListCampaigns()
+}
+func (operations clientOperations) GetInsights() sdkgo.Query[GetInsightsInput, InsightsPage] {
+	return operations.client.GetInsights()
+}
 func (operations clientOperations) GetAd() sdkgo.Query[GetAdInput, AdMetadata] {
 	return operations.client.GetAd()
 }
@@ -184,6 +200,314 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential user_access_token is required")
 	}
 	return nil
+}
+
+const ListAdsBranchListed sdkgo.BranchID = "listed"
+const ListAdsBranchNotFound sdkgo.BranchID = "notFound"
+const ListAdsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAdsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAdsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAdsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAds"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAdsBranchListed, Description: "Meta returned one ads page."},
+		{ID: ListAdsBranchNotFound, Description: "The ad account is missing or inaccessible.", Optional: true},
+		{ID: ListAdsBranchProviderRejected, Description: "Meta definitively rejected the listing.", Optional: true},
+		{ID: ListAdsBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: ListAdsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAdsResult = sdkgo.QueryResult[MarketingObjectsPage]
+
+type ListAdsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=meta-ads-insights"`
+	operationID                    struct{}                                                `connector:"operationId=listAds"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListMarketingObjectsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAdsResult]                             `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListAdsResult]                             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListAdsResult]                             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAdsResult]                             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAdsResult]                             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MarketingObjectsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListAdsStep[IN any](config ListAdsStepConfig[IN]) sdkgo.QueryStep[IN, ListMarketingObjectsInput, MarketingObjectsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meta-ads-insights connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMarketingObjectsInput, MarketingObjectsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAds(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAdsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAdsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAdsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListAdsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAdsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAdsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAdsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAdSetsBranchListed sdkgo.BranchID = "listed"
+const ListAdSetsBranchNotFound sdkgo.BranchID = "notFound"
+const ListAdSetsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAdSetsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAdSetsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAdSetsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAdSets"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAdSetsBranchListed, Description: "Meta returned one ad sets page."},
+		{ID: ListAdSetsBranchNotFound, Description: "The ad account is missing or inaccessible.", Optional: true},
+		{ID: ListAdSetsBranchProviderRejected, Description: "Meta definitively rejected the listing.", Optional: true},
+		{ID: ListAdSetsBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: ListAdSetsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAdSetsResult = sdkgo.QueryResult[MarketingObjectsPage]
+
+type ListAdSetsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=meta-ads-insights"`
+	operationID                    struct{}                                                `connector:"operationId=listAdSets"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListMarketingObjectsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAdSetsResult]                          `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListAdSetsResult]                          `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListAdSetsResult]                          `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAdSetsResult]                          `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAdSetsResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MarketingObjectsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListAdSetsStep[IN any](config ListAdSetsStepConfig[IN]) sdkgo.QueryStep[IN, ListMarketingObjectsInput, MarketingObjectsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meta-ads-insights connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMarketingObjectsInput, MarketingObjectsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAdSets(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAdSetsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAdSetsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAdSetsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListAdSetsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAdSetsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAdSetsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAdSetsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCampaignsBranchListed sdkgo.BranchID = "listed"
+const ListCampaignsBranchNotFound sdkgo.BranchID = "notFound"
+const ListCampaignsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCampaignsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCampaignsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCampaignsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCampaigns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCampaignsBranchListed, Description: "Meta returned one campaigns page."},
+		{ID: ListCampaignsBranchNotFound, Description: "The ad account is missing or inaccessible.", Optional: true},
+		{ID: ListCampaignsBranchProviderRejected, Description: "Meta definitively rejected the listing.", Optional: true},
+		{ID: ListCampaignsBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCampaignsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCampaignsResult = sdkgo.QueryResult[MarketingObjectsPage]
+
+type ListCampaignsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=meta-ads-insights"`
+	operationID                    struct{}                                                `connector:"operationId=listCampaigns"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListMarketingObjectsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCampaignsResult]                       `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListCampaignsResult]                       `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListCampaignsResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCampaignsResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCampaignsResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MarketingObjectsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListCampaignsStep[IN any](config ListCampaignsStepConfig[IN]) sdkgo.QueryStep[IN, ListMarketingObjectsInput, MarketingObjectsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meta-ads-insights connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMarketingObjectsInput, MarketingObjectsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCampaigns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCampaignsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCampaignsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCampaignsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListCampaignsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCampaignsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCampaignsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCampaignsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInsightsBranchListed sdkgo.BranchID = "listed"
+const GetInsightsBranchNotFound sdkgo.BranchID = "notFound"
+const GetInsightsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInsightsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInsightsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInsightsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInsights"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInsightsBranchListed, Description: "Meta returned one insights page."},
+		{ID: GetInsightsBranchNotFound, Description: "The ad object is missing or inaccessible.", Optional: true},
+		{ID: GetInsightsBranchProviderRejected, Description: "Meta definitively rejected the insights lookup.", Optional: true},
+		{ID: GetInsightsBranchInvalidResponse, Description: "Meta returned malformed or oversized JSON.", Optional: true},
+		{ID: GetInsightsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInsightsResult = sdkgo.QueryResult[InsightsPage]
+
+type GetInsightsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=meta-ads-insights"`
+	operationID                    struct{}                                        `connector:"operationId=getInsights"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInsightsInput                       `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[GetInsightsResult]                 `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[GetInsightsResult]                 `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetInsightsResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInsightsResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInsightsResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InsightsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewGetInsightsStep[IN any](config GetInsightsStepConfig[IN]) sdkgo.QueryStep[IN, GetInsightsInput, InsightsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("meta-ads-insights connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInsightsInput, InsightsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInsights(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInsightsResult] {
+			branches := make([]sdkgo.BranchTarget[GetInsightsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(GetInsightsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetInsightsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInsightsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInsightsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInsightsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetAdBranchFound sdkgo.BranchID = "found"

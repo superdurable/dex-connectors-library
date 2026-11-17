@@ -17,9 +17,11 @@ const (
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "jotform"
 	operationStepType = "CallListForms"
+	getFormStepType   = "CallGetForm"
 )
 
 var formsPageAttribute = dex.DefineAttribute[jotform.FormsPage]("jotform-forms-page")
+var listFormsResultAttribute = dex.DefineAttribute[jotform.ListFormsResult]("jotform-list-forms-result")
 
 // Flow runs ListForms once and completes with its typed output.
 type Flow struct {
@@ -33,7 +35,7 @@ func NewFlow(connection jotform.Connection) *Flow { return &Flow{connection: con
 func (*Flow) GetFlowType() string { return FlowType }
 
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{formsPageAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{formsPageAttribute, listFormsResultAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -44,9 +46,23 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Jotform", Explanation: "Call the provider's listForms operation."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
-			Listed:              sdkgo.GoTo(completeResult{}),
+			Listed:              sdkgo.GoTo(sdkgo.StepRef[jotform.ListFormsResult](getFormStepType)),
+			ResultAttribute:     &listFormsResultAttribute,
+		})),
+		dex.DefineStep(jotform.NewGetFormStep(jotform.GetFormStepConfig[jotform.ListFormsResult]{
+			StepType: getFormStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Jotform", Explanation: "Inspect the first listed form."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(result jotform.ListFormsResult) jotform.GetFormInput {
+				if len(result.Value.Forms) == 0 {
+					return jotform.GetFormInput{}
+				}
+				return jotform.GetFormInput{FormID: result.Value.Forms[0].ID}
+			},
+			Found: sdkgo.GoTo(completeAfterFormLookup{}),
 		})),
 		dex.DefineStep(completeResult{}),
+		dex.DefineStep(completeAfterFormLookup{}),
 	}
 }
 
@@ -111,6 +127,27 @@ func (completeResult) Execute(ctx dex.Context, result jotform.ListFormsResult) (
 		return nil, err
 	}
 	return dex.GracefulComplete(result.Value), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete after confirming the first form by ID."
+type completeAfterFormLookup struct {
+	dex.StepDefaultsNoWaitFor[jotform.GetFormResult]
+}
+
+func (completeAfterFormLookup) GetStepType() string { return "CompleteAfterGetForm" }
+func (completeAfterFormLookup) Execute(ctx dex.Context, result jotform.GetFormResult) (*dex.StepDecision, error) {
+	listed, err := listFormsResultAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(listed.Value.Forms) == 0 || listed.Value.Forms[0].ID != result.Value.ID {
+		return nil, errors.New("Jotform form lookup did not match the listed form")
+	}
+	if err := formsPageAttribute.Set(ctx, listed.Value); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(listed.Value), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

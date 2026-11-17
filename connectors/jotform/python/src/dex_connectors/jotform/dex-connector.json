@@ -1,6 +1,6 @@
 {
   "connectorId": "jotform",
-  "releaseTag": "connectors/jotform/go/v0.2.0",
+  "releaseTag": "connectors/jotform/go/v0.3.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-jotform",

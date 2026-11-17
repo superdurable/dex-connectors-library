@@ -20,6 +20,7 @@ type Mock struct {
 	connection  mailgun.Connection
 	getEvents   *connectormock.Query[mailgun.GetEventsInput, mailgun.EventsOutput]
 	listDomains *connectormock.Query[mailgun.ListDomainsInput, mailgun.DomainsOutput]
+	sendMessage *connectormock.Mutation[mailgun.SendMessageInput, mailgun.SentMessage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,9 +30,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		getEvents:   connectormock.NewQuery[mailgun.GetEventsInput, mailgun.EventsOutput](t, mailgun.GetEventsDefinition),
 		listDomains: connectormock.NewQuery[mailgun.ListDomainsInput, mailgun.DomainsOutput](t, mailgun.ListDomainsDefinition),
+		sendMessage: connectormock.NewMutation[mailgun.SendMessageInput, mailgun.SentMessage](t, mailgun.SendMessageDefinition),
 	}
 	mock.getEvents.Default(GetEventsDefault())
 	mock.listDomains.Default(ListDomainsDefault())
+	mock.sendMessage.Default(SendMessageDefault())
 	connection, err := mailgun.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "mailgun", Name: connectionName})
 	if err != nil {
 		t.Fatalf("mailgun mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) ListDomains() *connectormock.Query[mailgun.ListDomainsInput, m
 	return mock.listDomains
 }
 
+// SendMessage returns the sendMessage script.
+func (mock *Mock) SendMessage() *connectormock.Mutation[mailgun.SendMessageInput, mailgun.SentMessage] {
+	return mock.sendMessage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetEvents() sdkgo.Query[mailgun.GetEventsInput, mailgun.EventsOutput] {
@@ -60,6 +68,9 @@ func (operations mockOperations) GetEvents() sdkgo.Query[mailgun.GetEventsInput,
 }
 func (operations mockOperations) ListDomains() sdkgo.Query[mailgun.ListDomainsInput, mailgun.DomainsOutput] {
 	return operations.mock.listDomains
+}
+func (operations mockOperations) SendMessage() sdkgo.Mutation[mailgun.SendMessageInput, mailgun.SentMessage] {
+	return operations.mock.sendMessage
 }
 
 // GetEventsListed selects the listed branch: Mailgun returned the requested result.
@@ -131,3 +142,37 @@ func ListDomainsListedDefault() connectormock.Case[mailgun.DomainsOutput] {
 func ListDomainsDefault() connectormock.Case[mailgun.DomainsOutput] {
 	return ListDomainsListedDefault()
 }
+
+// SendMessageSent selects the sent branch: Mailgun confirmed the queued message.
+func SendMessageSent(value mailgun.SentMessage, failure *sdkgo.Failure) connectormock.Case[mailgun.SentMessage] {
+	return connectormock.Branch(mailgun.SendMessageBranchSent, value, failure)
+}
+
+// SendMessageProviderRejected selects the providerRejected branch: Mailgun conclusively rejected the message.
+func SendMessageProviderRejected(value mailgun.SentMessage, failure *sdkgo.Failure) connectormock.Case[mailgun.SentMessage] {
+	return connectormock.Branch(mailgun.SendMessageBranchProviderRejected, value, failure)
+}
+
+// SendMessageUncertain returns an uncertain sendMessage outcome.
+func SendMessageUncertain(value mailgun.SentMessage, failure sdkgo.Failure) connectormock.Case[mailgun.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendMessageDefect selects the defect branch: Message input or credentials are invalid.
+func SendMessageDefect(value mailgun.SentMessage, failure *sdkgo.Failure) connectormock.Case[mailgun.SentMessage] {
+	return connectormock.Branch(mailgun.SendMessageBranchDefect, value, failure)
+}
+
+// SendMessageRetry asks Dex to retry the sendMessage Step, after the delay when it is positive.
+func SendMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[mailgun.SentMessage] {
+	return connectormock.Retry[mailgun.SentMessage](failure, after)
+}
+
+// SendMessageSentDefault is the manifest mock sentDefault: Mailgun queued one example message.
+func SendMessageSentDefault() connectormock.Case[mailgun.SentMessage] {
+	value := connectormock.MustDecodeOutput[mailgun.SentMessage](`{"id":"\u003c20261116.example@example.test\u003e"}`)
+	return connectormock.Branch(mailgun.SendMessageBranchSent, value, nil)
+}
+
+// SendMessageDefault is the manifest default, sentDefault, which New installs.
+func SendMessageDefault() connectormock.Case[mailgun.SentMessage] { return SendMessageSentDefault() }

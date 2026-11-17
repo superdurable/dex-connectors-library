@@ -1,15 +1,18 @@
 # Klaviyo connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/klaviyo/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/klaviyo/go@v0.3.0` after release.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/klaviyo`.
 
-Klaviyo profile lookup and deduplicated event submission for Dex. The connector uses the public REST/JSON API at revision `2026-10-15` with a private API key.
+Klaviyo profile lookup, listing, and deduplicated event submission for Dex. The connector uses the public REST/JSON API at revision `2026-10-15` with a private API key.
 
 | Operation | Endpoint | Happy branch |
 | --- | --- | --- |
 | `getProfile` | `GET /api/profiles/{id}` | `found` with profile ID and email |
 | `createEvent` | `POST /api/events` | `accepted` after HTTP 202 |
+| `listProfiles` | `GET /api/profiles` | `listed` with profile IDs, email addresses, and next cursor |
+
+`listProfiles` uses the existing `profiles:read` scope. `pageSize` accepts 1–100, with zero using 20; blank `cursor` starts the first page. Optional `email` selects an exact match. The response retains only profile IDs and email addresses, and extracts `page[cursor]` from Klaviyo's next link. Pass `nextCursor` into the next request. See [Get Profiles](https://developers.klaviyo.com/en/reference/get_profiles).
 
 `createEvent` derives `unique_id` as the SHA-256 hex digest of Dex's stable connector call ID and sends it in `data.attributes.unique_id`. Retries reuse the same value. Klaviyo deduplicates on `(profile, metric, unique_id)`, so a retry cannot produce a second event for the same logical call. The 202 response means the event was validated and queued, not that asynchronous processing completed. Klaviyo may silently drop events for test email domains such as `example.com` and `test.com`.
 
@@ -33,11 +36,11 @@ Sign in at [Klaviyo API keys](https://www.klaviyo.com/settings/account/api-keys)
 | Invalid input or missing credentials | `defect` |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [profile event example](go/examples/profile-event). Other branches fail its Flow. There is no `uncertain` branch because the unique ID makes event submission repeat-safe.
+Only happy branches are wired in the [profile event example](go/examples/profile-event). Other branches fail their Flow. There is no `uncertain` branch because the unique ID makes event submission repeat-safe.
 
 ## Mocks
 
-The generated `klaviyomock` defaults include a Meridian profile and an accepted signup event. The example's mock-backed real-Dex test checks that the event operation receives the profile email.
+The generated `klaviyomock` defaults include a Meridian profile, a profile page, and an accepted signup event. The example's mock-backed real-Dex test checks event submission and one profile-list page.
 
 ## Sources and verification
 

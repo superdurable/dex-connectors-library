@@ -8,7 +8,8 @@ import { LeverClient } from '../src/client.js';
 import { GetOpportunityInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/lever/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/lever/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getOpportunity');
 const connection = { provider: 'lever', name: 'lever' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeLever, '/api'));
 

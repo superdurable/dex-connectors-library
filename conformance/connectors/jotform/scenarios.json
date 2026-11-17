@@ -722,6 +722,2884 @@
       },
       "name": "getSubmission-providerCodeNotFound",
       "operation": "getSubmission"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200,\"content\":{\"id\":\"123\",\"title\":\"Example form\",\"status\":\"ENABLED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "123",
+          "status": "ENABLED",
+          "title": "Example form"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123"
+      },
+      "name": "getForm-found",
+      "operation": "getForm"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123"
+      },
+      "name": "getForm-notFound",
+      "operation": "getForm"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123"
+      },
+      "name": "getForm-providerRejected",
+      "operation": "getForm"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123"
+      },
+      "name": "getForm-invalidResponse",
+      "operation": "getForm"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad"
+      },
+      "name": "getForm-defect",
+      "operation": "getForm"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123"
+      },
+      "name": "getForm-rateLimit",
+      "operation": "getForm"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123"
+      },
+      "name": "getForm-serverUnavailable",
+      "operation": "getForm"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123"
+      },
+      "name": "getForm-transportFailure",
+      "operation": "getForm"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200,\"content\":[{\"id\":\"456\",\"form_id\":\"123\",\"status\":\"ACTIVE\",\"created_at\":\"2026-01-01 00:00:00\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123/submissions",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "limit": 2,
+          "offset": 1,
+          "submissions": [
+            {
+              "createdAt": "2026-01-01 00:00:00",
+              "formId": "123",
+              "id": "456",
+              "status": "ACTIVE"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123",
+        "limit": 2,
+        "offset": 1
+      },
+      "name": "listFormSubmissions-listed",
+      "operation": "listFormSubmissions"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123/submissions",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "submissions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123",
+        "limit": 2,
+        "offset": 1
+      },
+      "name": "listFormSubmissions-notFound",
+      "operation": "listFormSubmissions"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123/submissions",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "submissions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123",
+        "limit": 2,
+        "offset": 1
+      },
+      "name": "listFormSubmissions-providerRejected",
+      "operation": "listFormSubmissions"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123/submissions",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "submissions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123",
+        "limit": 2,
+        "offset": 1
+      },
+      "name": "listFormSubmissions-invalidResponse",
+      "operation": "listFormSubmissions"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "submissions": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad",
+        "limit": 2,
+        "offset": 1
+      },
+      "name": "listFormSubmissions-defect",
+      "operation": "listFormSubmissions"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123/submissions",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123",
+        "limit": 2,
+        "offset": 1
+      },
+      "name": "listFormSubmissions-rateLimit",
+      "operation": "listFormSubmissions"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123/submissions",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123",
+        "limit": 2,
+        "offset": 1
+      },
+      "name": "listFormSubmissions-serverUnavailable",
+      "operation": "listFormSubmissions"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/form/123/submissions",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "123",
+        "limit": 2,
+        "offset": 1
+      },
+      "name": "listFormSubmissions-transportFailure",
+      "operation": "listFormSubmissions"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200,\"content\":{\"id\":\"123\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": true,
+          "id": "123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-created",
+      "operation": "createForm"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-providerRejected",
+      "operation": "createForm"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": ""
+      },
+      "name": "createForm-defect",
+      "operation": "createForm"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-rateLimit",
+      "operation": "createForm"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-serverUnavailable",
+      "operation": "createForm"
+    },
+    {
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "name": "createForm-transportFailure",
+      "operation": "createForm"
+    },
+    {
+      "attempts": 3,
+      "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/user/forms",
+          "requestBody": {
+            "properties": {
+              "title": "Example form"
+            },
+            "questions": [
+              {
+                "name": "Header",
+                "order": "1",
+                "text": "Example form",
+                "type": "control_head"
+              },
+              {
+                "hint": "",
+                "labelAlign": "Auto",
+                "name": "answer",
+                "order": "2",
+                "readonly": "No",
+                "required": "No",
+                "size": "20",
+                "text": "Answer",
+                "type": "control_textbox",
+                "validation": "None"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+      "input": {
+        "title": "Example form"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "29006ae2-73c5-5591-a918-de3d3b6a441d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createForm-uncertain",
+      "operation": "createForm"
+    },
+    {
+      "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200}",
+          "form": {
+            "properties[title]": [
+              "New title"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/properties",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "id": "123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "input": {
+        "formId": "123",
+        "title": "New title"
+      },
+      "name": "updateFormTitle-updated",
+      "operation": "updateFormTitle"
+    },
+    {
+      "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "properties[title]": [
+              "New title"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/properties",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "input": {
+        "formId": "123",
+        "title": "New title"
+      },
+      "name": "updateFormTitle-notFound",
+      "operation": "updateFormTitle"
+    },
+    {
+      "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "properties[title]": [
+              "New title"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/properties",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "input": {
+        "formId": "123",
+        "title": "New title"
+      },
+      "name": "updateFormTitle-providerRejected",
+      "operation": "updateFormTitle"
+    },
+    {
+      "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "exchanges": [
+        {
+          "body": "bad",
+          "form": {
+            "properties[title]": [
+              "New title"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/properties",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "input": {
+        "formId": "123",
+        "title": "New title"
+      },
+      "name": "updateFormTitle-invalidResponse",
+      "operation": "updateFormTitle"
+    },
+    {
+      "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "input": {
+        "formId": "bad",
+        "title": "New title"
+      },
+      "name": "updateFormTitle-defect",
+      "operation": "updateFormTitle"
+    },
+    {
+      "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "properties[title]": [
+              "New title"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/properties",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "input": {
+        "formId": "123",
+        "title": "New title"
+      },
+      "name": "updateFormTitle-rateLimit",
+      "operation": "updateFormTitle"
+    },
+    {
+      "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "properties[title]": [
+              "New title"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/properties",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "input": {
+        "formId": "123",
+        "title": "New title"
+      },
+      "name": "updateFormTitle-serverUnavailable",
+      "operation": "updateFormTitle"
+    },
+    {
+      "callId": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "exchanges": [
+        {
+          "form": {
+            "properties[title]": [
+              "New title"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/properties",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "84a46617-bafb-5fb4-82b0-b06f1a3948cb",
+      "input": {
+        "formId": "123",
+        "title": "New title"
+      },
+      "name": "updateFormTitle-transportFailure",
+      "operation": "updateFormTitle"
+    },
+    {
+      "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "id": "123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "input": {
+        "formId": "123"
+      },
+      "name": "deleteForm-deleted",
+      "operation": "deleteForm"
+    },
+    {
+      "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "input": {
+        "formId": "123"
+      },
+      "name": "deleteForm-notFound",
+      "operation": "deleteForm"
+    },
+    {
+      "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "input": {
+        "formId": "123"
+      },
+      "name": "deleteForm-providerRejected",
+      "operation": "deleteForm"
+    },
+    {
+      "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "input": {
+        "formId": "123"
+      },
+      "name": "deleteForm-invalidResponse",
+      "operation": "deleteForm"
+    },
+    {
+      "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "input": {
+        "formId": "bad"
+      },
+      "name": "deleteForm-defect",
+      "operation": "deleteForm"
+    },
+    {
+      "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "input": {
+        "formId": "123"
+      },
+      "name": "deleteForm-rateLimit",
+      "operation": "deleteForm"
+    },
+    {
+      "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "input": {
+        "formId": "123"
+      },
+      "name": "deleteForm-serverUnavailable",
+      "operation": "deleteForm"
+    },
+    {
+      "callId": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/form/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7f83f826-f135-5c11-9083-8d6c593ff2f8",
+      "input": {
+        "formId": "123"
+      },
+      "name": "deleteForm-transportFailure",
+      "operation": "deleteForm"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200,\"content\":{\"id\":\"456\"}}",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": true,
+          "id": "456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-created",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-providerRejected",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "bad"
+      },
+      "name": "createSubmission-defect",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-rateLimit",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-serverUnavailable",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "name": "createSubmission-transportFailure",
+      "operation": "createSubmission"
+    },
+    {
+      "attempts": 3,
+      "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/form/123/submissions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "formId": "123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "dc58cfa4-b0ff-559c-8c49-5a23600ec91b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSubmission-uncertain",
+      "operation": "createSubmission"
+    },
+    {
+      "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200}",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "id": "456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "submissionId": "456"
+      },
+      "name": "updateSubmission-updated",
+      "operation": "updateSubmission"
+    },
+    {
+      "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "submissionId": "456"
+      },
+      "name": "updateSubmission-notFound",
+      "operation": "updateSubmission"
+    },
+    {
+      "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "submissionId": "456"
+      },
+      "name": "updateSubmission-providerRejected",
+      "operation": "updateSubmission"
+    },
+    {
+      "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "exchanges": [
+        {
+          "body": "bad",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "submissionId": "456"
+      },
+      "name": "updateSubmission-invalidResponse",
+      "operation": "updateSubmission"
+    },
+    {
+      "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "submissionId": "bad"
+      },
+      "name": "updateSubmission-defect",
+      "operation": "updateSubmission"
+    },
+    {
+      "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "submissionId": "456"
+      },
+      "name": "updateSubmission-rateLimit",
+      "operation": "updateSubmission"
+    },
+    {
+      "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "submissionId": "456"
+      },
+      "name": "updateSubmission-serverUnavailable",
+      "operation": "updateSubmission"
+    },
+    {
+      "callId": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "exchanges": [
+        {
+          "form": {
+            "submission[1]": [
+              "Ada"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2d450e9-da1f-5e5c-a5cf-f1b25915a480",
+      "input": {
+        "answers": {
+          "1": "Ada"
+        },
+        "submissionId": "456"
+      },
+      "name": "updateSubmission-transportFailure",
+      "operation": "updateSubmission"
+    },
+    {
+      "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "id": "456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "input": {
+        "submissionId": "456"
+      },
+      "name": "deleteSubmission-deleted",
+      "operation": "deleteSubmission"
+    },
+    {
+      "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "input": {
+        "submissionId": "456"
+      },
+      "name": "deleteSubmission-notFound",
+      "operation": "deleteSubmission"
+    },
+    {
+      "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "input": {
+        "submissionId": "456"
+      },
+      "name": "deleteSubmission-providerRejected",
+      "operation": "deleteSubmission"
+    },
+    {
+      "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "input": {
+        "submissionId": "456"
+      },
+      "name": "deleteSubmission-invalidResponse",
+      "operation": "deleteSubmission"
+    },
+    {
+      "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "input": {
+        "submissionId": "bad"
+      },
+      "name": "deleteSubmission-defect",
+      "operation": "deleteSubmission"
+    },
+    {
+      "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "input": {
+        "submissionId": "456"
+      },
+      "name": "deleteSubmission-rateLimit",
+      "operation": "deleteSubmission"
+    },
+    {
+      "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "input": {
+        "submissionId": "456"
+      },
+      "name": "deleteSubmission-serverUnavailable",
+      "operation": "deleteSubmission"
+    },
+    {
+      "callId": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/submission/456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "342e94c3-b900-5859-aca0-3a513ec99f77",
+      "input": {
+        "submissionId": "456"
+      },
+      "name": "deleteSubmission-transportFailure",
+      "operation": "deleteSubmission"
     }
   ],
   "schemaVersion": 1

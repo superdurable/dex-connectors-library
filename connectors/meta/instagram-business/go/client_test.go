@@ -102,3 +102,80 @@ func TestListMediaRejectsMalformedResponse(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ListMediaBranchInvalidResponse, result.Branch)
 }
+
+func TestGetAccountProjectsPublicFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/17800000000000001", r.URL.Path)
+		require.Equal(t, "id,username,media_count", r.URL.Query().Get("fields"))
+		require.Equal(t, "Bearer "+testUserToken, r.Header.Get("Authorization"))
+		_, err := w.Write([]byte(`{"id":"17800000000000001","username":"example_business","media_count":7,"access_token":"private"}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	result, err := sdkgo.RunQuery(queryContext{}, newTestClient(t, server.URL).GetAccount(), testConnection, GetAccountInput{IGUserID: "17800000000000001"})
+	require.NoError(t, err)
+	require.Equal(t, GetAccountBranchFound, result.Branch)
+	require.Equal(t, int64(7), result.Value.MediaCount)
+	encoded, err := json.Marshal(result.Value)
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "private")
+}
+
+func TestGetMediaProjectsPublicFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/17900000000000001", r.URL.Path)
+		require.Equal(t, "id,caption,media_type,timestamp,permalink", r.URL.Query().Get("fields"))
+		_, err := w.Write([]byte(`{"id":"17900000000000001","caption":"Hello","media_type":"IMAGE","timestamp":"2026-11-08T10:00:00+0000","permalink":"https://www.instagram.com/p/example/","comments":{"data":[{"text":"private"}]}}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	result, err := sdkgo.RunQuery(queryContext{}, newTestClient(t, server.URL).GetMedia(), testConnection, GetMediaInput{MediaID: "17900000000000001"})
+	require.NoError(t, err)
+	require.Equal(t, GetMediaBranchFound, result.Branch)
+	require.Equal(t, "Hello", result.Value.Caption)
+	encoded, err := json.Marshal(result.Value)
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "private")
+}
+
+func TestGetAccountAndMediaFailures(t *testing.T) {
+	for _, operation := range []string{"getAccount", "getMedia"} {
+		t.Run(operation, func(t *testing.T) {
+			var calls atomic.Int32
+			var status atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				calls.Add(1)
+				w.WriteHeader(int(status.Load()))
+				_, err := w.Write([]byte(`{"error":{"message":"private"}}`))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			client := newTestClient(t, server.URL)
+			invoke := func(id string) (sdkgo.BranchID, error) {
+				if operation == "getAccount" {
+					result, err := sdkgo.RunQuery(queryContext{}, client.GetAccount(), testConnection, GetAccountInput{IGUserID: id})
+					return result.Branch, err
+				}
+				result, err := sdkgo.RunQuery(queryContext{}, client.GetMedia(), testConnection, GetMediaInput{MediaID: id})
+				return result.Branch, err
+			}
+			branch, err := invoke("bad/id")
+			require.NoError(t, err)
+			require.NotEmpty(t, branch)
+			require.Zero(t, calls.Load())
+			for _, code := range []int{http.StatusTooManyRequests, http.StatusServiceUnavailable} {
+				status.Store(int32(code))
+				_, err := invoke("17900000000000001")
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, err, &retry)
+				require.NotContains(t, err.Error(), "private")
+			}
+			for _, code := range []int{http.StatusNotFound, http.StatusForbidden, http.StatusOK} {
+				status.Store(int32(code))
+				branch, err := invoke("17900000000000001")
+				require.NoError(t, err)
+				require.NotEmpty(t, branch)
+			}
+		})
+	}
+}
