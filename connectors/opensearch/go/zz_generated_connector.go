@@ -45,6 +45,7 @@ type Operations interface {
 	IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument]
 	DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DeletedDocument]
 	SearchDocuments() sdkgo.Query[SearchDocumentsInput, SearchPage]
+	GetDocument() sdkgo.Query[GetDocumentInput, RetrievedDocument]
 }
 
 type clientOperations struct{ client *Client }
@@ -57,6 +58,9 @@ func (operations clientOperations) DeleteDocument() sdkgo.Mutation[DeleteDocumen
 }
 func (operations clientOperations) SearchDocuments() sdkgo.Query[SearchDocumentsInput, SearchPage] {
 	return operations.client.SearchDocuments()
+}
+func (operations clientOperations) GetDocument() sdkgo.Query[GetDocumentInput, RetrievedDocument] {
+	return operations.client.GetDocument()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -412,6 +416,89 @@ func NewSearchDocumentsStep[IN any](config SearchDocumentsStepConfig[IN]) sdkgo.
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SearchDocumentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDocumentBranchFound sdkgo.BranchID = "found"
+const GetDocumentBranchNotFound sdkgo.BranchID = "notFound"
+const GetDocumentBranchIndexNotFound sdkgo.BranchID = "indexNotFound"
+const GetDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDocumentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDocumentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDocumentBranchFound, Description: "OpenSearch returned the document."},
+		{ID: GetDocumentBranchNotFound, Description: "The document does not exist.", Optional: true},
+		{ID: GetDocumentBranchIndexNotFound, Description: "The index does not exist.", Optional: true},
+		{ID: GetDocumentBranchProviderRejected, Description: "OpenSearch denied retrieval.", Optional: true},
+		{ID: GetDocumentBranchInvalidResponse, Description: "OpenSearch returned invalid document data.", Optional: true},
+		{ID: GetDocumentBranchDefect, Description: "Index, document ID, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDocumentResult = sdkgo.QueryResult[RetrievedDocument]
+
+type GetDocumentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=opensearch"`
+	operationID                    struct{}                                             `connector:"operationId=getDocument"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDocumentInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDocumentResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDocumentResult]                      `connector:"branch=notFound,optional"`
+	IndexNotFound                  sdkgo.Target[GetDocumentResult]                      `connector:"branch=indexNotFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDocumentResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDocumentResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDocumentResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RetrievedDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewGetDocumentStep[IN any](config GetDocumentStepConfig[IN]) sdkgo.QueryStep[IN, GetDocumentInput, RetrievedDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("opensearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDocumentInput, RetrievedDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[GetDocumentResult], 0, 6)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDocumentBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDocumentBranchNotFound))
+			}
+			if config.IndexNotFound.HasStep() {
+				branches = append(branches, config.IndexNotFound.BranchTarget(GetDocumentBranchIndexNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDocumentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDocumentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDocumentBranchDefect))
 			}
 			return branches
 		}(),

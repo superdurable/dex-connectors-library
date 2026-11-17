@@ -28,6 +28,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[opensearch.SearchPage](`{"total":1,"relation":"eq","hits":[{"index":"products","id":"sku-42","score":1.25,"source":{"title":"Meridian","category":"release"}}]}`)
 			return err
 		}},
+		{name: "getDocument/productFound/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[opensearch.RetrievedDocument](`{"index":"products","id":"sku-42","source":{"title":"Meridian","category":"release"},"version":1}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -46,5 +50,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SearchDocuments().Definition().Operation.OperationID != "searchDocuments" {
 		t.Errorf("searchDocuments mock has another definition")
+	}
+	if mock.GetDocument().Definition().Operation.OperationID != "getDocument" {
+		t.Errorf("getDocument mock has another definition")
 	}
 }
