@@ -51,6 +51,14 @@ type Operations interface {
 	TrashProject() sdkgo.Mutation[GetProjectInput, ProjectActionResult]
 	ListProjects() sdkgo.Query[ListProjectsInput, ProjectsPage]
 	GetProject() sdkgo.Query[GetProjectInput, Project]
+	ListMessages() sdkgo.Query[ListMessagesInput, MessagesPage]
+	GetMessage() sdkgo.Query[GetMessageInput, Message]
+	CreateMessage() sdkgo.Mutation[CreateMessageInput, Message]
+	UpdateMessage() sdkgo.Mutation[UpdateMessageInput, Message]
+	PublishMessage() sdkgo.Mutation[GetMessageInput, Message]
+	PinMessage() sdkgo.Mutation[GetMessageInput, MessageActionResult]
+	UnpinMessage() sdkgo.Mutation[GetMessageInput, MessageActionResult]
+	TrashMessage() sdkgo.Mutation[GetMessageInput, MessageActionResult]
 	ListPeople() sdkgo.Query[ListPeopleInput, PeoplePage]
 	ListProjectPeople() sdkgo.Query[ListProjectPeopleInput, PeoplePage]
 	GetPerson() sdkgo.Query[GetPersonInput, Person]
@@ -96,6 +104,30 @@ func (operations clientOperations) ListProjects() sdkgo.Query[ListProjectsInput,
 }
 func (operations clientOperations) GetProject() sdkgo.Query[GetProjectInput, Project] {
 	return operations.client.GetProject()
+}
+func (operations clientOperations) ListMessages() sdkgo.Query[ListMessagesInput, MessagesPage] {
+	return operations.client.ListMessages()
+}
+func (operations clientOperations) GetMessage() sdkgo.Query[GetMessageInput, Message] {
+	return operations.client.GetMessage()
+}
+func (operations clientOperations) CreateMessage() sdkgo.Mutation[CreateMessageInput, Message] {
+	return operations.client.CreateMessage()
+}
+func (operations clientOperations) UpdateMessage() sdkgo.Mutation[UpdateMessageInput, Message] {
+	return operations.client.UpdateMessage()
+}
+func (operations clientOperations) PublishMessage() sdkgo.Mutation[GetMessageInput, Message] {
+	return operations.client.PublishMessage()
+}
+func (operations clientOperations) PinMessage() sdkgo.Mutation[GetMessageInput, MessageActionResult] {
+	return operations.client.PinMessage()
+}
+func (operations clientOperations) UnpinMessage() sdkgo.Mutation[GetMessageInput, MessageActionResult] {
+	return operations.client.UnpinMessage()
+}
+func (operations clientOperations) TrashMessage() sdkgo.Mutation[GetMessageInput, MessageActionResult] {
+	return operations.client.TrashMessage()
 }
 func (operations clientOperations) ListPeople() sdkgo.Query[ListPeopleInput, PeoplePage] {
 	return operations.client.ListPeople()
@@ -881,6 +913,602 @@ func NewGetProjectStep[IN any](config GetProjectStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListMessagesBranchListed sdkgo.BranchID = "listed"
+const ListMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListMessagesBranchListed, Description: "Basecamp returned the requested result."},
+		{ID: ListMessagesBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: ListMessagesBranchInvalidResponse, Description: "Basecamp returned invalid message JSON.", Optional: true},
+		{ID: ListMessagesBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListMessagesResult = sdkgo.QueryResult[MessagesPage]
+
+type ListMessagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=basecamp"`
+	operationID                    struct{}                                        `connector:"operationId=listMessages"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListMessagesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListMessagesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListMessagesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListMessagesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListMessagesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MessagesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListMessagesStep[IN any](config ListMessagesStepConfig[IN]) sdkgo.QueryStep[IN, ListMessagesInput, MessagesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMessagesInput, MessagesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListMessagesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListMessagesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListMessagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListMessagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListMessagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetMessageBranchFound sdkgo.BranchID = "found"
+const GetMessageBranchNotFound sdkgo.BranchID = "notFound"
+const GetMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetMessageDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetMessageBranchFound, Description: "Basecamp returned the requested result."},
+		{ID: GetMessageBranchNotFound, Description: "The message does not exist.", Optional: true},
+		{ID: GetMessageBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: GetMessageBranchInvalidResponse, Description: "Basecamp returned invalid message JSON.", Optional: true},
+		{ID: GetMessageBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetMessageResult = sdkgo.QueryResult[Message]
+
+type GetMessageStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=basecamp"`
+	operationID                    struct{}                                   `connector:"operationId=getMessage"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetMessageInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetMessageResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetMessageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetMessageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetMessageResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetMessageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetMessageStep[IN any](config GetMessageStepConfig[IN]) sdkgo.QueryStep[IN, GetMessageInput, Message] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMessageInput, Message]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetMessageResult] {
+			branches := make([]sdkgo.BranchTarget[GetMessageResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetMessageBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateMessageBranchCreated sdkgo.BranchID = "created"
+const CreateMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateMessageBranchCreated, Description: "Basecamp returned the requested result."},
+		{ID: CreateMessageBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: CreateMessageBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: CreateMessageBranchUncertain, Description: "Creation cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateMessageResult = sdkgo.MutationResult[Message]
+
+type CreateMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                      `connector:"operationId=createMessage"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateMessageInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateMessageResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateMessageResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateMessageResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateMessageResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateMessageStep[IN any](config CreateMessageStepConfig[IN]) sdkgo.MutationStep[IN, CreateMessageInput, Message] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateMessageInput, Message]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateMessageResult] {
+			branches := make([]sdkgo.BranchTarget[CreateMessageResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateMessageBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateMessageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateMessageBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateMessageBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateMessageBranchUpdated sdkgo.BranchID = "updated"
+const UpdateMessageBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateMessageBranchUpdated, Description: "Basecamp returned the requested result."},
+		{ID: UpdateMessageBranchNotFound, Description: "The message does not exist.", Optional: true},
+		{ID: UpdateMessageBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: UpdateMessageBranchInvalidResponse, Description: "Basecamp returned invalid message JSON.", Optional: true},
+		{ID: UpdateMessageBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateMessageResult = sdkgo.MutationResult[Message]
+
+type UpdateMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                      `connector:"operationId=updateMessage"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateMessageInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateMessageResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateMessageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateMessageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateMessageResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateMessageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateMessageStep[IN any](config UpdateMessageStepConfig[IN]) sdkgo.MutationStep[IN, UpdateMessageInput, Message] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateMessageInput, Message]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateMessageResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateMessageResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateMessageBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PublishMessageBranchPublished sdkgo.BranchID = "published"
+const PublishMessageBranchNotFound sdkgo.BranchID = "notFound"
+const PublishMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishMessageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PublishMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishMessageBranchPublished, Description: "Basecamp returned the requested result."},
+		{ID: PublishMessageBranchNotFound, Description: "The message does not exist.", Optional: true},
+		{ID: PublishMessageBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: PublishMessageBranchInvalidResponse, Description: "Basecamp returned invalid message JSON.", Optional: true},
+		{ID: PublishMessageBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type PublishMessageResult = sdkgo.MutationResult[Message]
+
+type PublishMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                      `connector:"operationId=publishMessage"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetMessageInput                      `connector:"mapToOperationInput"`
+	Published                         sdkgo.Target[PublishMessageResult]            `connector:"branch=published"`
+	NotFound                          sdkgo.Target[PublishMessageResult]            `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[PublishMessageResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PublishMessageResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PublishMessageResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Message]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewPublishMessageStep[IN any](config PublishMessageStepConfig[IN]) sdkgo.MutationStep[IN, GetMessageInput, Message] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetMessageInput, Message]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishMessageResult] {
+			branches := make([]sdkgo.BranchTarget[PublishMessageResult], 0, 5)
+			if config.Published.HasStep() {
+				branches = append(branches, config.Published.BranchTarget(PublishMessageBranchPublished))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(PublishMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishMessageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PublishMessageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PinMessageBranchPinned sdkgo.BranchID = "pinned"
+const PinMessageBranchNotFound sdkgo.BranchID = "notFound"
+const PinMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PinMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PinMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "pinMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PinMessageBranchPinned, Description: "Basecamp returned the requested result."},
+		{ID: PinMessageBranchNotFound, Description: "The message does not exist.", Optional: true},
+		{ID: PinMessageBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: PinMessageBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type PinMessageResult = sdkgo.MutationResult[MessageActionResult]
+
+type PinMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                                  `connector:"operationId=pinMessage"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetMessageInput                                  `connector:"mapToOperationInput"`
+	Pinned                            sdkgo.Target[PinMessageResult]                            `connector:"branch=pinned"`
+	NotFound                          sdkgo.Target[PinMessageResult]                            `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[PinMessageResult]                            `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[PinMessageResult]                            `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessageActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewPinMessageStep[IN any](config PinMessageStepConfig[IN]) sdkgo.MutationStep[IN, GetMessageInput, MessageActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetMessageInput, MessageActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PinMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PinMessageResult] {
+			branches := make([]sdkgo.BranchTarget[PinMessageResult], 0, 4)
+			if config.Pinned.HasStep() {
+				branches = append(branches, config.Pinned.BranchTarget(PinMessageBranchPinned))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(PinMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PinMessageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PinMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UnpinMessageBranchUnpinned sdkgo.BranchID = "unpinned"
+const UnpinMessageBranchNotFound sdkgo.BranchID = "notFound"
+const UnpinMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UnpinMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UnpinMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "unpinMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UnpinMessageBranchUnpinned, Description: "Basecamp returned the requested result."},
+		{ID: UnpinMessageBranchNotFound, Description: "The message does not exist.", Optional: true},
+		{ID: UnpinMessageBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: UnpinMessageBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UnpinMessageResult = sdkgo.MutationResult[MessageActionResult]
+
+type UnpinMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                                  `connector:"operationId=unpinMessage"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetMessageInput                                  `connector:"mapToOperationInput"`
+	Unpinned                          sdkgo.Target[UnpinMessageResult]                          `connector:"branch=unpinned"`
+	NotFound                          sdkgo.Target[UnpinMessageResult]                          `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UnpinMessageResult]                          `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UnpinMessageResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessageActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUnpinMessageStep[IN any](config UnpinMessageStepConfig[IN]) sdkgo.MutationStep[IN, GetMessageInput, MessageActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetMessageInput, MessageActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UnpinMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UnpinMessageResult] {
+			branches := make([]sdkgo.BranchTarget[UnpinMessageResult], 0, 4)
+			if config.Unpinned.HasStep() {
+				branches = append(branches, config.Unpinned.BranchTarget(UnpinMessageBranchUnpinned))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UnpinMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UnpinMessageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UnpinMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const TrashMessageBranchTrashed sdkgo.BranchID = "trashed"
+const TrashMessageBranchNotFound sdkgo.BranchID = "notFound"
+const TrashMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrashMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrashMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trashMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrashMessageBranchTrashed, Description: "Basecamp returned the requested result."},
+		{ID: TrashMessageBranchNotFound, Description: "The message does not exist.", Optional: true},
+		{ID: TrashMessageBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: TrashMessageBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type TrashMessageResult = sdkgo.MutationResult[MessageActionResult]
+
+type TrashMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                                  `connector:"operationId=trashMessage"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetMessageInput                                  `connector:"mapToOperationInput"`
+	Trashed                           sdkgo.Target[TrashMessageResult]                          `connector:"branch=trashed"`
+	NotFound                          sdkgo.Target[TrashMessageResult]                          `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[TrashMessageResult]                          `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TrashMessageResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MessageActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewTrashMessageStep[IN any](config TrashMessageStepConfig[IN]) sdkgo.MutationStep[IN, GetMessageInput, MessageActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetMessageInput, MessageActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrashMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrashMessageResult] {
+			branches := make([]sdkgo.BranchTarget[TrashMessageResult], 0, 4)
+			if config.Trashed.HasStep() {
+				branches = append(branches, config.Trashed.BranchTarget(TrashMessageBranchTrashed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(TrashMessageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrashMessageBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrashMessageBranchDefect))
 			}
 			return branches
 		}(),

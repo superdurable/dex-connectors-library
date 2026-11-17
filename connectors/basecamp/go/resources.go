@@ -24,6 +24,8 @@ type Project struct {
 	Name string `json:"name"`
 	// TodoSetID identifies the project's to-do set from its dock, when present.
 	TodoSetID string `json:"todoSetId,omitempty"`
+	// MessageBoardID identifies the project's message board from its dock, when present.
+	MessageBoardID string `json:"messageBoardId,omitempty"`
 }
 
 // ProjectsPage contains one provider page of active projects.
@@ -251,7 +253,9 @@ func decodeProject(body []byte, expectedID string) (Project, error) {
 	for _, dockItem := range record.Dock {
 		if dockItem.Name == "todoset" && dockItem.ID > 0 {
 			project.TodoSetID = strconv.FormatInt(dockItem.ID, 10)
-			break
+		}
+		if dockItem.Name == "message_board" && dockItem.ID > 0 {
+			project.MessageBoardID = strconv.FormatInt(dockItem.ID, 10)
 		}
 	}
 	return project, nil

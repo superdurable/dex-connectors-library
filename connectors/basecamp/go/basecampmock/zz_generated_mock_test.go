@@ -44,6 +44,38 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
 			return err
 		}},
+		{name: "listMessages/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.MessagesPage](`{"messages":[{"id":"789","subject":"Example Message","status":"active"}]}`)
+			return err
+		}},
+		{name: "getMessage/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Message](`{"id":"789","subject":"Example Message","status":"active"}`)
+			return err
+		}},
+		{name: "createMessage/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Message](`{"id":"789","subject":"Example Message","status":"drafted"}`)
+			return err
+		}},
+		{name: "updateMessage/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Message](`{"id":"789","subject":"Example Message","status":"active"}`)
+			return err
+		}},
+		{name: "publishMessage/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Message](`{"id":"789","subject":"Example Message","status":"active"}`)
+			return err
+		}},
+		{name: "pinMessage/pinnedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.MessageActionResult](`{"messageId":"789","status":"pinned"}`)
+			return err
+		}},
+		{name: "unpinMessage/unpinnedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.MessageActionResult](`{"messageId":"789","status":"unpinned"}`)
+			return err
+		}},
+		{name: "trashMessage/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.MessageActionResult](`{"messageId":"789","status":"trashed"}`)
+			return err
+		}},
 		{name: "listPeople/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[basecamp.PeoplePage](`{"people":[{"id":"789","name":"Example Person"}]}`)
 			return err
@@ -158,6 +190,30 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
 		t.Errorf("getProject mock has another definition")
+	}
+	if mock.ListMessages().Definition().Operation.OperationID != "listMessages" {
+		t.Errorf("listMessages mock has another definition")
+	}
+	if mock.GetMessage().Definition().Operation.OperationID != "getMessage" {
+		t.Errorf("getMessage mock has another definition")
+	}
+	if mock.CreateMessage().Definition().Operation.OperationID != "createMessage" {
+		t.Errorf("createMessage mock has another definition")
+	}
+	if mock.UpdateMessage().Definition().Operation.OperationID != "updateMessage" {
+		t.Errorf("updateMessage mock has another definition")
+	}
+	if mock.PublishMessage().Definition().Operation.OperationID != "publishMessage" {
+		t.Errorf("publishMessage mock has another definition")
+	}
+	if mock.PinMessage().Definition().Operation.OperationID != "pinMessage" {
+		t.Errorf("pinMessage mock has another definition")
+	}
+	if mock.UnpinMessage().Definition().Operation.OperationID != "unpinMessage" {
+		t.Errorf("unpinMessage mock has another definition")
+	}
+	if mock.TrashMessage().Definition().Operation.OperationID != "trashMessage" {
+		t.Errorf("trashMessage mock has another definition")
 	}
 	if mock.ListPeople().Definition().Operation.OperationID != "listPeople" {
 		t.Errorf("listPeople mock has another definition")

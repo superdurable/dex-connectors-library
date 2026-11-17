@@ -75,5 +75,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"grantProjectAccess":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.GrantProjectAccess(), reference, scenario.CallID),
 		"revokeProjectAccess": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.RevokeProjectAccess(), reference, scenario.CallID),
 		"enrollPerson":        newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.EnrollPerson(), reference, scenario.CallID),
+		"listMessages":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListMessages(), reference),
+		"getMessage":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetMessage(), reference),
+		"createMessage":       newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateMessage(), reference, scenario.CallID),
+		"updateMessage":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateMessage(), reference, scenario.CallID),
+		"publishMessage":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PublishMessage(), reference, scenario.CallID),
+		"pinMessage":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PinMessage(), reference, scenario.CallID),
+		"unpinMessage":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UnpinMessage(), reference, scenario.CallID),
+		"trashMessage":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.TrashMessage(), reference, scenario.CallID),
 	}}
 }

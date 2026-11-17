@@ -80,6 +80,7 @@ spec:
         - For to-dos, open https://3.basecamp.com > your account > project > To-dos > to-do list. Use the numeric account ID from listAccounts and the to-do list or to-do ID in the selected page URL or API result. A non-blank content title is required; description is rich text, dates are YYYY-MM-DD, and person IDs come from People. Blank optional dates or description clear them on replacement; empty assignee and subscriber lists clear them. Basecamp PUT replaces all editable fields, so supply the full current state from getTodo when updating. Completion and trash actions use the to-do ID; reposition requires a positive position and optional same-project parent ID.
         - For to-do lists, open https://3.basecamp.com > your account > project > To-dos. Use the numeric to-do set ID from getProject's dock or the Basecamp API, and the selected list ID from its URL or listTodoLists. Name is non-blank; description is non-secret rich text and blank clears it on update. Position is one-based among incomplete lists. Trashing uses the list's recording ID.
         - For people, open https://3.basecamp.com > your account > People or a project > People. Use the numeric account, project, and person IDs from listAccounts, listProjects, and listPeople or their page URLs. Project grant and revoke require an existing person ID; enrollment requires a non-blank name and email address, optionally project IDs, and can send an invitation email. Blank project IDs enroll only at account level; notify omitted uses Basecamp's invitation default, and false suppresses new invitation emails. Email is personal data, not a credential; some profiles redact it for non-admin callers.
+        - For messages, open https://3.basecamp.com > your account > project > Message Board. Use the numeric message board ID from getProject's dock and message ID from the selected message URL or listMessages. Subject is a non-blank title; content is non-secret rich text and blank clears it on update. Create defaults to a draft; publish true posts immediately. Omitted subscribers use Basecamp's all-project default, while an explicit empty list subscribes no one. Publishing a draft notifies its subscribers once; pin, unpin, and trash use the message recording ID.
     oauth2:
       authorizationEndpoint: https://launchpad.37signals.com/authorization/new
       tokenEndpoint: https://launchpad.37signals.com/authorization/token
@@ -219,6 +220,169 @@ spec:
           default: true
           description: One project exists.
           output: {id: '123', name: Example Project}
+    - name: listMessages
+      goName: ListMessages
+      inputType: ListMessagesInput
+      outputType: MessagesPage
+      kind: query
+      description: List active messages on one message board.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid message JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Basecamp returned the requested result.
+          output: {messages: [{id: '789', subject: Example Message, status: active}]}
+    - name: getMessage
+      goName: GetMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: query
+      description: Read one Basecamp message.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The message does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid message JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '789', subject: Example Message, status: active}
+    - name: createMessage
+      goName: CreateMessage
+      inputType: CreateMessageInput
+      outputType: Message
+      kind: mutation
+      description: Create a message as a draft or published post.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '789', subject: Example Message, status: drafted}
+    - name: updateMessage
+      goName: UpdateMessage
+      inputType: UpdateMessageInput
+      outputType: Message
+      kind: mutation
+      description: Replace a message's subject and content.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The message does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid message JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '789', subject: Example Message, status: active}
+    - name: publishMessage
+      goName: PublishMessage
+      inputType: GetMessageInput
+      outputType: Message
+      kind: mutation
+      description: Publish a draft message once.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: published, goName: Published, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The message does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid message JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: publishedDefault
+          branch: published
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '789', subject: Example Message, status: active}
+    - name: pinMessage
+      goName: PinMessage
+      inputType: GetMessageInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Pin a message.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: pinned, goName: Pinned, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The message does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: pinnedDefault
+          branch: pinned
+          default: true
+          description: Basecamp returned the requested result.
+          output: {messageId: '789', status: pinned}
+    - name: unpinMessage
+      goName: UnpinMessage
+      inputType: GetMessageInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Unpin a message.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unpinned, goName: Unpinned, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The message does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: unpinnedDefault
+          branch: unpinned
+          default: true
+          description: Basecamp returned the requested result.
+          output: {messageId: '789', status: unpinned}
+    - name: trashMessage
+      goName: TrashMessage
+      inputType: GetMessageInput
+      outputType: MessageActionResult
+      kind: mutation
+      description: Trash a message recording.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: trashed, goName: Trashed, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The message does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: trashedDefault
+          branch: trashed
+          default: true
+          description: Basecamp returned the requested result.
+          output: {messageId: '789', status: trashed}
     - name: listPeople
       goName: ListPeople
       inputType: ListPeopleInput

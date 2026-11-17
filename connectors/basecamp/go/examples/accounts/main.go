@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{accounts.NewFlow(connection), accounts.NewProjectsFlow(connection), accounts.NewProjectCreateFlow(connection), accounts.NewTodoCreateFlow(connection), accounts.NewTodoListCreateFlow(connection), accounts.NewPersonEnrollmentFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{accounts.NewFlow(connection), accounts.NewProjectsFlow(connection), accounts.NewProjectCreateFlow(connection), accounts.NewTodoCreateFlow(connection), accounts.NewTodoListCreateFlow(connection), accounts.NewPersonEnrollmentFlow(connection), accounts.NewMessageCreateFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Basecamp list Flow: %w", err)
 	}
