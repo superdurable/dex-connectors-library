@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: sendgrid
   displayName: SendGrid
-  description: Read SendGrid global statistics and transactional templates.
+  description: Read SendGrid statistics and templates, and manage marketing contacts, lists, and email delivery.
   company: SendGrid
   categories: [communication, marketing]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: sendgrid
   languages:
@@ -52,7 +52,7 @@ spec:
       startURL: https://app.sendgrid.com/settings/api_keys
       steps:
         - Open https://app.sendgrid.com/settings/api_keys and sign in or create an account.
-        - Navigate to SendGrid > Settings > API Keys > Create API Key; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
+        - Navigate to SendGrid > Settings > API Keys > Create API Key; create or select a key with permission for the listed statistics, template, marketing, and mail send operations, and copy its provider-issued string.
         - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
     - name: getStats
@@ -99,3 +99,180 @@ spec:
           description: A representative SendGrid result for the example Flow.
           default: true
           output: {"templates":[{"id":"d-meridian","name":"Meridian receipt","generation":"dynamic"}],"count":1}
+    - name: getContact
+      goName: GetContact
+      inputType: ContactIDInput
+      outputType: Contact
+      kind: query
+      description: Read one marketing contact by its SendGrid ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: The contact was returned.}
+        - {id: notFound, goName: NotFound, description: No contact has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned an invalid response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: foundContact, branch: found, description: A marketing contact was found., default: true, output: {id: c-123, email: priya@example.com}}
+    - name: searchContacts
+      goName: SearchContacts
+      inputType: SearchContactsInput
+      outputType: SearchContactsOutput
+      kind: query
+      description: Search up to 50 marketing contacts with a SendGrid Query Language expression.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: SendGrid returned the bounded result set.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned an invalid response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: contactsFound, branch: found, description: One marketing contact matched., default: true, output: {contacts: [{id: c-123, email: priya@example.com}], count: 1}}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: SearchContactsOutput
+      kind: query
+      description: Read up to 50 recent marketing contacts, optionally limiting the returned sample; SendGrid no longer paginates this endpoint.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: SendGrid returned the recent contact sample.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned invalid contact JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: recentContacts, branch: listed, description: SendGrid returned recent marketing contacts., default: true, output: {contacts: [{id: c-123, email: priya@example.com}], count: 1}}
+    - name: upsertContact
+      goName: UpsertContact
+      inputType: UpsertContactInput
+      outputType: ContactJobOutput
+      kind: mutation
+      description: Queue an email-identified marketing contact upsert.
+      idempotency: required
+      branches:
+        - {id: queued, goName: Queued, description: SendGrid accepted the contact import job.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected the contact., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned an invalid response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: contactQueued, branch: queued, description: SendGrid queued the contact upsert., default: true, output: {jobId: job-123}}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: ContactIDInput
+      outputType: ContactJobOutput
+      kind: mutation
+      description: Queue deletion of exactly one marketing contact by ID.
+      idempotency: required
+      branches:
+        - {id: queued, goName: Queued, description: SendGrid accepted the contact deletion job.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned an invalid response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: contactDeletionQueued, branch: queued, description: SendGrid queued one contact deletion., default: true, output: {jobId: job-456}}
+    - name: getList
+      goName: GetList
+      inputType: ListIDInput
+      outputType: MarketingList
+      kind: query
+      description: Read one static marketing list by ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: SendGrid returned the list.}
+        - {id: notFound, goName: NotFound, description: No list has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned invalid list data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: foundList, branch: found, description: A static marketing list was found., default: true, output: {id: list-123, name: Customers, contactCount: 3}}
+    - name: listLists
+      goName: ListLists
+      inputType: ListListsInput
+      outputType: ListListsOutput
+      kind: query
+      description: List one bounded page of static marketing lists.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: SendGrid returned the requested page.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned an invalid page., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: listedLists
+          branch: listed
+          description: Three static list pages demonstrate page token traversal.
+          default: true
+          pages:
+            - {lists: [{id: list-123, name: Customers, contactCount: 3}], count: 3, nextPageToken: list-page-2}
+            - {lists: [{id: list-456, name: Partners, contactCount: 2}], count: 3, nextPageToken: list-page-3}
+            - {lists: [{id: list-789, name: Alumni, contactCount: 1}], count: 3}
+    - name: updateList
+      goName: UpdateList
+      inputType: UpdateListInput
+      outputType: MarketingList
+      kind: mutation
+      description: Replace the display name of one static marketing list.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: SendGrid renamed the list.}
+        - {id: notFound, goName: NotFound, description: No list has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected the rename., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned invalid list data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: renamedList, branch: updated, description: A static list was renamed., default: true, output: {id: list-123, name: Active Customers, contactCount: 3}}
+    - name: deleteList
+      goName: DeleteList
+      inputType: ListIDInput
+      outputType: DeletedListOutput
+      kind: mutation
+      description: Delete one static list without deleting its contacts.
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: SendGrid removed the list.}
+        - {id: notFound, goName: NotFound, description: The list is already absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned an invalid response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: deletedList, branch: deleted, description: A static list was removed., default: true, output: {id: list-123}}
+    - name: createList
+      goName: CreateList
+      inputType: CreateListInput
+      outputType: MarketingList
+      kind: mutation
+      description: Create one static marketing list, bounding ambiguous POST resends.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: SendGrid created or confirmed the list.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A list create may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      mocks:
+        - {name: createdList, branch: created, description: SendGrid created a static list., default: true, output: {id: list-123, name: Customers, contactCount: 0}}
+    - name: sendMail
+      goName: SendMail
+      inputType: SendMailInput
+      outputType: SendMailOutput
+      kind: mutation
+      description: Send one transactional email without binary attachments, bounding ambiguous resends.
+      idempotency: required
+      branches:
+        - {id: accepted, goName: Accepted, description: SendGrid accepted the email for delivery.}
+        - {id: providerRejected, goName: ProviderRejected, description: "SendGrid rejected the sender, recipients, content, or authorization.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: An email may have been accepted but the outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local mail input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      mocks:
+        - {name: acceptedMail, branch: accepted, description: SendGrid accepted one message for delivery., default: true, output: {accepted: true}}

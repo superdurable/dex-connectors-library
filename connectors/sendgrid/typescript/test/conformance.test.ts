@@ -8,7 +8,9 @@ import { SendGridClient } from '../src/client.js';
 import { GetStatsInputSchema, ListTemplatesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/sendgrid/scenarios.json', import.meta.url));
+const implementedOperations = new Set(['getStats', 'listTemplates']);
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/sendgrid/scenarios.json', import.meta.url))
+  .filter(scenario => implementedOperations.has(scenario.operation));
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeSendGrid));
 
 async function invokeSendGrid(scenario: Scenario, recorder: ExchangeRecorder) {

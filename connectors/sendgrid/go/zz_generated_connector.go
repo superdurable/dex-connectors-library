@@ -42,6 +42,17 @@ type Connection struct {
 type Operations interface {
 	GetStats() sdkgo.Query[GetStatsInput, StatsOutput]
 	ListTemplates() sdkgo.Query[ListTemplatesInput, TemplatesOutput]
+	GetContact() sdkgo.Query[ContactIDInput, Contact]
+	SearchContacts() sdkgo.Query[SearchContactsInput, SearchContactsOutput]
+	ListContacts() sdkgo.Query[ListContactsInput, SearchContactsOutput]
+	UpsertContact() sdkgo.Mutation[UpsertContactInput, ContactJobOutput]
+	DeleteContact() sdkgo.Mutation[ContactIDInput, ContactJobOutput]
+	GetList() sdkgo.Query[ListIDInput, MarketingList]
+	ListLists() sdkgo.Query[ListListsInput, ListListsOutput]
+	UpdateList() sdkgo.Mutation[UpdateListInput, MarketingList]
+	DeleteList() sdkgo.Mutation[ListIDInput, DeletedListOutput]
+	CreateList() sdkgo.Mutation[CreateListInput, MarketingList]
+	SendMail() sdkgo.Mutation[SendMailInput, SendMailOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +62,39 @@ func (operations clientOperations) GetStats() sdkgo.Query[GetStatsInput, StatsOu
 }
 func (operations clientOperations) ListTemplates() sdkgo.Query[ListTemplatesInput, TemplatesOutput] {
 	return operations.client.ListTemplates()
+}
+func (operations clientOperations) GetContact() sdkgo.Query[ContactIDInput, Contact] {
+	return operations.client.GetContact()
+}
+func (operations clientOperations) SearchContacts() sdkgo.Query[SearchContactsInput, SearchContactsOutput] {
+	return operations.client.SearchContacts()
+}
+func (operations clientOperations) ListContacts() sdkgo.Query[ListContactsInput, SearchContactsOutput] {
+	return operations.client.ListContacts()
+}
+func (operations clientOperations) UpsertContact() sdkgo.Mutation[UpsertContactInput, ContactJobOutput] {
+	return operations.client.UpsertContact()
+}
+func (operations clientOperations) DeleteContact() sdkgo.Mutation[ContactIDInput, ContactJobOutput] {
+	return operations.client.DeleteContact()
+}
+func (operations clientOperations) GetList() sdkgo.Query[ListIDInput, MarketingList] {
+	return operations.client.GetList()
+}
+func (operations clientOperations) ListLists() sdkgo.Query[ListListsInput, ListListsOutput] {
+	return operations.client.ListLists()
+}
+func (operations clientOperations) UpdateList() sdkgo.Mutation[UpdateListInput, MarketingList] {
+	return operations.client.UpdateList()
+}
+func (operations clientOperations) DeleteList() sdkgo.Mutation[ListIDInput, DeletedListOutput] {
+	return operations.client.DeleteList()
+}
+func (operations clientOperations) CreateList() sdkgo.Mutation[CreateListInput, MarketingList] {
+	return operations.client.CreateList()
+}
+func (operations clientOperations) SendMail() sdkgo.Mutation[SendMailInput, SendMailOutput] {
+	return operations.client.SendMail()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -329,5 +373,824 @@ func NewListTemplatesStep[IN any](config ListTemplatesStepConfig[IN]) sdkgo.Quer
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetContactBranchFound sdkgo.BranchID = "found"
+const GetContactBranchNotFound sdkgo.BranchID = "notFound"
+const GetContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetContactDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetContactBranchFound, Description: "The contact was returned."},
+		{ID: GetContactBranchNotFound, Description: "No contact has that ID.", Optional: true},
+		{ID: GetContactBranchProviderRejected, Description: "SendGrid denied the request.", Optional: true},
+		{ID: GetContactBranchInvalidResponse, Description: "SendGrid returned an invalid response.", Optional: true},
+		{ID: GetContactBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetContactResult = sdkgo.QueryResult[Contact]
+
+type GetContactStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=sendgrid"`
+	operationID                    struct{}                                   `connector:"operationId=getContact"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ContactIDInput                    `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetContactResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetContactResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetContactResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetContactResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetContactResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Contact]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetContactStep[IN any](config GetContactStepConfig[IN]) sdkgo.QueryStep[IN, ContactIDInput, Contact] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ContactIDInput, Contact]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetContactResult] {
+			branches := make([]sdkgo.BranchTarget[GetContactResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetContactBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchContactsBranchFound sdkgo.BranchID = "found"
+const SearchContactsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchContactsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchContactsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchContactsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchContacts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchContactsBranchFound, Description: "SendGrid returned the bounded result set."},
+		{ID: SearchContactsBranchProviderRejected, Description: "SendGrid denied or rejected the query.", Optional: true},
+		{ID: SearchContactsBranchInvalidResponse, Description: "SendGrid returned an invalid response.", Optional: true},
+		{ID: SearchContactsBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchContactsResult = sdkgo.QueryResult[SearchContactsOutput]
+
+type SearchContactsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=sendgrid"`
+	operationID                    struct{}                                                `connector:"operationId=searchContacts"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchContactsInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[SearchContactsResult]                      `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[SearchContactsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchContactsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchContactsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SearchContactsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewSearchContactsStep[IN any](config SearchContactsStepConfig[IN]) sdkgo.QueryStep[IN, SearchContactsInput, SearchContactsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchContactsInput, SearchContactsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchContacts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchContactsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchContactsResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(SearchContactsBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchContactsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchContactsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchContactsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContactsBranchListed sdkgo.BranchID = "listed"
+const ListContactsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContacts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactsBranchListed, Description: "SendGrid returned the recent contact sample."},
+		{ID: ListContactsBranchProviderRejected, Description: "SendGrid denied the read.", Optional: true},
+		{ID: ListContactsBranchInvalidResponse, Description: "SendGrid returned invalid contact JSON.", Optional: true},
+		{ID: ListContactsBranchDefect, Description: "Connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactsResult = sdkgo.QueryResult[SearchContactsOutput]
+
+type ListContactsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=sendgrid"`
+	operationID                    struct{}                                                `connector:"operationId=listContacts"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactsInput                              `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactsResult]                        `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContactsResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactsResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactsResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SearchContactsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListContactsStep[IN any](config ListContactsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactsInput, SearchContactsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactsInput, SearchContactsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContacts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpsertContactBranchQueued sdkgo.BranchID = "queued"
+const UpsertContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpsertContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpsertContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpsertContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpsertContactBranchQueued, Description: "SendGrid accepted the contact import job."},
+		{ID: UpsertContactBranchProviderRejected, Description: "SendGrid denied or rejected the contact.", Optional: true},
+		{ID: UpsertContactBranchInvalidResponse, Description: "SendGrid returned an invalid response.", Optional: true},
+		{ID: UpsertContactBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpsertContactResult = sdkgo.MutationResult[ContactJobOutput]
+
+type UpsertContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=sendgrid"`
+	operationID                       struct{}                                               `connector:"operationId=upsertContact"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpsertContactInput                            `connector:"mapToOperationInput"`
+	Queued                            sdkgo.Target[UpsertContactResult]                      `connector:"branch=queued"`
+	ProviderRejected                  sdkgo.Target[UpsertContactResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpsertContactResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpsertContactResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactJobOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpsertContactStep[IN any](config UpsertContactStepConfig[IN]) sdkgo.MutationStep[IN, UpsertContactInput, ContactJobOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertContactInput, ContactJobOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpsertContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpsertContactResult] {
+			branches := make([]sdkgo.BranchTarget[UpsertContactResult], 0, 4)
+			if config.Queued.HasStep() {
+				branches = append(branches, config.Queued.BranchTarget(UpsertContactBranchQueued))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpsertContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpsertContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpsertContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteContactBranchQueued sdkgo.BranchID = "queued"
+const DeleteContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteContactBranchQueued, Description: "SendGrid accepted the contact deletion job."},
+		{ID: DeleteContactBranchProviderRejected, Description: "SendGrid denied or rejected deletion.", Optional: true},
+		{ID: DeleteContactBranchInvalidResponse, Description: "SendGrid returned an invalid response.", Optional: true},
+		{ID: DeleteContactBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteContactResult = sdkgo.MutationResult[ContactJobOutput]
+
+type DeleteContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=sendgrid"`
+	operationID                       struct{}                                               `connector:"operationId=deleteContact"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) ContactIDInput                                `connector:"mapToOperationInput"`
+	Queued                            sdkgo.Target[DeleteContactResult]                      `connector:"branch=queued"`
+	ProviderRejected                  sdkgo.Target[DeleteContactResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteContactResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteContactResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactJobOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteContactStep[IN any](config DeleteContactStepConfig[IN]) sdkgo.MutationStep[IN, ContactIDInput, ContactJobOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ContactIDInput, ContactJobOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteContactResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteContactResult], 0, 4)
+			if config.Queued.HasStep() {
+				branches = append(branches, config.Queued.BranchTarget(DeleteContactBranchQueued))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteContactBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteContactBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetListBranchFound sdkgo.BranchID = "found"
+const GetListBranchNotFound sdkgo.BranchID = "notFound"
+const GetListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetListDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetListBranchFound, Description: "SendGrid returned the list."},
+		{ID: GetListBranchNotFound, Description: "No list has that ID.", Optional: true},
+		{ID: GetListBranchProviderRejected, Description: "SendGrid denied the request.", Optional: true},
+		{ID: GetListBranchInvalidResponse, Description: "SendGrid returned invalid list data.", Optional: true},
+		{ID: GetListBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetListResult = sdkgo.QueryResult[MarketingList]
+
+type GetListStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=sendgrid"`
+	operationID                    struct{}                                         `connector:"operationId=getList"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListIDInput                             `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetListResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetListResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetListResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetListResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetListResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MarketingList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetListStep[IN any](config GetListStepConfig[IN]) sdkgo.QueryStep[IN, ListIDInput, MarketingList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListIDInput, MarketingList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetListResult] {
+			branches := make([]sdkgo.BranchTarget[GetListResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetListBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListListsBranchListed sdkgo.BranchID = "listed"
+const ListListsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListListsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListListsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListListsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLists"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListListsBranchListed, Description: "SendGrid returned the requested page."},
+		{ID: ListListsBranchProviderRejected, Description: "SendGrid denied the request.", Optional: true},
+		{ID: ListListsBranchInvalidResponse, Description: "SendGrid returned an invalid page.", Optional: true},
+		{ID: ListListsBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListListsResult = sdkgo.QueryResult[ListListsOutput]
+
+type ListListsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=sendgrid"`
+	operationID                    struct{}                                           `connector:"operationId=listLists"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListListsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListListsResult]                      `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListListsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListListsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListListsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListListsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListListsStep[IN any](config ListListsStepConfig[IN]) sdkgo.QueryStep[IN, ListListsInput, ListListsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListListsInput, ListListsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListLists(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListListsResult] {
+			branches := make([]sdkgo.BranchTarget[ListListsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListListsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListListsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListListsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListListsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateListBranchUpdated sdkgo.BranchID = "updated"
+const UpdateListBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateListBranchUpdated, Description: "SendGrid renamed the list."},
+		{ID: UpdateListBranchNotFound, Description: "No list has that ID.", Optional: true},
+		{ID: UpdateListBranchProviderRejected, Description: "SendGrid denied or rejected the rename.", Optional: true},
+		{ID: UpdateListBranchInvalidResponse, Description: "SendGrid returned invalid list data.", Optional: true},
+		{ID: UpdateListBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateListResult = sdkgo.MutationResult[MarketingList]
+
+type UpdateListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=sendgrid"`
+	operationID                       struct{}                                            `connector:"operationId=updateList"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateListInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateListResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateListResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateListResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateListResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateListResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MarketingList]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateListStep[IN any](config UpdateListStepConfig[IN]) sdkgo.MutationStep[IN, UpdateListInput, MarketingList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateListInput, MarketingList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateListResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateListResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateListBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteListBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteListBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteListBranchDeleted, Description: "SendGrid removed the list."},
+		{ID: DeleteListBranchNotFound, Description: "The list is already absent.", Optional: true},
+		{ID: DeleteListBranchProviderRejected, Description: "SendGrid denied or rejected deletion.", Optional: true},
+		{ID: DeleteListBranchInvalidResponse, Description: "SendGrid returned an invalid response.", Optional: true},
+		{ID: DeleteListBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteListResult = sdkgo.MutationResult[DeletedListOutput]
+
+type DeleteListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=sendgrid"`
+	operationID                       struct{}                                                `connector:"operationId=deleteList"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) ListIDInput                                    `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteListResult]                          `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteListResult]                          `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteListResult]                          `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteListResult]                          `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteListResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedListOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteListStep[IN any](config DeleteListStepConfig[IN]) sdkgo.MutationStep[IN, ListIDInput, DeletedListOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ListIDInput, DeletedListOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteListResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteListResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteListBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateListBranchCreated sdkgo.BranchID = "created"
+const CreateListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateListBranchCreated, Description: "SendGrid created or confirmed the list."},
+		{ID: CreateListBranchProviderRejected, Description: "SendGrid denied or rejected creation.", Optional: true},
+		{ID: CreateListBranchUncertain, Description: "A list create may have succeeded but could not be confirmed.", Optional: true},
+		{ID: CreateListBranchDefect, Description: "Local input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateListResult = sdkgo.MutationResult[MarketingList]
+
+type CreateListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=sendgrid"`
+	operationID                       struct{}                                            `connector:"operationId=createList"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateListInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateListResult]                      `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateListResult]                      `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateListResult]                      `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateListResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MarketingList]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateListStep[IN any](config CreateListStepConfig[IN]) sdkgo.MutationStep[IN, CreateListInput, MarketingList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateListInput, MarketingList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateListResult] {
+			branches := make([]sdkgo.BranchTarget[CreateListResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateListBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateListBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateListBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendMailBranchAccepted sdkgo.BranchID = "accepted"
+const SendMailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendMailBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendMailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendMailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendMailBranchAccepted, Description: "SendGrid accepted the email for delivery."},
+		{ID: SendMailBranchProviderRejected, Description: "SendGrid rejected the sender, recipients, content, or authorization.", Optional: true},
+		{ID: SendMailBranchUncertain, Description: "An email may have been accepted but the outcome cannot be confirmed.", Optional: true},
+		{ID: SendMailBranchDefect, Description: "Local mail input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendMailResult = sdkgo.MutationResult[SendMailOutput]
+
+type SendMailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=sendgrid"`
+	operationID                       struct{}                                             `connector:"operationId=sendMail"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendMailInput                               `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[SendMailResult]                         `connector:"branch=accepted"`
+	ProviderRejected                  sdkgo.Target[SendMailResult]                         `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendMailResult]                         `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendMailResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMailOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendMailStep[IN any](config SendMailStepConfig[IN]) sdkgo.MutationStep[IN, SendMailInput, SendMailOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMailInput, SendMailOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendMail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendMailResult] {
+			branches := make([]sdkgo.BranchTarget[SendMailResult], 0, 4)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(SendMailBranchAccepted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendMailBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendMailBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendMailBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

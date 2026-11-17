@@ -1,6 +1,6 @@
 # Salesforce Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/salesforce/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/salesforce/go@v0.26.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/salesforce`.
 
@@ -20,6 +20,8 @@ Step factories:
 - `salesforce.NewUpsertRecordByExternalIDStep` creates or updates one record
   keyed by an External ID field value, which is the create a retried Step needs.
 - `salesforce.NewUpdateRecordStep` updates the named fields of one record by ID.
+- `salesforce.NewCreateRecordStep` creates one record without requiring an External ID field. It bounds ambiguous POST retries to three possible sends and selects `uncertain` when the outcome cannot be confirmed.
+- `salesforce.NewDeleteRecordStep` deletes one record by ID. Repeating the request converges on absence.
 
 The `recordModifiedPolled` Trigger starts a Flow for each record of one object
 that is created or modified, read by polling SOQL with a durable cursor. See
@@ -27,7 +29,7 @@ that is created or modified, read by polling SOQL with a durable cursor. See
 
 Every request uses REST API `v62.0` unless the connection overrides
 `apiVersion`, and runs with the object, field, and sharing access of the
-authorized user. The connector never deletes records. Change Data Capture and
+authorized user. Change Data Capture and
 Platform Event Triggers need a Pub/Sub API streaming design that is still open.
 
 ## Mocks

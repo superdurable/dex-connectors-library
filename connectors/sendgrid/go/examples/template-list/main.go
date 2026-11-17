@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{templatelist.NewTemplateFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{templatelist.NewTemplateFlow(connection), templatelist.NewContactFlow(connection), templatelist.NewContactSampleFlow(connection), templatelist.NewMarketingListFlow(connection), templatelist.NewMailFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register SendGrid demo Flow: %w", err)
 	}

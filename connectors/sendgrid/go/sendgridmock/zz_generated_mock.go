@@ -17,9 +17,20 @@ import (
 
 // Mock is a scripted sendgrid connection. Script each operation through its accessor.
 type Mock struct {
-	connection    sendgrid.Connection
-	getStats      *connectormock.Query[sendgrid.GetStatsInput, sendgrid.StatsOutput]
-	listTemplates *connectormock.Query[sendgrid.ListTemplatesInput, sendgrid.TemplatesOutput]
+	connection     sendgrid.Connection
+	getStats       *connectormock.Query[sendgrid.GetStatsInput, sendgrid.StatsOutput]
+	listTemplates  *connectormock.Query[sendgrid.ListTemplatesInput, sendgrid.TemplatesOutput]
+	getContact     *connectormock.Query[sendgrid.ContactIDInput, sendgrid.Contact]
+	searchContacts *connectormock.Query[sendgrid.SearchContactsInput, sendgrid.SearchContactsOutput]
+	listContacts   *connectormock.Query[sendgrid.ListContactsInput, sendgrid.SearchContactsOutput]
+	upsertContact  *connectormock.Mutation[sendgrid.UpsertContactInput, sendgrid.ContactJobOutput]
+	deleteContact  *connectormock.Mutation[sendgrid.ContactIDInput, sendgrid.ContactJobOutput]
+	getList        *connectormock.Query[sendgrid.ListIDInput, sendgrid.MarketingList]
+	listLists      *connectormock.Query[sendgrid.ListListsInput, sendgrid.ListListsOutput]
+	updateList     *connectormock.Mutation[sendgrid.UpdateListInput, sendgrid.MarketingList]
+	deleteList     *connectormock.Mutation[sendgrid.ListIDInput, sendgrid.DeletedListOutput]
+	createList     *connectormock.Mutation[sendgrid.CreateListInput, sendgrid.MarketingList]
+	sendMail       *connectormock.Mutation[sendgrid.SendMailInput, sendgrid.SendMailOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +38,33 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getStats:      connectormock.NewQuery[sendgrid.GetStatsInput, sendgrid.StatsOutput](t, sendgrid.GetStatsDefinition),
-		listTemplates: connectormock.NewQuery[sendgrid.ListTemplatesInput, sendgrid.TemplatesOutput](t, sendgrid.ListTemplatesDefinition),
+		getStats:       connectormock.NewQuery[sendgrid.GetStatsInput, sendgrid.StatsOutput](t, sendgrid.GetStatsDefinition),
+		listTemplates:  connectormock.NewQuery[sendgrid.ListTemplatesInput, sendgrid.TemplatesOutput](t, sendgrid.ListTemplatesDefinition),
+		getContact:     connectormock.NewQuery[sendgrid.ContactIDInput, sendgrid.Contact](t, sendgrid.GetContactDefinition),
+		searchContacts: connectormock.NewQuery[sendgrid.SearchContactsInput, sendgrid.SearchContactsOutput](t, sendgrid.SearchContactsDefinition),
+		listContacts:   connectormock.NewQuery[sendgrid.ListContactsInput, sendgrid.SearchContactsOutput](t, sendgrid.ListContactsDefinition),
+		upsertContact:  connectormock.NewMutation[sendgrid.UpsertContactInput, sendgrid.ContactJobOutput](t, sendgrid.UpsertContactDefinition),
+		deleteContact:  connectormock.NewMutation[sendgrid.ContactIDInput, sendgrid.ContactJobOutput](t, sendgrid.DeleteContactDefinition),
+		getList:        connectormock.NewQuery[sendgrid.ListIDInput, sendgrid.MarketingList](t, sendgrid.GetListDefinition),
+		listLists:      connectormock.NewQuery[sendgrid.ListListsInput, sendgrid.ListListsOutput](t, sendgrid.ListListsDefinition),
+		updateList:     connectormock.NewMutation[sendgrid.UpdateListInput, sendgrid.MarketingList](t, sendgrid.UpdateListDefinition),
+		deleteList:     connectormock.NewMutation[sendgrid.ListIDInput, sendgrid.DeletedListOutput](t, sendgrid.DeleteListDefinition),
+		createList:     connectormock.NewMutation[sendgrid.CreateListInput, sendgrid.MarketingList](t, sendgrid.CreateListDefinition),
+		sendMail:       connectormock.NewMutation[sendgrid.SendMailInput, sendgrid.SendMailOutput](t, sendgrid.SendMailDefinition),
 	}
 	mock.getStats.Default(GetStatsDefault())
 	mock.listTemplates.Default(ListTemplatesDefault())
+	mock.getContact.Default(GetContactDefault())
+	mock.searchContacts.Default(SearchContactsDefault())
+	mock.listContacts.Default(ListContactsDefault())
+	mock.upsertContact.Default(UpsertContactDefault())
+	mock.deleteContact.Default(DeleteContactDefault())
+	mock.getList.Default(GetListDefault())
+	mock.listLists.Default(ListListsDefault())
+	mock.updateList.Default(UpdateListDefault())
+	mock.deleteList.Default(DeleteListDefault())
+	mock.createList.Default(CreateListDefault())
+	mock.sendMail.Default(SendMailDefault())
 	connection, err := sendgrid.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "sendgrid", Name: connectionName})
 	if err != nil {
 		t.Fatalf("sendgrid mock connection: %v", err)
@@ -53,6 +86,61 @@ func (mock *Mock) ListTemplates() *connectormock.Query[sendgrid.ListTemplatesInp
 	return mock.listTemplates
 }
 
+// GetContact returns the getContact script.
+func (mock *Mock) GetContact() *connectormock.Query[sendgrid.ContactIDInput, sendgrid.Contact] {
+	return mock.getContact
+}
+
+// SearchContacts returns the searchContacts script.
+func (mock *Mock) SearchContacts() *connectormock.Query[sendgrid.SearchContactsInput, sendgrid.SearchContactsOutput] {
+	return mock.searchContacts
+}
+
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[sendgrid.ListContactsInput, sendgrid.SearchContactsOutput] {
+	return mock.listContacts
+}
+
+// UpsertContact returns the upsertContact script.
+func (mock *Mock) UpsertContact() *connectormock.Mutation[sendgrid.UpsertContactInput, sendgrid.ContactJobOutput] {
+	return mock.upsertContact
+}
+
+// DeleteContact returns the deleteContact script.
+func (mock *Mock) DeleteContact() *connectormock.Mutation[sendgrid.ContactIDInput, sendgrid.ContactJobOutput] {
+	return mock.deleteContact
+}
+
+// GetList returns the getList script.
+func (mock *Mock) GetList() *connectormock.Query[sendgrid.ListIDInput, sendgrid.MarketingList] {
+	return mock.getList
+}
+
+// ListLists returns the listLists script.
+func (mock *Mock) ListLists() *connectormock.Query[sendgrid.ListListsInput, sendgrid.ListListsOutput] {
+	return mock.listLists
+}
+
+// UpdateList returns the updateList script.
+func (mock *Mock) UpdateList() *connectormock.Mutation[sendgrid.UpdateListInput, sendgrid.MarketingList] {
+	return mock.updateList
+}
+
+// DeleteList returns the deleteList script.
+func (mock *Mock) DeleteList() *connectormock.Mutation[sendgrid.ListIDInput, sendgrid.DeletedListOutput] {
+	return mock.deleteList
+}
+
+// CreateList returns the createList script.
+func (mock *Mock) CreateList() *connectormock.Mutation[sendgrid.CreateListInput, sendgrid.MarketingList] {
+	return mock.createList
+}
+
+// SendMail returns the sendMail script.
+func (mock *Mock) SendMail() *connectormock.Mutation[sendgrid.SendMailInput, sendgrid.SendMailOutput] {
+	return mock.sendMail
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetStats() sdkgo.Query[sendgrid.GetStatsInput, sendgrid.StatsOutput] {
@@ -60,6 +148,39 @@ func (operations mockOperations) GetStats() sdkgo.Query[sendgrid.GetStatsInput, 
 }
 func (operations mockOperations) ListTemplates() sdkgo.Query[sendgrid.ListTemplatesInput, sendgrid.TemplatesOutput] {
 	return operations.mock.listTemplates
+}
+func (operations mockOperations) GetContact() sdkgo.Query[sendgrid.ContactIDInput, sendgrid.Contact] {
+	return operations.mock.getContact
+}
+func (operations mockOperations) SearchContacts() sdkgo.Query[sendgrid.SearchContactsInput, sendgrid.SearchContactsOutput] {
+	return operations.mock.searchContacts
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[sendgrid.ListContactsInput, sendgrid.SearchContactsOutput] {
+	return operations.mock.listContacts
+}
+func (operations mockOperations) UpsertContact() sdkgo.Mutation[sendgrid.UpsertContactInput, sendgrid.ContactJobOutput] {
+	return operations.mock.upsertContact
+}
+func (operations mockOperations) DeleteContact() sdkgo.Mutation[sendgrid.ContactIDInput, sendgrid.ContactJobOutput] {
+	return operations.mock.deleteContact
+}
+func (operations mockOperations) GetList() sdkgo.Query[sendgrid.ListIDInput, sendgrid.MarketingList] {
+	return operations.mock.getList
+}
+func (operations mockOperations) ListLists() sdkgo.Query[sendgrid.ListListsInput, sendgrid.ListListsOutput] {
+	return operations.mock.listLists
+}
+func (operations mockOperations) UpdateList() sdkgo.Mutation[sendgrid.UpdateListInput, sendgrid.MarketingList] {
+	return operations.mock.updateList
+}
+func (operations mockOperations) DeleteList() sdkgo.Mutation[sendgrid.ListIDInput, sendgrid.DeletedListOutput] {
+	return operations.mock.deleteList
+}
+func (operations mockOperations) CreateList() sdkgo.Mutation[sendgrid.CreateListInput, sendgrid.MarketingList] {
+	return operations.mock.createList
+}
+func (operations mockOperations) SendMail() sdkgo.Mutation[sendgrid.SendMailInput, sendgrid.SendMailOutput] {
+	return operations.mock.sendMail
 }
 
 // GetStatsFound selects the found branch: SendGrid returned the requested result.
@@ -131,3 +252,412 @@ func ListTemplatesListedDefault() connectormock.Case[sendgrid.TemplatesOutput] {
 func ListTemplatesDefault() connectormock.Case[sendgrid.TemplatesOutput] {
 	return ListTemplatesListedDefault()
 }
+
+// GetContactFound selects the found branch: The contact was returned.
+func GetContactFound(value sendgrid.Contact, failure *sdkgo.Failure) connectormock.Case[sendgrid.Contact] {
+	return connectormock.Branch(sendgrid.GetContactBranchFound, value, failure)
+}
+
+// GetContactNotFound selects the notFound branch: No contact has that ID.
+func GetContactNotFound(value sendgrid.Contact, failure *sdkgo.Failure) connectormock.Case[sendgrid.Contact] {
+	return connectormock.Branch(sendgrid.GetContactBranchNotFound, value, failure)
+}
+
+// GetContactProviderRejected selects the providerRejected branch: SendGrid denied the request.
+func GetContactProviderRejected(value sendgrid.Contact, failure *sdkgo.Failure) connectormock.Case[sendgrid.Contact] {
+	return connectormock.Branch(sendgrid.GetContactBranchProviderRejected, value, failure)
+}
+
+// GetContactInvalidResponse selects the invalidResponse branch: SendGrid returned an invalid response.
+func GetContactInvalidResponse(value sendgrid.Contact, failure *sdkgo.Failure) connectormock.Case[sendgrid.Contact] {
+	return connectormock.Branch(sendgrid.GetContactBranchInvalidResponse, value, failure)
+}
+
+// GetContactDefect selects the defect branch: Local input or connection is invalid.
+func GetContactDefect(value sendgrid.Contact, failure *sdkgo.Failure) connectormock.Case[sendgrid.Contact] {
+	return connectormock.Branch(sendgrid.GetContactBranchDefect, value, failure)
+}
+
+// GetContactRetry asks Dex to retry the getContact Step, after the delay when it is positive.
+func GetContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.Contact] {
+	return connectormock.Retry[sendgrid.Contact](failure, after)
+}
+
+// GetContactFoundContact is the manifest mock foundContact: A marketing contact was found.
+func GetContactFoundContact() connectormock.Case[sendgrid.Contact] {
+	value := connectormock.MustDecodeOutput[sendgrid.Contact](`{"id":"c-123","email":"priya@example.com"}`)
+	return connectormock.Branch(sendgrid.GetContactBranchFound, value, nil)
+}
+
+// GetContactDefault is the manifest default, foundContact, which New installs.
+func GetContactDefault() connectormock.Case[sendgrid.Contact] { return GetContactFoundContact() }
+
+// SearchContactsFound selects the found branch: SendGrid returned the bounded result set.
+func SearchContactsFound(value sendgrid.SearchContactsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Branch(sendgrid.SearchContactsBranchFound, value, failure)
+}
+
+// SearchContactsProviderRejected selects the providerRejected branch: SendGrid denied or rejected the query.
+func SearchContactsProviderRejected(value sendgrid.SearchContactsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Branch(sendgrid.SearchContactsBranchProviderRejected, value, failure)
+}
+
+// SearchContactsInvalidResponse selects the invalidResponse branch: SendGrid returned an invalid response.
+func SearchContactsInvalidResponse(value sendgrid.SearchContactsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Branch(sendgrid.SearchContactsBranchInvalidResponse, value, failure)
+}
+
+// SearchContactsDefect selects the defect branch: Local input or connection is invalid.
+func SearchContactsDefect(value sendgrid.SearchContactsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Branch(sendgrid.SearchContactsBranchDefect, value, failure)
+}
+
+// SearchContactsRetry asks Dex to retry the searchContacts Step, after the delay when it is positive.
+func SearchContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Retry[sendgrid.SearchContactsOutput](failure, after)
+}
+
+// SearchContactsContactsFound is the manifest mock contactsFound: One marketing contact matched.
+func SearchContactsContactsFound() connectormock.Case[sendgrid.SearchContactsOutput] {
+	value := connectormock.MustDecodeOutput[sendgrid.SearchContactsOutput](`{"contacts":[{"id":"c-123","email":"priya@example.com"}],"count":1}`)
+	return connectormock.Branch(sendgrid.SearchContactsBranchFound, value, nil)
+}
+
+// SearchContactsDefault is the manifest default, contactsFound, which New installs.
+func SearchContactsDefault() connectormock.Case[sendgrid.SearchContactsOutput] {
+	return SearchContactsContactsFound()
+}
+
+// ListContactsListed selects the listed branch: SendGrid returned the recent contact sample.
+func ListContactsListed(value sendgrid.SearchContactsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Branch(sendgrid.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: SendGrid denied the read.
+func ListContactsProviderRejected(value sendgrid.SearchContactsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Branch(sendgrid.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: SendGrid returned invalid contact JSON.
+func ListContactsInvalidResponse(value sendgrid.SearchContactsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Branch(sendgrid.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Connection credentials are invalid.
+func ListContactsDefect(value sendgrid.SearchContactsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Branch(sendgrid.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.SearchContactsOutput] {
+	return connectormock.Retry[sendgrid.SearchContactsOutput](failure, after)
+}
+
+// ListContactsRecentContacts is the manifest mock recentContacts: SendGrid returned recent marketing contacts.
+func ListContactsRecentContacts() connectormock.Case[sendgrid.SearchContactsOutput] {
+	value := connectormock.MustDecodeOutput[sendgrid.SearchContactsOutput](`{"contacts":[{"id":"c-123","email":"priya@example.com"}],"count":1}`)
+	return connectormock.Branch(sendgrid.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, recentContacts, which New installs.
+func ListContactsDefault() connectormock.Case[sendgrid.SearchContactsOutput] {
+	return ListContactsRecentContacts()
+}
+
+// UpsertContactQueued selects the queued branch: SendGrid accepted the contact import job.
+func UpsertContactQueued(value sendgrid.ContactJobOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Branch(sendgrid.UpsertContactBranchQueued, value, failure)
+}
+
+// UpsertContactProviderRejected selects the providerRejected branch: SendGrid denied or rejected the contact.
+func UpsertContactProviderRejected(value sendgrid.ContactJobOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Branch(sendgrid.UpsertContactBranchProviderRejected, value, failure)
+}
+
+// UpsertContactInvalidResponse selects the invalidResponse branch: SendGrid returned an invalid response.
+func UpsertContactInvalidResponse(value sendgrid.ContactJobOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Branch(sendgrid.UpsertContactBranchInvalidResponse, value, failure)
+}
+
+// UpsertContactDefect selects the defect branch: Local input or connection is invalid.
+func UpsertContactDefect(value sendgrid.ContactJobOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Branch(sendgrid.UpsertContactBranchDefect, value, failure)
+}
+
+// UpsertContactRetry asks Dex to retry the upsertContact Step, after the delay when it is positive.
+func UpsertContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Retry[sendgrid.ContactJobOutput](failure, after)
+}
+
+// UpsertContactContactQueued is the manifest mock contactQueued: SendGrid queued the contact upsert.
+func UpsertContactContactQueued() connectormock.Case[sendgrid.ContactJobOutput] {
+	value := connectormock.MustDecodeOutput[sendgrid.ContactJobOutput](`{"jobId":"job-123"}`)
+	return connectormock.Branch(sendgrid.UpsertContactBranchQueued, value, nil)
+}
+
+// UpsertContactDefault is the manifest default, contactQueued, which New installs.
+func UpsertContactDefault() connectormock.Case[sendgrid.ContactJobOutput] {
+	return UpsertContactContactQueued()
+}
+
+// DeleteContactQueued selects the queued branch: SendGrid accepted the contact deletion job.
+func DeleteContactQueued(value sendgrid.ContactJobOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Branch(sendgrid.DeleteContactBranchQueued, value, failure)
+}
+
+// DeleteContactProviderRejected selects the providerRejected branch: SendGrid denied or rejected deletion.
+func DeleteContactProviderRejected(value sendgrid.ContactJobOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Branch(sendgrid.DeleteContactBranchProviderRejected, value, failure)
+}
+
+// DeleteContactInvalidResponse selects the invalidResponse branch: SendGrid returned an invalid response.
+func DeleteContactInvalidResponse(value sendgrid.ContactJobOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Branch(sendgrid.DeleteContactBranchInvalidResponse, value, failure)
+}
+
+// DeleteContactDefect selects the defect branch: Local input or connection is invalid.
+func DeleteContactDefect(value sendgrid.ContactJobOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Branch(sendgrid.DeleteContactBranchDefect, value, failure)
+}
+
+// DeleteContactRetry asks Dex to retry the deleteContact Step, after the delay when it is positive.
+func DeleteContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.ContactJobOutput] {
+	return connectormock.Retry[sendgrid.ContactJobOutput](failure, after)
+}
+
+// DeleteContactContactDeletionQueued is the manifest mock contactDeletionQueued: SendGrid queued one contact deletion.
+func DeleteContactContactDeletionQueued() connectormock.Case[sendgrid.ContactJobOutput] {
+	value := connectormock.MustDecodeOutput[sendgrid.ContactJobOutput](`{"jobId":"job-456"}`)
+	return connectormock.Branch(sendgrid.DeleteContactBranchQueued, value, nil)
+}
+
+// DeleteContactDefault is the manifest default, contactDeletionQueued, which New installs.
+func DeleteContactDefault() connectormock.Case[sendgrid.ContactJobOutput] {
+	return DeleteContactContactDeletionQueued()
+}
+
+// GetListFound selects the found branch: SendGrid returned the list.
+func GetListFound(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.GetListBranchFound, value, failure)
+}
+
+// GetListNotFound selects the notFound branch: No list has that ID.
+func GetListNotFound(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.GetListBranchNotFound, value, failure)
+}
+
+// GetListProviderRejected selects the providerRejected branch: SendGrid denied the request.
+func GetListProviderRejected(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.GetListBranchProviderRejected, value, failure)
+}
+
+// GetListInvalidResponse selects the invalidResponse branch: SendGrid returned invalid list data.
+func GetListInvalidResponse(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.GetListBranchInvalidResponse, value, failure)
+}
+
+// GetListDefect selects the defect branch: Local input or connection is invalid.
+func GetListDefect(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.GetListBranchDefect, value, failure)
+}
+
+// GetListRetry asks Dex to retry the getList Step, after the delay when it is positive.
+func GetListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Retry[sendgrid.MarketingList](failure, after)
+}
+
+// GetListFoundList is the manifest mock foundList: A static marketing list was found.
+func GetListFoundList() connectormock.Case[sendgrid.MarketingList] {
+	value := connectormock.MustDecodeOutput[sendgrid.MarketingList](`{"id":"list-123","name":"Customers","contactCount":3}`)
+	return connectormock.Branch(sendgrid.GetListBranchFound, value, nil)
+}
+
+// GetListDefault is the manifest default, foundList, which New installs.
+func GetListDefault() connectormock.Case[sendgrid.MarketingList] { return GetListFoundList() }
+
+// ListListsListed selects the listed branch: SendGrid returned the requested page.
+func ListListsListed(value sendgrid.ListListsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ListListsOutput] {
+	return connectormock.Branch(sendgrid.ListListsBranchListed, value, failure)
+}
+
+// ListListsProviderRejected selects the providerRejected branch: SendGrid denied the request.
+func ListListsProviderRejected(value sendgrid.ListListsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ListListsOutput] {
+	return connectormock.Branch(sendgrid.ListListsBranchProviderRejected, value, failure)
+}
+
+// ListListsInvalidResponse selects the invalidResponse branch: SendGrid returned an invalid page.
+func ListListsInvalidResponse(value sendgrid.ListListsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ListListsOutput] {
+	return connectormock.Branch(sendgrid.ListListsBranchInvalidResponse, value, failure)
+}
+
+// ListListsDefect selects the defect branch: Local input or connection is invalid.
+func ListListsDefect(value sendgrid.ListListsOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.ListListsOutput] {
+	return connectormock.Branch(sendgrid.ListListsBranchDefect, value, failure)
+}
+
+// ListListsRetry asks Dex to retry the listLists Step, after the delay when it is positive.
+func ListListsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.ListListsOutput] {
+	return connectormock.Retry[sendgrid.ListListsOutput](failure, after)
+}
+
+// ListListsListedLists is the manifest mock listedLists: Three static list pages demonstrate page token traversal.
+func ListListsListedLists() connectormock.Case[sendgrid.ListListsOutput] {
+	pages := []sendgrid.ListListsOutput{
+		connectormock.MustDecodeOutput[sendgrid.ListListsOutput](`{"lists":[{"id":"list-123","name":"Customers","contactCount":3}],"count":3,"nextPageToken":"list-page-2"}`),
+		connectormock.MustDecodeOutput[sendgrid.ListListsOutput](`{"lists":[{"id":"list-456","name":"Partners","contactCount":2}],"count":3,"nextPageToken":"list-page-3"}`),
+		connectormock.MustDecodeOutput[sendgrid.ListListsOutput](`{"lists":[{"id":"list-789","name":"Alumni","contactCount":1}],"count":3}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[sendgrid.ListListsInput]("pageToken", "nextPageToken", pages)
+	return connectormock.Paged(sendgrid.ListListsBranchListed, pageNumber, pages...)
+}
+
+// ListListsDefault is the manifest default, listedLists, which New installs.
+func ListListsDefault() connectormock.Case[sendgrid.ListListsOutput] { return ListListsListedLists() }
+
+// UpdateListUpdated selects the updated branch: SendGrid renamed the list.
+func UpdateListUpdated(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.UpdateListBranchUpdated, value, failure)
+}
+
+// UpdateListNotFound selects the notFound branch: No list has that ID.
+func UpdateListNotFound(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.UpdateListBranchNotFound, value, failure)
+}
+
+// UpdateListProviderRejected selects the providerRejected branch: SendGrid denied or rejected the rename.
+func UpdateListProviderRejected(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.UpdateListBranchProviderRejected, value, failure)
+}
+
+// UpdateListInvalidResponse selects the invalidResponse branch: SendGrid returned invalid list data.
+func UpdateListInvalidResponse(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.UpdateListBranchInvalidResponse, value, failure)
+}
+
+// UpdateListDefect selects the defect branch: Local input or connection is invalid.
+func UpdateListDefect(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.UpdateListBranchDefect, value, failure)
+}
+
+// UpdateListRetry asks Dex to retry the updateList Step, after the delay when it is positive.
+func UpdateListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Retry[sendgrid.MarketingList](failure, after)
+}
+
+// UpdateListRenamedList is the manifest mock renamedList: A static list was renamed.
+func UpdateListRenamedList() connectormock.Case[sendgrid.MarketingList] {
+	value := connectormock.MustDecodeOutput[sendgrid.MarketingList](`{"id":"list-123","name":"Active Customers","contactCount":3}`)
+	return connectormock.Branch(sendgrid.UpdateListBranchUpdated, value, nil)
+}
+
+// UpdateListDefault is the manifest default, renamedList, which New installs.
+func UpdateListDefault() connectormock.Case[sendgrid.MarketingList] { return UpdateListRenamedList() }
+
+// DeleteListDeleted selects the deleted branch: SendGrid removed the list.
+func DeleteListDeleted(value sendgrid.DeletedListOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.DeletedListOutput] {
+	return connectormock.Branch(sendgrid.DeleteListBranchDeleted, value, failure)
+}
+
+// DeleteListNotFound selects the notFound branch: The list is already absent.
+func DeleteListNotFound(value sendgrid.DeletedListOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.DeletedListOutput] {
+	return connectormock.Branch(sendgrid.DeleteListBranchNotFound, value, failure)
+}
+
+// DeleteListProviderRejected selects the providerRejected branch: SendGrid denied or rejected deletion.
+func DeleteListProviderRejected(value sendgrid.DeletedListOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.DeletedListOutput] {
+	return connectormock.Branch(sendgrid.DeleteListBranchProviderRejected, value, failure)
+}
+
+// DeleteListInvalidResponse selects the invalidResponse branch: SendGrid returned an invalid response.
+func DeleteListInvalidResponse(value sendgrid.DeletedListOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.DeletedListOutput] {
+	return connectormock.Branch(sendgrid.DeleteListBranchInvalidResponse, value, failure)
+}
+
+// DeleteListDefect selects the defect branch: Local input or connection is invalid.
+func DeleteListDefect(value sendgrid.DeletedListOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.DeletedListOutput] {
+	return connectormock.Branch(sendgrid.DeleteListBranchDefect, value, failure)
+}
+
+// DeleteListRetry asks Dex to retry the deleteList Step, after the delay when it is positive.
+func DeleteListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.DeletedListOutput] {
+	return connectormock.Retry[sendgrid.DeletedListOutput](failure, after)
+}
+
+// DeleteListDeletedList is the manifest mock deletedList: A static list was removed.
+func DeleteListDeletedList() connectormock.Case[sendgrid.DeletedListOutput] {
+	value := connectormock.MustDecodeOutput[sendgrid.DeletedListOutput](`{"id":"list-123"}`)
+	return connectormock.Branch(sendgrid.DeleteListBranchDeleted, value, nil)
+}
+
+// DeleteListDefault is the manifest default, deletedList, which New installs.
+func DeleteListDefault() connectormock.Case[sendgrid.DeletedListOutput] {
+	return DeleteListDeletedList()
+}
+
+// CreateListCreated selects the created branch: SendGrid created or confirmed the list.
+func CreateListCreated(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.CreateListBranchCreated, value, failure)
+}
+
+// CreateListProviderRejected selects the providerRejected branch: SendGrid denied or rejected creation.
+func CreateListProviderRejected(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.CreateListBranchProviderRejected, value, failure)
+}
+
+// CreateListUncertain returns an uncertain createList outcome.
+func CreateListUncertain(value sendgrid.MarketingList, failure sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateListDefect selects the defect branch: Local input or connection is invalid.
+func CreateListDefect(value sendgrid.MarketingList, failure *sdkgo.Failure) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Branch(sendgrid.CreateListBranchDefect, value, failure)
+}
+
+// CreateListRetry asks Dex to retry the createList Step, after the delay when it is positive.
+func CreateListRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.MarketingList] {
+	return connectormock.Retry[sendgrid.MarketingList](failure, after)
+}
+
+// CreateListCreatedList is the manifest mock createdList: SendGrid created a static list.
+func CreateListCreatedList() connectormock.Case[sendgrid.MarketingList] {
+	value := connectormock.MustDecodeOutput[sendgrid.MarketingList](`{"id":"list-123","name":"Customers","contactCount":0}`)
+	return connectormock.Branch(sendgrid.CreateListBranchCreated, value, nil)
+}
+
+// CreateListDefault is the manifest default, createdList, which New installs.
+func CreateListDefault() connectormock.Case[sendgrid.MarketingList] { return CreateListCreatedList() }
+
+// SendMailAccepted selects the accepted branch: SendGrid accepted the email for delivery.
+func SendMailAccepted(value sendgrid.SendMailOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Branch(sendgrid.SendMailBranchAccepted, value, failure)
+}
+
+// SendMailProviderRejected selects the providerRejected branch: SendGrid rejected the sender, recipients, content, or authorization.
+func SendMailProviderRejected(value sendgrid.SendMailOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Branch(sendgrid.SendMailBranchProviderRejected, value, failure)
+}
+
+// SendMailUncertain returns an uncertain sendMail outcome.
+func SendMailUncertain(value sendgrid.SendMailOutput, failure sdkgo.Failure) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendMailDefect selects the defect branch: Local mail input or connection is invalid.
+func SendMailDefect(value sendgrid.SendMailOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Branch(sendgrid.SendMailBranchDefect, value, failure)
+}
+
+// SendMailRetry asks Dex to retry the sendMail Step, after the delay when it is positive.
+func SendMailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Retry[sendgrid.SendMailOutput](failure, after)
+}
+
+// SendMailAcceptedMail is the manifest mock acceptedMail: SendGrid accepted one message for delivery.
+func SendMailAcceptedMail() connectormock.Case[sendgrid.SendMailOutput] {
+	value := connectormock.MustDecodeOutput[sendgrid.SendMailOutput](`{"accepted":true}`)
+	return connectormock.Branch(sendgrid.SendMailBranchAccepted, value, nil)
+}
+
+// SendMailDefault is the manifest default, acceptedMail, which New installs.
+func SendMailDefault() connectormock.Case[sendgrid.SendMailOutput] { return SendMailAcceptedMail() }

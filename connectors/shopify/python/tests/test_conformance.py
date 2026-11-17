@@ -14,7 +14,21 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/shopify/scenarios.json")
+SUPPORTED_LIST_SCENARIOS = {
+    "listOrders-success",
+    "listOrders-not-found",
+    "listOrders-provider-rejected",
+    "listOrders-invalid-response",
+    "listOrders-rate-limit",
+    "listOrders-unavailable",
+    "listOrders-transport-before-send",
+    "listOrders-defect",
+}
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/shopify/scenarios.json")
+    if scenario["operation"] == "getOrder" or scenario["name"] in SUPPORTED_LIST_SCENARIOS
+]
 CONNECTION = sdk.ConnectionRef("shopify", "shopify")
 ADAPTER = conformance.PythonOperationAdapter(
     "shopify",

@@ -17,7 +17,9 @@ import {
   UpsertRecordByExternalIDInputSchema,
 } from '../src/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/salesforce/scenarios.json', import.meta.url));
+const implementedOperations = new Set(['queryRecords', 'getRecord', 'upsertRecordByExternalId', 'updateRecord']);
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/salesforce/scenarios.json', import.meta.url))
+  .filter(scenario => implementedOperations.has(scenario.operation));
 const connection = { provider: 'salesforce', name: 'salesforce-crm' };
 
 function productionMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input, key: string) {

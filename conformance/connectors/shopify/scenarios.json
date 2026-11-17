@@ -624,6 +624,4006 @@
       },
       "name": "listOrders-defect",
       "operation": "listOrders"
+    },
+    {
+      "callId": "shopify-countOrders-success",
+      "exchanges": [
+        {
+          "body": "{\"count\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "counted",
+        "failureKind": "",
+        "output": {
+          "count": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-success",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-not-found",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-not-found",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-provider-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-provider-rejected",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-invalid-response",
+      "exchanges": [
+        {
+          "body": "{\"wrong\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-invalid-response",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-rate-limit",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-rate-limit",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-unavailable",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-unavailable",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-transport-before-send",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-transport-before-send",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "invalid"
+      },
+      "name": "countOrders-defect",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-listOrders-filtered",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders.json",
+          "query": {
+            "attribution_app_id": [
+              "current"
+            ],
+            "created_at_max": [
+              "2026-02-01T00:00:00Z"
+            ],
+            "created_at_min": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "financial_status": [
+              "paid"
+            ],
+            "fulfillment_status": [
+              "unfulfilled"
+            ],
+            "limit": [
+              "2"
+            ],
+            "processed_at_max": [
+              "2026-02-01T00:00:00Z"
+            ],
+            "processed_at_min": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "status": [
+              "closed"
+            ],
+            "updated_at_max": [
+              "2026-02-01T00:00:00Z"
+            ],
+            "updated_at_min": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "currency": "USD",
+              "financial_status": "paid",
+              "id": 101,
+              "name": "#101",
+              "total_price": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attributionAppId": "current",
+        "createdAtMax": "2026-02-01T00:00:00Z",
+        "createdAtMin": "2026-01-01T00:00:00Z",
+        "financialStatus": "paid",
+        "fulfillmentStatus": "unfulfilled",
+        "limit": 2,
+        "processedAtMax": "2026-02-01T00:00:00Z",
+        "processedAtMin": "2026-01-01T00:00:00Z",
+        "status": "closed",
+        "updatedAtMax": "2026-02-01T00:00:00Z",
+        "updatedAtMin": "2026-01-01T00:00:00Z"
+      },
+      "name": "listOrders-filtered",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "shopify-listOrders-since-id",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders.json",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "since_id": [
+              "100"
+            ],
+            "status": [
+              "any"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "currency": "USD",
+              "financial_status": "paid",
+              "id": 101,
+              "name": "#101",
+              "total_price": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "sinceId": 100
+      },
+      "name": "listOrders-since-id",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "shopify-listOrders-ids",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders.json",
+          "query": {
+            "ids": [
+              "101,102"
+            ],
+            "limit": [
+              "2"
+            ],
+            "status": [
+              "any"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "currency": "USD",
+              "financial_status": "paid",
+              "id": 101,
+              "name": "#101",
+              "total_price": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ids": "101,102",
+        "limit": 2
+      },
+      "name": "listOrders-ids",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "shopify-listOrders-cursor",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}",
+          "headers": {
+            "Link": "\u003chttps://test-shop.myshopify.com/admin/api/2026-10/orders.json?page_info=cursor-2\u0026limit=2\u003e; rel=\"next\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders.json",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "page_info": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageInfo": "cursor-2",
+          "orders": [
+            {
+              "currency": "USD",
+              "financial_status": "paid",
+              "id": 101,
+              "name": "#101",
+              "total_price": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "pageInfo": "cursor-1"
+      },
+      "name": "listOrders-cursor",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "body": "{\"order\":{\"id\":102,\"name\":\"#102\",\"financial_status\":\"pending\",\"total_price\":\"29.00\",\"currency\":\"USD\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+          "providerId": "102",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currency": "USD",
+          "financial_status": "pending",
+          "id": 102,
+          "name": "#102",
+          "total_price": "29.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-success",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currency": "",
+          "financial_status": "",
+          "id": 0,
+          "name": "",
+          "total_price": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-rejected",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-rate-limit",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-unavailable",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-transport",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currency": "",
+          "financial_status": "",
+          "id": 0,
+          "name": "",
+          "total_price": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-defect",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currency": "",
+          "financial_status": "",
+          "id": 0,
+          "name": "",
+          "total_price": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-uncertain",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-unknown",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "exchanges": [
+        {
+          "body": "{\"order\":{\"id\":101,\"name\":\"#101\",\"financial_status\":\"pending\",\"total_price\":\"29.00\",\"currency\":\"USD\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/101.json",
+          "requestBody": {
+            "order": {
+              "id": 101,
+              "note": "Updated by Flow",
+              "tags": "dex,updated"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "currency": "USD",
+          "financial_status": "pending",
+          "id": 101,
+          "name": "#101",
+          "total_price": "29.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "input": {
+        "note": "Updated by Flow",
+        "orderId": 101,
+        "tags": "dex,updated"
+      },
+      "name": "updateOrder-success",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/101.json",
+          "requestBody": {
+            "order": {
+              "id": 101,
+              "note": "Updated by Flow",
+              "tags": "dex,updated"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "currency": "",
+          "financial_status": "",
+          "id": 0,
+          "name": "",
+          "total_price": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "input": {
+        "note": "Updated by Flow",
+        "orderId": 101,
+        "tags": "dex,updated"
+      },
+      "name": "updateOrder-not-found",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/101.json",
+          "requestBody": {
+            "order": {
+              "id": 101,
+              "note": "Updated by Flow",
+              "tags": "dex,updated"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currency": "",
+          "financial_status": "",
+          "id": 0,
+          "name": "",
+          "total_price": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "input": {
+        "note": "Updated by Flow",
+        "orderId": 101,
+        "tags": "dex,updated"
+      },
+      "name": "updateOrder-rejected",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/101.json",
+          "requestBody": {
+            "order": {
+              "id": 101,
+              "note": "Updated by Flow",
+              "tags": "dex,updated"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "input": {
+        "note": "Updated by Flow",
+        "orderId": 101,
+        "tags": "dex,updated"
+      },
+      "name": "updateOrder-rate-limit",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/101.json",
+          "requestBody": {
+            "order": {
+              "id": 101,
+              "note": "Updated by Flow",
+              "tags": "dex,updated"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "input": {
+        "note": "Updated by Flow",
+        "orderId": 101,
+        "tags": "dex,updated"
+      },
+      "name": "updateOrder-unavailable",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/101.json",
+          "requestBody": {
+            "order": {
+              "id": 101,
+              "note": "Updated by Flow",
+              "tags": "dex,updated"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "input": {
+        "note": "Updated by Flow",
+        "orderId": 101,
+        "tags": "dex,updated"
+      },
+      "name": "updateOrder-transport",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currency": "",
+          "financial_status": "",
+          "id": 0,
+          "name": "",
+          "total_price": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "input": {
+        "note": "Updated by Flow",
+        "orderId": 0,
+        "tags": "dex,updated"
+      },
+      "name": "updateOrder-defect",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/orders/101.json",
+          "requestBody": {
+            "order": {
+              "id": 101,
+              "note": "Updated by Flow",
+              "tags": "dex,updated"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currency": "",
+          "financial_status": "",
+          "id": 0,
+          "name": "",
+          "total_price": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e070aae-5ee7-59d0-bb18-7e2237980800",
+      "input": {
+        "note": "Updated by Flow",
+        "orderId": 101,
+        "tags": "dex,updated"
+      },
+      "name": "updateOrder-invalid-response",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/orders/101.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "orderId": 101
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-success",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/orders/101.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "orderId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-not-found",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/orders/101.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "orderId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-rejected",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/orders/101.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-rate-limit",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/orders/101.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-unavailable",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/orders/101.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-transport",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "orderId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e840ca96-894b-59b3-a2f3-4413de04a2d5",
+      "input": {
+        "orderId": 0
+      },
+      "name": "deleteOrder-defect",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "shopify-getProduct-success",
+      "exchanges": [
+        {
+          "body": "{\"product\":{\"id\":201,\"title\":\"Sample Product\",\"status\":\"active\",\"body_html\":\"\u003cp\u003eSample\u003c/p\u003e\",\"vendor\":\"Meridian\",\"product_type\":\"Accessory\",\"handle\":\"sample-product\",\"tags\":\"dex\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "body_html": "\u003cp\u003eSample\u003c/p\u003e",
+          "handle": "sample-product",
+          "id": 201,
+          "product_type": "Accessory",
+          "status": "active",
+          "tags": "dex",
+          "title": "Sample Product",
+          "vendor": "Meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": 201
+      },
+      "name": "getProduct-success",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "shopify-getProduct-not-found",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": 201
+      },
+      "name": "getProduct-not-found",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "shopify-getProduct-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": 201
+      },
+      "name": "getProduct-rejected",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "shopify-getProduct-invalid",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": 201
+      },
+      "name": "getProduct-invalid",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "shopify-getProduct-429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "productId": 201
+      },
+      "name": "getProduct-429",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "shopify-getProduct-503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": 201
+      },
+      "name": "getProduct-503",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "shopify-getProduct-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": 201
+      },
+      "name": "getProduct-transport",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "shopify-getProduct-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "productId": 0
+      },
+      "name": "getProduct-defect",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "shopify-listProducts-success",
+      "exchanges": [
+        {
+          "body": "{\"products\":[{\"id\":201,\"title\":\"Sample Product\",\"status\":\"active\",\"body_html\":\"\u003cp\u003eSample\u003c/p\u003e\",\"vendor\":\"Meridian\",\"product_type\":\"Accessory\",\"handle\":\"sample-product\",\"tags\":\"dex\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "products": [
+            {
+              "body_html": "\u003cp\u003eSample\u003c/p\u003e",
+              "handle": "sample-product",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex",
+              "title": "Sample Product",
+              "vendor": "Meridian"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listProducts-success",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-not-found",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "products": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listProducts-not-found",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "products": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listProducts-rejected",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-invalid",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "products": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listProducts-invalid",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listProducts-429",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listProducts-503",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listProducts-transport",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "products": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 251
+      },
+      "name": "listProducts-defect",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-filters",
+      "exchanges": [
+        {
+          "body": "{\"products\":[{\"id\":201,\"title\":\"Sample Product\",\"status\":\"active\",\"body_html\":\"\u003cp\u003eSample\u003c/p\u003e\",\"vendor\":\"Meridian\",\"product_type\":\"Accessory\",\"handle\":\"sample-product\",\"tags\":\"dex\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "ids": [
+              "201,202"
+            ],
+            "limit": [
+              "2"
+            ],
+            "product_type": [
+              "Accessory"
+            ],
+            "status": [
+              "active"
+            ],
+            "title": [
+              "Sample Product"
+            ],
+            "vendor": [
+              "Meridian"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "products": [
+            {
+              "body_html": "\u003cp\u003eSample\u003c/p\u003e",
+              "handle": "sample-product",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex",
+              "title": "Sample Product",
+              "vendor": "Meridian"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ids": "201,202",
+        "limit": 2,
+        "productType": "Accessory",
+        "status": "active",
+        "title": "Sample Product",
+        "vendor": "Meridian"
+      },
+      "name": "listProducts-filters",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "shopify-listProducts-cursor",
+      "exchanges": [
+        {
+          "body": "{\"products\":[{\"id\":201,\"title\":\"Sample Product\",\"status\":\"active\",\"body_html\":\"\u003cp\u003eSample\u003c/p\u003e\",\"vendor\":\"Meridian\",\"product_type\":\"Accessory\",\"handle\":\"sample-product\",\"tags\":\"dex\"}]}",
+          "headers": {
+            "Link": "\u003chttps://test-shop.myshopify.com/admin/api/2026-10/products.json?page_info=page-two\u0026limit=2\u003e; rel=\"next\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products.json",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "page_info": [
+              "page-one"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageInfo": "page-two",
+          "products": [
+            {
+              "body_html": "\u003cp\u003eSample\u003c/p\u003e",
+              "handle": "sample-product",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex",
+              "title": "Sample Product",
+              "vendor": "Meridian"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "pageInfo": "page-one"
+      },
+      "name": "listProducts-cursor",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "body": "{\"product\":{\"id\":202,\"title\":\"New Product\",\"status\":\"draft\",\"body_html\":\"\u003cp\u003eSample\u003c/p\u003e\",\"vendor\":\"Meridian\",\"product_type\":\"Accessory\",\"handle\":\"sample-product\",\"tags\":\"dex\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+          "providerId": "202",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "body_html": "\u003cp\u003eSample\u003c/p\u003e",
+          "handle": "sample-product",
+          "id": 202,
+          "product_type": "Accessory",
+          "status": "draft",
+          "tags": "dex",
+          "title": "New Product",
+          "vendor": "Meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-success",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-rejected",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-429",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-503",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-transport",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-defect",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-uncertain",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-500",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "exchanges": [
+        {
+          "body": "{\"product\":{\"id\":201,\"title\":\"Updated Product\",\"status\":\"active\",\"body_html\":\"\u003cp\u003eSample\u003c/p\u003e\",\"vendor\":\"Meridian\",\"product_type\":\"Accessory\",\"handle\":\"sample-product\",\"tags\":\"dex\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/201.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eUpdated\u003c/p\u003e",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex,updated",
+              "title": "Updated Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "body_html": "\u003cp\u003eSample\u003c/p\u003e",
+          "handle": "sample-product",
+          "id": 201,
+          "product_type": "Accessory",
+          "status": "active",
+          "tags": "dex",
+          "title": "Updated Product",
+          "vendor": "Meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "input": {
+        "bodyHtml": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "productId": 201,
+        "productType": "Accessory",
+        "status": "active",
+        "tags": "dex,updated",
+        "title": "Updated Product",
+        "vendor": "Meridian"
+      },
+      "name": "updateProduct-success",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/201.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eUpdated\u003c/p\u003e",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex,updated",
+              "title": "Updated Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "input": {
+        "bodyHtml": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "productId": 201,
+        "productType": "Accessory",
+        "status": "active",
+        "tags": "dex,updated",
+        "title": "Updated Product",
+        "vendor": "Meridian"
+      },
+      "name": "updateProduct-not-found",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/201.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eUpdated\u003c/p\u003e",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex,updated",
+              "title": "Updated Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "input": {
+        "bodyHtml": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "productId": 201,
+        "productType": "Accessory",
+        "status": "active",
+        "tags": "dex,updated",
+        "title": "Updated Product",
+        "vendor": "Meridian"
+      },
+      "name": "updateProduct-rejected",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/201.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eUpdated\u003c/p\u003e",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex,updated",
+              "title": "Updated Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "input": {
+        "bodyHtml": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "productId": 201,
+        "productType": "Accessory",
+        "status": "active",
+        "tags": "dex,updated",
+        "title": "Updated Product",
+        "vendor": "Meridian"
+      },
+      "name": "updateProduct-429",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/201.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eUpdated\u003c/p\u003e",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex,updated",
+              "title": "Updated Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "input": {
+        "bodyHtml": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "productId": 201,
+        "productType": "Accessory",
+        "status": "active",
+        "tags": "dex,updated",
+        "title": "Updated Product",
+        "vendor": "Meridian"
+      },
+      "name": "updateProduct-503",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/201.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eUpdated\u003c/p\u003e",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex,updated",
+              "title": "Updated Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "input": {
+        "bodyHtml": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "productId": 201,
+        "productType": "Accessory",
+        "status": "active",
+        "tags": "dex,updated",
+        "title": "Updated Product",
+        "vendor": "Meridian"
+      },
+      "name": "updateProduct-transport",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "input": {
+        "bodyHtml": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "productId": 0,
+        "productType": "Accessory",
+        "status": "active",
+        "tags": "dex,updated",
+        "title": "Updated Product",
+        "vendor": "Meridian"
+      },
+      "name": "updateProduct-defect",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/201.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eUpdated\u003c/p\u003e",
+              "id": 201,
+              "product_type": "Accessory",
+              "status": "active",
+              "tags": "dex,updated",
+              "title": "Updated Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b015bf84-bfe1-5a8c-812c-20b97125172c",
+      "input": {
+        "bodyHtml": "\u003cp\u003eUpdated\u003c/p\u003e",
+        "productId": 201,
+        "productType": "Accessory",
+        "status": "active",
+        "tags": "dex,updated",
+        "title": "Updated Product",
+        "vendor": "Meridian"
+      },
+      "name": "updateProduct-invalid",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "productId": 201
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "input": {
+        "productId": 201
+      },
+      "name": "deleteProduct-success",
+      "operation": "deleteProduct"
+    },
+    {
+      "callId": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "productId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "input": {
+        "productId": 201
+      },
+      "name": "deleteProduct-not-found",
+      "operation": "deleteProduct"
+    },
+    {
+      "callId": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "productId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "input": {
+        "productId": 201
+      },
+      "name": "deleteProduct-rejected",
+      "operation": "deleteProduct"
+    },
+    {
+      "callId": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "input": {
+        "productId": 201
+      },
+      "name": "deleteProduct-429",
+      "operation": "deleteProduct"
+    },
+    {
+      "callId": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "input": {
+        "productId": 201
+      },
+      "name": "deleteProduct-503",
+      "operation": "deleteProduct"
+    },
+    {
+      "callId": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/201.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "input": {
+        "productId": 201
+      },
+      "name": "deleteProduct-transport",
+      "operation": "deleteProduct"
+    },
+    {
+      "callId": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "productId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7dddb2c-f25e-5df3-b275-71ff01f1d3f8",
+      "input": {
+        "productId": 0
+      },
+      "name": "deleteProduct-defect",
+      "operation": "deleteProduct"
+    },
+    {
+      "attempts": 3,
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/orders.json",
+          "requestBody": {
+            "order": {
+              "inventory_behaviour": "bypass",
+              "line_items": [
+                {
+                  "price": "29.00",
+                  "quantity": 1,
+                  "title": "Sample item"
+                }
+              ],
+              "note": "Created by Flow",
+              "send_receipt": false,
+              "tags": "dex"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "currency": "",
+          "financial_status": "",
+          "id": 0,
+          "name": "",
+          "total_price": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createOrder-unknown-cap",
+      "operation": "createOrder"
+    },
+    {
+      "attempts": 3,
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/products.json",
+          "requestBody": {
+            "product": {
+              "body_html": "\u003cp\u003eNew\u003c/p\u003e",
+              "product_type": "Accessory",
+              "status": "draft",
+              "tags": "dex",
+              "title": "New Product",
+              "vendor": "Meridian"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProduct-unknown-cap",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "exchanges": [
+        {
+          "body": "{\"order\":{\"id\":102,\"name\":\"#102\",\"financial_status\":\"pending\",\"total_price\":\"29.00\",\"currency\":\"USD\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/102.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "currency": "USD",
+          "financial_status": "pending",
+          "id": 102,
+          "name": "#102",
+          "total_price": "29.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ded58eef-7060-5213-af15-d97dea2c16e5",
+      "input": {
+        "lineItems": [
+          {
+            "price": "29.00",
+            "quantity": 1,
+            "title": "Sample item"
+          }
+        ],
+        "note": "Created by Flow",
+        "tags": "dex"
+      },
+      "name": "createOrder-readback-confirmed",
+      "operation": "createOrder",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "ded58eef-7060-5213-af15-d97dea2c16e5",
+        "providerId": "102",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "exchanges": [
+        {
+          "body": "{\"product\":{\"id\":202,\"title\":\"New Product\",\"status\":\"draft\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/202.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": 202,
+          "status": "draft",
+          "title": "New Product"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+      "input": {
+        "bodyHtml": "\u003cp\u003eNew\u003c/p\u003e",
+        "productType": "Accessory",
+        "status": "draft",
+        "tags": "dex",
+        "title": "New Product",
+        "vendor": "Meridian"
+      },
+      "name": "createProduct-readback-confirmed",
+      "operation": "createProduct",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "37b6232d-56cb-5de9-a02e-a341fbcf86fc",
+        "providerId": "202",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1
