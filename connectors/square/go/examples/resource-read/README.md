@@ -1,6 +1,6 @@
 # Square resource-read example
 
-This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. With `refundPaymentId`, `square.NewRefundPaymentStep` refunds a completed payment. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
+This Flow uses the static `square` connection. By default, `square.NewListPaymentsStep` reads payments. With `recordCashPayment: true`, `square.NewCreatePaymentStep` records a cash payment. With `refundPaymentId`, `square.NewRefundPaymentStep` refunds a completed payment. With `createCustomer: true`, `square.NewCreateCustomerStep` creates a customer. Start input is typed as `Request`; the result is `Outcome`. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
@@ -42,4 +42,6 @@ To record a cash payment, enable `PAYMENTS_WRITE` in the Square application and 
 
 To refund a completed payment, start with `{"refundPaymentId":"pay_101","amountMoney":{"amount":1000,"currency":"USD"}}`. Use the payment's Square ID and a positive amount in the currency's minor unit. The connector derives the required refund idempotency key from the Dex call identity.
 
-The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs the read, cash write, and refund paths through a real Dex Worker using manifest mocks.
+To create a customer, enable `CUSTOMERS_WRITE` and start with `{"createCustomer":true,"customerGivenName":"Ada","customerEmailAddress":"ada@example.com"}`. Square requires at least one public name or email field; the connector derives a stable idempotency key.
+
+The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs read, cash write, refund, and customer create paths through a real Dex Worker using manifest mocks.

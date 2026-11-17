@@ -52,6 +52,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.Refund](`{"id":"refund_101","payment_id":"pay_101","status":"PENDING","amount_money":{"amount":1000,"currency":"USD"}}`)
 			return err
 		}},
+		{name: "listCustomers/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CustomerPage](`{"customers":[{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}],"cursor":""}`)
+			return err
+		}},
+		{name: "searchCustomers/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.CustomerPage](`{"customers":[{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}],"cursor":""}`)
+			return err
+		}},
+		{name: "getCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+			return err
+		}},
+		{name: "createCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Customer](`{"id":"customer_101","given_name":"Ada","family_name":"Lovelace","email_address":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteCustomer/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.DeletedCustomer](`{"customerId":"customer_101"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -88,5 +112,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.RefundPayment().Definition().Operation.OperationID != "refundPayment" {
 		t.Errorf("refundPayment mock has another definition")
+	}
+	if mock.ListCustomers().Definition().Operation.OperationID != "listCustomers" {
+		t.Errorf("listCustomers mock has another definition")
+	}
+	if mock.SearchCustomers().Definition().Operation.OperationID != "searchCustomers" {
+		t.Errorf("searchCustomers mock has another definition")
+	}
+	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
+		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
 	}
 }

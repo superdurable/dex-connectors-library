@@ -15,10 +15,11 @@ const (
 	// FlowType is the stable Dex Flow identity.
 	FlowType = "SquareResourceRead"
 	// ConnectionName is the static Dex Web connection name.
-	ConnectionName        = "square"
-	readStepType          = "ReadSquareResource"
-	createPaymentStepType = "CreateSquareCashPayment"
-	refundPaymentStepType = "RefundSquarePayment"
+	ConnectionName         = "square"
+	readStepType           = "ReadSquareResource"
+	createPaymentStepType  = "CreateSquareCashPayment"
+	refundPaymentStepType  = "RefundSquarePayment"
+	createCustomerStepType = "CreateSquareCustomer"
 )
 
 // Request is the typed start input for this example.
@@ -31,6 +32,12 @@ type Request struct {
 	AmountMoney square.Money `json:"amountMoney,omitempty"`
 	// RefundPaymentID selects a completed payment to refund when set.
 	RefundPaymentID string `json:"refundPaymentId,omitempty"`
+	// CreateCustomer selects the customer create path when true.
+	CreateCustomer bool `json:"createCustomer,omitempty"`
+	// CustomerGivenName is the new customer's given name.
+	CustomerGivenName string `json:"customerGivenName,omitempty"`
+	// CustomerEmailAddress is the new customer's email address.
+	CustomerEmailAddress string `json:"customerEmailAddress,omitempty"`
 }
 
 // Outcome is the completed resource read.
@@ -41,6 +48,8 @@ type Outcome struct {
 	Payment square.Payment `json:"payment,omitempty"`
 	// Refund is the accepted payment refund when RefundPaymentID was set.
 	Refund square.Refund `json:"refund,omitempty"`
+	// Customer is the new Square customer when CreateCustomer was selected.
+	Customer square.Customer `json:"customer,omitempty"`
 }
 
 var outcomeAttribute = dex.DefineAttribute[Outcome]("square-resource-read-outcome")
@@ -78,9 +87,16 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToRefundPaymentInput,
 			Refunded:            sdkgo.GoTo(completeRefund{}),
 		})),
+		dex.DefineStep(square.NewCreateCustomerStep(square.CreateCustomerStepConfig[Request]{
+			StepType: createCustomerStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "square", GroupLabel: "Square", Explanation: "Create the requested customer profile."},
+			MapToOperationInput: MapToCreateCustomerInput,
+			Created:             sdkgo.GoTo(completeCustomer{}),
+		})),
 		dex.DefineStep(completeRead{}),
 		dex.DefineStep(completeCashPayment{}),
 		dex.DefineStep(completeRefund{}),
+		dex.DefineStep(completeCustomer{}),
 	}
 }
 
@@ -123,6 +139,11 @@ func MapToRefundPaymentInput(request Request) square.RefundPaymentInput {
 	return square.RefundPaymentInput{PaymentID: request.RefundPaymentID, AmountMoney: request.AmountMoney}
 }
 
+// MapToCreateCustomerInput maps the customer profile fields.
+func MapToCreateCustomerInput(request Request) square.CreateCustomerInput {
+	return square.CreateCustomerInput{GivenName: request.CustomerGivenName, EmailAddress: request.CustomerEmailAddress}
+}
+
 // PrepareRequest rejects invalid local input before a provider call.
 func PrepareRequest(request Request) (Request, error) {
 	if request.RecordCashPayment && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
@@ -133,6 +154,14 @@ func PrepareRequest(request Request) (Request, error) {
 	}
 	if request.RecordCashPayment && request.RefundPaymentID != "" {
 		return Request{}, errors.New("choose one payment action")
+	}
+	if request.CreateCustomer {
+		if request.CustomerGivenName == "" && request.CustomerEmailAddress == "" {
+			return Request{}, errors.New("customer given name or email address is required")
+		}
+		if request.RecordCashPayment || request.RefundPaymentID != "" {
+			return Request{}, errors.New("choose one Square action")
+		}
 	}
 	return request, nil
 }
@@ -155,6 +184,9 @@ func (prepareRequest) Execute(ctx dex.Context, request Request) (*dex.StepDecisi
 	}
 	if prepared.RefundPaymentID != "" {
 		return dex.GoTo(sdkgo.StepRef[Request](refundPaymentStepType), prepared), nil
+	}
+	if prepared.CreateCustomer {
+		return dex.GoTo(sdkgo.StepRef[Request](createCustomerStepType), prepared), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[Request](readStepType), prepared), nil
 }
@@ -198,6 +230,21 @@ type completeRefund struct {
 func (completeRefund) GetStepType() string { return "CompleteRefund" }
 func (completeRefund) Execute(ctx dex.Context, result square.RefundPaymentResult) (*dex.StepDecision, error) {
 	outcome := Outcome{Refund: result.Value}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:resource-result group-label:"Resource result"
+// dex:explanation text:"Persist the created customer as the Flow outcome."
+type completeCustomer struct {
+	dex.StepDefaultsNoWaitFor[square.CreateCustomerResult]
+}
+
+func (completeCustomer) GetStepType() string { return "CompleteCustomer" }
+func (completeCustomer) Execute(ctx dex.Context, result square.CreateCustomerResult) (*dex.StepDecision, error) {
+	outcome := Outcome{Customer: result.Value}
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

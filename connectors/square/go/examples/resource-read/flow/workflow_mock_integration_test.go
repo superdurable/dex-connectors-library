@@ -98,4 +98,19 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, refundFlowID, refundCalls[0].FlowID)
 	require.Equal(t, square.RefundPaymentInput{PaymentID: "pay_101", AmountMoney: refundInput.AmountMoney}, refundCalls[0].Input)
 	require.Equal(t, square.RefundPaymentBranchRefunded, refundCalls[0].Branch)
+	customerFlowID := "square-customer-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	customerInput := Request{CreateCustomer: true, CustomerGivenName: "Ada", CustomerEmailAddress: "ada@example.com"}
+	_, err = client.StartFlow(ctx, flow, customerFlowID, customerInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	customerResult, err := client.WaitForFlow(ctx, customerFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, customerResult.Status, customerResult.ErrorMessage)
+	var customerOutcome Outcome
+	require.NoError(t, customerResult.DecodeSingleOutput(&customerOutcome))
+	require.Equal(t, "customer_101", customerOutcome.Customer.ID)
+	customerCalls := mock.CreateCustomer().Calls()
+	require.Len(t, customerCalls, 1)
+	require.Equal(t, customerFlowID, customerCalls[0].FlowID)
+	require.Equal(t, square.CreateCustomerInput{GivenName: "Ada", EmailAddress: "ada@example.com"}, customerCalls[0].Input)
+	require.Equal(t, square.CreateCustomerBranchCreated, customerCalls[0].Branch)
 }

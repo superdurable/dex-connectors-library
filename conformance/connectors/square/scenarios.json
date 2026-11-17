@@ -3559,6 +3559,2211 @@
       },
       "name": "refundPayment-defect",
       "operation": "refundPayment"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000021",
+      "exchanges": [
+        {
+          "body": "{\"customers\":[{\"id\":\"customer_101\",\"given_name\":\"Ada\",\"family_name\":\"Lovelace\",\"email_address\":\"ada@example.com\",\"reference_id\":\"crm_101\"}],\"cursor\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "",
+          "customers": [
+            {
+              "email_address": "ada@example.com",
+              "family_name": "Lovelace",
+              "given_name": "Ada",
+              "id": "customer_101",
+              "reference_id": "crm_101"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listCustomers-success",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000022",
+      "exchanges": [
+        {
+          "body": "{\"customers\":[{\"id\":\"customer_101\",\"given_name\":\"Ada\",\"family_name\":\"Lovelace\",\"email_address\":\"ada@example.com\",\"reference_id\":\"crm_101\"}],\"cursor\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "query": {
+              "filter": {
+                "email_address": {
+                  "exact": "ada@example.com"
+                },
+                "reference_id": {
+                  "exact": "crm_101"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "",
+          "customers": [
+            {
+              "email_address": "ada@example.com",
+              "family_name": "Lovelace",
+              "given_name": "Ada",
+              "id": "customer_101",
+              "reference_id": "crm_101"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "emailAddress": "ada@example.com",
+        "referenceId": "crm_101"
+      },
+      "name": "searchCustomers-success",
+      "operation": "searchCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [
+        {
+          "body": "{\"customer\":{\"id\":\"customer_101\",\"given_name\":\"Ada\",\"family_name\":\"Lovelace\",\"email_address\":\"ada@example.com\",\"reference_id\":\"crm_101\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email_address": "ada@example.com",
+          "family_name": "Lovelace",
+          "given_name": "Ada",
+          "id": "customer_101",
+          "reference_id": "crm_101"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "getCustomer-success",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{\"customer\":{\"id\":\"customer_101\",\"given_name\":\"Ada\",\"family_name\":\"Lovelace\",\"email_address\":\"ada@example.com\",\"reference_id\":\"crm_101\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "email_address": "ada@example.com",
+          "family_name": "Lovelace",
+          "given_name": "Ada",
+          "id": "customer_101",
+          "reference_id": "crm_101"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-success",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{\"customer\":{\"id\":\"customer_101\",\"given_name\":\"Ada\",\"family_name\":\"Lovelace\",\"email_address\":\"ada@example.com\",\"reference_id\":\"crm_101\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "email_address": "ada@example.com",
+          "family_name": "Lovelace",
+          "given_name": "Ada",
+          "id": "customer_101",
+          "reference_id": "crm_101"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-success",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "customerId": "customer_101"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-success",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000021",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cursor": "",
+          "customers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listCustomers-rejected",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000021",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "customers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listCustomers-invalid",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000021",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listCustomers-rate-limit",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000021",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listCustomers-unavailable",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000021",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listCustomers-server-error",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000021",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listCustomers-transport",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000021",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cursor": "",
+          "customers": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listCustomers-defect",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000022",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "query": {
+              "filter": {
+                "email_address": {
+                  "exact": "ada@example.com"
+                },
+                "reference_id": {
+                  "exact": "crm_101"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "cursor": "",
+          "customers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "emailAddress": "ada@example.com",
+        "referenceId": "crm_101"
+      },
+      "name": "searchCustomers-rejected",
+      "operation": "searchCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000022",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "query": {
+              "filter": {
+                "email_address": {
+                  "exact": "ada@example.com"
+                },
+                "reference_id": {
+                  "exact": "crm_101"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "customers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "emailAddress": "ada@example.com",
+        "referenceId": "crm_101"
+      },
+      "name": "searchCustomers-invalid",
+      "operation": "searchCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000022",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "query": {
+              "filter": {
+                "email_address": {
+                  "exact": "ada@example.com"
+                },
+                "reference_id": {
+                  "exact": "crm_101"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "emailAddress": "ada@example.com",
+        "referenceId": "crm_101"
+      },
+      "name": "searchCustomers-rate-limit",
+      "operation": "searchCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000022",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "query": {
+              "filter": {
+                "email_address": {
+                  "exact": "ada@example.com"
+                },
+                "reference_id": {
+                  "exact": "crm_101"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "emailAddress": "ada@example.com",
+        "referenceId": "crm_101"
+      },
+      "name": "searchCustomers-unavailable",
+      "operation": "searchCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000022",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "query": {
+              "filter": {
+                "email_address": {
+                  "exact": "ada@example.com"
+                },
+                "reference_id": {
+                  "exact": "crm_101"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "emailAddress": "ada@example.com",
+        "referenceId": "crm_101"
+      },
+      "name": "searchCustomers-server-error",
+      "operation": "searchCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000022",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers/search",
+          "requestBody": {
+            "cursor": "next-token",
+            "query": {
+              "filter": {
+                "email_address": {
+                  "exact": "ada@example.com"
+                },
+                "reference_id": {
+                  "exact": "crm_101"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "emailAddress": "ada@example.com",
+        "referenceId": "crm_101"
+      },
+      "name": "searchCustomers-transport",
+      "operation": "searchCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000022",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cursor": "",
+          "customers": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "",
+        "emailAddress": "",
+        "referenceId": ""
+      },
+      "name": "searchCustomers-defect",
+      "operation": "searchCustomers"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "getCustomer-rejected",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "getCustomer-invalid",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "getCustomer-rate-limit",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "getCustomer-unavailable",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "getCustomer-server-error",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "getCustomer-transport",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": ""
+      },
+      "name": "getCustomer-defect",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000023",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "getCustomer-not-found",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-rejected",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-invalid",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-rate-limit",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-unavailable",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-server-error",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customers",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada",
+            "idempotency_key": "dex-9160cbddf2718aa643305c40261c298da6208636",
+            "reference_id": "crm_101"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "referenceId": "crm_101"
+      },
+      "name": "createCustomer-transport",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "642ebbb7-97c5-52e7-b479-d04a1c4353c4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-9160cbddf2718aa643305c40261c298da6208636",
+      "input": {
+        "emailAddress": "",
+        "familyName": "",
+        "givenName": "",
+        "referenceId": ""
+      },
+      "name": "createCustomer-defect",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-rejected",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-invalid",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-rate-limit",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-unavailable",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-server-error",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-transport",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "",
+        "emailAddress": "",
+        "familyName": "",
+        "givenName": ""
+      },
+      "name": "updateCustomer-defect",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "d489d893-3dbf-5ace-ad09-ecd1f363ffa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/customers/customer_101",
+          "requestBody": {
+            "email_address": "ada@example.com",
+            "family_name": "Lovelace",
+            "given_name": "Ada"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-e4c81db5b3ffae7d7b516337088876de79e9d3af",
+      "input": {
+        "customerId": "customer_101",
+        "emailAddress": "ada@example.com",
+        "familyName": "Lovelace",
+        "givenName": "Ada"
+      },
+      "name": "updateCustomer-not-found",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customerId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-rejected",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-rate-limit",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-unavailable",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-server-error",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-transport",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customerId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": ""
+      },
+      "name": "deleteCustomer-defect",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "1b92d31b-2241-5d08-b841-5778c8f09b9d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/customers/customer_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "customerId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-921033b3f468f14d47e0647d40b5e4041705191c",
+      "input": {
+        "customerId": "customer_101"
+      },
+      "name": "deleteCustomer-not-found",
+      "operation": "deleteCustomer"
     }
   ],
   "schemaVersion": 1
