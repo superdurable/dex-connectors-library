@@ -51,6 +51,9 @@ type Operations interface {
 	CreateCustomField() sdkgo.Mutation[CreateCustomFieldInput, CustomFieldMetadata]
 	UpdateCustomField() sdkgo.Mutation[UpdateCustomFieldInput, CustomFieldMetadata]
 	DeleteCustomField() sdkgo.Mutation[CustomFieldIDInput, CustomFieldDeletion]
+	ListForms() sdkgo.Query[ListFormsInput, FormsPage]
+	ListFormSubscribers() sdkgo.Query[ListFormSubscribersInput, SubscribersPage]
+	AddSubscriberToForm() sdkgo.Mutation[AddSubscriberToFormInput, SubscriberMetadata]
 }
 
 type clientOperations struct{ client *Client }
@@ -87,6 +90,15 @@ func (operations clientOperations) UpdateCustomField() sdkgo.Mutation[UpdateCust
 }
 func (operations clientOperations) DeleteCustomField() sdkgo.Mutation[CustomFieldIDInput, CustomFieldDeletion] {
 	return operations.client.DeleteCustomField()
+}
+func (operations clientOperations) ListForms() sdkgo.Query[ListFormsInput, FormsPage] {
+	return operations.client.ListForms()
+}
+func (operations clientOperations) ListFormSubscribers() sdkgo.Query[ListFormSubscribersInput, SubscribersPage] {
+	return operations.client.ListFormSubscribers()
+}
+func (operations clientOperations) AddSubscriberToForm() sdkgo.Mutation[AddSubscriberToFormInput, SubscriberMetadata] {
+	return operations.client.AddSubscriberToForm()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1029,6 +1041,231 @@ func NewDeleteCustomFieldStep[IN any](config DeleteCustomFieldStepConfig[IN]) sd
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteCustomFieldBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListFormsBranchListed sdkgo.BranchID = "listed"
+const ListFormsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFormsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFormsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFormsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listForms"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFormsBranchListed, Description: "Kit returned a form page."},
+		{ID: ListFormsBranchProviderRejected, Description: "Kit rejected the list request.", Optional: true},
+		{ID: ListFormsBranchInvalidResponse, Description: "Kit returned invalid form JSON.", Optional: true},
+		{ID: ListFormsBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFormsResult = sdkgo.QueryResult[FormsPage]
+
+type ListFormsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=kit"`
+	operationID                    struct{}                                     `connector:"operationId=listForms"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListFormsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListFormsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListFormsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFormsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFormsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FormsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListFormsStep[IN any](config ListFormsStepConfig[IN]) sdkgo.QueryStep[IN, ListFormsInput, FormsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListFormsInput, FormsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListForms(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFormsResult] {
+			branches := make([]sdkgo.BranchTarget[ListFormsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListFormsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFormsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFormsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFormsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListFormSubscribersBranchListed sdkgo.BranchID = "listed"
+const ListFormSubscribersBranchNotFound sdkgo.BranchID = "notFound"
+const ListFormSubscribersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFormSubscribersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFormSubscribersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFormSubscribersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listFormSubscribers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFormSubscribersBranchListed, Description: "Kit returned a subscriber page."},
+		{ID: ListFormSubscribersBranchNotFound, Description: "Kit did not find the form.", Optional: true},
+		{ID: ListFormSubscribersBranchProviderRejected, Description: "Kit rejected the list request.", Optional: true},
+		{ID: ListFormSubscribersBranchInvalidResponse, Description: "Kit returned invalid subscriber JSON.", Optional: true},
+		{ID: ListFormSubscribersBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFormSubscribersResult = sdkgo.QueryResult[SubscribersPage]
+
+type ListFormSubscribersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=kit"`
+	operationID                    struct{}                                           `connector:"operationId=listFormSubscribers"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListFormSubscribersInput                  `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListFormSubscribersResult]            `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListFormSubscribersResult]            `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListFormSubscribersResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFormSubscribersResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFormSubscribersResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscribersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListFormSubscribersStep[IN any](config ListFormSubscribersStepConfig[IN]) sdkgo.QueryStep[IN, ListFormSubscribersInput, SubscribersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListFormSubscribersInput, SubscribersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListFormSubscribers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFormSubscribersResult] {
+			branches := make([]sdkgo.BranchTarget[ListFormSubscribersResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListFormSubscribersBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListFormSubscribersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFormSubscribersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFormSubscribersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFormSubscribersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AddSubscriberToFormBranchAdded sdkgo.BranchID = "added"
+const AddSubscriberToFormBranchNotFound sdkgo.BranchID = "notFound"
+const AddSubscriberToFormBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AddSubscriberToFormBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const AddSubscriberToFormBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AddSubscriberToFormDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addSubscriberToForm"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AddSubscriberToFormBranchAdded, Description: "Kit added or found the form subscription."},
+		{ID: AddSubscriberToFormBranchNotFound, Description: "Kit did not find the form or subscriber.", Optional: true},
+		{ID: AddSubscriberToFormBranchProviderRejected, Description: "Kit rejected the form subscription.", Optional: true},
+		{ID: AddSubscriberToFormBranchInvalidResponse, Description: "Kit returned invalid subscriber JSON.", Optional: true},
+		{ID: AddSubscriberToFormBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type AddSubscriberToFormResult = sdkgo.MutationResult[SubscriberMetadata]
+
+type AddSubscriberToFormStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=kit"`
+	operationID                       struct{}                                                 `connector:"operationId=addSubscriberToForm"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) AddSubscriberToFormInput                        `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[AddSubscriberToFormResult]                  `connector:"branch=added"`
+	NotFound                          sdkgo.Target[AddSubscriberToFormResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[AddSubscriberToFormResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[AddSubscriberToFormResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[AddSubscriberToFormResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriberMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewAddSubscriberToFormStep[IN any](config AddSubscriberToFormStepConfig[IN]) sdkgo.MutationStep[IN, AddSubscriberToFormInput, SubscriberMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("kit connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddSubscriberToFormInput, SubscriberMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AddSubscriberToForm(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AddSubscriberToFormResult] {
+			branches := make([]sdkgo.BranchTarget[AddSubscriberToFormResult], 0, 5)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(AddSubscriberToFormBranchAdded))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(AddSubscriberToFormBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AddSubscriberToFormBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(AddSubscriberToFormBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AddSubscriberToFormBranchDefect))
 			}
 			return branches
 		}(),

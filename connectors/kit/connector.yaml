@@ -280,3 +280,65 @@ spec:
           default: true
           description: A sample field was deleted.
           output: {customFieldId: 8, deleted: true}
+    - name: listForms
+      goName: ListForms
+      inputType: ListFormsInput
+      outputType: FormsPage
+      kind: query
+      description: List one cursor page of Kit forms and landing pages.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a form page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid form JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample form page is returned.
+          output: {forms: [{id: 53, name: Sign up, type: embed}], nextCursor: ''}
+    - name: listFormSubscribers
+      goName: ListFormSubscribers
+      inputType: ListFormSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: List one cursor page of a form's subscribers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned a subscriber page.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the form., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid subscriber JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample form subscriber page is returned.
+          output: {subscribers: [{id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}], hasNextPage: false, nextCursor: '', perPage: 20}
+    - name: addSubscriberToForm
+      goName: AddSubscriberToForm
+      inputType: AddSubscriberToFormInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Add an existing subscriber to a form with a referrer URL.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: added, goName: Added, description: Kit added or found the form subscription.}
+        - {id: notFound, goName: NotFound, description: Kit did not find the form or subscriber., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit rejected the form subscription., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned invalid subscriber JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: addedDefault
+          branch: added
+          default: true
+          description: A sample form subscriber is returned.
+          output: {id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}

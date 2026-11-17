@@ -31,5 +31,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createCustomField":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateCustomField(), reference, scenario.CallID),
 		"updateCustomField":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateCustomField(), reference, scenario.CallID),
 		"deleteCustomField":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCustomField(), reference, scenario.CallID),
+		"listForms":               newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListForms(), reference),
+		"listFormSubscribers":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListFormSubscribers(), reference),
+		"addSubscriberToForm":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.AddSubscriberToForm(), reference, scenario.CallID),
 	}}
 }

@@ -3288,17 +3288,1100 @@
       "name": "updateCustomField-notFound",
       "operation": "updateCustomField"
     },
+    {
+      "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "exchanges": [
+        {
+          "body": "{\"custom_field\":{\"id\":6,\"name\":\"ck_field_6_interests\",\"key\":\"interests\",\"label\":\"Interests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/custom_fields",
+          "requestBody": {
+            "label": "Interests"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": 6,
+          "key": "interests",
+          "label": "Interests",
+          "name": "ck_field_6_interests"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+      "input": {
+        "label": "Interests"
+      },
+      "name": "createCustomField-existing",
+      "operation": "createCustomField"
+    },
+    {
+      "callId": "2ddfef08-72ec-4e16-86c7-4613b8716f02",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":[{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\",\"fields\":{\"private\":\"not-persisted\"}}],\"pagination\":{\"has_next_page\":true,\"end_cursor\":\"cursor-2\",\"per_page\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/53/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ],
+            "slim": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasNextPage": true,
+          "nextCursor": "cursor-2",
+          "perPage": 3,
+          "subscribers": [
+            {
+              "emailAddress": "alice@example.com",
+              "firstName": "Alice",
+              "id": 204,
+              "state": "active"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "formId": 53,
+        "perPage": 3
+      },
+      "name": "listFormSubscribers-success",
+      "operation": "listFormSubscribers"
+    },
+    {
+      "callId": "78f73f38-1618-4c60-bbaf-a9236a865639",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/53/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ],
+            "slim": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasNextPage": false,
+          "nextCursor": "",
+          "perPage": 0,
+          "subscribers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "formId": 53,
+        "perPage": 3
+      },
+      "name": "listFormSubscribers-providerRejected",
+      "operation": "listFormSubscribers"
+    },
+    {
+      "callId": "30f2c99b-6f66-4346-94da-5c712859c496",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":{},\"pagination\":{\"has_next_page\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/53/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ],
+            "slim": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasNextPage": false,
+          "nextCursor": "",
+          "perPage": 0,
+          "subscribers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "formId": 53,
+        "perPage": 3
+      },
+      "name": "listFormSubscribers-invalidResponse",
+      "operation": "listFormSubscribers"
+    },
+    {
+      "callId": "747772c5-392e-49e1-9431-4a1b8315fbd9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasNextPage": false,
+          "nextCursor": "",
+          "perPage": 0,
+          "subscribers": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "",
+        "formId": 0,
+        "perPage": 20
+      },
+      "name": "listFormSubscribers-defect",
+      "operation": "listFormSubscribers"
+    },
+    {
+      "callId": "15653014-2b26-4a9a-8ad4-02bc81a232dc",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limited\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/53/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ],
+            "slim": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "formId": 53,
+        "perPage": 3
+      },
+      "name": "listFormSubscribers-rateLimit",
+      "operation": "listFormSubscribers"
+    },
+    {
+      "callId": "06bd1ef5-71fc-4442-be42-d607055cd945",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/53/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ],
+            "slim": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "formId": 53,
+        "perPage": 3
+      },
+      "name": "listFormSubscribers-serverUnavailable",
+      "operation": "listFormSubscribers"
+    },
+    {
+      "callId": "b1bbf476-5b41-4154-87a0-01fe9fc97aad",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/53/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ],
+            "slim": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "formId": 53,
+        "perPage": 3
+      },
+      "name": "listFormSubscribers-transportFailure",
+      "operation": "listFormSubscribers"
+    },
+    {
+      "callId": "7b4c8ea1-6287-4c16-9bb6-28d4a8744178",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"No Result found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/53/subscribers",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "3"
+            ],
+            "slim": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hasNextPage": false,
+          "nextCursor": "",
+          "perPage": 0,
+          "subscribers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "formId": 53,
+        "perPage": 3
+      },
+      "name": "listFormSubscribers-notFound",
+      "operation": "listFormSubscribers"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"forms\":[{\"id\":53,\"name\":\"Sign up\",\"type\":\"embed\"}],\"pagination\":{\"has_next_page\":false,\"end_cursor\":\"cursor-2\",\"per_page\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "forms": [
+            {
+              "id": 53,
+              "name": "Sign up",
+              "type": "embed"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listForms-success",
+      "operation": "listForms"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "forms": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listForms-providerRejected",
+      "operation": "listForms"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"forms\":[{\"id\":53,\"name\":\"Sign up\",\"type\":\"embed\"}],\"pagination\":{\"has_next_page\":false,\"end_cursor\":\"cursor-2\",\"per_page\":20}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "forms": [
+            {
+              "id": 53,
+              "name": "Sign up",
+              "type": "embed"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listForms-invalidResponse",
+      "operation": "listForms"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "forms": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "",
+        "perPage": 1001
+      },
+      "name": "listForms-defect",
+      "operation": "listForms"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listForms-rateLimit",
+      "operation": "listForms"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listForms-serverUnavailable",
+      "operation": "listForms"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "after": [
+              "cursor-1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor-1",
+        "perPage": 20
+      },
+      "name": "listForms-transportFailure",
+      "operation": "listForms"
+    },
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [
+        {
+          "body": "{\"subscriber\":{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/forms/53/subscribers/204",
+          "requestBody": {
+            "referrer": "https://example.com/signup"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "emailAddress": "alice@example.com",
+          "firstName": "Alice",
+          "id": 204,
+          "state": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 53,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-success",
+      "operation": "addSubscriberToForm"
+    },
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/forms/53/subscribers/204",
+          "requestBody": {
+            "referrer": "https://example.com/signup"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 53,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-providerRejected",
+      "operation": "addSubscriberToForm"
+    },
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/forms/53/subscribers/204",
+          "requestBody": {
+            "referrer": "https://example.com/signup"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 53,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-invalidResponse",
+      "operation": "addSubscriberToForm"
+    },
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 0,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-defect",
+      "operation": "addSubscriberToForm"
+    },
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/forms/53/subscribers/204",
+          "requestBody": {
+            "referrer": "https://example.com/signup"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 53,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-rateLimit",
+      "operation": "addSubscriberToForm"
+    },
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/forms/53/subscribers/204",
+          "requestBody": {
+            "referrer": "https://example.com/signup"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 53,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-serverUnavailable",
+      "operation": "addSubscriberToForm"
+    },
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/forms/53/subscribers/204",
+          "requestBody": {
+            "referrer": "https://example.com/signup"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 53,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-transportFailure",
+      "operation": "addSubscriberToForm"
+    },
+    {
+      "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/forms/53/subscribers/204",
+          "requestBody": {
+            "referrer": "https://example.com/signup"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Kit-Api-Key": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
+      "input": {
+        "formId": 53,
+        "referrer": "https://example.com/signup",
+        "subscriberId": 204
+      },
+      "name": "addSubscriberToForm-notFound",
+      "operation": "addSubscriberToForm"
+    },
   {
-    "callId": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+    "callId": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
     "exchanges": [
       {
-        "body": "{\"custom_field\":{\"id\":6,\"name\":\"ck_field_6_interests\",\"key\":\"interests\",\"label\":\"Interests\"}}",
+        "body": "{\"subscriber\":{\"id\":204,\"email_address\":\"alice@example.com\",\"first_name\":\"Alice\",\"state\":\"active\"}}",
         "headers": {},
         "keyMode": "absent",
         "method": "POST",
-        "path": "/custom_fields",
+        "path": "/forms/53/subscribers/204",
         "requestBody": {
-          "label": "Interests"
+          "referrer": "https://example.com/signup"
         },
         "requestHeaders": {
           "Accept": [
@@ -3315,25 +4398,27 @@
       }
     ],
     "expected": {
-      "branch": "created",
+      "branch": "added",
       "failureKind": "",
       "output": {
-        "id": 6,
-        "name": "ck_field_6_interests",
-        "key": "interests",
-        "label": "Interests"
+        "emailAddress": "alice@example.com",
+        "firstName": "Alice",
+        "id": 204,
+        "state": "active"
       },
       "requestCount": 1,
       "retry": false,
       "retryAfterMs": 0,
       "uncertain": false
     },
-    "idempotencyKey": "4092ba56-0bf7-53f4-b675-23baf3ec3708",
+    "idempotencyKey": "8ed76626-2db1-5eac-90c6-3aedbef5243a",
     "input": {
-      "label": "Interests"
+      "formId": 53,
+      "referrer": "https://example.com/signup",
+      "subscriberId": 204
     },
-    "name": "createCustomField-existing",
-    "operation": "createCustomField"
+    "name": "addSubscriberToForm-existing",
+    "operation": "addSubscriberToForm"
   }
   ],
   "schemaVersion": 1

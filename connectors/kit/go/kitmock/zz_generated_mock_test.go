@@ -60,6 +60,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[kit.CustomFieldDeletion](`{"customFieldId":8,"deleted":true}`)
 			return err
 		}},
+		{name: "listForms/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.FormsPage](`{"forms":[{"id":53,"name":"Sign up","type":"embed"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "listFormSubscribers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+			return err
+		}},
+		{name: "addSubscriberToForm/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -102,5 +114,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteCustomField().Definition().Operation.OperationID != "deleteCustomField" {
 		t.Errorf("deleteCustomField mock has another definition")
+	}
+	if mock.ListForms().Definition().Operation.OperationID != "listForms" {
+		t.Errorf("listForms mock has another definition")
+	}
+	if mock.ListFormSubscribers().Definition().Operation.OperationID != "listFormSubscribers" {
+		t.Errorf("listFormSubscribers mock has another definition")
+	}
+	if mock.AddSubscriberToForm().Definition().Operation.OperationID != "addSubscriberToForm" {
+		t.Errorf("addSubscriberToForm mock has another definition")
 	}
 }

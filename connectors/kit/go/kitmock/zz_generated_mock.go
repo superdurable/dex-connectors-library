@@ -29,6 +29,9 @@ type Mock struct {
 	createCustomField       *connectormock.Mutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata]
 	updateCustomField       *connectormock.Mutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata]
 	deleteCustomField       *connectormock.Mutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion]
+	listForms               *connectormock.Query[kit.ListFormsInput, kit.FormsPage]
+	listFormSubscribers     *connectormock.Query[kit.ListFormSubscribersInput, kit.SubscribersPage]
+	addSubscriberToForm     *connectormock.Mutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -47,6 +50,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		createCustomField:       connectormock.NewMutation[kit.CreateCustomFieldInput, kit.CustomFieldMetadata](t, kit.CreateCustomFieldDefinition),
 		updateCustomField:       connectormock.NewMutation[kit.UpdateCustomFieldInput, kit.CustomFieldMetadata](t, kit.UpdateCustomFieldDefinition),
 		deleteCustomField:       connectormock.NewMutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion](t, kit.DeleteCustomFieldDefinition),
+		listForms:               connectormock.NewQuery[kit.ListFormsInput, kit.FormsPage](t, kit.ListFormsDefinition),
+		listFormSubscribers:     connectormock.NewQuery[kit.ListFormSubscribersInput, kit.SubscribersPage](t, kit.ListFormSubscribersDefinition),
+		addSubscriberToForm:     connectormock.NewMutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata](t, kit.AddSubscriberToFormDefinition),
 	}
 	mock.listSubscribers.Default(ListSubscribersDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
@@ -59,6 +65,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createCustomField.Default(CreateCustomFieldDefault())
 	mock.updateCustomField.Default(UpdateCustomFieldDefault())
 	mock.deleteCustomField.Default(DeleteCustomFieldDefault())
+	mock.listForms.Default(ListFormsDefault())
+	mock.listFormSubscribers.Default(ListFormSubscribersDefault())
+	mock.addSubscriberToForm.Default(AddSubscriberToFormDefault())
 	connection, err := kit.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "kit", Name: connectionName})
 	if err != nil {
 		t.Fatalf("kit mock connection: %v", err)
@@ -125,6 +134,21 @@ func (mock *Mock) DeleteCustomField() *connectormock.Mutation[kit.CustomFieldIDI
 	return mock.deleteCustomField
 }
 
+// ListForms returns the listForms script.
+func (mock *Mock) ListForms() *connectormock.Query[kit.ListFormsInput, kit.FormsPage] {
+	return mock.listForms
+}
+
+// ListFormSubscribers returns the listFormSubscribers script.
+func (mock *Mock) ListFormSubscribers() *connectormock.Query[kit.ListFormSubscribersInput, kit.SubscribersPage] {
+	return mock.listFormSubscribers
+}
+
+// AddSubscriberToForm returns the addSubscriberToForm script.
+func (mock *Mock) AddSubscriberToForm() *connectormock.Mutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata] {
+	return mock.addSubscriberToForm
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSubscribers() sdkgo.Query[kit.ListSubscribersInput, kit.SubscribersPage] {
@@ -159,6 +183,15 @@ func (operations mockOperations) UpdateCustomField() sdkgo.Mutation[kit.UpdateCu
 }
 func (operations mockOperations) DeleteCustomField() sdkgo.Mutation[kit.CustomFieldIDInput, kit.CustomFieldDeletion] {
 	return operations.mock.deleteCustomField
+}
+func (operations mockOperations) ListForms() sdkgo.Query[kit.ListFormsInput, kit.FormsPage] {
+	return operations.mock.listForms
+}
+func (operations mockOperations) ListFormSubscribers() sdkgo.Query[kit.ListFormSubscribersInput, kit.SubscribersPage] {
+	return operations.mock.listFormSubscribers
+}
+func (operations mockOperations) AddSubscriberToForm() sdkgo.Mutation[kit.AddSubscriberToFormInput, kit.SubscriberMetadata] {
+	return operations.mock.addSubscriberToForm
 }
 
 // ListSubscribersListed selects the listed branch: Kit returned the selected subscriber page.
@@ -576,4 +609,120 @@ func DeleteCustomFieldDeletedDefault() connectormock.Case[kit.CustomFieldDeletio
 // DeleteCustomFieldDefault is the manifest default, deletedDefault, which New installs.
 func DeleteCustomFieldDefault() connectormock.Case[kit.CustomFieldDeletion] {
 	return DeleteCustomFieldDeletedDefault()
+}
+
+// ListFormsListed selects the listed branch: Kit returned a form page.
+func ListFormsListed(value kit.FormsPage, failure *sdkgo.Failure) connectormock.Case[kit.FormsPage] {
+	return connectormock.Branch(kit.ListFormsBranchListed, value, failure)
+}
+
+// ListFormsProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListFormsProviderRejected(value kit.FormsPage, failure *sdkgo.Failure) connectormock.Case[kit.FormsPage] {
+	return connectormock.Branch(kit.ListFormsBranchProviderRejected, value, failure)
+}
+
+// ListFormsInvalidResponse selects the invalidResponse branch: Kit returned invalid form JSON.
+func ListFormsInvalidResponse(value kit.FormsPage, failure *sdkgo.Failure) connectormock.Case[kit.FormsPage] {
+	return connectormock.Branch(kit.ListFormsBranchInvalidResponse, value, failure)
+}
+
+// ListFormsDefect selects the defect branch: Input or credentials are invalid.
+func ListFormsDefect(value kit.FormsPage, failure *sdkgo.Failure) connectormock.Case[kit.FormsPage] {
+	return connectormock.Branch(kit.ListFormsBranchDefect, value, failure)
+}
+
+// ListFormsRetry asks Dex to retry the listForms Step, after the delay when it is positive.
+func ListFormsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.FormsPage] {
+	return connectormock.Retry[kit.FormsPage](failure, after)
+}
+
+// ListFormsListedDefault is the manifest mock listedDefault: A sample form page is returned.
+func ListFormsListedDefault() connectormock.Case[kit.FormsPage] {
+	value := connectormock.MustDecodeOutput[kit.FormsPage](`{"forms":[{"id":53,"name":"Sign up","type":"embed"}],"nextCursor":""}`)
+	return connectormock.Branch(kit.ListFormsBranchListed, value, nil)
+}
+
+// ListFormsDefault is the manifest default, listedDefault, which New installs.
+func ListFormsDefault() connectormock.Case[kit.FormsPage] { return ListFormsListedDefault() }
+
+// ListFormSubscribersListed selects the listed branch: Kit returned a subscriber page.
+func ListFormSubscribersListed(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchListed, value, failure)
+}
+
+// ListFormSubscribersNotFound selects the notFound branch: Kit did not find the form.
+func ListFormSubscribersNotFound(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchNotFound, value, failure)
+}
+
+// ListFormSubscribersProviderRejected selects the providerRejected branch: Kit rejected the list request.
+func ListFormSubscribersProviderRejected(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListFormSubscribersInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+func ListFormSubscribersInvalidResponse(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListFormSubscribersDefect selects the defect branch: Input or credentials are invalid.
+func ListFormSubscribersDefect(value kit.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Branch(kit.ListFormSubscribersBranchDefect, value, failure)
+}
+
+// ListFormSubscribersRetry asks Dex to retry the listFormSubscribers Step, after the delay when it is positive.
+func ListFormSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscribersPage] {
+	return connectormock.Retry[kit.SubscribersPage](failure, after)
+}
+
+// ListFormSubscribersListedDefault is the manifest mock listedDefault: A sample form subscriber page is returned.
+func ListFormSubscribersListedDefault() connectormock.Case[kit.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[kit.SubscribersPage](`{"subscribers":[{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}],"hasNextPage":false,"nextCursor":"","perPage":20}`)
+	return connectormock.Branch(kit.ListFormSubscribersBranchListed, value, nil)
+}
+
+// ListFormSubscribersDefault is the manifest default, listedDefault, which New installs.
+func ListFormSubscribersDefault() connectormock.Case[kit.SubscribersPage] {
+	return ListFormSubscribersListedDefault()
+}
+
+// AddSubscriberToFormAdded selects the added branch: Kit added or found the form subscription.
+func AddSubscriberToFormAdded(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchAdded, value, failure)
+}
+
+// AddSubscriberToFormNotFound selects the notFound branch: Kit did not find the form or subscriber.
+func AddSubscriberToFormNotFound(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchNotFound, value, failure)
+}
+
+// AddSubscriberToFormProviderRejected selects the providerRejected branch: Kit rejected the form subscription.
+func AddSubscriberToFormProviderRejected(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchProviderRejected, value, failure)
+}
+
+// AddSubscriberToFormInvalidResponse selects the invalidResponse branch: Kit returned invalid subscriber JSON.
+func AddSubscriberToFormInvalidResponse(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchInvalidResponse, value, failure)
+}
+
+// AddSubscriberToFormDefect selects the defect branch: Input or credentials are invalid.
+func AddSubscriberToFormDefect(value kit.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Branch(kit.AddSubscriberToFormBranchDefect, value, failure)
+}
+
+// AddSubscriberToFormRetry asks Dex to retry the addSubscriberToForm Step, after the delay when it is positive.
+func AddSubscriberToFormRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[kit.SubscriberMetadata] {
+	return connectormock.Retry[kit.SubscriberMetadata](failure, after)
+}
+
+// AddSubscriberToFormAddedDefault is the manifest mock addedDefault: A sample form subscriber is returned.
+func AddSubscriberToFormAddedDefault() connectormock.Case[kit.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[kit.SubscriberMetadata](`{"id":204,"emailAddress":"alice@example.com","firstName":"Alice","state":"active"}`)
+	return connectormock.Branch(kit.AddSubscriberToFormBranchAdded, value, nil)
+}
+
+// AddSubscriberToFormDefault is the manifest default, addedDefault, which New installs.
+func AddSubscriberToFormDefault() connectormock.Case[kit.SubscriberMetadata] {
+	return AddSubscriberToFormAddedDefault()
 }
