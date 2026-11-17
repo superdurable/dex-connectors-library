@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: elevenlabs
   displayName: ElevenLabs
-  description: Discover voices and speech models, configure voice settings, and generate bounded audio through ElevenLabs.
+  description: Discover voices and speech models, manage generated history, configure voices, and generate bounded audio.
   company: ElevenLabs
   categories: [ai]
   version: v0.3.0
@@ -71,6 +71,55 @@ spec:
         - {id: defect, goName: Defect, description: Credentials are unavailable or invalid., optional: true}
       mocks:
         - {name: sampleModels, branch: listed, description: One text-to-speech model is listed., default: true, output: {models: [{modelId: eleven_multilingual_v2, name: Multilingual v2, canDoTextToSpeech: true, maximumTextLengthPerRequest: 5000}]}}
+    - name: listHistoryItems
+      goName: ListHistoryItems
+      inputType: ListHistoryItemsInput
+      outputType: HistoryItemsPage
+      kind: query
+      description: List generated item IDs and operational metadata without text or audio.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: ElevenLabs returned a history page.}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected history listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned invalid history data., optional: true}
+        - {id: defect, goName: Defect, description: History filters or credentials are invalid., optional: true}
+      mocks:
+        - {name: historyPage, branch: listed, description: One generated item is listed without text or audio., default: true, output: {items: [{historyItemId: history_meridian, dateUnix: 1714650306, voiceId: voice_meridian, modelId: eleven_multilingual_v2, contentType: audio/mpeg, source: TTS}], hasMore: false}}
+    - name: getHistoryItem
+      goName: GetHistoryItem
+      inputType: HistoryItemIdentityInput
+      outputType: HistoryItemMetadata
+      kind: query
+      description: Read one generated item's operational metadata without text or audio.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: ElevenLabs returned the generated item.}
+        - {id: notFound, goName: NotFound, description: The generated item is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected item retrieval., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned invalid item data., optional: true}
+        - {id: defect, goName: Defect, description: History item ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: historyItem, branch: found, description: One generated item's metadata is returned., default: true, output: {historyItemId: history_meridian, dateUnix: 1714650306, voiceId: voice_meridian, modelId: eleven_multilingual_v2, contentType: audio/mpeg, source: TTS}}
+    - name: deleteHistoryItem
+      goName: DeleteHistoryItem
+      inputType: HistoryItemIdentityInput
+      outputType: DeletedHistoryItem
+      kind: mutation
+      description: Permanently delete one generated history item by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The generated item is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned an invalid deletion confirmation., optional: true}
+        - {id: defect, goName: Defect, description: History item ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: historyDeleted, branch: deleted, description: The generated item was deleted., default: true, output: {historyItemId: history_meridian, deleted: true}}
     - name: getVoice
       goName: GetVoice
       inputType: GetVoiceInput

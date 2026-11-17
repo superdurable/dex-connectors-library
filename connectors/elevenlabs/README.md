@@ -12,6 +12,9 @@ List and inspect voices, replace voice settings, and generate bounded audio thro
 | --- | --- | --- |
 | `listVoices` | Query | https://elevenlabs.io/docs/api-reference/voices/search |
 | `listModels` | Query, safe | https://elevenlabs.io/docs/api-reference/models/list |
+| `listHistoryItems` | Query, safe | https://elevenlabs.io/docs/api-reference/history/list |
+| `getHistoryItem` | Query, safe | https://elevenlabs.io/docs/api-reference/history/get |
+| `deleteHistoryItem` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/history/delete |
 | `getVoice` | Query | https://elevenlabs.io/docs/api-reference/voices/get |
 | `updateVoiceSettings` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/voices/settings/update |
 | `createSpeech` | Query | https://elevenlabs.io/docs/api-reference/text-to-speech/convert |
@@ -19,6 +22,8 @@ List and inspect voices, replace voice settings, and generate bounded audio thro
 The demo uses operation-specific `elevenlabs.NewListVoicesStep` and `elevenlabs.NewUpdateVoiceSettingsStep` factories with the static `elevenlabs` connection. `updateVoiceSettings` sends five absolute values, so retrying the same input preserves the chosen settings. Generation uses synchronous Execute durability and a three-attempt billed retry budget; reads and settings replacement use the default one-hour retry policy.
 
 `listModels` returns IDs, names, text-to-speech support, and per-request text limits for models available to the connection. Its runnable model catalog Flow uses `NewListModelsStep` and the same static connection.
+
+`listHistoryItems` pages generated item IDs and operational metadata, with optional voice, model, source, and continuation filters. `getHistoryItem` reads one item; `deleteHistoryItem` permanently removes one item and treats confirmed absence as deleted. Returned history omits generated text, audio, and request contents from Flow results and Attributes. The runnable history Flow lists metadata through the static connection.
 
 The Python package is [`dex-connector-elevenlabs`](python/README.md), imported as
 `dex_connectors.elevenlabs`.

@@ -20,6 +20,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[elevenlabs.ModelsList](`{"models":[{"modelId":"eleven_multilingual_v2","name":"Multilingual v2","canDoTextToSpeech":true,"maximumTextLengthPerRequest":5000}]}`)
 			return err
 		}},
+		{name: "listHistoryItems/historyPage/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elevenlabs.HistoryItemsPage](`{"items":[{"historyItemId":"history_meridian","dateUnix":1714650306,"voiceId":"voice_meridian","modelId":"eleven_multilingual_v2","contentType":"audio/mpeg","source":"TTS"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getHistoryItem/historyItem/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elevenlabs.HistoryItemMetadata](`{"historyItemId":"history_meridian","dateUnix":1714650306,"voiceId":"voice_meridian","modelId":"eleven_multilingual_v2","contentType":"audio/mpeg","source":"TTS"}`)
+			return err
+		}},
+		{name: "deleteHistoryItem/historyDeleted/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elevenlabs.DeletedHistoryItem](`{"historyItemId":"history_meridian","deleted":true}`)
+			return err
+		}},
 		{name: "getVoice/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[elevenlabs.Voice](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
 			return err
@@ -48,6 +60,15 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.ListModels().Definition().Operation.OperationID != "listModels" {
 		t.Errorf("listModels mock has another definition")
+	}
+	if mock.ListHistoryItems().Definition().Operation.OperationID != "listHistoryItems" {
+		t.Errorf("listHistoryItems mock has another definition")
+	}
+	if mock.GetHistoryItem().Definition().Operation.OperationID != "getHistoryItem" {
+		t.Errorf("getHistoryItem mock has another definition")
+	}
+	if mock.DeleteHistoryItem().Definition().Operation.OperationID != "deleteHistoryItem" {
+		t.Errorf("deleteHistoryItem mock has another definition")
 	}
 	if mock.GetVoice().Definition().Operation.OperationID != "getVoice" {
 		t.Errorf("getVoice mock has another definition")

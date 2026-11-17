@@ -6,6 +6,8 @@ The Worker also registers `ElevenLabsVoiceSettings`. Start it with `voiceId`, `s
 
 The Worker registers `ElevenLabsModels`. Start it with `{}` to list available model IDs, names, speech support, and input limits. `TestModelsUsesDefaultMockWithRealDex` exercises it against real local Dex with the connector mock. Optional provider branches are unwired.
 
+The Worker registers `ElevenLabsHistory`. Start it with `{"pageSize":25}` and optionally filter by `voiceId`, `modelId` with `source`, or use `startAfterHistoryItemId` from the previous page. It returns generated item IDs and operational metadata without text or audio. `TestHistoryUsesDefaultMockWithRealDex` exercises it against real local Dex with the connector mock; optional provider branches are unwired.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/elevenlabs/go`, run:
@@ -15,6 +17,7 @@ mkdir -p build
 dexcli visualize ./examples/demo/flow/workflow.go --schema-version 2.0 --json --out ./build/demo
 dexcli visualize ./examples/demo/flow/voice_settings_flow.go --schema-version 2.0 --lint app --json --out ./build/voice-settings
 dexcli visualize ./examples/demo/flow/models_flow.go --schema-version 2.0 --lint app --json --out ./build/models
+dexcli visualize ./examples/demo/flow/history_flow.go --schema-version 2.0 --lint app --json --out ./build/history
 ```
 
 The command must report `valid: true`. A local unpublished module may report `connector_release_required` until its release metadata is supplied.
