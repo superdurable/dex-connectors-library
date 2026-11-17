@@ -57,5 +57,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"archiveProject":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ArchiveProject(), reference, scenario.CallID),
 		"unarchiveProject": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UnarchiveProject(), reference, scenario.CallID),
 		"trashProject":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.TrashProject(), reference, scenario.CallID),
+		"createTodo":       newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateTodo(), reference, scenario.CallID),
+		"updateTodo":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateTodo(), reference, scenario.CallID),
+		"completeTodo":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CompleteTodo(), reference, scenario.CallID),
+		"uncompleteTodo":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UncompleteTodo(), reference, scenario.CallID),
+		"trashTodo":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.TrashTodo(), reference, scenario.CallID),
+		"repositionTodo":   newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.RepositionTodo(), reference, scenario.CallID),
 	}}
 }

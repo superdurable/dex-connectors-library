@@ -44,6 +44,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
 			return err
 		}},
+		{name: "createTodo/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Todo](`{"id":"321","content":"Example task","completed":false}`)
+			return err
+		}},
+		{name: "updateTodo/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.Todo](`{"id":"321","content":"Example task","completed":false}`)
+			return err
+		}},
+		{name: "completeTodo/completedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"completed"}`)
+			return err
+		}},
+		{name: "uncompleteTodo/activeDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"active"}`)
+			return err
+		}},
+		{name: "trashTodo/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"trashed"}`)
+			return err
+		}},
+		{name: "repositionTodo/repositionedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"repositioned"}`)
+			return err
+		}},
 		{name: "listTodos/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[basecamp.TodosPage](`{"todos":[{"id":"456","content":"Example task","completed":false}]}`)
 			return err
@@ -86,6 +110,24 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
 		t.Errorf("getProject mock has another definition")
+	}
+	if mock.CreateTodo().Definition().Operation.OperationID != "createTodo" {
+		t.Errorf("createTodo mock has another definition")
+	}
+	if mock.UpdateTodo().Definition().Operation.OperationID != "updateTodo" {
+		t.Errorf("updateTodo mock has another definition")
+	}
+	if mock.CompleteTodo().Definition().Operation.OperationID != "completeTodo" {
+		t.Errorf("completeTodo mock has another definition")
+	}
+	if mock.UncompleteTodo().Definition().Operation.OperationID != "uncompleteTodo" {
+		t.Errorf("uncompleteTodo mock has another definition")
+	}
+	if mock.TrashTodo().Definition().Operation.OperationID != "trashTodo" {
+		t.Errorf("trashTodo mock has another definition")
+	}
+	if mock.RepositionTodo().Definition().Operation.OperationID != "repositionTodo" {
+		t.Errorf("repositionTodo mock has another definition")
 	}
 	if mock.ListTodos().Definition().Operation.OperationID != "listTodos" {
 		t.Errorf("listTodos mock has another definition")

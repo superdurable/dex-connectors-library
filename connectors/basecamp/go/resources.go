@@ -38,6 +38,16 @@ type Todo struct {
 	Content string `json:"content"`
 	// Completed reports whether the to-do is complete.
 	Completed bool `json:"completed"`
+	// Description is provider rich text for the to-do.
+	Description string `json:"description,omitempty"`
+	// DueOn is the optional ISO date due date.
+	DueOn string `json:"dueOn,omitempty"`
+	// StartsOn is the optional ISO start date.
+	StartsOn string `json:"startsOn,omitempty"`
+	// AssigneeIDs are the people assigned to this to-do.
+	AssigneeIDs []string `json:"assigneeIds,omitempty"`
+	// CompletionSubscriberIDs are people notified at completion.
+	CompletionSubscriberIDs []string `json:"completionSubscriberIds,omitempty"`
 }
 
 // TodosPage contains one provider page of pending to-dos.
@@ -255,12 +265,40 @@ func decodeTodos(body []byte) (TodosPage, error) {
 
 func decodeTodo(body []byte, expectedID string) (Todo, error) {
 	var record struct {
-		ID        int64  `json:"id"`
-		Content   string `json:"content"`
-		Completed bool   `json:"completed"`
+		ID          int64  `json:"id"`
+		Content     string `json:"content"`
+		Completed   bool   `json:"completed"`
+		Description string `json:"description"`
+		DueOn       string `json:"due_on"`
+		StartsOn    string `json:"starts_on"`
+		Assignees   []struct {
+			ID int64 `json:"id"`
+		} `json:"assignees"`
+		CompletionSubscribers []struct {
+			ID int64 `json:"id"`
+		} `json:"completion_subscribers"`
 	}
-	if err := json.Unmarshal(body, &record); err != nil || strconv.FormatInt(record.ID, 10) != expectedID || strings.TrimSpace(record.Content) == "" {
+	if err := json.Unmarshal(body, &record); err != nil || record.ID <= 0 || (expectedID != "" && strconv.FormatInt(record.ID, 10) != expectedID) || strings.TrimSpace(record.Content) == "" {
 		return Todo{}, fmt.Errorf("to-do is invalid")
 	}
-	return Todo{ID: expectedID, Content: record.Content, Completed: record.Completed}, nil
+	value := Todo{ID: strconv.FormatInt(record.ID, 10), Content: record.Content, Completed: record.Completed, Description: record.Description, DueOn: record.DueOn, StartsOn: record.StartsOn}
+	if record.Assignees != nil {
+		value.AssigneeIDs = make([]string, 0, len(record.Assignees))
+		for _, assignee := range record.Assignees {
+			if assignee.ID <= 0 {
+				return Todo{}, fmt.Errorf("to-do assignee is invalid")
+			}
+			value.AssigneeIDs = append(value.AssigneeIDs, strconv.FormatInt(assignee.ID, 10))
+		}
+	}
+	if record.CompletionSubscribers != nil {
+		value.CompletionSubscriberIDs = make([]string, 0, len(record.CompletionSubscribers))
+		for _, subscriber := range record.CompletionSubscribers {
+			if subscriber.ID <= 0 {
+				return Todo{}, fmt.Errorf("to-do subscriber is invalid")
+			}
+			value.CompletionSubscriberIDs = append(value.CompletionSubscriberIDs, strconv.FormatInt(subscriber.ID, 10))
+		}
+	}
+	return value, nil
 }

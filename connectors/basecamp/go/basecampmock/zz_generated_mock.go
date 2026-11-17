@@ -25,6 +25,12 @@ type Mock struct {
 	trashProject     *connectormock.Mutation[basecamp.GetProjectInput, basecamp.ProjectActionResult]
 	listProjects     *connectormock.Query[basecamp.ListProjectsInput, basecamp.ProjectsPage]
 	getProject       *connectormock.Query[basecamp.GetProjectInput, basecamp.Project]
+	createTodo       *connectormock.Mutation[basecamp.CreateTodoInput, basecamp.Todo]
+	updateTodo       *connectormock.Mutation[basecamp.UpdateTodoInput, basecamp.Todo]
+	completeTodo     *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
+	uncompleteTodo   *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
+	trashTodo        *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult]
+	repositionTodo   *connectormock.Mutation[basecamp.RepositionTodoInput, basecamp.TodoActionResult]
 	listTodos        *connectormock.Query[basecamp.ListTodosInput, basecamp.TodosPage]
 	getTodo          *connectormock.Query[basecamp.GetTodoInput, basecamp.Todo]
 	listAccounts     *connectormock.Query[basecamp.ListAccountsInput, basecamp.AccountsPage]
@@ -42,6 +48,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		trashProject:     connectormock.NewMutation[basecamp.GetProjectInput, basecamp.ProjectActionResult](t, basecamp.TrashProjectDefinition),
 		listProjects:     connectormock.NewQuery[basecamp.ListProjectsInput, basecamp.ProjectsPage](t, basecamp.ListProjectsDefinition),
 		getProject:       connectormock.NewQuery[basecamp.GetProjectInput, basecamp.Project](t, basecamp.GetProjectDefinition),
+		createTodo:       connectormock.NewMutation[basecamp.CreateTodoInput, basecamp.Todo](t, basecamp.CreateTodoDefinition),
+		updateTodo:       connectormock.NewMutation[basecamp.UpdateTodoInput, basecamp.Todo](t, basecamp.UpdateTodoDefinition),
+		completeTodo:     connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.CompleteTodoDefinition),
+		uncompleteTodo:   connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.UncompleteTodoDefinition),
+		trashTodo:        connectormock.NewMutation[basecamp.GetTodoInput, basecamp.TodoActionResult](t, basecamp.TrashTodoDefinition),
+		repositionTodo:   connectormock.NewMutation[basecamp.RepositionTodoInput, basecamp.TodoActionResult](t, basecamp.RepositionTodoDefinition),
 		listTodos:        connectormock.NewQuery[basecamp.ListTodosInput, basecamp.TodosPage](t, basecamp.ListTodosDefinition),
 		getTodo:          connectormock.NewQuery[basecamp.GetTodoInput, basecamp.Todo](t, basecamp.GetTodoDefinition),
 		listAccounts:     connectormock.NewQuery[basecamp.ListAccountsInput, basecamp.AccountsPage](t, basecamp.ListAccountsDefinition),
@@ -53,6 +65,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.trashProject.Default(TrashProjectDefault())
 	mock.listProjects.Default(ListProjectsDefault())
 	mock.getProject.Default(GetProjectDefault())
+	mock.createTodo.Default(CreateTodoDefault())
+	mock.updateTodo.Default(UpdateTodoDefault())
+	mock.completeTodo.Default(CompleteTodoDefault())
+	mock.uncompleteTodo.Default(UncompleteTodoDefault())
+	mock.trashTodo.Default(TrashTodoDefault())
+	mock.repositionTodo.Default(RepositionTodoDefault())
 	mock.listTodos.Default(ListTodosDefault())
 	mock.getTodo.Default(GetTodoDefault())
 	mock.listAccounts.Default(ListAccountsDefault())
@@ -102,6 +120,36 @@ func (mock *Mock) GetProject() *connectormock.Query[basecamp.GetProjectInput, ba
 	return mock.getProject
 }
 
+// CreateTodo returns the createTodo script.
+func (mock *Mock) CreateTodo() *connectormock.Mutation[basecamp.CreateTodoInput, basecamp.Todo] {
+	return mock.createTodo
+}
+
+// UpdateTodo returns the updateTodo script.
+func (mock *Mock) UpdateTodo() *connectormock.Mutation[basecamp.UpdateTodoInput, basecamp.Todo] {
+	return mock.updateTodo
+}
+
+// CompleteTodo returns the completeTodo script.
+func (mock *Mock) CompleteTodo() *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult] {
+	return mock.completeTodo
+}
+
+// UncompleteTodo returns the uncompleteTodo script.
+func (mock *Mock) UncompleteTodo() *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult] {
+	return mock.uncompleteTodo
+}
+
+// TrashTodo returns the trashTodo script.
+func (mock *Mock) TrashTodo() *connectormock.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult] {
+	return mock.trashTodo
+}
+
+// RepositionTodo returns the repositionTodo script.
+func (mock *Mock) RepositionTodo() *connectormock.Mutation[basecamp.RepositionTodoInput, basecamp.TodoActionResult] {
+	return mock.repositionTodo
+}
+
 // ListTodos returns the listTodos script.
 func (mock *Mock) ListTodos() *connectormock.Query[basecamp.ListTodosInput, basecamp.TodosPage] {
 	return mock.listTodos
@@ -139,6 +187,24 @@ func (operations mockOperations) ListProjects() sdkgo.Query[basecamp.ListProject
 }
 func (operations mockOperations) GetProject() sdkgo.Query[basecamp.GetProjectInput, basecamp.Project] {
 	return operations.mock.getProject
+}
+func (operations mockOperations) CreateTodo() sdkgo.Mutation[basecamp.CreateTodoInput, basecamp.Todo] {
+	return operations.mock.createTodo
+}
+func (operations mockOperations) UpdateTodo() sdkgo.Mutation[basecamp.UpdateTodoInput, basecamp.Todo] {
+	return operations.mock.updateTodo
+}
+func (operations mockOperations) CompleteTodo() sdkgo.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult] {
+	return operations.mock.completeTodo
+}
+func (operations mockOperations) UncompleteTodo() sdkgo.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult] {
+	return operations.mock.uncompleteTodo
+}
+func (operations mockOperations) TrashTodo() sdkgo.Mutation[basecamp.GetTodoInput, basecamp.TodoActionResult] {
+	return operations.mock.trashTodo
+}
+func (operations mockOperations) RepositionTodo() sdkgo.Mutation[basecamp.RepositionTodoInput, basecamp.TodoActionResult] {
+	return operations.mock.repositionTodo
 }
 func (operations mockOperations) ListTodos() sdkgo.Query[basecamp.ListTodosInput, basecamp.TodosPage] {
 	return operations.mock.listTodos
@@ -409,6 +475,223 @@ func GetProjectFoundDefault() connectormock.Case[basecamp.Project] {
 
 // GetProjectDefault is the manifest default, foundDefault, which New installs.
 func GetProjectDefault() connectormock.Case[basecamp.Project] { return GetProjectFoundDefault() }
+
+// CreateTodoCreated selects the created branch: Basecamp applied the request.
+func CreateTodoCreated(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.CreateTodoBranchCreated, value, failure)
+}
+
+// CreateTodoProviderRejected selects the providerRejected branch: Basecamp rejected creation.
+func CreateTodoProviderRejected(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.CreateTodoBranchProviderRejected, value, failure)
+}
+
+// CreateTodoDefect selects the defect branch: Input or credentials are invalid.
+func CreateTodoDefect(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.CreateTodoBranchDefect, value, failure)
+}
+
+// CreateTodoUncertain returns an uncertain createTodo outcome.
+func CreateTodoUncertain(value basecamp.Todo, failure sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTodoRetry asks Dex to retry the createTodo Step, after the delay when it is positive.
+func CreateTodoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.Todo] {
+	return connectormock.Retry[basecamp.Todo](failure, after)
+}
+
+// CreateTodoCreatedDefault is the manifest mock createdDefault: Basecamp applied the request.
+func CreateTodoCreatedDefault() connectormock.Case[basecamp.Todo] {
+	value := connectormock.MustDecodeOutput[basecamp.Todo](`{"id":"321","content":"Example task","completed":false}`)
+	return connectormock.Branch(basecamp.CreateTodoBranchCreated, value, nil)
+}
+
+// CreateTodoDefault is the manifest default, createdDefault, which New installs.
+func CreateTodoDefault() connectormock.Case[basecamp.Todo] { return CreateTodoCreatedDefault() }
+
+// UpdateTodoUpdated selects the updated branch: Basecamp applied the request.
+func UpdateTodoUpdated(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.UpdateTodoBranchUpdated, value, failure)
+}
+
+// UpdateTodoNotFound selects the notFound branch: The to-do does not exist.
+func UpdateTodoNotFound(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.UpdateTodoBranchNotFound, value, failure)
+}
+
+// UpdateTodoProviderRejected selects the providerRejected branch: Basecamp rejected replacement.
+func UpdateTodoProviderRejected(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.UpdateTodoBranchProviderRejected, value, failure)
+}
+
+// UpdateTodoInvalidResponse selects the invalidResponse branch: Basecamp returned invalid to-do JSON.
+func UpdateTodoInvalidResponse(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.UpdateTodoBranchInvalidResponse, value, failure)
+}
+
+// UpdateTodoDefect selects the defect branch: Input or credentials are invalid.
+func UpdateTodoDefect(value basecamp.Todo, failure *sdkgo.Failure) connectormock.Case[basecamp.Todo] {
+	return connectormock.Branch(basecamp.UpdateTodoBranchDefect, value, failure)
+}
+
+// UpdateTodoRetry asks Dex to retry the updateTodo Step, after the delay when it is positive.
+func UpdateTodoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.Todo] {
+	return connectormock.Retry[basecamp.Todo](failure, after)
+}
+
+// UpdateTodoUpdatedDefault is the manifest mock updatedDefault: Basecamp applied the request.
+func UpdateTodoUpdatedDefault() connectormock.Case[basecamp.Todo] {
+	value := connectormock.MustDecodeOutput[basecamp.Todo](`{"id":"321","content":"Example task","completed":false}`)
+	return connectormock.Branch(basecamp.UpdateTodoBranchUpdated, value, nil)
+}
+
+// UpdateTodoDefault is the manifest default, updatedDefault, which New installs.
+func UpdateTodoDefault() connectormock.Case[basecamp.Todo] { return UpdateTodoUpdatedDefault() }
+
+// CompleteTodoCompleted selects the completed branch: Basecamp applied the request.
+func CompleteTodoCompleted(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.CompleteTodoBranchCompleted, value, failure)
+}
+
+// CompleteTodoNotFound selects the notFound branch: The to-do does not exist.
+func CompleteTodoNotFound(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.CompleteTodoBranchNotFound, value, failure)
+}
+
+// CompleteTodoProviderRejected selects the providerRejected branch: Basecamp rejected completion.
+func CompleteTodoProviderRejected(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.CompleteTodoBranchProviderRejected, value, failure)
+}
+
+// CompleteTodoDefect selects the defect branch: Input or credentials are invalid.
+func CompleteTodoDefect(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.CompleteTodoBranchDefect, value, failure)
+}
+
+// CompleteTodoRetry asks Dex to retry the completeTodo Step, after the delay when it is positive.
+func CompleteTodoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Retry[basecamp.TodoActionResult](failure, after)
+}
+
+// CompleteTodoCompletedDefault is the manifest mock completedDefault: Basecamp applied the request.
+func CompleteTodoCompletedDefault() connectormock.Case[basecamp.TodoActionResult] {
+	value := connectormock.MustDecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"completed"}`)
+	return connectormock.Branch(basecamp.CompleteTodoBranchCompleted, value, nil)
+}
+
+// CompleteTodoDefault is the manifest default, completedDefault, which New installs.
+func CompleteTodoDefault() connectormock.Case[basecamp.TodoActionResult] {
+	return CompleteTodoCompletedDefault()
+}
+
+// UncompleteTodoActive selects the active branch: Basecamp applied the request.
+func UncompleteTodoActive(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.UncompleteTodoBranchActive, value, failure)
+}
+
+// UncompleteTodoNotFound selects the notFound branch: The to-do does not exist.
+func UncompleteTodoNotFound(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.UncompleteTodoBranchNotFound, value, failure)
+}
+
+// UncompleteTodoProviderRejected selects the providerRejected branch: Basecamp rejected reopening.
+func UncompleteTodoProviderRejected(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.UncompleteTodoBranchProviderRejected, value, failure)
+}
+
+// UncompleteTodoDefect selects the defect branch: Input or credentials are invalid.
+func UncompleteTodoDefect(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.UncompleteTodoBranchDefect, value, failure)
+}
+
+// UncompleteTodoRetry asks Dex to retry the uncompleteTodo Step, after the delay when it is positive.
+func UncompleteTodoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Retry[basecamp.TodoActionResult](failure, after)
+}
+
+// UncompleteTodoActiveDefault is the manifest mock activeDefault: Basecamp applied the request.
+func UncompleteTodoActiveDefault() connectormock.Case[basecamp.TodoActionResult] {
+	value := connectormock.MustDecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"active"}`)
+	return connectormock.Branch(basecamp.UncompleteTodoBranchActive, value, nil)
+}
+
+// UncompleteTodoDefault is the manifest default, activeDefault, which New installs.
+func UncompleteTodoDefault() connectormock.Case[basecamp.TodoActionResult] {
+	return UncompleteTodoActiveDefault()
+}
+
+// TrashTodoTrashed selects the trashed branch: Basecamp applied the request.
+func TrashTodoTrashed(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.TrashTodoBranchTrashed, value, failure)
+}
+
+// TrashTodoNotFound selects the notFound branch: The to-do does not exist.
+func TrashTodoNotFound(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.TrashTodoBranchNotFound, value, failure)
+}
+
+// TrashTodoProviderRejected selects the providerRejected branch: Basecamp rejected trashing.
+func TrashTodoProviderRejected(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.TrashTodoBranchProviderRejected, value, failure)
+}
+
+// TrashTodoDefect selects the defect branch: Input or credentials are invalid.
+func TrashTodoDefect(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.TrashTodoBranchDefect, value, failure)
+}
+
+// TrashTodoRetry asks Dex to retry the trashTodo Step, after the delay when it is positive.
+func TrashTodoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Retry[basecamp.TodoActionResult](failure, after)
+}
+
+// TrashTodoTrashedDefault is the manifest mock trashedDefault: Basecamp applied the request.
+func TrashTodoTrashedDefault() connectormock.Case[basecamp.TodoActionResult] {
+	value := connectormock.MustDecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"trashed"}`)
+	return connectormock.Branch(basecamp.TrashTodoBranchTrashed, value, nil)
+}
+
+// TrashTodoDefault is the manifest default, trashedDefault, which New installs.
+func TrashTodoDefault() connectormock.Case[basecamp.TodoActionResult] {
+	return TrashTodoTrashedDefault()
+}
+
+// RepositionTodoRepositioned selects the repositioned branch: Basecamp applied the request.
+func RepositionTodoRepositioned(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.RepositionTodoBranchRepositioned, value, failure)
+}
+
+// RepositionTodoNotFound selects the notFound branch: The to-do does not exist.
+func RepositionTodoNotFound(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.RepositionTodoBranchNotFound, value, failure)
+}
+
+// RepositionTodoProviderRejected selects the providerRejected branch: Basecamp rejected repositioning.
+func RepositionTodoProviderRejected(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.RepositionTodoBranchProviderRejected, value, failure)
+}
+
+// RepositionTodoDefect selects the defect branch: Input or credentials are invalid.
+func RepositionTodoDefect(value basecamp.TodoActionResult, failure *sdkgo.Failure) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Branch(basecamp.RepositionTodoBranchDefect, value, failure)
+}
+
+// RepositionTodoRetry asks Dex to retry the repositionTodo Step, after the delay when it is positive.
+func RepositionTodoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[basecamp.TodoActionResult] {
+	return connectormock.Retry[basecamp.TodoActionResult](failure, after)
+}
+
+// RepositionTodoRepositionedDefault is the manifest mock repositionedDefault: Basecamp applied the request.
+func RepositionTodoRepositionedDefault() connectormock.Case[basecamp.TodoActionResult] {
+	value := connectormock.MustDecodeOutput[basecamp.TodoActionResult](`{"todoId":"321","status":"repositioned"}`)
+	return connectormock.Branch(basecamp.RepositionTodoBranchRepositioned, value, nil)
+}
+
+// RepositionTodoDefault is the manifest default, repositionedDefault, which New installs.
+func RepositionTodoDefault() connectormock.Case[basecamp.TodoActionResult] {
+	return RepositionTodoRepositionedDefault()
+}
 
 // ListTodosListed selects the listed branch: Basecamp returned the to-dos.
 func ListTodosListed(value basecamp.TodosPage, failure *sdkgo.Failure) connectormock.Case[basecamp.TodosPage] {

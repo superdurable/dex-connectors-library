@@ -3163,6 +3163,2131 @@
       },
       "name": "trashProject-transportFailure",
       "operation": "trashProject"
+    },
+    {
+      "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "exchanges": [
+        {
+          "body": "{\"id\":321,\"content\":\"Example task\",\"completed\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todolists/456/todos.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Example task",
+            "description": "Task notes",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "completed": false,
+          "content": "Example task",
+          "id": "321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Example task",
+        "description": "Task notes",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoListId": "456"
+      },
+      "name": "createTodo-success",
+      "operation": "createTodo"
+    },
+    {
+      "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todolists/456/todos.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Example task",
+            "description": "Task notes",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "completed": false,
+          "content": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Example task",
+        "description": "Task notes",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoListId": "456"
+      },
+      "name": "createTodo-providerRejected",
+      "operation": "createTodo"
+    },
+    {
+      "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todolists/456/todos.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Example task",
+            "description": "Task notes",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Example task",
+        "description": "Task notes",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoListId": "456"
+      },
+      "name": "createTodo-final429",
+      "operation": "createTodo"
+    },
+    {
+      "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todolists/456/todos.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Example task",
+            "description": "Task notes",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Example task",
+        "description": "Task notes",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoListId": "456"
+      },
+      "name": "createTodo-final503",
+      "operation": "createTodo"
+    },
+    {
+      "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todolists/456/todos.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Example task",
+            "description": "Task notes",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Example task",
+        "description": "Task notes",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoListId": "456"
+      },
+      "name": "createTodo-serverFailure",
+      "operation": "createTodo"
+    },
+    {
+      "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "completed": false,
+          "content": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": " ",
+        "description": "Task notes",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoListId": "456"
+      },
+      "name": "createTodo-defect",
+      "operation": "createTodo"
+    },
+    {
+      "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todolists/456/todos.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Example task",
+            "description": "Task notes",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Example task",
+        "description": "Task notes",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoListId": "456"
+      },
+      "name": "createTodo-transportFailure",
+      "operation": "createTodo"
+    },
+    {
+      "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "completed": false,
+          "content": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7afc23b1-4d74-5824-93c0-9d5213648829",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Example task",
+        "description": "Task notes",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoListId": "456"
+      },
+      "name": "createTodo-uncertain",
+      "operation": "createTodo",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "7afc23b1-4d74-5824-93c0-9d5213648829",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "exchanges": [
+        {
+          "body": "{\"id\":321,\"content\":\"Updated task\",\"completed\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Updated task",
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "completed": false,
+          "content": "Updated task",
+          "id": "321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Updated task",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoId": "321"
+      },
+      "name": "updateTodo-success",
+      "operation": "updateTodo"
+    },
+    {
+      "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Updated task",
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "completed": false,
+          "content": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Updated task",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoId": "321"
+      },
+      "name": "updateTodo-notFound",
+      "operation": "updateTodo"
+    },
+    {
+      "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Updated task",
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "completed": false,
+          "content": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Updated task",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoId": "321"
+      },
+      "name": "updateTodo-providerRejected",
+      "operation": "updateTodo"
+    },
+    {
+      "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Updated task",
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "completed": false,
+          "content": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Updated task",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoId": "321"
+      },
+      "name": "updateTodo-invalidResponse",
+      "operation": "updateTodo"
+    },
+    {
+      "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Updated task",
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Updated task",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoId": "321"
+      },
+      "name": "updateTodo-final429",
+      "operation": "updateTodo"
+    },
+    {
+      "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Updated task",
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Updated task",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoId": "321"
+      },
+      "name": "updateTodo-final503",
+      "operation": "updateTodo"
+    },
+    {
+      "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "completed": false,
+          "content": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": null,
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Updated task",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoId": "321"
+      },
+      "name": "updateTodo-defect",
+      "operation": "updateTodo"
+    },
+    {
+      "callId": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321.json",
+          "requestBody": {
+            "assignee_ids": [
+              789
+            ],
+            "completion_subscriber_ids": [
+              987
+            ],
+            "content": "Updated task",
+            "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+            "due_on": "2026-11-20",
+            "starts_on": "2026-11-18"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a2af0ae9-72a6-5de1-b965-61feab76763a",
+      "input": {
+        "accountId": "123",
+        "assigneeIds": [
+          "789"
+        ],
+        "completionSubscriberIds": [
+          "987"
+        ],
+        "content": "Updated task",
+        "description": "\u003cdiv\u003eNotes\u003c/div\u003e",
+        "dueOn": "2026-11-20",
+        "startsOn": "2026-11-18",
+        "todoId": "321"
+      },
+      "name": "updateTodo-transportFailure",
+      "operation": "updateTodo"
+    },
+    {
+      "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "status": "completed",
+          "todoId": "321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "completeTodo-success",
+      "operation": "completeTodo"
+    },
+    {
+      "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "completeTodo-notFound",
+      "operation": "completeTodo"
+    },
+    {
+      "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "completeTodo-providerRejected",
+      "operation": "completeTodo"
+    },
+    {
+      "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "completeTodo-final429",
+      "operation": "completeTodo"
+    },
+    {
+      "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "completeTodo-final503",
+      "operation": "completeTodo"
+    },
+    {
+      "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "input": {
+        "accountId": "123",
+        "todoId": "0"
+      },
+      "name": "completeTodo-defect",
+      "operation": "completeTodo"
+    },
+    {
+      "callId": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fa98b06-749d-551b-9d22-ca9049f33bfe",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "completeTodo-transportFailure",
+      "operation": "completeTodo"
+    },
+    {
+      "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "active",
+        "failureKind": "",
+        "output": {
+          "status": "active",
+          "todoId": "321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "uncompleteTodo-success",
+      "operation": "uncompleteTodo"
+    },
+    {
+      "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "uncompleteTodo-notFound",
+      "operation": "uncompleteTodo"
+    },
+    {
+      "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "uncompleteTodo-providerRejected",
+      "operation": "uncompleteTodo"
+    },
+    {
+      "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "uncompleteTodo-final429",
+      "operation": "uncompleteTodo"
+    },
+    {
+      "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "uncompleteTodo-final503",
+      "operation": "uncompleteTodo"
+    },
+    {
+      "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "input": {
+        "accountId": "123",
+        "todoId": "0"
+      },
+      "name": "uncompleteTodo-defect",
+      "operation": "uncompleteTodo"
+    },
+    {
+      "callId": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/123/todos/321/completion.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f2e16b7-970a-5001-8309-b730165291cb",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "uncompleteTodo-transportFailure",
+      "operation": "uncompleteTodo"
+    },
+    {
+      "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/321/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "trashed",
+        "failureKind": "",
+        "output": {
+          "status": "trashed",
+          "todoId": "321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "trashTodo-success",
+      "operation": "trashTodo"
+    },
+    {
+      "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/321/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "trashTodo-notFound",
+      "operation": "trashTodo"
+    },
+    {
+      "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/321/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "trashTodo-providerRejected",
+      "operation": "trashTodo"
+    },
+    {
+      "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/321/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "trashTodo-final429",
+      "operation": "trashTodo"
+    },
+    {
+      "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/321/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "trashTodo-final503",
+      "operation": "trashTodo"
+    },
+    {
+      "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "input": {
+        "accountId": "123",
+        "todoId": "0"
+      },
+      "name": "trashTodo-defect",
+      "operation": "trashTodo"
+    },
+    {
+      "callId": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/recordings/321/status/trashed.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c05d6f25-ac65-58e9-9ca0-f0b680a50111",
+      "input": {
+        "accountId": "123",
+        "todoId": "321"
+      },
+      "name": "trashTodo-transportFailure",
+      "operation": "trashTodo"
+    },
+    {
+      "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321/position.json",
+          "requestBody": {
+            "parent_id": 987,
+            "position": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "repositioned",
+        "failureKind": "",
+        "output": {
+          "status": "repositioned",
+          "todoId": "321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "input": {
+        "accountId": "123",
+        "parentId": "987",
+        "position": 2,
+        "todoId": "321"
+      },
+      "name": "repositionTodo-success",
+      "operation": "repositionTodo"
+    },
+    {
+      "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321/position.json",
+          "requestBody": {
+            "parent_id": 987,
+            "position": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "input": {
+        "accountId": "123",
+        "parentId": "987",
+        "position": 2,
+        "todoId": "321"
+      },
+      "name": "repositionTodo-notFound",
+      "operation": "repositionTodo"
+    },
+    {
+      "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321/position.json",
+          "requestBody": {
+            "parent_id": 987,
+            "position": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "input": {
+        "accountId": "123",
+        "parentId": "987",
+        "position": 2,
+        "todoId": "321"
+      },
+      "name": "repositionTodo-providerRejected",
+      "operation": "repositionTodo"
+    },
+    {
+      "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321/position.json",
+          "requestBody": {
+            "parent_id": 987,
+            "position": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "input": {
+        "accountId": "123",
+        "parentId": "987",
+        "position": 2,
+        "todoId": "321"
+      },
+      "name": "repositionTodo-final429",
+      "operation": "repositionTodo"
+    },
+    {
+      "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321/position.json",
+          "requestBody": {
+            "parent_id": 987,
+            "position": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "input": {
+        "accountId": "123",
+        "parentId": "987",
+        "position": 2,
+        "todoId": "321"
+      },
+      "name": "repositionTodo-final503",
+      "operation": "repositionTodo"
+    },
+    {
+      "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "status": "",
+          "todoId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "input": {
+        "accountId": "123",
+        "parentId": "987",
+        "position": 0,
+        "todoId": "321"
+      },
+      "name": "repositionTodo-defect",
+      "operation": "repositionTodo"
+    },
+    {
+      "callId": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/123/todos/321/position.json",
+          "requestBody": {
+            "parent_id": 987,
+            "position": 2
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c5add22-6abf-58ae-9fd9-39fce1211e75",
+      "input": {
+        "accountId": "123",
+        "parentId": "987",
+        "position": 2,
+        "todoId": "321"
+      },
+      "name": "repositionTodo-transportFailure",
+      "operation": "repositionTodo"
     }
   ],
   "schemaVersion": 1
