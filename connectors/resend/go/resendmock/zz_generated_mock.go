@@ -78,6 +78,13 @@ type Mock struct {
 	getUsage                     *connectormock.Query[resend.GetUsageInput, resend.AccountUsage]
 	listLogs                     *connectormock.Query[resend.ListLogsInput, resend.RequestLogPage]
 	getLog                       *connectormock.Query[resend.GetLogInput, resend.RequestLog]
+	createTemplate               *connectormock.Mutation[resend.CreateTemplateInput, resend.TemplateReference]
+	getTemplate                  *connectormock.Query[resend.GetTemplateInput, resend.Template]
+	listTemplates                *connectormock.Query[resend.ListTemplatesInput, resend.TemplatePage]
+	updateTemplate               *connectormock.Mutation[resend.UpdateTemplateInput, resend.TemplateReference]
+	deleteTemplate               *connectormock.Mutation[resend.DeleteTemplateInput, resend.DeletedTemplate]
+	publishTemplate              *connectormock.Mutation[resend.PublishTemplateInput, resend.TemplateReference]
+	duplicateTemplate            *connectormock.Mutation[resend.DuplicateTemplateInput, resend.TemplateReference]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -145,6 +152,13 @@ func New(t testing.TB, connectionName string) *Mock {
 		getUsage:                     connectormock.NewQuery[resend.GetUsageInput, resend.AccountUsage](t, resend.GetUsageDefinition),
 		listLogs:                     connectormock.NewQuery[resend.ListLogsInput, resend.RequestLogPage](t, resend.ListLogsDefinition),
 		getLog:                       connectormock.NewQuery[resend.GetLogInput, resend.RequestLog](t, resend.GetLogDefinition),
+		createTemplate:               connectormock.NewMutation[resend.CreateTemplateInput, resend.TemplateReference](t, resend.CreateTemplateDefinition),
+		getTemplate:                  connectormock.NewQuery[resend.GetTemplateInput, resend.Template](t, resend.GetTemplateDefinition),
+		listTemplates:                connectormock.NewQuery[resend.ListTemplatesInput, resend.TemplatePage](t, resend.ListTemplatesDefinition),
+		updateTemplate:               connectormock.NewMutation[resend.UpdateTemplateInput, resend.TemplateReference](t, resend.UpdateTemplateDefinition),
+		deleteTemplate:               connectormock.NewMutation[resend.DeleteTemplateInput, resend.DeletedTemplate](t, resend.DeleteTemplateDefinition),
+		publishTemplate:              connectormock.NewMutation[resend.PublishTemplateInput, resend.TemplateReference](t, resend.PublishTemplateDefinition),
+		duplicateTemplate:            connectormock.NewMutation[resend.DuplicateTemplateInput, resend.TemplateReference](t, resend.DuplicateTemplateDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -206,6 +220,13 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.getUsage.Default(GetUsageDefault())
 	mock.listLogs.Default(ListLogsDefault())
 	mock.getLog.Default(GetLogDefault())
+	mock.createTemplate.Default(CreateTemplateDefault())
+	mock.getTemplate.Default(GetTemplateDefault())
+	mock.listTemplates.Default(ListTemplatesDefault())
+	mock.updateTemplate.Default(UpdateTemplateDefault())
+	mock.deleteTemplate.Default(DeleteTemplateDefault())
+	mock.publishTemplate.Default(PublishTemplateDefault())
+	mock.duplicateTemplate.Default(DuplicateTemplateDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -517,6 +538,41 @@ func (mock *Mock) GetLog() *connectormock.Query[resend.GetLogInput, resend.Reque
 	return mock.getLog
 }
 
+// CreateTemplate returns the createTemplate script.
+func (mock *Mock) CreateTemplate() *connectormock.Mutation[resend.CreateTemplateInput, resend.TemplateReference] {
+	return mock.createTemplate
+}
+
+// GetTemplate returns the getTemplate script.
+func (mock *Mock) GetTemplate() *connectormock.Query[resend.GetTemplateInput, resend.Template] {
+	return mock.getTemplate
+}
+
+// ListTemplates returns the listTemplates script.
+func (mock *Mock) ListTemplates() *connectormock.Query[resend.ListTemplatesInput, resend.TemplatePage] {
+	return mock.listTemplates
+}
+
+// UpdateTemplate returns the updateTemplate script.
+func (mock *Mock) UpdateTemplate() *connectormock.Mutation[resend.UpdateTemplateInput, resend.TemplateReference] {
+	return mock.updateTemplate
+}
+
+// DeleteTemplate returns the deleteTemplate script.
+func (mock *Mock) DeleteTemplate() *connectormock.Mutation[resend.DeleteTemplateInput, resend.DeletedTemplate] {
+	return mock.deleteTemplate
+}
+
+// PublishTemplate returns the publishTemplate script.
+func (mock *Mock) PublishTemplate() *connectormock.Mutation[resend.PublishTemplateInput, resend.TemplateReference] {
+	return mock.publishTemplate
+}
+
+// DuplicateTemplate returns the duplicateTemplate script.
+func (mock *Mock) DuplicateTemplate() *connectormock.Mutation[resend.DuplicateTemplateInput, resend.TemplateReference] {
+	return mock.duplicateTemplate
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -698,6 +754,27 @@ func (operations mockOperations) ListLogs() sdkgo.Query[resend.ListLogsInput, re
 }
 func (operations mockOperations) GetLog() sdkgo.Query[resend.GetLogInput, resend.RequestLog] {
 	return operations.mock.getLog
+}
+func (operations mockOperations) CreateTemplate() sdkgo.Mutation[resend.CreateTemplateInput, resend.TemplateReference] {
+	return operations.mock.createTemplate
+}
+func (operations mockOperations) GetTemplate() sdkgo.Query[resend.GetTemplateInput, resend.Template] {
+	return operations.mock.getTemplate
+}
+func (operations mockOperations) ListTemplates() sdkgo.Query[resend.ListTemplatesInput, resend.TemplatePage] {
+	return operations.mock.listTemplates
+}
+func (operations mockOperations) UpdateTemplate() sdkgo.Mutation[resend.UpdateTemplateInput, resend.TemplateReference] {
+	return operations.mock.updateTemplate
+}
+func (operations mockOperations) DeleteTemplate() sdkgo.Mutation[resend.DeleteTemplateInput, resend.DeletedTemplate] {
+	return operations.mock.deleteTemplate
+}
+func (operations mockOperations) PublishTemplate() sdkgo.Mutation[resend.PublishTemplateInput, resend.TemplateReference] {
+	return operations.mock.publishTemplate
+}
+func (operations mockOperations) DuplicateTemplate() sdkgo.Mutation[resend.DuplicateTemplateInput, resend.TemplateReference] {
+	return operations.mock.duplicateTemplate
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -2977,3 +3054,273 @@ func GetLogGetLogDefault() connectormock.Case[resend.RequestLog] {
 
 // GetLogDefault is the manifest default, getLogDefault, which New installs.
 func GetLogDefault() connectormock.Case[resend.RequestLog] { return GetLogGetLogDefault() }
+
+// CreateTemplateCreated selects the created branch: Resend completed the template request.
+func CreateTemplateCreated(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.CreateTemplateBranchCreated, value, failure)
+}
+
+// CreateTemplateProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateTemplateProviderRejected(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.CreateTemplateBranchProviderRejected, value, failure)
+}
+
+// CreateTemplateDefect selects the defect branch: Local input or credentials are invalid.
+func CreateTemplateDefect(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.CreateTemplateBranchDefect, value, failure)
+}
+
+// CreateTemplateUncertain returns an uncertain createTemplate outcome.
+func CreateTemplateUncertain(value resend.TemplateReference, failure sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateTemplateRetry asks Dex to retry the createTemplate Step, after the delay when it is positive.
+func CreateTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Retry[resend.TemplateReference](failure, after)
+}
+
+// CreateTemplateCreateTemplateDefault is the manifest mock createTemplateDefault: Resend completed the template request.
+func CreateTemplateCreateTemplateDefault() connectormock.Case[resend.TemplateReference] {
+	value := connectormock.MustDecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+	return connectormock.Branch(resend.CreateTemplateBranchCreated, value, nil)
+}
+
+// CreateTemplateDefault is the manifest default, createTemplateDefault, which New installs.
+func CreateTemplateDefault() connectormock.Case[resend.TemplateReference] {
+	return CreateTemplateCreateTemplateDefault()
+}
+
+// GetTemplateFound selects the found branch: Resend completed the template request.
+func GetTemplateFound(value resend.Template, failure *sdkgo.Failure) connectormock.Case[resend.Template] {
+	return connectormock.Branch(resend.GetTemplateBranchFound, value, failure)
+}
+
+// GetTemplateNotFound selects the notFound branch: The template does not exist.
+func GetTemplateNotFound(value resend.Template, failure *sdkgo.Failure) connectormock.Case[resend.Template] {
+	return connectormock.Branch(resend.GetTemplateBranchNotFound, value, failure)
+}
+
+// GetTemplateProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetTemplateProviderRejected(value resend.Template, failure *sdkgo.Failure) connectormock.Case[resend.Template] {
+	return connectormock.Branch(resend.GetTemplateBranchProviderRejected, value, failure)
+}
+
+// GetTemplateInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetTemplateInvalidResponse(value resend.Template, failure *sdkgo.Failure) connectormock.Case[resend.Template] {
+	return connectormock.Branch(resend.GetTemplateBranchInvalidResponse, value, failure)
+}
+
+// GetTemplateDefect selects the defect branch: Local input or credentials are invalid.
+func GetTemplateDefect(value resend.Template, failure *sdkgo.Failure) connectormock.Case[resend.Template] {
+	return connectormock.Branch(resend.GetTemplateBranchDefect, value, failure)
+}
+
+// GetTemplateRetry asks Dex to retry the getTemplate Step, after the delay when it is positive.
+func GetTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Template] {
+	return connectormock.Retry[resend.Template](failure, after)
+}
+
+// GetTemplateGetTemplateDefault is the manifest mock getTemplateDefault: Resend completed the template request.
+func GetTemplateGetTemplateDefault() connectormock.Case[resend.Template] {
+	value := connectormock.MustDecodeOutput[resend.Template](`{"id":"template-1","name":"Welcome","status":"draft"}`)
+	return connectormock.Branch(resend.GetTemplateBranchFound, value, nil)
+}
+
+// GetTemplateDefault is the manifest default, getTemplateDefault, which New installs.
+func GetTemplateDefault() connectormock.Case[resend.Template] { return GetTemplateGetTemplateDefault() }
+
+// ListTemplatesListed selects the listed branch: Resend completed the template request.
+func ListTemplatesListed(value resend.TemplatePage, failure *sdkgo.Failure) connectormock.Case[resend.TemplatePage] {
+	return connectormock.Branch(resend.ListTemplatesBranchListed, value, failure)
+}
+
+// ListTemplatesProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListTemplatesProviderRejected(value resend.TemplatePage, failure *sdkgo.Failure) connectormock.Case[resend.TemplatePage] {
+	return connectormock.Branch(resend.ListTemplatesBranchProviderRejected, value, failure)
+}
+
+// ListTemplatesInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListTemplatesInvalidResponse(value resend.TemplatePage, failure *sdkgo.Failure) connectormock.Case[resend.TemplatePage] {
+	return connectormock.Branch(resend.ListTemplatesBranchInvalidResponse, value, failure)
+}
+
+// ListTemplatesDefect selects the defect branch: Local input or credentials are invalid.
+func ListTemplatesDefect(value resend.TemplatePage, failure *sdkgo.Failure) connectormock.Case[resend.TemplatePage] {
+	return connectormock.Branch(resend.ListTemplatesBranchDefect, value, failure)
+}
+
+// ListTemplatesRetry asks Dex to retry the listTemplates Step, after the delay when it is positive.
+func ListTemplatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.TemplatePage] {
+	return connectormock.Retry[resend.TemplatePage](failure, after)
+}
+
+// ListTemplatesListTemplatesDefault is the manifest mock listTemplatesDefault: Resend completed the template request.
+func ListTemplatesListTemplatesDefault() connectormock.Case[resend.TemplatePage] {
+	value := connectormock.MustDecodeOutput[resend.TemplatePage](`{"data":[{"id":"template-1","name":"Welcome","status":"draft"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListTemplatesBranchListed, value, nil)
+}
+
+// ListTemplatesDefault is the manifest default, listTemplatesDefault, which New installs.
+func ListTemplatesDefault() connectormock.Case[resend.TemplatePage] {
+	return ListTemplatesListTemplatesDefault()
+}
+
+// UpdateTemplateUpdated selects the updated branch: Resend completed the template request.
+func UpdateTemplateUpdated(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.UpdateTemplateBranchUpdated, value, failure)
+}
+
+// UpdateTemplateNotFound selects the notFound branch: The template does not exist.
+func UpdateTemplateNotFound(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.UpdateTemplateBranchNotFound, value, failure)
+}
+
+// UpdateTemplateProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateTemplateProviderRejected(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.UpdateTemplateBranchProviderRejected, value, failure)
+}
+
+// UpdateTemplateInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateTemplateInvalidResponse(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.UpdateTemplateBranchInvalidResponse, value, failure)
+}
+
+// UpdateTemplateDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateTemplateDefect(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.UpdateTemplateBranchDefect, value, failure)
+}
+
+// UpdateTemplateRetry asks Dex to retry the updateTemplate Step, after the delay when it is positive.
+func UpdateTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Retry[resend.TemplateReference](failure, after)
+}
+
+// UpdateTemplateUpdateTemplateDefault is the manifest mock updateTemplateDefault: Resend completed the template request.
+func UpdateTemplateUpdateTemplateDefault() connectormock.Case[resend.TemplateReference] {
+	value := connectormock.MustDecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+	return connectormock.Branch(resend.UpdateTemplateBranchUpdated, value, nil)
+}
+
+// UpdateTemplateDefault is the manifest default, updateTemplateDefault, which New installs.
+func UpdateTemplateDefault() connectormock.Case[resend.TemplateReference] {
+	return UpdateTemplateUpdateTemplateDefault()
+}
+
+// DeleteTemplateDeleted selects the deleted branch: Resend completed the template request.
+func DeleteTemplateDeleted(value resend.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[resend.DeletedTemplate] {
+	return connectormock.Branch(resend.DeleteTemplateBranchDeleted, value, failure)
+}
+
+// DeleteTemplateNotFound selects the notFound branch: The template does not exist.
+func DeleteTemplateNotFound(value resend.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[resend.DeletedTemplate] {
+	return connectormock.Branch(resend.DeleteTemplateBranchNotFound, value, failure)
+}
+
+// DeleteTemplateProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteTemplateProviderRejected(value resend.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[resend.DeletedTemplate] {
+	return connectormock.Branch(resend.DeleteTemplateBranchProviderRejected, value, failure)
+}
+
+// DeleteTemplateInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteTemplateInvalidResponse(value resend.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[resend.DeletedTemplate] {
+	return connectormock.Branch(resend.DeleteTemplateBranchInvalidResponse, value, failure)
+}
+
+// DeleteTemplateDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteTemplateDefect(value resend.DeletedTemplate, failure *sdkgo.Failure) connectormock.Case[resend.DeletedTemplate] {
+	return connectormock.Branch(resend.DeleteTemplateBranchDefect, value, failure)
+}
+
+// DeleteTemplateRetry asks Dex to retry the deleteTemplate Step, after the delay when it is positive.
+func DeleteTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedTemplate] {
+	return connectormock.Retry[resend.DeletedTemplate](failure, after)
+}
+
+// DeleteTemplateDeleteTemplateDefault is the manifest mock deleteTemplateDefault: Resend completed the template request.
+func DeleteTemplateDeleteTemplateDefault() connectormock.Case[resend.DeletedTemplate] {
+	value := connectormock.MustDecodeOutput[resend.DeletedTemplate](`{"id":"template-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteTemplateBranchDeleted, value, nil)
+}
+
+// DeleteTemplateDefault is the manifest default, deleteTemplateDefault, which New installs.
+func DeleteTemplateDefault() connectormock.Case[resend.DeletedTemplate] {
+	return DeleteTemplateDeleteTemplateDefault()
+}
+
+// PublishTemplatePublished selects the published branch: Resend completed the template request.
+func PublishTemplatePublished(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.PublishTemplateBranchPublished, value, failure)
+}
+
+// PublishTemplateNotFound selects the notFound branch: The template does not exist.
+func PublishTemplateNotFound(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.PublishTemplateBranchNotFound, value, failure)
+}
+
+// PublishTemplateProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func PublishTemplateProviderRejected(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.PublishTemplateBranchProviderRejected, value, failure)
+}
+
+// PublishTemplateInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func PublishTemplateInvalidResponse(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.PublishTemplateBranchInvalidResponse, value, failure)
+}
+
+// PublishTemplateDefect selects the defect branch: Local input or credentials are invalid.
+func PublishTemplateDefect(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.PublishTemplateBranchDefect, value, failure)
+}
+
+// PublishTemplateRetry asks Dex to retry the publishTemplate Step, after the delay when it is positive.
+func PublishTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Retry[resend.TemplateReference](failure, after)
+}
+
+// PublishTemplatePublishTemplateDefault is the manifest mock publishTemplateDefault: Resend completed the template request.
+func PublishTemplatePublishTemplateDefault() connectormock.Case[resend.TemplateReference] {
+	value := connectormock.MustDecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+	return connectormock.Branch(resend.PublishTemplateBranchPublished, value, nil)
+}
+
+// PublishTemplateDefault is the manifest default, publishTemplateDefault, which New installs.
+func PublishTemplateDefault() connectormock.Case[resend.TemplateReference] {
+	return PublishTemplatePublishTemplateDefault()
+}
+
+// DuplicateTemplateDuplicated selects the duplicated branch: Resend completed the template request.
+func DuplicateTemplateDuplicated(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.DuplicateTemplateBranchDuplicated, value, failure)
+}
+
+// DuplicateTemplateProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DuplicateTemplateProviderRejected(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.DuplicateTemplateBranchProviderRejected, value, failure)
+}
+
+// DuplicateTemplateDefect selects the defect branch: Local input or credentials are invalid.
+func DuplicateTemplateDefect(value resend.TemplateReference, failure *sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Branch(resend.DuplicateTemplateBranchDefect, value, failure)
+}
+
+// DuplicateTemplateUncertain returns an uncertain duplicateTemplate outcome.
+func DuplicateTemplateUncertain(value resend.TemplateReference, failure sdkgo.Failure) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// DuplicateTemplateRetry asks Dex to retry the duplicateTemplate Step, after the delay when it is positive.
+func DuplicateTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.TemplateReference] {
+	return connectormock.Retry[resend.TemplateReference](failure, after)
+}
+
+// DuplicateTemplateDuplicateTemplateDefault is the manifest mock duplicateTemplateDefault: Resend completed the template request.
+func DuplicateTemplateDuplicateTemplateDefault() connectormock.Case[resend.TemplateReference] {
+	value := connectormock.MustDecodeOutput[resend.TemplateReference](`{"id":"template-2"}`)
+	return connectormock.Branch(resend.DuplicateTemplateBranchDuplicated, value, nil)
+}
+
+// DuplicateTemplateDefault is the manifest default, duplicateTemplateDefault, which New installs.
+func DuplicateTemplateDefault() connectormock.Case[resend.TemplateReference] {
+	return DuplicateTemplateDuplicateTemplateDefault()
+}

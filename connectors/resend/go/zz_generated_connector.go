@@ -100,6 +100,13 @@ type Operations interface {
 	GetUsage() sdkgo.Query[GetUsageInput, AccountUsage]
 	ListLogs() sdkgo.Query[ListLogsInput, RequestLogPage]
 	GetLog() sdkgo.Query[GetLogInput, RequestLog]
+	CreateTemplate() sdkgo.Mutation[CreateTemplateInput, TemplateReference]
+	GetTemplate() sdkgo.Query[GetTemplateInput, Template]
+	ListTemplates() sdkgo.Query[ListTemplatesInput, TemplatePage]
+	UpdateTemplate() sdkgo.Mutation[UpdateTemplateInput, TemplateReference]
+	DeleteTemplate() sdkgo.Mutation[DeleteTemplateInput, DeletedTemplate]
+	PublishTemplate() sdkgo.Mutation[PublishTemplateInput, TemplateReference]
+	DuplicateTemplate() sdkgo.Mutation[DuplicateTemplateInput, TemplateReference]
 }
 
 type clientOperations struct{ client *Client }
@@ -283,6 +290,27 @@ func (operations clientOperations) ListLogs() sdkgo.Query[ListLogsInput, Request
 }
 func (operations clientOperations) GetLog() sdkgo.Query[GetLogInput, RequestLog] {
 	return operations.client.GetLog()
+}
+func (operations clientOperations) CreateTemplate() sdkgo.Mutation[CreateTemplateInput, TemplateReference] {
+	return operations.client.CreateTemplate()
+}
+func (operations clientOperations) GetTemplate() sdkgo.Query[GetTemplateInput, Template] {
+	return operations.client.GetTemplate()
+}
+func (operations clientOperations) ListTemplates() sdkgo.Query[ListTemplatesInput, TemplatePage] {
+	return operations.client.ListTemplates()
+}
+func (operations clientOperations) UpdateTemplate() sdkgo.Mutation[UpdateTemplateInput, TemplateReference] {
+	return operations.client.UpdateTemplate()
+}
+func (operations clientOperations) DeleteTemplate() sdkgo.Mutation[DeleteTemplateInput, DeletedTemplate] {
+	return operations.client.DeleteTemplate()
+}
+func (operations clientOperations) PublishTemplate() sdkgo.Mutation[PublishTemplateInput, TemplateReference] {
+	return operations.client.PublishTemplate()
+}
+func (operations clientOperations) DuplicateTemplate() sdkgo.Mutation[DuplicateTemplateInput, TemplateReference] {
+	return operations.client.DuplicateTemplate()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -4908,5 +4936,539 @@ func NewGetLogStep[IN any](config GetLogStepConfig[IN]) sdkgo.QueryStep[IN, GetL
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTemplateBranchCreated sdkgo.BranchID = "created"
+const CreateTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateTemplateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTemplateBranchCreated, Description: "Resend completed the template request."},
+		{ID: CreateTemplateBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateTemplateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateTemplateBranchUncertain, Description: "Bounded sends ended without confirming the new draft.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTemplateResult = sdkgo.MutationResult[TemplateReference]
+
+type CreateTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=resend"`
+	operationID                       struct{}                                                `connector:"operationId=createTemplate"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTemplateInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTemplateResult]                      `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTemplateResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateTemplateResult]                      `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateTemplateResult]                      `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TemplateReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTemplateStep[IN any](config CreateTemplateStepConfig[IN]) sdkgo.MutationStep[IN, CreateTemplateInput, TemplateReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTemplateInput, TemplateReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTemplateResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTemplateBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTemplateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTemplateBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTemplateBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetTemplateBranchFound sdkgo.BranchID = "found"
+const GetTemplateBranchNotFound sdkgo.BranchID = "notFound"
+const GetTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTemplateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTemplateDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTemplateBranchFound, Description: "Resend completed the template request."},
+		{ID: GetTemplateBranchNotFound, Description: "The template does not exist.", Optional: true},
+		{ID: GetTemplateBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetTemplateBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetTemplateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTemplateResult = sdkgo.QueryResult[Template]
+
+type GetTemplateStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=resend"`
+	operationID                    struct{}                                    `connector:"operationId=getTemplate"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTemplateInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTemplateResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTemplateResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTemplateResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTemplateResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTemplateResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Template]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetTemplateStep[IN any](config GetTemplateStepConfig[IN]) sdkgo.QueryStep[IN, GetTemplateInput, Template] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTemplateInput, Template]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[GetTemplateResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTemplateBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTemplateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTemplateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTemplateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTemplatesBranchListed sdkgo.BranchID = "listed"
+const ListTemplatesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTemplatesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTemplatesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTemplatesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTemplates"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTemplatesBranchListed, Description: "Resend completed the template request."},
+		{ID: ListTemplatesBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListTemplatesBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListTemplatesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTemplatesResult = sdkgo.QueryResult[TemplatePage]
+
+type ListTemplatesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=resend"`
+	operationID                    struct{}                                        `connector:"operationId=listTemplates"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTemplatesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTemplatesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTemplatesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTemplatesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTemplatesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TemplatePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListTemplatesStep[IN any](config ListTemplatesStepConfig[IN]) sdkgo.QueryStep[IN, ListTemplatesInput, TemplatePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTemplatesInput, TemplatePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTemplates(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTemplatesResult] {
+			branches := make([]sdkgo.BranchTarget[ListTemplatesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTemplatesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTemplatesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTemplatesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTemplatesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateTemplateBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTemplateBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTemplateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTemplateBranchUpdated, Description: "Resend completed the template request."},
+		{ID: UpdateTemplateBranchNotFound, Description: "The template does not exist.", Optional: true},
+		{ID: UpdateTemplateBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: UpdateTemplateBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: UpdateTemplateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTemplateResult = sdkgo.MutationResult[TemplateReference]
+
+type UpdateTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=resend"`
+	operationID                       struct{}                                                `connector:"operationId=updateTemplate"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTemplateInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTemplateResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTemplateResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTemplateResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTemplateResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTemplateResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TemplateReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTemplateStep[IN any](config UpdateTemplateStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTemplateInput, TemplateReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTemplateInput, TemplateReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTemplateResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTemplateBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTemplateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTemplateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTemplateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteTemplateBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteTemplateBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteTemplateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteTemplateBranchDeleted, Description: "Resend completed the template request."},
+		{ID: DeleteTemplateBranchNotFound, Description: "The template does not exist.", Optional: true},
+		{ID: DeleteTemplateBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DeleteTemplateBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: DeleteTemplateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteTemplateResult = sdkgo.MutationResult[DeletedTemplate]
+
+type DeleteTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=resend"`
+	operationID                       struct{}                                              `connector:"operationId=deleteTemplate"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteTemplateInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteTemplateResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteTemplateResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteTemplateResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteTemplateResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteTemplateResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedTemplate]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteTemplateStep[IN any](config DeleteTemplateStepConfig[IN]) sdkgo.MutationStep[IN, DeleteTemplateInput, DeletedTemplate] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteTemplateInput, DeletedTemplate]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteTemplateResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteTemplateBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteTemplateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteTemplateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteTemplateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PublishTemplateBranchPublished sdkgo.BranchID = "published"
+const PublishTemplateBranchNotFound sdkgo.BranchID = "notFound"
+const PublishTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishTemplateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PublishTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishTemplateBranchPublished, Description: "Resend completed the template request."},
+		{ID: PublishTemplateBranchNotFound, Description: "The template does not exist.", Optional: true},
+		{ID: PublishTemplateBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: PublishTemplateBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: PublishTemplateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type PublishTemplateResult = sdkgo.MutationResult[TemplateReference]
+
+type PublishTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=resend"`
+	operationID                       struct{}                                                `connector:"operationId=publishTemplate"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) PublishTemplateInput                           `connector:"mapToOperationInput"`
+	Published                         sdkgo.Target[PublishTemplateResult]                     `connector:"branch=published"`
+	NotFound                          sdkgo.Target[PublishTemplateResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[PublishTemplateResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PublishTemplateResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PublishTemplateResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TemplateReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewPublishTemplateStep[IN any](config PublishTemplateStepConfig[IN]) sdkgo.MutationStep[IN, PublishTemplateInput, TemplateReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishTemplateInput, TemplateReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[PublishTemplateResult], 0, 5)
+			if config.Published.HasStep() {
+				branches = append(branches, config.Published.BranchTarget(PublishTemplateBranchPublished))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(PublishTemplateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishTemplateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PublishTemplateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DuplicateTemplateBranchDuplicated sdkgo.BranchID = "duplicated"
+const DuplicateTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DuplicateTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const DuplicateTemplateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var DuplicateTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "duplicateTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DuplicateTemplateBranchDuplicated, Description: "Resend completed the template request."},
+		{ID: DuplicateTemplateBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DuplicateTemplateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: DuplicateTemplateBranchUncertain, Description: "Bounded sends ended without confirming the new draft.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type DuplicateTemplateResult = sdkgo.MutationResult[TemplateReference]
+
+type DuplicateTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=resend"`
+	operationID                       struct{}                                                `connector:"operationId=duplicateTemplate"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DuplicateTemplateInput                         `connector:"mapToOperationInput"`
+	Duplicated                        sdkgo.Target[DuplicateTemplateResult]                   `connector:"branch=duplicated"`
+	ProviderRejected                  sdkgo.Target[DuplicateTemplateResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DuplicateTemplateResult]                   `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[DuplicateTemplateResult]                   `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TemplateReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewDuplicateTemplateStep[IN any](config DuplicateTemplateStepConfig[IN]) sdkgo.MutationStep[IN, DuplicateTemplateInput, TemplateReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DuplicateTemplateInput, TemplateReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DuplicateTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DuplicateTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[DuplicateTemplateResult], 0, 4)
+			if config.Duplicated.HasStep() {
+				branches = append(branches, config.Duplicated.BranchTarget(DuplicateTemplateBranchDuplicated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DuplicateTemplateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DuplicateTemplateBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(DuplicateTemplateBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

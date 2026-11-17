@@ -256,6 +256,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.RequestLog](`{"id":"00000000-0000-0000-0000-000000000001","endpoint":"/emails","method":"POST","response_status":200}`)
 			return err
 		}},
+		{name: "createTemplate/createTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+			return err
+		}},
+		{name: "getTemplate/getTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Template](`{"id":"template-1","name":"Welcome","status":"draft"}`)
+			return err
+		}},
+		{name: "listTemplates/listTemplatesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplatePage](`{"data":[{"id":"template-1","name":"Welcome","status":"draft"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateTemplate/updateTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+			return err
+		}},
+		{name: "deleteTemplate/deleteTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedTemplate](`{"id":"template-1","deleted":true}`)
+			return err
+		}},
+		{name: "publishTemplate/publishTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-1"}`)
+			return err
+		}},
+		{name: "duplicateTemplate/duplicateTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-2"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -445,5 +473,26 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetLog().Definition().Operation.OperationID != "getLog" {
 		t.Errorf("getLog mock has another definition")
+	}
+	if mock.CreateTemplate().Definition().Operation.OperationID != "createTemplate" {
+		t.Errorf("createTemplate mock has another definition")
+	}
+	if mock.GetTemplate().Definition().Operation.OperationID != "getTemplate" {
+		t.Errorf("getTemplate mock has another definition")
+	}
+	if mock.ListTemplates().Definition().Operation.OperationID != "listTemplates" {
+		t.Errorf("listTemplates mock has another definition")
+	}
+	if mock.UpdateTemplate().Definition().Operation.OperationID != "updateTemplate" {
+		t.Errorf("updateTemplate mock has another definition")
+	}
+	if mock.DeleteTemplate().Definition().Operation.OperationID != "deleteTemplate" {
+		t.Errorf("deleteTemplate mock has another definition")
+	}
+	if mock.PublishTemplate().Definition().Operation.OperationID != "publishTemplate" {
+		t.Errorf("publishTemplate mock has another definition")
+	}
+	if mock.DuplicateTemplate().Definition().Operation.OperationID != "duplicateTemplate" {
+		t.Errorf("duplicateTemplate mock has another definition")
 	}
 }

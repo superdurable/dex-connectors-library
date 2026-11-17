@@ -236,6 +236,15 @@ Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and
 credentials never enter a Dex result, receipt, Stream, or log.
 
+## Templates
+
+`CreateTemplate` and `DuplicateTemplate` use bounded `limited` retries;
+create reads back matching template metadata and HTML after an unknown send.
+Get/list, absolute updates, delete, and publish are safe operations. Template
+read results omit message bodies and variable fallbacks. The runnable
+[`create-template` example](go/examples/create-template/README.md) exercises
+the create path through a real Dex Worker and generated provider mock.
+
 ## Account observability
 
 `GetUsage`, `ListLogs`, and `GetLog` are safe reads. Usage exposes daily and

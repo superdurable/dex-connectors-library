@@ -1116,3 +1116,119 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: getLogDefault, branch: found, default: true, description: One request log., output: {id: 00000000-0000-0000-0000-000000000001, endpoint: /emails, method: POST, response_status: 200}}
+  - name: createTemplate
+    goName: CreateTemplate
+    inputType: CreateTemplateInput
+    outputType: TemplateReference
+    kind: mutation
+    description: Create an unpublished reusable email template.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the template request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the new draft., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createTemplateDefault, branch: created, default: true, description: Resend completed the template request., output: {id: template-1}}
+  - name: getTemplate
+    goName: GetTemplate
+    inputType: GetTemplateInput
+    outputType: Template
+    kind: query
+    description: Retrieve safe metadata for one email template.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the template request.}
+    - {id: notFound, goName: NotFound, description: The template does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getTemplateDefault, branch: found, default: true, description: Resend completed the template request., output: {id: template-1, name: Welcome, status: draft}}
+  - name: listTemplates
+    goName: ListTemplates
+    inputType: ListTemplatesInput
+    outputType: TemplatePage
+    kind: query
+    description: List safe metadata for reusable email templates.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the template request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listTemplatesDefault, branch: listed, default: true, description: Resend completed the template request., output: {data: [{id: template-1, name: Welcome, status: draft}], has_more: false}}
+  - name: updateTemplate
+    goName: UpdateTemplate
+    inputType: UpdateTemplateInput
+    outputType: TemplateReference
+    kind: mutation
+    description: Replace selected absolute fields of an email template.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the template request.}
+    - {id: notFound, goName: NotFound, description: The template does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateTemplateDefault, branch: updated, default: true, description: Resend completed the template request., output: {id: template-1}}
+  - name: deleteTemplate
+    goName: DeleteTemplate
+    inputType: DeleteTemplateInput
+    outputType: DeletedTemplate
+    kind: mutation
+    description: Delete one reusable email template.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the template request.}
+    - {id: notFound, goName: NotFound, description: The template does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteTemplateDefault, branch: deleted, default: true, description: Resend completed the template request., output: {id: template-1, deleted: true}}
+  - name: publishTemplate
+    goName: PublishTemplate
+    inputType: PublishTemplateInput
+    outputType: TemplateReference
+    kind: mutation
+    description: Publish the current draft version of an email template.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: published, goName: Published, description: Resend completed the template request.}
+    - {id: notFound, goName: NotFound, description: The template does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: publishTemplateDefault, branch: published, default: true, description: Resend completed the template request., output: {id: template-1}}
+  - name: duplicateTemplate
+    goName: DuplicateTemplate
+    inputType: DuplicateTemplateInput
+    outputType: TemplateReference
+    kind: mutation
+    description: Copy an email template into a new draft.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: duplicated, goName: Duplicated, description: Resend completed the template request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the new draft., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: duplicateTemplateDefault, branch: duplicated, default: true, description: Resend completed the template request., output: {id: template-2}}

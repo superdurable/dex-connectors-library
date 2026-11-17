@@ -22780,6 +22780,3195 @@
       },
       "name": "getLog-not-found",
       "operation": "getLog"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"template-1\",\"name\":\"Welcome\",\"alias\":\"welcome\",\"from\":\"news@example.test\",\"subject\":\"Hello\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\",\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "alias": "welcome",
+          "created_at": "",
+          "current_version_id": "",
+          "from": "news@example.test",
+          "has_unpublished_versions": false,
+          "id": "template-1",
+          "name": "Welcome",
+          "published_at": "",
+          "status": "draft",
+          "subject": "Hello",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "template-1"
+      },
+      "name": "getTemplate-success",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "alias": "",
+          "created_at": "",
+          "current_version_id": "",
+          "from": "",
+          "has_unpublished_versions": false,
+          "id": "",
+          "name": "",
+          "published_at": "",
+          "status": "",
+          "subject": "",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "template-1"
+      },
+      "name": "getTemplate-missing",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "alias": "",
+          "created_at": "",
+          "current_version_id": "",
+          "from": "",
+          "has_unpublished_versions": false,
+          "id": "",
+          "name": "",
+          "published_at": "",
+          "status": "",
+          "subject": "",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "template-1"
+      },
+      "name": "getTemplate-rejected",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "alias": "",
+          "created_at": "",
+          "current_version_id": "",
+          "from": "",
+          "has_unpublished_versions": false,
+          "id": "",
+          "name": "",
+          "published_at": "",
+          "status": "",
+          "subject": "",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "template-1"
+      },
+      "name": "getTemplate-invalid",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "alias": "",
+          "created_at": "",
+          "current_version_id": "",
+          "from": "",
+          "has_unpublished_versions": false,
+          "id": "",
+          "name": "",
+          "published_at": "",
+          "status": "",
+          "subject": "",
+          "updated_at": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getTemplate-defect",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "template-1"
+      },
+      "name": "getTemplate-rate",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "template-1"
+      },
+      "name": "getTemplate-server",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "template-1"
+      },
+      "name": "getTemplate-transport",
+      "operation": "getTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"template-1\",\"name\":\"Welcome\",\"alias\":\"welcome\",\"status\":\"draft\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "after": [
+              "template-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "alias": "welcome",
+              "created_at": "",
+              "current_version_id": "",
+              "from": "",
+              "has_unpublished_versions": false,
+              "id": "template-1",
+              "name": "Welcome",
+              "published_at": "",
+              "status": "draft",
+              "subject": "",
+              "updated_at": ""
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "template-0",
+        "limit": 10
+      },
+      "name": "listTemplates-success",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "after": [
+              "template-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "template-0",
+        "limit": 10
+      },
+      "name": "listTemplates-rejected",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "after": [
+              "template-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "template-0",
+        "limit": 10
+      },
+      "name": "listTemplates-invalid",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "template-0",
+        "limit": -1
+      },
+      "name": "listTemplates-defect",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "after": [
+              "template-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "template-0",
+        "limit": 10
+      },
+      "name": "listTemplates-rate",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "after": [
+              "template-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "template-0",
+        "limit": 10
+      },
+      "name": "listTemplates-server",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "after": [
+              "template-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "template-0",
+        "limit": 10
+      },
+      "name": "listTemplates-transport",
+      "operation": "listTemplates"
+    },
+    {
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"template-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "template-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "createTemplate-success",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "createTemplate-rejected",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "createTemplate-429",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "createTemplate-5xx",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "createTemplate-transport",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "createTemplate-defect",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "createTemplate-conflict",
+      "operation": "createTemplate"
+    },
+    {
+      "attempts": 2,
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[{\"id\":\"template-1\",\"name\":\"Welcome\",\"alias\":\"welcome\",\"status\":\"draft\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"template-1\",\"name\":\"Welcome\",\"alias\":\"welcome\",\"from\":\"news@example.test\",\"subject\":\"Hello\",\"html\":\"\u003cp\u003eHello\u003c/p\u003e\",\"status\":\"draft\",\"text\":\"Hello\",\"reply_to\":[\"reply@example.test\"],\"variables\":[{\"key\":\"name\",\"type\":\"string\",\"fallback_value\":\"Friend\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "template-1"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTemplate-retry-readback",
+      "operation": "createTemplate"
+    },
+    {
+      "attempts": 3,
+      "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/templates",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTemplate-send-cap",
+      "operation": "createTemplate"
+    },
+    {
+      "callId": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"template-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/templates/template-1",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "template-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "template-1",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "updateTemplate-success",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/templates/template-1",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "template-1",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "updateTemplate-notFound",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/templates/template-1",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "template-1",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "updateTemplate-providerRejected",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/templates/template-1",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "template-1",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "updateTemplate-invalidResponse",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "input": {
+        "id": ""
+      },
+      "name": "updateTemplate-defect",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/templates/template-1",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "template-1",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "updateTemplate-429",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/templates/template-1",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "template-1",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "updateTemplate-5xx",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/templates/template-1",
+          "requestBody": {
+            "alias": "welcome",
+            "from": "news@example.test",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "name": "Welcome",
+            "reply_to": [
+              "reply@example.test"
+            ],
+            "subject": "Hello",
+            "text": "Hello",
+            "variables": [
+              {
+                "fallback_value": "Friend",
+                "key": "name",
+                "type": "string"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60075360-c3dd-51fd-8cb1-03fa71063f2e",
+      "input": {
+        "alias": "welcome",
+        "from": "news@example.test",
+        "html": "\u003cp\u003eHello\u003c/p\u003e",
+        "id": "template-1",
+        "name": "Welcome",
+        "replyTo": [
+          "reply@example.test"
+        ],
+        "subject": "Hello",
+        "text": "Hello",
+        "variables": [
+          {
+            "fallback_value": "Friend",
+            "key": "name",
+            "type": "string"
+          }
+        ]
+      },
+      "name": "updateTemplate-transport",
+      "operation": "updateTemplate"
+    },
+    {
+      "callId": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"template-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "template-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "deleteTemplate-success",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "deleteTemplate-notFound",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "deleteTemplate-rejected",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "deleteTemplate-invalid",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "deleteTemplate-429",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "deleteTemplate-5xx",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/templates/template-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "deleteTemplate-transport",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0bc9b48-a501-552b-947a-4d9ec94e2e9b",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteTemplate-defect",
+      "operation": "deleteTemplate"
+    },
+    {
+      "callId": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"template-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/publish",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "published",
+        "failureKind": "",
+        "output": {
+          "id": "template-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "publishTemplate-success",
+      "operation": "publishTemplate"
+    },
+    {
+      "callId": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/publish",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "publishTemplate-notFound",
+      "operation": "publishTemplate"
+    },
+    {
+      "callId": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/publish",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "publishTemplate-providerRejected",
+      "operation": "publishTemplate"
+    },
+    {
+      "callId": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/publish",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "publishTemplate-invalidResponse",
+      "operation": "publishTemplate"
+    },
+    {
+      "callId": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "input": {
+        "id": ""
+      },
+      "name": "publishTemplate-defect",
+      "operation": "publishTemplate"
+    },
+    {
+      "callId": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/publish",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "publishTemplate-429",
+      "operation": "publishTemplate"
+    },
+    {
+      "callId": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/publish",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "publishTemplate-5xx",
+      "operation": "publishTemplate"
+    },
+    {
+      "callId": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/publish",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a99c2cea-8008-59cd-8c20-6e2230b0f626",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "publishTemplate-transport",
+      "operation": "publishTemplate"
+    },
+    {
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"template-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "duplicated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "template-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "duplicateTemplate-success",
+      "operation": "duplicateTemplate"
+    },
+    {
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "duplicateTemplate-rejected",
+      "operation": "duplicateTemplate"
+    },
+    {
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "duplicateTemplate-429",
+      "operation": "duplicateTemplate"
+    },
+    {
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "duplicateTemplate-5xx",
+      "operation": "duplicateTemplate"
+    },
+    {
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "duplicateTemplate-transport",
+      "operation": "duplicateTemplate"
+    },
+    {
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": ""
+      },
+      "name": "duplicateTemplate-defect",
+      "operation": "duplicateTemplate"
+    },
+    {
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": "template-1"
+      },
+      "name": "duplicateTemplate-conflict",
+      "operation": "duplicateTemplate"
+    },
+    {
+      "attempts": 2,
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"template-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "duplicated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "template-2"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": "template-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "duplicateTemplate-retry-readback",
+      "operation": "duplicateTemplate"
+    },
+    {
+      "attempts": 3,
+      "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/templates/template-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+      "input": {
+        "id": "template-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "526331fc-4741-55b0-bb3f-449a0a9368ed",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "duplicateTemplate-send-cap",
+      "operation": "duplicateTemplate"
     }
   ],
   "schemaVersion": 1
