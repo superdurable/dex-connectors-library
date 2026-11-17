@@ -11,11 +11,14 @@ List and inspect voices, replace voice settings, and generate bounded audio thro
 | Operation | Dex kind | Official API reference |
 | --- | --- | --- |
 | `listVoices` | Query | https://elevenlabs.io/docs/api-reference/voices/search |
+| `listModels` | Query, safe | https://elevenlabs.io/docs/api-reference/models/list |
 | `getVoice` | Query | https://elevenlabs.io/docs/api-reference/voices/get |
 | `updateVoiceSettings` | Mutation, safe repeat | https://elevenlabs.io/docs/api-reference/voices/settings/update |
 | `createSpeech` | Query | https://elevenlabs.io/docs/api-reference/text-to-speech/convert |
 
 The demo uses operation-specific `elevenlabs.NewListVoicesStep` and `elevenlabs.NewUpdateVoiceSettingsStep` factories with the static `elevenlabs` connection. `updateVoiceSettings` sends five absolute values, so retrying the same input preserves the chosen settings. Generation uses synchronous Execute durability and a three-attempt billed retry budget; reads and settings replacement use the default one-hour retry policy.
+
+`listModels` returns IDs, names, text-to-speech support, and per-request text limits for models available to the connection. Its runnable model catalog Flow uses `NewListModelsStep` and the same static connection.
 
 The Python package is [`dex-connector-elevenlabs`](python/README.md), imported as
 `dex_connectors.elevenlabs`.

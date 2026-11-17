@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{demo.NewFlow(connection), demo.NewVoiceSettingsFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{demo.NewFlow(connection), demo.NewVoiceSettingsFlow(connection), demo.NewModelsFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register ElevenLabs demo Flow: %w", err)
 	}

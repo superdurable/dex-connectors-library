@@ -18,6 +18,7 @@ import (
 // Mock is a scripted elevenlabs connection. Script each operation through its accessor.
 type Mock struct {
 	connection          elevenlabs.Connection
+	listModels          *connectormock.Query[elevenlabs.ListModelsInput, elevenlabs.ModelsList]
 	getVoice            *connectormock.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice]
 	updateVoiceSettings *connectormock.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings]
 	listVoices          *connectormock.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput]
@@ -29,11 +30,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listModels:          connectormock.NewQuery[elevenlabs.ListModelsInput, elevenlabs.ModelsList](t, elevenlabs.ListModelsDefinition),
 		getVoice:            connectormock.NewQuery[elevenlabs.GetVoiceInput, elevenlabs.Voice](t, elevenlabs.GetVoiceDefinition),
 		updateVoiceSettings: connectormock.NewMutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings](t, elevenlabs.UpdateVoiceSettingsDefinition),
 		listVoices:          connectormock.NewQuery[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput](t, elevenlabs.ListVoicesDefinition),
 		createSpeech:        connectormock.NewQuery[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput](t, elevenlabs.CreateSpeechDefinition),
 	}
+	mock.listModels.Default(ListModelsDefault())
 	mock.getVoice.Default(GetVoiceDefault())
 	mock.updateVoiceSettings.Default(UpdateVoiceSettingsDefault())
 	mock.listVoices.Default(ListVoicesDefault())
@@ -48,6 +51,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() elevenlabs.Connection { return mock.connection }
+
+// ListModels returns the listModels script.
+func (mock *Mock) ListModels() *connectormock.Query[elevenlabs.ListModelsInput, elevenlabs.ModelsList] {
+	return mock.listModels
+}
 
 // GetVoice returns the getVoice script.
 func (mock *Mock) GetVoice() *connectormock.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice] {
@@ -71,6 +79,9 @@ func (mock *Mock) CreateSpeech() *connectormock.Query[elevenlabs.CreateSpeechInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListModels() sdkgo.Query[elevenlabs.ListModelsInput, elevenlabs.ModelsList] {
+	return operations.mock.listModels
+}
 func (operations mockOperations) GetVoice() sdkgo.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice] {
 	return operations.mock.getVoice
 }
@@ -83,6 +94,40 @@ func (operations mockOperations) ListVoices() sdkgo.Query[elevenlabs.ListVoicesI
 func (operations mockOperations) CreateSpeech() sdkgo.Query[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput] {
 	return operations.mock.createSpeech
 }
+
+// ListModelsListed selects the listed branch: ElevenLabs returned available models.
+func ListModelsListed(value elevenlabs.ModelsList, failure *sdkgo.Failure) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Branch(elevenlabs.ListModelsBranchListed, value, failure)
+}
+
+// ListModelsProviderRejected selects the providerRejected branch: ElevenLabs rejected model listing.
+func ListModelsProviderRejected(value elevenlabs.ModelsList, failure *sdkgo.Failure) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Branch(elevenlabs.ListModelsBranchProviderRejected, value, failure)
+}
+
+// ListModelsInvalidResponse selects the invalidResponse branch: ElevenLabs returned invalid model data.
+func ListModelsInvalidResponse(value elevenlabs.ModelsList, failure *sdkgo.Failure) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Branch(elevenlabs.ListModelsBranchInvalidResponse, value, failure)
+}
+
+// ListModelsDefect selects the defect branch: Credentials are unavailable or invalid.
+func ListModelsDefect(value elevenlabs.ModelsList, failure *sdkgo.Failure) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Branch(elevenlabs.ListModelsBranchDefect, value, failure)
+}
+
+// ListModelsRetry asks Dex to retry the listModels Step, after the delay when it is positive.
+func ListModelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Retry[elevenlabs.ModelsList](failure, after)
+}
+
+// ListModelsSampleModels is the manifest mock sampleModels: One text-to-speech model is listed.
+func ListModelsSampleModels() connectormock.Case[elevenlabs.ModelsList] {
+	value := connectormock.MustDecodeOutput[elevenlabs.ModelsList](`{"models":[{"modelId":"eleven_multilingual_v2","name":"Multilingual v2","canDoTextToSpeech":true,"maximumTextLengthPerRequest":5000}]}`)
+	return connectormock.Branch(elevenlabs.ListModelsBranchListed, value, nil)
+}
+
+// ListModelsDefault is the manifest default, sampleModels, which New installs.
+func ListModelsDefault() connectormock.Case[elevenlabs.ModelsList] { return ListModelsSampleModels() }
 
 // GetVoiceFound selects the found branch: ElevenLabs returned the requested voice.
 func GetVoiceFound(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {

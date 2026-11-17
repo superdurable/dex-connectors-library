@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: elevenlabs
   displayName: ElevenLabs
-  description: List, inspect, and configure voices, and generate bounded audio through ElevenLabs.
+  description: Discover voices and speech models, configure voice settings, and generate bounded audio through ElevenLabs.
   company: ElevenLabs
   categories: [ai]
   version: v0.3.0
@@ -55,6 +55,22 @@ spec:
         - Navigate to ElevenLabs > Developers > API Keys > Create API Key; create or select a key with voice read, voice write, or speech generation permission for the operations you use, and copy its provider-issued string.
         - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+    - name: listModels
+      goName: ListModels
+      inputType: ListModelsInput
+      outputType: ModelsList
+      kind: query
+      description: List available model IDs, names, text-to-speech support, and input limits.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: ElevenLabs returned available models.}
+        - {id: providerRejected, goName: ProviderRejected, description: ElevenLabs rejected model listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ElevenLabs returned invalid model data., optional: true}
+        - {id: defect, goName: Defect, description: Credentials are unavailable or invalid., optional: true}
+      mocks:
+        - {name: sampleModels, branch: listed, description: One text-to-speech model is listed., default: true, output: {models: [{modelId: eleven_multilingual_v2, name: Multilingual v2, canDoTextToSpeech: true, maximumTextLengthPerRequest: 5000}]}}
     - name: getVoice
       goName: GetVoice
       inputType: GetVoiceInput

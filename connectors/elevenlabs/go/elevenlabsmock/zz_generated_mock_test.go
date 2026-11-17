@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listModels/sampleModels/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[elevenlabs.ModelsList](`{"models":[{"modelId":"eleven_multilingual_v2","name":"Multilingual v2","canDoTextToSpeech":true,"maximumTextLengthPerRequest":5000}]}`)
+			return err
+		}},
 		{name: "getVoice/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[elevenlabs.Voice](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
 			return err
@@ -42,6 +46,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListModels().Definition().Operation.OperationID != "listModels" {
+		t.Errorf("listModels mock has another definition")
+	}
 	if mock.GetVoice().Definition().Operation.OperationID != "getVoice" {
 		t.Errorf("getVoice mock has another definition")
 	}

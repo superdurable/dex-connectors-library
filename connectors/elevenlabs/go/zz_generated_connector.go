@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListModels() sdkgo.Query[ListModelsInput, ModelsList]
 	GetVoice() sdkgo.Query[GetVoiceInput, Voice]
 	UpdateVoiceSettings() sdkgo.Mutation[UpdateVoiceSettingsInput, UpdatedVoiceSettings]
 	ListVoices() sdkgo.Query[ListVoicesInput, ListVoicesOutput]
@@ -48,6 +49,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListModels() sdkgo.Query[ListModelsInput, ModelsList] {
+	return operations.client.ListModels()
+}
 func (operations clientOperations) GetVoice() sdkgo.Query[GetVoiceInput, Voice] {
 	return operations.client.GetVoice()
 }
@@ -196,6 +200,77 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListModelsBranchListed sdkgo.BranchID = "listed"
+const ListModelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListModelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListModelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListModelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listModels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListModelsBranchListed, Description: "ElevenLabs returned available models."},
+		{ID: ListModelsBranchProviderRejected, Description: "ElevenLabs rejected model listing.", Optional: true},
+		{ID: ListModelsBranchInvalidResponse, Description: "ElevenLabs returned invalid model data.", Optional: true},
+		{ID: ListModelsBranchDefect, Description: "Credentials are unavailable or invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListModelsResult = sdkgo.QueryResult[ModelsList]
+
+type ListModelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=elevenlabs"`
+	operationID                    struct{}                                      `connector:"operationId=listModels"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListModelsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListModelsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListModelsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListModelsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListModelsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ModelsList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListModelsStep[IN any](config ListModelsStepConfig[IN]) sdkgo.QueryStep[IN, ListModelsInput, ModelsList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("elevenlabs connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListModelsInput, ModelsList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListModels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListModelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListModelsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListModelsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListModelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListModelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListModelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetVoiceBranchFound sdkgo.BranchID = "found"
