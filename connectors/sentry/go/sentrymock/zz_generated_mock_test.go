@@ -114,6 +114,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sentry.Organization](`{"id":"789","slug":"acme","name":"Acme"}`)
 			return err
 		}},
+		{name: "updateIssue/updateIssueDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Issue](`{"id":"42","shortId":"APP-42","title":"Example","status":"resolved"}`)
+			return err
+		}},
+		{name: "updateProject/updateProjectDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
+			return err
+		}},
+		{name: "listProjectEvents/listProjectEventsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.IssueEventPage](`{"events":[{"id":"aabbccddeeff00112233445566778899","title":"Example","message":"Error"}]}`)
+			return err
+		}},
+		{name: "getProjectEvent/getProjectEventDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.IssueEvent](`{"id":"aabbccddeeff00112233445566778899","title":"Example","message":"Error"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -201,5 +217,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.UpdateOrganization().Definition().Operation.OperationID != "updateOrganization" {
 		t.Errorf("updateOrganization mock has another definition")
+	}
+	if mock.UpdateIssue().Definition().Operation.OperationID != "updateIssue" {
+		t.Errorf("updateIssue mock has another definition")
+	}
+	if mock.UpdateProject().Definition().Operation.OperationID != "updateProject" {
+		t.Errorf("updateProject mock has another definition")
+	}
+	if mock.ListProjectEvents().Definition().Operation.OperationID != "listProjectEvents" {
+		t.Errorf("listProjectEvents mock has another definition")
+	}
+	if mock.GetProjectEvent().Definition().Operation.OperationID != "getProjectEvent" {
+		t.Errorf("getProjectEvent mock has another definition")
 	}
 }

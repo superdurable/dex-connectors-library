@@ -599,3 +599,70 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: updateOrganizationDefault, branch: updated, default: true, description: One organization was updated., output: {id: '789', slug: acme, name: Acme}}
+  - name: updateIssue
+    goName: UpdateIssue
+    inputType: UpdateIssueInput
+    outputType: Issue
+    kind: mutation
+    description: Set selected absolute Sentry issue fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Sentry updated the issue.}
+    - {id: notFound, goName: NotFound, description: The issue does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateIssueDefault, branch: updated, default: true, description: One issue was updated., output: {id: '42', shortId: APP-42, title: Example, status: resolved}}
+  - name: updateProject
+    goName: UpdateProject
+    inputType: UpdateProjectInput
+    outputType: Project
+    kind: mutation
+    description: Set selected absolute Sentry project fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Sentry updated the project.}
+    - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the update., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateProjectDefault, branch: updated, default: true, description: One project was updated., output: {id: '43', slug: app, name: Application}}
+  - name: listProjectEvents
+    goName: ListProjectEvents
+    inputType: ListProjectEventsInput
+    outputType: IssueEventPage
+    kind: query
+    description: List one project page of Sentry error events.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Sentry returned events.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listProjectEventsDefault, branch: listed, default: true, description: One event page was returned., output: {events: [{id: aabbccddeeff00112233445566778899, title: Example, message: Error}]}}
+  - name: getProjectEvent
+    goName: GetProjectEvent
+    inputType: GetProjectEventInput
+    outputType: IssueEvent
+    kind: query
+    description: Retrieve one event by its project and event ID.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Sentry returned the event.}
+    - {id: notFound, goName: NotFound, description: The event does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getProjectEventDefault, branch: found, default: true, description: One event was returned., output: {id: aabbccddeeff00112233445566778899, title: Example, message: Error}}

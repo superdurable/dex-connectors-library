@@ -10034,6 +10034,1520 @@
       },
       "name": "updateOrganization-transport",
       "operation": "updateOrganization"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42\",\"shortId\":\"APP-42\",\"title\":\"Example\",\"status\":\"resolved\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "assignedTo": "user@example.com",
+            "hasSeen": true,
+            "isBookmarked": true,
+            "isPublic": true,
+            "isSubscribed": true,
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "42",
+          "shortId": "APP-42",
+          "status": "resolved",
+          "title": "Example"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "assignedTo": "user@example.com",
+        "hasSeen": true,
+        "id": "42",
+        "isBookmarked": true,
+        "isPublic": true,
+        "isSubscribed": true,
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-success",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "assignedTo": "user@example.com",
+            "hasSeen": true,
+            "isBookmarked": true,
+            "isPublic": true,
+            "isSubscribed": true,
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "shortId": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "assignedTo": "user@example.com",
+        "hasSeen": true,
+        "id": "42",
+        "isBookmarked": true,
+        "isPublic": true,
+        "isSubscribed": true,
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-notFound",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "assignedTo": "user@example.com",
+            "hasSeen": true,
+            "isBookmarked": true,
+            "isPublic": true,
+            "isSubscribed": true,
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "shortId": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "assignedTo": "user@example.com",
+        "hasSeen": true,
+        "id": "42",
+        "isBookmarked": true,
+        "isPublic": true,
+        "isSubscribed": true,
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-providerRejected",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "assignedTo": "user@example.com",
+            "hasSeen": true,
+            "isBookmarked": true,
+            "isPublic": true,
+            "isSubscribed": true,
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "shortId": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "assignedTo": "user@example.com",
+        "hasSeen": true,
+        "id": "42",
+        "isBookmarked": true,
+        "isPublic": true,
+        "isSubscribed": true,
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-invalidResponse",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "shortId": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "assignedTo": "user@example.com",
+        "hasSeen": true,
+        "id": "42",
+        "isBookmarked": true,
+        "isPublic": true,
+        "isSubscribed": true,
+        "organization": "",
+        "status": "resolved"
+      },
+      "name": "updateIssue-defect",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "assignedTo": "user@example.com",
+            "hasSeen": true,
+            "isBookmarked": true,
+            "isPublic": true,
+            "isSubscribed": true,
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "assignedTo": "user@example.com",
+        "hasSeen": true,
+        "id": "42",
+        "isBookmarked": true,
+        "isPublic": true,
+        "isSubscribed": true,
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-429",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "assignedTo": "user@example.com",
+            "hasSeen": true,
+            "isBookmarked": true,
+            "isPublic": true,
+            "isSubscribed": true,
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "assignedTo": "user@example.com",
+        "hasSeen": true,
+        "id": "42",
+        "isBookmarked": true,
+        "isPublic": true,
+        "isSubscribed": true,
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-5xx",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/organizations/acme/issues/42/",
+          "requestBody": {
+            "assignedTo": "user@example.com",
+            "hasSeen": true,
+            "isBookmarked": true,
+            "isPublic": true,
+            "isSubscribed": true,
+            "status": "resolved"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fb45f65-af2c-535f-a49d-40990f15506f",
+      "input": {
+        "assignedTo": "user@example.com",
+        "hasSeen": true,
+        "id": "42",
+        "isBookmarked": true,
+        "isPublic": true,
+        "isSubscribed": true,
+        "organization": "acme",
+        "status": "resolved"
+      },
+      "name": "updateIssue-transport",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"43\",\"slug\":\"app-new\",\"name\":\"App New\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/acme/app/",
+          "requestBody": {
+            "digestsMaxDelay": 300,
+            "digestsMinDelay": 60,
+            "isBookmarked": true,
+            "name": "App New",
+            "platform": "python",
+            "slug": "app-new",
+            "team": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "43",
+          "name": "App New",
+          "slug": "app-new"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "input": {
+        "digestsMaxDelay": 300,
+        "digestsMinDelay": 60,
+        "isBookmarked": true,
+        "name": "App New",
+        "newSlug": "app-new",
+        "organization": "acme",
+        "platform": "python",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "updateProject-success",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/acme/app/",
+          "requestBody": {
+            "digestsMaxDelay": 300,
+            "digestsMinDelay": 60,
+            "isBookmarked": true,
+            "name": "App New",
+            "platform": "python",
+            "slug": "app-new",
+            "team": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "input": {
+        "digestsMaxDelay": 300,
+        "digestsMinDelay": 60,
+        "isBookmarked": true,
+        "name": "App New",
+        "newSlug": "app-new",
+        "organization": "acme",
+        "platform": "python",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "updateProject-notFound",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/acme/app/",
+          "requestBody": {
+            "digestsMaxDelay": 300,
+            "digestsMinDelay": 60,
+            "isBookmarked": true,
+            "name": "App New",
+            "platform": "python",
+            "slug": "app-new",
+            "team": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "input": {
+        "digestsMaxDelay": 300,
+        "digestsMinDelay": 60,
+        "isBookmarked": true,
+        "name": "App New",
+        "newSlug": "app-new",
+        "organization": "acme",
+        "platform": "python",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "updateProject-providerRejected",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/acme/app/",
+          "requestBody": {
+            "digestsMaxDelay": 300,
+            "digestsMinDelay": 60,
+            "isBookmarked": true,
+            "name": "App New",
+            "platform": "python",
+            "slug": "app-new",
+            "team": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "input": {
+        "digestsMaxDelay": 300,
+        "digestsMinDelay": 60,
+        "isBookmarked": true,
+        "name": "App New",
+        "newSlug": "app-new",
+        "organization": "acme",
+        "platform": "python",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "updateProject-invalidResponse",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "input": {
+        "digestsMaxDelay": 300,
+        "digestsMinDelay": 60,
+        "isBookmarked": true,
+        "name": "App New",
+        "newSlug": "app-new",
+        "organization": "",
+        "platform": "python",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "updateProject-defect",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/acme/app/",
+          "requestBody": {
+            "digestsMaxDelay": 300,
+            "digestsMinDelay": 60,
+            "isBookmarked": true,
+            "name": "App New",
+            "platform": "python",
+            "slug": "app-new",
+            "team": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "input": {
+        "digestsMaxDelay": 300,
+        "digestsMinDelay": 60,
+        "isBookmarked": true,
+        "name": "App New",
+        "newSlug": "app-new",
+        "organization": "acme",
+        "platform": "python",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "updateProject-429",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/acme/app/",
+          "requestBody": {
+            "digestsMaxDelay": 300,
+            "digestsMinDelay": 60,
+            "isBookmarked": true,
+            "name": "App New",
+            "platform": "python",
+            "slug": "app-new",
+            "team": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "input": {
+        "digestsMaxDelay": 300,
+        "digestsMinDelay": 60,
+        "isBookmarked": true,
+        "name": "App New",
+        "newSlug": "app-new",
+        "organization": "acme",
+        "platform": "python",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "updateProject-5xx",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/acme/app/",
+          "requestBody": {
+            "digestsMaxDelay": 300,
+            "digestsMinDelay": 60,
+            "isBookmarked": true,
+            "name": "App New",
+            "platform": "python",
+            "slug": "app-new",
+            "team": "core"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b6a65bca-877d-5701-b102-ab26d28e27f1",
+      "input": {
+        "digestsMaxDelay": 300,
+        "digestsMinDelay": 60,
+        "isBookmarked": true,
+        "name": "App New",
+        "newSlug": "app-new",
+        "organization": "acme",
+        "platform": "python",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "updateProject-transport",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"aabbccddeeff00112233445566778899\",\"title\":\"Example\",\"message\":\"Error\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/",
+          "query": {
+            "cursor": [
+              "abc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "id": "aabbccddeeff00112233445566778899",
+              "message": "Error",
+              "title": "Example"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "abc",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "listProjectEvents-success",
+      "operation": "listProjectEvents"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/",
+          "query": {
+            "cursor": [
+              "abc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "abc",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "listProjectEvents-providerRejected",
+      "operation": "listProjectEvents"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/",
+          "query": {
+            "cursor": [
+              "abc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "abc",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "listProjectEvents-invalidResponse",
+      "operation": "listProjectEvents"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000006",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "abc",
+        "organization": "",
+        "project": "app"
+      },
+      "name": "listProjectEvents-defect",
+      "operation": "listProjectEvents"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/",
+          "query": {
+            "cursor": [
+              "abc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "abc",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "listProjectEvents-429",
+      "operation": "listProjectEvents"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/",
+          "query": {
+            "cursor": [
+              "abc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "abc",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "listProjectEvents-5xx",
+      "operation": "listProjectEvents"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000006",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/",
+          "query": {
+            "cursor": [
+              "abc"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "abc",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "listProjectEvents-transport",
+      "operation": "listProjectEvents"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"aabbccddeeff00112233445566778899\",\"title\":\"Example\",\"message\":\"Error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/aabbccddeeff00112233445566778899/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "aabbccddeeff00112233445566778899",
+          "message": "Error",
+          "title": "Example"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "aabbccddeeff00112233445566778899",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "getProjectEvent-success",
+      "operation": "getProjectEvent"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/aabbccddeeff00112233445566778899/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "message": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "aabbccddeeff00112233445566778899",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "getProjectEvent-notFound",
+      "operation": "getProjectEvent"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/aabbccddeeff00112233445566778899/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "message": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "aabbccddeeff00112233445566778899",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "getProjectEvent-providerRejected",
+      "operation": "getProjectEvent"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/aabbccddeeff00112233445566778899/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "message": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "aabbccddeeff00112233445566778899",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "getProjectEvent-invalidResponse",
+      "operation": "getProjectEvent"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "message": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "aabbccddeeff00112233445566778899",
+        "organization": "",
+        "project": "app"
+      },
+      "name": "getProjectEvent-defect",
+      "operation": "getProjectEvent"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/aabbccddeeff00112233445566778899/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "aabbccddeeff00112233445566778899",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "getProjectEvent-429",
+      "operation": "getProjectEvent"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/aabbccddeeff00112233445566778899/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "aabbccddeeff00112233445566778899",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "getProjectEvent-5xx",
+      "operation": "getProjectEvent"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/events/aabbccddeeff00112233445566778899/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "aabbccddeeff00112233445566778899",
+        "organization": "acme",
+        "project": "app"
+      },
+      "name": "getProjectEvent-transport",
+      "operation": "getProjectEvent"
     }
   ],
   "schemaVersion": 1

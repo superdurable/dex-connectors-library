@@ -44,6 +44,10 @@ type Mock struct {
 	createOrganization *connectormock.Mutation[sentry.CreateOrganizationInput, sentry.Organization]
 	getOrganization    *connectormock.Query[sentry.GetOrganizationInput, sentry.Organization]
 	updateOrganization *connectormock.Mutation[sentry.UpdateOrganizationInput, sentry.Organization]
+	updateIssue        *connectormock.Mutation[sentry.UpdateIssueInput, sentry.Issue]
+	updateProject      *connectormock.Mutation[sentry.UpdateProjectInput, sentry.Project]
+	listProjectEvents  *connectormock.Query[sentry.ListProjectEventsInput, sentry.IssueEventPage]
+	getProjectEvent    *connectormock.Query[sentry.GetProjectEventInput, sentry.IssueEvent]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -77,6 +81,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		createOrganization: connectormock.NewMutation[sentry.CreateOrganizationInput, sentry.Organization](t, sentry.CreateOrganizationDefinition),
 		getOrganization:    connectormock.NewQuery[sentry.GetOrganizationInput, sentry.Organization](t, sentry.GetOrganizationDefinition),
 		updateOrganization: connectormock.NewMutation[sentry.UpdateOrganizationInput, sentry.Organization](t, sentry.UpdateOrganizationDefinition),
+		updateIssue:        connectormock.NewMutation[sentry.UpdateIssueInput, sentry.Issue](t, sentry.UpdateIssueDefinition),
+		updateProject:      connectormock.NewMutation[sentry.UpdateProjectInput, sentry.Project](t, sentry.UpdateProjectDefinition),
+		listProjectEvents:  connectormock.NewQuery[sentry.ListProjectEventsInput, sentry.IssueEventPage](t, sentry.ListProjectEventsDefinition),
+		getProjectEvent:    connectormock.NewQuery[sentry.GetProjectEventInput, sentry.IssueEvent](t, sentry.GetProjectEventDefinition),
 	}
 	mock.createTeam.Default(CreateTeamDefault())
 	mock.getTeam.Default(GetTeamDefault())
@@ -104,6 +112,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createOrganization.Default(CreateOrganizationDefault())
 	mock.getOrganization.Default(GetOrganizationDefault())
 	mock.updateOrganization.Default(UpdateOrganizationDefault())
+	mock.updateIssue.Default(UpdateIssueDefault())
+	mock.updateProject.Default(UpdateProjectDefault())
+	mock.listProjectEvents.Default(ListProjectEventsDefault())
+	mock.getProjectEvent.Default(GetProjectEventDefault())
 	connection, err := sentry.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "sentry", Name: connectionName})
 	if err != nil {
 		t.Fatalf("sentry mock connection: %v", err)
@@ -245,6 +257,26 @@ func (mock *Mock) UpdateOrganization() *connectormock.Mutation[sentry.UpdateOrga
 	return mock.updateOrganization
 }
 
+// UpdateIssue returns the updateIssue script.
+func (mock *Mock) UpdateIssue() *connectormock.Mutation[sentry.UpdateIssueInput, sentry.Issue] {
+	return mock.updateIssue
+}
+
+// UpdateProject returns the updateProject script.
+func (mock *Mock) UpdateProject() *connectormock.Mutation[sentry.UpdateProjectInput, sentry.Project] {
+	return mock.updateProject
+}
+
+// ListProjectEvents returns the listProjectEvents script.
+func (mock *Mock) ListProjectEvents() *connectormock.Query[sentry.ListProjectEventsInput, sentry.IssueEventPage] {
+	return mock.listProjectEvents
+}
+
+// GetProjectEvent returns the getProjectEvent script.
+func (mock *Mock) GetProjectEvent() *connectormock.Query[sentry.GetProjectEventInput, sentry.IssueEvent] {
+	return mock.getProjectEvent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateTeam() sdkgo.Mutation[sentry.CreateTeamInput, sentry.Team] {
@@ -324,6 +356,18 @@ func (operations mockOperations) GetOrganization() sdkgo.Query[sentry.GetOrganiz
 }
 func (operations mockOperations) UpdateOrganization() sdkgo.Mutation[sentry.UpdateOrganizationInput, sentry.Organization] {
 	return operations.mock.updateOrganization
+}
+func (operations mockOperations) UpdateIssue() sdkgo.Mutation[sentry.UpdateIssueInput, sentry.Issue] {
+	return operations.mock.updateIssue
+}
+func (operations mockOperations) UpdateProject() sdkgo.Mutation[sentry.UpdateProjectInput, sentry.Project] {
+	return operations.mock.updateProject
+}
+func (operations mockOperations) ListProjectEvents() sdkgo.Query[sentry.ListProjectEventsInput, sentry.IssueEventPage] {
+	return operations.mock.listProjectEvents
+}
+func (operations mockOperations) GetProjectEvent() sdkgo.Query[sentry.GetProjectEventInput, sentry.IssueEvent] {
+	return operations.mock.getProjectEvent
 }
 
 // CreateTeamCreated selects the created branch: Sentry created or confirmed the team.
@@ -1320,4 +1364,161 @@ func UpdateOrganizationUpdateOrganizationDefault() connectormock.Case[sentry.Org
 // UpdateOrganizationDefault is the manifest default, updateOrganizationDefault, which New installs.
 func UpdateOrganizationDefault() connectormock.Case[sentry.Organization] {
 	return UpdateOrganizationUpdateOrganizationDefault()
+}
+
+// UpdateIssueUpdated selects the updated branch: Sentry updated the issue.
+func UpdateIssueUpdated(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchUpdated, value, failure)
+}
+
+// UpdateIssueNotFound selects the notFound branch: The issue does not exist.
+func UpdateIssueNotFound(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchNotFound, value, failure)
+}
+
+// UpdateIssueProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateIssueProviderRejected(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchProviderRejected, value, failure)
+}
+
+// UpdateIssueInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateIssueInvalidResponse(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchInvalidResponse, value, failure)
+}
+
+// UpdateIssueDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateIssueDefect(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.UpdateIssueBranchDefect, value, failure)
+}
+
+// UpdateIssueRetry asks Dex to retry the updateIssue Step, after the delay when it is positive.
+func UpdateIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Issue] {
+	return connectormock.Retry[sentry.Issue](failure, after)
+}
+
+// UpdateIssueUpdateIssueDefault is the manifest mock updateIssueDefault: One issue was updated.
+func UpdateIssueUpdateIssueDefault() connectormock.Case[sentry.Issue] {
+	value := connectormock.MustDecodeOutput[sentry.Issue](`{"id":"42","shortId":"APP-42","title":"Example","status":"resolved"}`)
+	return connectormock.Branch(sentry.UpdateIssueBranchUpdated, value, nil)
+}
+
+// UpdateIssueDefault is the manifest default, updateIssueDefault, which New installs.
+func UpdateIssueDefault() connectormock.Case[sentry.Issue] { return UpdateIssueUpdateIssueDefault() }
+
+// UpdateProjectUpdated selects the updated branch: Sentry updated the project.
+func UpdateProjectUpdated(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchUpdated, value, failure)
+}
+
+// UpdateProjectNotFound selects the notFound branch: The project does not exist.
+func UpdateProjectNotFound(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchNotFound, value, failure)
+}
+
+// UpdateProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected the update.
+func UpdateProjectProviderRejected(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchProviderRejected, value, failure)
+}
+
+// UpdateProjectInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func UpdateProjectInvalidResponse(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchInvalidResponse, value, failure)
+}
+
+// UpdateProjectDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateProjectDefect(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.UpdateProjectBranchDefect, value, failure)
+}
+
+// UpdateProjectRetry asks Dex to retry the updateProject Step, after the delay when it is positive.
+func UpdateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Project] {
+	return connectormock.Retry[sentry.Project](failure, after)
+}
+
+// UpdateProjectUpdateProjectDefault is the manifest mock updateProjectDefault: One project was updated.
+func UpdateProjectUpdateProjectDefault() connectormock.Case[sentry.Project] {
+	value := connectormock.MustDecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
+	return connectormock.Branch(sentry.UpdateProjectBranchUpdated, value, nil)
+}
+
+// UpdateProjectDefault is the manifest default, updateProjectDefault, which New installs.
+func UpdateProjectDefault() connectormock.Case[sentry.Project] {
+	return UpdateProjectUpdateProjectDefault()
+}
+
+// ListProjectEventsListed selects the listed branch: Sentry returned events.
+func ListProjectEventsListed(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListProjectEventsBranchListed, value, failure)
+}
+
+// ListProjectEventsProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func ListProjectEventsProviderRejected(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListProjectEventsBranchProviderRejected, value, failure)
+}
+
+// ListProjectEventsInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func ListProjectEventsInvalidResponse(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListProjectEventsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectEventsDefect selects the defect branch: Local input or credentials are invalid.
+func ListProjectEventsDefect(value sentry.IssueEventPage, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Branch(sentry.ListProjectEventsBranchDefect, value, failure)
+}
+
+// ListProjectEventsRetry asks Dex to retry the listProjectEvents Step, after the delay when it is positive.
+func ListProjectEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.IssueEventPage] {
+	return connectormock.Retry[sentry.IssueEventPage](failure, after)
+}
+
+// ListProjectEventsListProjectEventsDefault is the manifest mock listProjectEventsDefault: One event page was returned.
+func ListProjectEventsListProjectEventsDefault() connectormock.Case[sentry.IssueEventPage] {
+	value := connectormock.MustDecodeOutput[sentry.IssueEventPage](`{"events":[{"id":"aabbccddeeff00112233445566778899","title":"Example","message":"Error"}]}`)
+	return connectormock.Branch(sentry.ListProjectEventsBranchListed, value, nil)
+}
+
+// ListProjectEventsDefault is the manifest default, listProjectEventsDefault, which New installs.
+func ListProjectEventsDefault() connectormock.Case[sentry.IssueEventPage] {
+	return ListProjectEventsListProjectEventsDefault()
+}
+
+// GetProjectEventFound selects the found branch: Sentry returned the event.
+func GetProjectEventFound(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchFound, value, failure)
+}
+
+// GetProjectEventNotFound selects the notFound branch: The event does not exist.
+func GetProjectEventNotFound(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchNotFound, value, failure)
+}
+
+// GetProjectEventProviderRejected selects the providerRejected branch: Sentry definitively rejected the request.
+func GetProjectEventProviderRejected(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchProviderRejected, value, failure)
+}
+
+// GetProjectEventInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func GetProjectEventInvalidResponse(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchInvalidResponse, value, failure)
+}
+
+// GetProjectEventDefect selects the defect branch: Local input or credentials are invalid.
+func GetProjectEventDefect(value sentry.IssueEvent, failure *sdkgo.Failure) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Branch(sentry.GetProjectEventBranchDefect, value, failure)
+}
+
+// GetProjectEventRetry asks Dex to retry the getProjectEvent Step, after the delay when it is positive.
+func GetProjectEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.IssueEvent] {
+	return connectormock.Retry[sentry.IssueEvent](failure, after)
+}
+
+// GetProjectEventGetProjectEventDefault is the manifest mock getProjectEventDefault: One event was returned.
+func GetProjectEventGetProjectEventDefault() connectormock.Case[sentry.IssueEvent] {
+	value := connectormock.MustDecodeOutput[sentry.IssueEvent](`{"id":"aabbccddeeff00112233445566778899","title":"Example","message":"Error"}`)
+	return connectormock.Branch(sentry.GetProjectEventBranchFound, value, nil)
+}
+
+// GetProjectEventDefault is the manifest default, getProjectEventDefault, which New installs.
+func GetProjectEventDefault() connectormock.Case[sentry.IssueEvent] {
+	return GetProjectEventGetProjectEventDefault()
 }

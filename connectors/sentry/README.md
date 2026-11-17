@@ -52,6 +52,10 @@ The Python package is [`dex-connector-sentry`](python/README.md), imported as
 | `createOrganization` | mutation | Organization |
 | `getOrganization` | query | Organization |
 | `updateOrganization` | mutation | Organization |
+| `updateIssue` | mutation | Issue |
+| `updateProject` | mutation | Project |
+| `listProjectEvents` | query | IssueEventPage |
+| `getProjectEvent` | query | IssueEvent |
 
 The Go queries use the `safe` repeat tier. List operations return one
 provider page; pass a Sentry cursor to request a known later page. Sentry
@@ -96,6 +100,20 @@ availability depends on the account. `getOrganization` is a safe query;
 `org:write` or `org:admin`. See [organization settings](https://sentry.io/settings/)
 for the current slug and name, and [Sentry's organization API](https://docs.sentry.io/api/organizations/)
 for read and update scopes.
+
+`updateIssue` accepts any subset of absolute status, assignee, seen,
+bookmark, public, and subscription fields. An omitted pointer leaves that
+field untouched; `false` is a real value. Status can be `resolved`,
+`unresolved`, `ignored`, or `resolvedInNextRelease`. `updateProject` similarly
+accepts name, slug, owning team, platform, bookmark, and digest delay fields;
+delays are nonnegative seconds. Both use safe repeat, since repeating an
+absolute value has the same effect. See [issue update](https://docs.sentry.io/api/events/update-an-issue/)
+and [project update](https://docs.sentry.io/api/projects/update-a-project/)
+for the fields and token scopes. `listProjectEvents` and `getProjectEvent`
+cover project scoped event APIs; the latter requires the event's 32-character
+hexadecimal ID. They return selected metadata rather than raw event payloads,
+which could contain credentials. See [project event list](https://docs.sentry.io/api/events/list-a-projects-error-events/)
+and [event detail](https://docs.sentry.io/api/events/retrieve-an-event-for-a-project/).
 
 `listIssues` returns the first provider page (default unresolved query); cursor pagination is not exposed in this initial release. `updateIssueStatus` sends an absolute status in a PUT request. Repeating `resolved`, `unresolved`, or `ignored` sets the same state. Only the submitted status field is changed.
 
