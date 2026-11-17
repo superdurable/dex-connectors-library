@@ -15,7 +15,7 @@ state → Issue, with assignee resolution by email, label set operations, and co
 
 The [TypeScript package](typescript/README.md) provides all seven operations with generated OAuth refresh
 and credential wiring. Its [issue search example](typescript/examples/issue-search/README.md) runs through
-a real Dex Worker against a local provider stand-in. The webhook Trigger remains Go only; live Linear
+a real Dex Worker against a local provider stand-in. The webhook Trigger is not available in TypeScript; live Linear
 authorization and writes have not been verified for the TypeScript package.
 
 | Operation | Kind | Durability | Happy branch | Other branches |
@@ -317,9 +317,9 @@ See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks) for scripting
 
 - [`python/examples/list_workflow_states`](python/examples/list_workflow_states) is a Python Dex Flow that
   lists one team's workflow states through the static `linear` connection. The package implements all seven
-  operations with generated personal-key and OAuth connection wiring; the Issue webhook Trigger remains
-  Go-only. Its 54 Go-recorded provider scenarios and real Dex Worker/Client integration test pass with
+  operations and the signed Issue webhook Trigger with generated personal-key and OAuth connection wiring. Its 54 Go-recorded provider scenarios and real Dex Worker/Client integration test pass with
   an inert provider stand-in. Live Linear behavior and OAuth consent were not verified for this Python port.
+- [`python/examples/issue_event`](python/examples/issue_event/README.md) serves the signed Issue webhook and starts one Python Dex Flow per event. Its real Dex integration test covers durable replay after a Trigger restart and redelivery. Live Linear webhook behavior remains unverified.
 - [`examples/issue-request`](go/examples/issue-request) is a Dex Web **Start Flow** example that uses all seven
   operations and the `teamPicker` unit: it resolves the assignee by email, reuses the team's open issue with
   the requested title or creates one, moves it to the requested workflow state, adds one comment, and reads it

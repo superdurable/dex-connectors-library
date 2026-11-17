@@ -9,8 +9,11 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
+    TriggerDefinition,
+    TriggerRef,
     default_connector_step_execute_retry_policy,
 )
 
@@ -77,6 +80,8 @@ CREATE_ISSUE_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 UPDATE_ISSUE_DEFINITION = MutationDefinition(
@@ -93,6 +98,8 @@ UPDATE_ISSUE_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 ADD_COMMENT_DEFINITION = MutationDefinition(
@@ -108,6 +115,8 @@ ADD_COMMENT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 FIND_USER_BY_EMAIL_DEFINITION = QueryDefinition(
@@ -140,4 +149,9 @@ LIST_WORKFLOW_STATES_DEFINITION = QueryDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+)
+
+ISSUE_EVENT_RECEIVED_TRIGGER_DEFINITION = TriggerDefinition(
+    trigger=TriggerRef(connector_id=CONNECTOR_ID, trigger_name="issueEventReceived"),
+    description="Receive a signed Linear Issue webhook for a created, updated, or removed issue, verified with its Linear-Signature and fresh webhookTimestamp; the event ID is the action, the issue UUID, and the issue's updatedAt.",
 )

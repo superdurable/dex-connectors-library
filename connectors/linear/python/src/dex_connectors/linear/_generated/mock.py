@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import AddCommentInput, AddCommentOutput, CreateIssueInput, CreateIssueOutput, CycleReference, FindUserByEmailInput, GetIssueInput, Issue, IssueLabel, IssueReference, IssueSearchFilter, IssueSummary, ListWorkflowStatesInput, ListWorkflowStatesOutput, ProjectReference, SearchIssuesInput, SearchIssuesOutput, TeamReference, UpdateIssueInput, UpdateIssueOutput, User, UserReference, WorkflowState, WorkflowStateReference
+from ..models import AddCommentInput, AddCommentOutput, CreateIssueInput, CreateIssueOutput, CycleReference, FindUserByEmailInput, GetIssueInput, Issue, IssueEvent, IssueEventActor, IssueEventIssue, IssueEventReceivedTriggerConfiguration, IssueLabel, IssueReference, IssueSearchFilter, IssueSummary, ListWorkflowStatesInput, ListWorkflowStatesOutput, ProjectReference, SearchIssuesInput, SearchIssuesOutput, TeamReference, UpdateIssueInput, UpdateIssueOutput, User, UserReference, WorkflowState, WorkflowStateReference
 from .definitions import CONNECTOR_ID, ADDED, ADD_COMMENT_DEFINITION, CREATED, CREATE_ISSUE_DEFINITION, DEFECT, FIND_USER_BY_EMAIL_DEFINITION, FOUND, GET_ISSUE_DEFINITION, INVALID_RESPONSE, LISTED, LIST_WORKFLOW_STATES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, SEARCHED, SEARCH_ISSUES_DEFINITION, UPDATED, UPDATE_ISSUE_DEFINITION
 
 def search_issues_searched(value: SearchIssuesOutput, failure: Failure | None = None) -> Case[SearchIssuesOutput]:
