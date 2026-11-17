@@ -4226,6 +4226,706 @@
       },
       "name": "deleteProject-defect",
       "operation": "deleteProject"
+    },
+    {
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"43\",\"slug\":\"app\",\"name\":\"Application\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "43",
+          "name": "Application",
+          "slug": "app"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "createProject-success",
+      "operation": "createProject"
+    },
+    {
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "createProject-rejected",
+      "operation": "createProject"
+    },
+    {
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "createProject-429",
+      "operation": "createProject"
+    },
+    {
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "createProject-5xx",
+      "operation": "createProject"
+    },
+    {
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "createProject-transport",
+      "operation": "createProject"
+    },
+    {
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "",
+        "team": "core"
+      },
+      "name": "createProject-defect",
+      "operation": "createProject"
+    },
+    {
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "createProject-conflict",
+      "operation": "createProject"
+    },
+    {
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "name": "createProject-uncertain",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 2,
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"id\":\"43\",\"slug\":\"app\",\"name\":\"Application\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "43",
+          "name": "Application",
+          "slug": "app"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProject-retry-readback",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 3,
+      "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/acme/app/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/teams/acme/core/projects/",
+          "requestBody": {
+            "name": "Application",
+            "slug": "app"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "slug": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "70555c4b-afbc-56d3-8532-652363f6b87c",
+      "input": {
+        "name": "Application",
+        "organization": "acme",
+        "slug": "app",
+        "team": "core"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "70555c4b-afbc-56d3-8532-652363f6b87c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProject-send-cap",
+      "operation": "createProject"
     }
   ],
   "schemaVersion": 1

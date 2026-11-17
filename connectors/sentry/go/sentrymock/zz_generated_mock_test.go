@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createProject/createProjectDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
+			return err
+		}},
 		{name: "assignIssue/assignIssueDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sentry.Issue](`{"id":"42","shortId":"APP-42","title":"Example","status":"unresolved"}`)
 			return err
@@ -71,6 +75,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateProject().Definition().Operation.OperationID != "createProject" {
+		t.Errorf("createProject mock has another definition")
+	}
 	if mock.AssignIssue().Definition().Operation.OperationID != "assignIssue" {
 		t.Errorf("assignIssue mock has another definition")
 	}

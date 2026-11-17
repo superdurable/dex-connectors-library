@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateProject() sdkgo.Mutation[CreateProjectInput, Project]
 	AssignIssue() sdkgo.Mutation[AssignIssueInput, Issue]
 	DeleteIssue() sdkgo.Mutation[DeleteIssueInput, DeletedIssue]
 	RenameProject() sdkgo.Mutation[RenameProjectInput, Project]
@@ -56,6 +57,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateProject() sdkgo.Mutation[CreateProjectInput, Project] {
+	return operations.client.CreateProject()
+}
 func (operations clientOperations) AssignIssue() sdkgo.Mutation[AssignIssueInput, Issue] {
 	return operations.client.AssignIssue()
 }
@@ -230,6 +234,82 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const CreateProjectBranchCreated sdkgo.BranchID = "created"
+const CreateProjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateProjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateProjectBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateProjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createProject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateProjectBranchCreated, Description: "Sentry created or confirmed the project."},
+		{ID: CreateProjectBranchProviderRejected, Description: "Sentry definitively rejected creation.", Optional: true},
+		{ID: CreateProjectBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateProjectBranchUncertain, Description: "The send cap was reached without confirming creation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateProjectResult = sdkgo.MutationResult[Project]
+
+type CreateProjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=sentry"`
+	operationID                       struct{}                                      `connector:"operationId=createProject"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateProjectInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateProjectResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateProjectResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateProjectResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateProjectResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Project]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateProjectStep[IN any](config CreateProjectStepConfig[IN]) sdkgo.MutationStep[IN, CreateProjectInput, Project] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sentry connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateProjectInput, Project]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateProject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateProjectResult] {
+			branches := make([]sdkgo.BranchTarget[CreateProjectResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateProjectBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateProjectBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateProjectBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateProjectBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const AssignIssueBranchAssigned sdkgo.BranchID = "assigned"
 const AssignIssueBranchNotFound sdkgo.BranchID = "notFound"
 const AssignIssueBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -250,6 +330,7 @@ var AssignIssueDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type AssignIssueResult = sdkgo.MutationResult[Issue]
@@ -327,6 +408,7 @@ var DeleteIssueDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteIssueResult = sdkgo.MutationResult[DeletedIssue]
@@ -404,6 +486,7 @@ var RenameProjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type RenameProjectResult = sdkgo.MutationResult[Project]
@@ -481,6 +564,7 @@ var DeleteProjectDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteProjectResult = sdkgo.MutationResult[DeletedProject]
@@ -706,6 +790,8 @@ var UpdateIssueStatusDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UpdateIssueStatusResult = sdkgo.MutationResult[Issue]
@@ -726,6 +812,8 @@ type UpdateIssueStatusStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateIssueStatusResult]       `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Issue]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateIssueStatusStep[IN any](config UpdateIssueStatusStepConfig[IN]) sdkgo.MutationStep[IN, UpdateIssueStatusInput, Issue] {
@@ -760,6 +848,7 @@ func NewUpdateIssueStatusStep[IN any](config UpdateIssueStatusStepConfig[IN]) sd
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

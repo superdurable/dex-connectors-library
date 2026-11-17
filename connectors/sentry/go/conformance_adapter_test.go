@@ -4,6 +4,7 @@
 package sentry
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -20,7 +21,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		testConnection: {APIKey: sdkgo.NewSecretString("test-secret-token")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	createContext := &sentryCreateConformanceContext{attempt: 1}
+	priorAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { createContext.heartbeat = value })
+	createContext.attempt = priorAttempt + 1
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			createContext.attempt = priorAttempt + int32(attempt)
+		}
+	}, actions: map[string]conformanceOperationInvocation{
 		"listIssues":        newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListIssues(), testConnection),
 		"getIssue":          newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetIssue(), testConnection),
 		"updateIssueStatus": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.UpdateIssueStatus(), testConnection, scenario.CallID),
@@ -29,9 +37,32 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listProjects":      newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListProjects(), testConnection),
 		"getProject":        newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetProject(), testConnection),
 		"listOrganizations": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListOrganizations(), testConnection),
-		"assignIssue": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.AssignIssue(), testConnection, scenario.CallID),
-		"deleteIssue": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteIssue(), testConnection, scenario.CallID),
-		"renameProject": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.RenameProject(), testConnection, scenario.CallID),
-		"deleteProject": newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteProject(), testConnection, scenario.CallID),
+		"assignIssue":       newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.AssignIssue(), testConnection, scenario.CallID),
+		"deleteIssue":       newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteIssue(), testConnection, scenario.CallID),
+		"renameProject":     newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.RenameProject(), testConnection, scenario.CallID),
+		"deleteProject":     newConformanceMutationInvocation(t, scenario.Input, providerTestContext{}, client.DeleteProject(), testConnection, scenario.CallID),
+		"createProject":     newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateProject(), testConnection, scenario.CallID),
 	}}
+}
+
+type sentryCreateConformanceContext struct {
+	providerTestContext
+	attempt   int32
+	heartbeat json.RawMessage
+}
+
+func (context *sentryCreateConformanceContext) Attempt() int32 { return context.attempt }
+func (context *sentryCreateConformanceContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.heartbeat = encoded
+	return nil
+}
+func (context *sentryCreateConformanceContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
 }

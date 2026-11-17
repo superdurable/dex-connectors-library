@@ -5,12 +5,14 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 Moved from `github.com/superdurable/dex-connectors-library/connectors/sentry`.
 
 This Dex connector calls the public Sentry JSON API. Its
-manifest version is `v0.3.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.3.0`; the Go module requires connector SDK `v0.38.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`issue-review` example](go/examples/issue-review/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 The [`assign-issue` example](go/examples/assign-issue/README.md) exercises
 an absolute issue assignment through a real Dex Worker in its mock test.
+The [`create-project` example](go/examples/create-project/README.md) exercises
+bounded project creation through a real Dex Worker in its mock test.
 
 The Python package is [`dex-connector-sentry`](python/README.md), imported as
 `dex_connectors.sentry`. The TypeScript package is
@@ -32,6 +34,7 @@ The Python package is [`dex-connector-sentry`](python/README.md), imported as
 | `deleteIssue` | mutation | DeletedIssue |
 | `renameProject` | mutation | Project |
 | `deleteProject` | mutation | DeletedProject |
+| `createProject` | mutation | Project |
 
 The five new Go queries use the `safe` repeat tier. List operations return one
 provider page; pass a Sentry cursor to request a known later page. Sentry
@@ -43,6 +46,12 @@ absolute fields; issue and project deletion queue a terminal action. Find issue
 IDs under **Issues** and project slugs under **Projects** in Sentry. `assignedTo`
 accepts a user ID, primary email, or `team:<team ID>`; blank identifiers and
 names are invalid. Deletion can remain pending after an accepted response.
+`createProject` uses the `limited` tier with at most three sends. It requires
+an explicit project slug, reads it back after an unknown outcome, and selects
+optional `uncertain` when the send cap is reached without confirmation. The
+organization and team slugs come from Sentry **Settings > Teams**; the name
+and project slug are nonempty Flow inputs. Some organizations also require
+`org:write` or Team Admin permission for creation.
 
 `listIssues` returns the first provider page (default unresolved query); cursor pagination is not exposed in this initial release. `updateIssueStatus` sends an absolute status in a PUT request. Repeating `resolved`, `unresolved`, or `ignored` sets the same state. Only the submitted status field is changed.
 
@@ -98,6 +107,7 @@ flow := NewFlow(mock.Connection())
 - [https://docs.sentry.io/api/events/remove-an-issue/](https://docs.sentry.io/api/events/remove-an-issue/)
 - [https://docs.sentry.io/api/projects/update-a-project/](https://docs.sentry.io/api/projects/update-a-project/)
 - [https://docs.sentry.io/api/projects/delete-a-project/](https://docs.sentry.io/api/projects/delete-a-project/)
+- [https://docs.sentry.io/api/projects/create-a-new-project/](https://docs.sentry.io/api/projects/create-a-new-project/)
 
 The HTTP unit tests verify request shapes and local classification against
 an `httptest` server. The TypeScript example runs against a local HTTP fixture

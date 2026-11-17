@@ -18,6 +18,7 @@ import (
 // Mock is a scripted sentry connection. Script each operation through its accessor.
 type Mock struct {
 	connection        sentry.Connection
+	createProject     *connectormock.Mutation[sentry.CreateProjectInput, sentry.Project]
 	assignIssue       *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue]
 	deleteIssue       *connectormock.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue]
 	renameProject     *connectormock.Mutation[sentry.RenameProjectInput, sentry.Project]
@@ -37,6 +38,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createProject:     connectormock.NewMutation[sentry.CreateProjectInput, sentry.Project](t, sentry.CreateProjectDefinition),
 		assignIssue:       connectormock.NewMutation[sentry.AssignIssueInput, sentry.Issue](t, sentry.AssignIssueDefinition),
 		deleteIssue:       connectormock.NewMutation[sentry.DeleteIssueInput, sentry.DeletedIssue](t, sentry.DeleteIssueDefinition),
 		renameProject:     connectormock.NewMutation[sentry.RenameProjectInput, sentry.Project](t, sentry.RenameProjectDefinition),
@@ -50,6 +52,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		getProject:        connectormock.NewQuery[sentry.GetProjectInput, sentry.Project](t, sentry.GetProjectDefinition),
 		listOrganizations: connectormock.NewQuery[sentry.ListOrganizationsInput, sentry.OrganizationPage](t, sentry.ListOrganizationsDefinition),
 	}
+	mock.createProject.Default(CreateProjectDefault())
 	mock.assignIssue.Default(AssignIssueDefault())
 	mock.deleteIssue.Default(DeleteIssueDefault())
 	mock.renameProject.Default(RenameProjectDefault())
@@ -72,6 +75,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sentry.Connection { return mock.connection }
+
+// CreateProject returns the createProject script.
+func (mock *Mock) CreateProject() *connectormock.Mutation[sentry.CreateProjectInput, sentry.Project] {
+	return mock.createProject
+}
 
 // AssignIssue returns the assignIssue script.
 func (mock *Mock) AssignIssue() *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue] {
@@ -135,6 +143,9 @@ func (mock *Mock) ListOrganizations() *connectormock.Query[sentry.ListOrganizati
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateProject() sdkgo.Mutation[sentry.CreateProjectInput, sentry.Project] {
+	return operations.mock.createProject
+}
 func (operations mockOperations) AssignIssue() sdkgo.Mutation[sentry.AssignIssueInput, sentry.Issue] {
 	return operations.mock.assignIssue
 }
@@ -170,6 +181,42 @@ func (operations mockOperations) GetProject() sdkgo.Query[sentry.GetProjectInput
 }
 func (operations mockOperations) ListOrganizations() sdkgo.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage] {
 	return operations.mock.listOrganizations
+}
+
+// CreateProjectCreated selects the created branch: Sentry created or confirmed the project.
+func CreateProjectCreated(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.CreateProjectBranchCreated, value, failure)
+}
+
+// CreateProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected creation.
+func CreateProjectProviderRejected(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.CreateProjectBranchProviderRejected, value, failure)
+}
+
+// CreateProjectDefect selects the defect branch: Local input or credentials are invalid.
+func CreateProjectDefect(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.CreateProjectBranchDefect, value, failure)
+}
+
+// CreateProjectUncertain returns an uncertain createProject outcome.
+func CreateProjectUncertain(value sentry.Project, failure sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateProjectRetry asks Dex to retry the createProject Step, after the delay when it is positive.
+func CreateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Project] {
+	return connectormock.Retry[sentry.Project](failure, after)
+}
+
+// CreateProjectCreateProjectDefault is the manifest mock createProjectDefault: One project was created.
+func CreateProjectCreateProjectDefault() connectormock.Case[sentry.Project] {
+	value := connectormock.MustDecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"Application"}`)
+	return connectormock.Branch(sentry.CreateProjectBranchCreated, value, nil)
+}
+
+// CreateProjectDefault is the manifest default, createProjectDefault, which New installs.
+func CreateProjectDefault() connectormock.Case[sentry.Project] {
+	return CreateProjectCreateProjectDefault()
 }
 
 // AssignIssueAssigned selects the assigned branch: Sentry assigned the issue.

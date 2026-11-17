@@ -64,11 +64,28 @@ spec:
       - Follow User Settings > Auth Tokens > Create New Token. Create an auth token
         with event:read and event:write for issue reads and updates, event:admin
         for issue deletion, project:read, project:write, and project:admin for
-        project reads and writes, and org:read for organization reads. Copy the opaque
+        project reads and writes, org:read for organization reads, and org:write
+        when the organization restricts project creation. Copy the opaque
         secret; blank prevents requests.
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+  - name: createProject
+    goName: CreateProject
+    inputType: CreateProjectInput
+    outputType: Project
+    kind: mutation
+    description: Create a project under one Sentry team with a stable slug.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Sentry created or confirmed the project.}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected creation., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createProjectDefault, branch: created, default: true, description: One project was created., output: {id: '43', slug: app, name: Application}}
   - name: assignIssue
     goName: AssignIssue
     inputType: AssignIssueInput
