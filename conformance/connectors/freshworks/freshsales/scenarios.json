@@ -10358,6 +10358,2127 @@
       },
       "name": "deleteAppointment-defect",
       "operation": "deleteAppointment"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"sales_activity\":{\"id\":701,\"title\":\"Expansion Call\",\"start_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "endDate": "2026-11-20T11:00:00Z",
+          "id": 701,
+          "startDate": "2026-11-20T10:00:00Z",
+          "title": "Expansion Call"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "getSalesActivity-success",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "getSalesActivity-notFound",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "getSalesActivity-providerRejected",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "getSalesActivity-invalidResponse",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "getSalesActivity-rateLimited",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "getSalesActivity-serverUnavailable",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "getSalesActivity-serviceUnavailable",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "getSalesActivity-transportFailure",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000071-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "salesActivityId": "bad"
+      },
+      "name": "getSalesActivity-defect",
+      "operation": "getSalesActivity"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"sales_activities\":[{\"id\":701,\"title\":\"Expansion Call\",\"start_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}],\"meta\":{\"total\":1,\"total_pages\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "activities": [
+            {
+              "endDate": "2026-11-20T11:00:00Z",
+              "id": 701,
+              "startDate": "2026-11-20T10:00:00Z",
+              "title": "Expansion Call"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSalesActivities-success",
+      "operation": "listSalesActivities"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "activities": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSalesActivities-providerRejected",
+      "operation": "listSalesActivities"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "activities": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSalesActivities-invalidResponse",
+      "operation": "listSalesActivities"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSalesActivities-rateLimited",
+      "operation": "listSalesActivities"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSalesActivities-serverUnavailable",
+      "operation": "listSalesActivities"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSalesActivities-serviceUnavailable",
+      "operation": "listSalesActivities"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1
+      },
+      "name": "listSalesActivities-transportFailure",
+      "operation": "listSalesActivities"
+    },
+    {
+      "callId": "c0000072-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "activities": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listSalesActivities-defect",
+      "operation": "listSalesActivities"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "body": "{\"sales_activity\":{\"id\":701,\"title\":\"Expansion Call\",\"start_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "providerId": "701",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "endDate": "2026-11-20T11:00:00Z",
+          "id": 701,
+          "startDate": "2026-11-20T10:00:00Z",
+          "title": "Expansion Call"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "name": "createSalesActivity-success",
+      "operation": "createSalesActivity"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "name": "createSalesActivity-providerRejected",
+      "operation": "createSalesActivity"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "name": "createSalesActivity-acceptedMalformed",
+      "operation": "createSalesActivity"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "name": "createSalesActivity-rateLimited",
+      "operation": "createSalesActivity"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "name": "createSalesActivity-serverUnavailable",
+      "operation": "createSalesActivity"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "name": "createSalesActivity-serviceUnavailable",
+      "operation": "createSalesActivity"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "name": "createSalesActivity-transportFailure",
+      "operation": "createSalesActivity"
+    },
+    {
+      "attempts": 3,
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sales_activities",
+          "requestBody": {
+            "sales_activity": {
+              "end_date": "2026-11-20T11:00:00Z",
+              "owner_id": 102,
+              "sales_activity_type_id": 2,
+              "start_date": "2026-11-20T10:00:00Z",
+              "targetable_id": 101,
+              "targetable_type": "Contact",
+              "title": "Expansion Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSalesActivity-sendCap",
+      "operation": "createSalesActivity"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "bad",
+        "ownerId": "102",
+        "startDate": "bad",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": ""
+      },
+      "name": "createSalesActivity-defect",
+      "operation": "createSalesActivity"
+    },
+    {
+      "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "exchanges": [
+        {
+          "body": "{\"sales_activity\":{\"id\":701,\"title\":\"Expansion Call\",\"start_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "endDate": "2026-11-20T11:00:00Z",
+          "id": 701,
+          "startDate": "2026-11-20T10:00:00Z",
+          "title": "Expansion Call"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+      "input": {
+        "activityTypeId": "2",
+        "endDate": "2026-11-20T11:00:00Z",
+        "ownerId": "102",
+        "startDate": "2026-11-20T10:00:00Z",
+        "targetId": "101",
+        "targetType": "Contact",
+        "title": "Expansion Call"
+      },
+      "name": "createSalesActivity-readBack",
+      "operation": "createSalesActivity",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "ade62242-d8e5-58b6-81a4-86c8529ad22d",
+          "providerId": "701",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [
+        {
+          "body": "{\"sales_activity\":{\"id\":701,\"title\":\"Updated Call\",\"start_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sales_activities/701",
+          "requestBody": {
+            "sales_activity": {
+              "title": "Updated Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"sales_activity\":{\"id\":701,\"title\":\"Updated Call\",\"start_date\":\"2026-11-20T10:00:00Z\",\"end_date\":\"2026-11-20T11:00:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "endDate": "2026-11-20T11:00:00Z",
+          "id": 701,
+          "startDate": "2026-11-20T10:00:00Z",
+          "title": "Updated Call"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "701",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-success",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sales_activities/701",
+          "requestBody": {
+            "sales_activity": {
+              "title": "Updated Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "701",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-notFound",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sales_activities/701",
+          "requestBody": {
+            "sales_activity": {
+              "title": "Updated Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "701",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-providerRejected",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sales_activities/701",
+          "requestBody": {
+            "sales_activity": {
+              "title": "Updated Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "701",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-invalidResponse",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sales_activities/701",
+          "requestBody": {
+            "sales_activity": {
+              "title": "Updated Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "701",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-rateLimited",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sales_activities/701",
+          "requestBody": {
+            "sales_activity": {
+              "title": "Updated Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "701",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-serverUnavailable",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sales_activities/701",
+          "requestBody": {
+            "sales_activity": {
+              "title": "Updated Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "701",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-serviceUnavailable",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/sales_activities/701",
+          "requestBody": {
+            "sales_activity": {
+              "title": "Updated Call"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "701",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-transportFailure",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endDate": "",
+          "id": 0,
+          "startDate": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4a7eae8-7e62-5e14-a445-5977e8f0d6f6",
+      "input": {
+        "salesActivityId": "bad",
+        "title": "Updated Call"
+      },
+      "name": "updateSalesActivity-defect",
+      "operation": "updateSalesActivity"
+    },
+    {
+      "callId": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "exchanges": [
+        {
+          "body": "true",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 701
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "deleteSalesActivity-success",
+      "operation": "deleteSalesActivity"
+    },
+    {
+      "callId": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 701
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "deleteSalesActivity-alreadyMissing",
+      "operation": "deleteSalesActivity"
+    },
+    {
+      "callId": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "deleteSalesActivity-providerRejected",
+      "operation": "deleteSalesActivity"
+    },
+    {
+      "callId": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "deleteSalesActivity-rateLimited",
+      "operation": "deleteSalesActivity"
+    },
+    {
+      "callId": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "deleteSalesActivity-serverUnavailable",
+      "operation": "deleteSalesActivity"
+    },
+    {
+      "callId": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "deleteSalesActivity-serviceUnavailable",
+      "operation": "deleteSalesActivity"
+    },
+    {
+      "callId": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/sales_activities/701",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "input": {
+        "salesActivityId": "701"
+      },
+      "name": "deleteSalesActivity-transportFailure",
+      "operation": "deleteSalesActivity"
+    },
+    {
+      "callId": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "983df780-a335-59a1-b0b8-b051c8f325cf",
+      "input": {
+        "salesActivityId": "bad"
+      },
+      "name": "deleteSalesActivity-defect",
+      "operation": "deleteSalesActivity"
     }
   ],
   "schemaVersion": 1

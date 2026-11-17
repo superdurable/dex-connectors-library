@@ -120,6 +120,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":601,"deleted":true}`)
 			return err
 		}},
+		{name: "getSalesActivity/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.SalesActivityMetadata](`{"id":701,"title":"Expansion Call","startDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "listSalesActivities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.SalesActivityPage](`{"activities":[{"id":701,"title":"Expansion Call","startDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}],"total":1}`)
+			return err
+		}},
+		{name: "createSalesActivity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.SalesActivityMetadata](`{"id":701,"title":"Expansion Call","startDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "updateSalesActivity/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.SalesActivityMetadata](`{"id":701,"title":"Expansion Call","startDate":"2026-11-20T10:00:00Z","endDate":"2026-11-20T11:00:00Z"}`)
+			return err
+		}},
+		{name: "deleteSalesActivity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[freshsales.DeletedCRMRecord](`{"id":701,"deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -207,5 +227,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteAppointment().Definition().Operation.OperationID != "deleteAppointment" {
 		t.Errorf("deleteAppointment mock has another definition")
+	}
+	if mock.GetSalesActivity().Definition().Operation.OperationID != "getSalesActivity" {
+		t.Errorf("getSalesActivity mock has another definition")
+	}
+	if mock.ListSalesActivities().Definition().Operation.OperationID != "listSalesActivities" {
+		t.Errorf("listSalesActivities mock has another definition")
+	}
+	if mock.CreateSalesActivity().Definition().Operation.OperationID != "createSalesActivity" {
+		t.Errorf("createSalesActivity mock has another definition")
+	}
+	if mock.UpdateSalesActivity().Definition().Operation.OperationID != "updateSalesActivity" {
+		t.Errorf("updateSalesActivity mock has another definition")
+	}
+	if mock.DeleteSalesActivity().Definition().Operation.OperationID != "deleteSalesActivity" {
+		t.Errorf("deleteSalesActivity mock has another definition")
 	}
 }

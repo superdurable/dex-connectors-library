@@ -23,6 +23,7 @@ const (
 	accountViewsStepType = "CallListAccountViews"
 	dealViewsStepType    = "CallListDealViews"
 	appointmentsStepType = "CallListAppointments"
+	activitiesStepType   = "CallListSalesActivities"
 )
 
 var contactViewsAttribute = dex.DefineAttribute[freshsales.ContactViews]("freshsales-contact-views")
@@ -78,6 +79,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: appointmentsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Freshsales", Explanation: "List upcoming appointments using the required open filter."},
 			Connection:  flow.connection, MapToOperationInput: MapToAppointmentsInput,
+			Listed: sdkgo.GoTo(afterAppointments{}),
+		})),
+		dex.DefineStep(afterAppointments{}),
+		dex.DefineStep(freshsales.NewListSalesActivitiesStep(freshsales.ListSalesActivitiesStepConfig[freshsales.ListSalesActivitiesInput]{
+			StepType: activitiesStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Freshsales", Explanation: "List the first page of sales activities."},
+			Connection:  flow.connection, MapToOperationInput: MapToActivitiesInput,
 			Listed: sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
@@ -143,6 +151,11 @@ func MapToAppointmentsInput(input freshsales.ListAppointmentsInput) freshsales.L
 	return input
 }
 
+// MapToActivitiesInput preserves the selected one-based page.
+func MapToActivitiesInput(input freshsales.ListSalesActivitiesInput) freshsales.ListSalesActivitiesInput {
+	return input
+}
+
 // dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Pass the typed start input to the provider Step."
 type startRequest struct{ dex.StepDefaults }
@@ -205,14 +218,25 @@ func (afterDealViews) Execute(_ dex.Context, _ freshsales.ListDealViewsResult) (
 	return dex.GoTo(sdkgo.StepRef[freshsales.ListAppointmentsInput](appointmentsStepType), freshsales.ListAppointmentsInput{Filter: "open", Page: 1}), nil
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:group group-id:provider group-label:"Freshsales"
+// dex:explanation text:"List sales activities after upcoming appointments."
+type afterAppointments struct {
 	dex.StepDefaultsNoWaitFor[freshsales.ListAppointmentsResult]
 }
 
+func (afterAppointments) GetStepType() string { return "AfterAppointments" }
+func (afterAppointments) Execute(_ dex.Context, _ freshsales.ListAppointmentsResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[freshsales.ListSalesActivitiesInput](activitiesStepType), freshsales.ListSalesActivitiesInput{Page: 1}), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow with the provider's typed result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[freshsales.ListSalesActivitiesResult]
+}
+
 func (completeResult) GetStepType() string { return "CompleteListContactViews" }
-func (completeResult) Execute(ctx dex.Context, _ freshsales.ListAppointmentsResult) (*dex.StepDecision, error) {
+func (completeResult) Execute(ctx dex.Context, _ freshsales.ListSalesActivitiesResult) (*dex.StepDecision, error) {
 	views, err := contactViewsAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

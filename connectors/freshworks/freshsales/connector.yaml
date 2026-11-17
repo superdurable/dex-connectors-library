@@ -483,3 +483,83 @@ spec:
         - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Example deleteAppointment result., output: {id: 601, deleted: true}}
+    - name: getSalesActivity
+      goName: GetSalesActivity
+      inputType: GetSalesActivityInput
+      outputType: SalesActivityMetadata
+      kind: query
+      description: Read one sales activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Freshsales confirmed the getSalesActivity outcome.}
+        - {id: notFound, goName: NotFound, description: The sales activity is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales returned invalid sales activity data., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example getSalesActivity result., output: {id: 701, title: Expansion Call, startDate: '2026-11-20T10:00:00Z', endDate: '2026-11-20T11:00:00Z'}}
+    - name: listSalesActivities
+      goName: ListSalesActivities
+      inputType: ListSalesActivitiesInput
+      outputType: SalesActivityPage
+      kind: query
+      description: List one page of sales activities.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Freshsales confirmed the listSalesActivities outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales returned invalid sales activity data., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example listSalesActivities result., output: {activities: [{id: 701, title: Expansion Call, startDate: '2026-11-20T10:00:00Z', endDate: '2026-11-20T11:00:00Z'}], total: 1}}
+    - name: createSalesActivity
+      goName: CreateSalesActivity
+      inputType: CreateSalesActivityInput
+      outputType: SalesActivityMetadata
+      kind: mutation
+      description: Create a sales activity with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Freshsales confirmed the createSalesActivity outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The sales activity may exist without confirmation., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example createSalesActivity result., output: {id: 701, title: Expansion Call, startDate: '2026-11-20T10:00:00Z', endDate: '2026-11-20T11:00:00Z'}}
+    - name: updateSalesActivity
+      goName: UpdateSalesActivity
+      inputType: UpdateSalesActivityInput
+      outputType: SalesActivityMetadata
+      kind: mutation
+      description: Replace a sales activity title.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Freshsales confirmed the updateSalesActivity outcome.}
+        - {id: notFound, goName: NotFound, description: The sales activity is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example updateSalesActivity result., output: {id: 701, title: Expansion Call, startDate: '2026-11-20T10:00:00Z', endDate: '2026-11-20T11:00:00Z'}}
+    - name: deleteSalesActivity
+      goName: DeleteSalesActivity
+      inputType: DeleteSalesActivityInput
+      outputType: DeletedCRMRecord
+      kind: mutation
+      description: Delete a sales activity by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Freshsales confirmed the deleteSalesActivity outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: The request input or connection is invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example deleteSalesActivity result., output: {id: 701, deleted: true}}
