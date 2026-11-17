@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: close
   displayName: Close
-  description: Read Close records with a connection-owned API key.
+  description: Create, read, and maintain Close CRM records and activities, including sending email and SMS drafts, with a connection-owned API key.
   company: Close
   categories: [crm-sales]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: close
   languages:
@@ -52,10 +52,776 @@ spec:
       startURL: https://app.close.com/settings/api/
       steps:
         - "Open https://app.close.com/settings/api/ and sign in; navigate to Settings > Developer > API Keys."
-        - "Create a token for the identity that may read the desired resources and copy the secret value when shown."
+        - "Create a token for the identity that may read and maintain the desired leads, contacts, opportunities, tasks, and activities, then copy the secret value when shown."
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "To revoke access, delete the token on the same provider page."
   operations:
+    - name: sendEmailDraft
+      goName: SendEmailDraft
+      inputType: SendEmailDraftInput
+      outputType: EmailActivity
+      kind: mutation
+      description: Move an existing draft email to the outbox for sending.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Close accepted the email into outbox or sent it.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected sending., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been sent but confirmation is unavailable., optional: true}
+        - {id: defect, goName: Defect, description: The draft ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: sentDefault, branch: sent, default: true, description: Meridian draft email entered outbox., output: {id: acti_email_meridian1, leadId: lead_meridian1, status: outbox, subject: Follow-up}}
+    - name: sendSMSDraft
+      goName: SendSMSDraft
+      inputType: SendSMSDraftInput
+      outputType: SMSActivity
+      kind: mutation
+      description: Move an existing draft SMS to the outbox for sending.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Close accepted the SMS into outbox or sent it.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected sending., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The SMS may have been sent but confirmation is unavailable., optional: true}
+        - {id: defect, goName: Defect, description: The draft ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: sentDefault, branch: sent, default: true, description: Meridian draft SMS entered outbox., output: {id: acti_sms_meridian1, leadId: lead_meridian1, status: outbox, text: Hello}}
+    - name: listMeetings
+      goName: ListMeetings
+      inputType: ListMeetingsInput
+      outputType: MeetingPage
+      kind: query
+      description: List a bounded page of meeting activities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the listMeetings result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A Meridian Labs meeting activity is available.
+          output: {meetings: [{id: acti_meeting_meridian1, leadId: lead_meridian1, title: Review, status: completed}], hasMore: false}
+    - name: getMeeting
+      goName: GetMeeting
+      inputType: GetMeetingInput
+      outputType: MeetingActivity
+      kind: query
+      description: Read one meeting activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the getMeeting result.}
+        - {id: notFound, goName: NotFound, description: The meeting activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs meeting activity is available.
+          output: {id: acti_meeting_meridian1, leadId: lead_meridian1, title: Review, status: completed}
+    - name: updateMeeting
+      goName: UpdateMeeting
+      inputType: UpdateMeetingInput
+      outputType: MeetingActivity
+      kind: mutation
+      description: Replace the note or outcome on a meeting activity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updateMeeting result.}
+        - {id: notFound, goName: NotFound, description: The meeting activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs meeting activity is available.
+          output: {id: acti_meeting_meridian1, leadId: lead_meridian1, title: Review, status: completed, userNoteHTML: '<p>Follow-up</p>'}
+    - name: deleteMeeting
+      goName: DeleteMeeting
+      inputType: DeleteMeetingInput
+      outputType: DeletedMeeting
+      kind: mutation
+      description: Delete a meeting activity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close returned the deleteMeeting result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs meeting activity is available.
+          output: {meetingId: acti_meeting_meridian1}
+    - name: listSMS
+      goName: ListSMS
+      inputType: ListSMSInput
+      outputType: SMSPage
+      kind: query
+      description: List a bounded page of SMS activities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the listSMS result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A Meridian Labs SMS activity is available.
+          output: {messages: [{id: acti_sms_meridian1, leadId: lead_meridian1, status: draft, text: Hello}], hasMore: false}
+    - name: getSMS
+      goName: GetSMS
+      inputType: GetSMSInput
+      outputType: SMSActivity
+      kind: query
+      description: Read one SMS activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the getSMS result.}
+        - {id: notFound, goName: NotFound, description: The SMS activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs SMS activity is available.
+          output: {id: acti_sms_meridian1, leadId: lead_meridian1, status: draft, text: Hello}
+    - name: createSMS
+      goName: CreateSMS
+      inputType: CreateSMSInput
+      outputType: SMSActivity
+      kind: mutation
+      description: Create a draft or send an SMS through Close.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the createSMS result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The SMS may have been created or sent but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs SMS activity is available.
+          output: {id: acti_sms_meridian1, leadId: lead_meridian1, status: draft, text: Hello}
+    - name: updateSMSDraft
+      goName: UpdateSMSDraft
+      inputType: UpdateSMSDraftInput
+      outputType: SMSActivity
+      kind: mutation
+      description: Replace draft SMS text without sending it.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updateSMSDraft result.}
+        - {id: notFound, goName: NotFound, description: The SMS activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs SMS activity is available.
+          output: {id: acti_sms_meridian1, leadId: lead_meridian1, status: draft, text: Updated}
+    - name: deleteSMS
+      goName: DeleteSMS
+      inputType: DeleteSMSInput
+      outputType: DeletedSMS
+      kind: mutation
+      description: Delete an SMS activity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close returned the deleteSMS result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs SMS activity is available.
+          output: {smsId: acti_sms_meridian1}
+    - name: listEmails
+      goName: ListEmails
+      inputType: ListEmailsInput
+      outputType: EmailPage
+      kind: query
+      description: List a bounded page of email activities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the listEmails result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {emails: [{id: acti_email_meridian1, leadId: lead_meridian1, status: draft, subject: Follow-up}], hasMore: false}
+    - name: getEmail
+      goName: GetEmail
+      inputType: GetEmailInput
+      outputType: EmailActivity
+      kind: query
+      description: Read one email activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the getEmail result.}
+        - {id: notFound, goName: NotFound, description: The email activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {id: acti_email_meridian1, leadId: lead_meridian1, status: draft, subject: Follow-up}
+    - name: createEmail
+      goName: CreateEmail
+      inputType: CreateEmailInput
+      outputType: EmailActivity
+      kind: mutation
+      description: Create a draft or send an email through Close.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the createEmail result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been created or sent but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {id: acti_email_meridian1, leadId: lead_meridian1, status: draft, subject: Follow-up}
+    - name: updateEmailDraft
+      goName: UpdateEmailDraft
+      inputType: UpdateEmailDraftInput
+      outputType: EmailActivity
+      kind: mutation
+      description: Replace draft email content without sending it.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updateEmailDraft result.}
+        - {id: notFound, goName: NotFound, description: The email activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {id: acti_email_meridian1, leadId: lead_meridian1, status: draft, subject: Updated}
+    - name: deleteEmail
+      goName: DeleteEmail
+      inputType: DeleteEmailInput
+      outputType: DeletedEmail
+      kind: mutation
+      description: Delete an email activity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close returned the deleteEmail result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {emailId: acti_email_meridian1}
+    - name: listCalls
+      goName: ListCalls
+      inputType: ListCallsInput
+      outputType: CallPage
+      kind: query
+      description: List a bounded page of call activities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the call page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one logged call.
+          output: {calls: [{id: acti_call_meridian1, leadId: lead_meridian1, direction: outbound, status: completed, durationSeconds: 120}], hasMore: false}
+    - name: getCall
+      goName: GetCall
+      inputType: GetCallInput
+      outputType: CallActivity
+      kind: query
+      description: Read one call activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the call.}
+        - {id: notFound, goName: NotFound, description: The call activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs logged call was found.
+          output: {id: acti_call_meridian1, leadId: lead_meridian1, direction: outbound, status: completed, durationSeconds: 120}
+    - name: logCall
+      goName: LogCall
+      inputType: LogCallInput
+      outputType: CallActivity
+      kind: mutation
+      description: Log a completed external call on a lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: logged, goName: Logged, description: Close returned the logged call.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the call log., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The call may have been logged but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: loggedDefault
+          branch: logged
+          default: true
+          description: A Meridian Labs external call was logged.
+          output: {id: acti_call_meridian1, leadId: lead_meridian1, direction: outbound, status: completed, durationSeconds: 120}
+    - name: updateCall
+      goName: UpdateCall
+      inputType: UpdateCallInput
+      outputType: CallActivity
+      kind: mutation
+      description: Replace a call note or outcome ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated call.}
+        - {id: notFound, goName: NotFound, description: The call activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs call note was updated.
+          output: {id: acti_call_meridian1, leadId: lead_meridian1, direction: outbound, status: completed, durationSeconds: 120, note: Follow-up agreed}
+    - name: deleteCall
+      goName: DeleteCall
+      inputType: DeleteCallInput
+      outputType: DeletedCall
+      kind: mutation
+      description: Delete a call activity by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the call is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs call log was deleted.
+          output: {callId: acti_call_meridian1}
+    - name: listNotes
+      goName: ListNotes
+      inputType: ListNotesInput
+      outputType: NotePage
+      kind: query
+      description: List a bounded page of note activities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the note page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one sample note.
+          output: {notes: [{id: acti_meridian1, leadId: lead_meridian1, note: Proposal reviewed, pinned: false}], hasMore: false}
+    - name: getNote
+      goName: GetNote
+      inputType: GetNoteInput
+      outputType: Note
+      kind: query
+      description: Read one note activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the note.}
+        - {id: notFound, goName: NotFound, description: The note does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs note was found.
+          output: {id: acti_meridian1, leadId: lead_meridian1, note: Proposal reviewed, pinned: false}
+    - name: createNote
+      goName: CreateNote
+      inputType: CreateNoteInput
+      outputType: Note
+      kind: mutation
+      description: Create a plaintext note activity on a lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created note.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The note may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs note was created.
+          output: {id: acti_meridian1, leadId: lead_meridian1, note: Proposal reviewed, pinned: false}
+    - name: updateNote
+      goName: UpdateNote
+      inputType: UpdateNoteInput
+      outputType: Note
+      kind: mutation
+      description: Replace the note text, title, or pinned state.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated note.}
+        - {id: notFound, goName: NotFound, description: The note does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs note was pinned.
+          output: {id: acti_meridian1, leadId: lead_meridian1, note: Proposal reviewed, pinned: true}
+    - name: deleteNote
+      goName: DeleteNote
+      inputType: DeleteNoteInput
+      outputType: DeletedNote
+      kind: mutation
+      description: Delete a note activity by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the note is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs note was deleted.
+          output: {noteId: acti_meridian1}
+    - name: listTasks
+      goName: ListTasks
+      inputType: ListTasksInput
+      outputType: TaskPage
+      kind: query
+      description: List a bounded page of lead tasks.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the task page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one follow-up task.
+          output: {tasks: [{id: task_meridian1, leadId: lead_meridian1, text: Review proposal, isComplete: false}], hasMore: false}
+    - name: getTask
+      goName: GetTask
+      inputType: GetTaskInput
+      outputType: Task
+      kind: query
+      description: Read one task by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the task.}
+        - {id: notFound, goName: NotFound, description: The task does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs follow-up task was found.
+          output: {id: task_meridian1, leadId: lead_meridian1, text: Review proposal, isComplete: false}
+    - name: createTask
+      goName: CreateTask
+      inputType: CreateTaskInput
+      outputType: Task
+      kind: mutation
+      description: Create a lead task.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created task.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The task may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs follow-up task was created.
+          output: {id: task_meridian1, leadId: lead_meridian1, text: Review proposal, isComplete: false}
+    - name: updateTask
+      goName: UpdateTask
+      inputType: UpdateTaskInput
+      outputType: Task
+      kind: mutation
+      description: Replace selected task fields, including completion.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated task.}
+        - {id: notFound, goName: NotFound, description: The task does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs follow-up task was completed.
+          output: {id: task_meridian1, leadId: lead_meridian1, text: Review proposal, isComplete: true}
+    - name: deleteTask
+      goName: DeleteTask
+      inputType: DeleteTaskInput
+      outputType: DeletedTask
+      kind: mutation
+      description: Delete a task by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the task is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs task was deleted.
+          output: {taskId: task_meridian1}
+    - name: listOpportunities
+      goName: ListOpportunities
+      inputType: ListOpportunitiesInput
+      outputType: OpportunityPage
+      kind: query
+      description: List a bounded page of opportunities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the opportunity page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one sample opportunity.
+          output: {opportunities: [{id: oppo_meridian1, leadId: lead_meridian1, valueCents: 50000, statusId: stat_active1}], hasMore: false}
+    - name: getOpportunity
+      goName: GetOpportunity
+      inputType: GetOpportunityInput
+      outputType: Opportunity
+      kind: query
+      description: Read one opportunity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the opportunity.}
+        - {id: notFound, goName: NotFound, description: The opportunity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Meridian Labs has one sample opportunity.
+          output: {id: oppo_meridian1, leadId: lead_meridian1, valueCents: 50000, statusId: stat_active1}
+    - name: createOpportunity
+      goName: CreateOpportunity
+      inputType: CreateOpportunityInput
+      outputType: Opportunity
+      kind: mutation
+      description: Create an opportunity on an existing lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created opportunity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The opportunity may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs opportunity was created.
+          output: {id: oppo_meridian1, leadId: lead_meridian1, valueCents: 50000, statusId: stat_active1}
+    - name: updateOpportunity
+      goName: UpdateOpportunity
+      inputType: UpdateOpportunityInput
+      outputType: Opportunity
+      kind: mutation
+      description: Replace selected opportunity fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated opportunity.}
+        - {id: notFound, goName: NotFound, description: The opportunity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs opportunity was updated.
+          output: {id: oppo_meridian1, leadId: lead_meridian1, valueCents: 60000, statusId: stat_active1}
+    - name: deleteOpportunity
+      goName: DeleteOpportunity
+      inputType: DeleteOpportunityInput
+      outputType: DeletedOpportunity
+      kind: mutation
+      description: Delete an opportunity by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the opportunity is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs opportunity was deleted.
+          output: {opportunityId: oppo_meridian1}
+    - name: createLead
+      goName: CreateLead
+      inputType: CreateLeadInput
+      outputType: Lead
+      kind: mutation
+      description: Create a lead with a name and optional description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created lead.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The lead may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Meridian Labs was created.
+          output: {id: lead_meridian1, name: Meridian Labs}
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: Contact
+      kind: mutation
+      description: Create a contact under an existing lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The contact may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Ada was added to Meridian Labs.
+          output: {id: cont_meridian1, name: Ada, leadId: lead_meridian1}
     - name: listLeads
       goName: ListLeads
       inputType: ListLeadsInput
@@ -82,6 +848,129 @@ spec:
           branch: providerRejected
           description: "The connection token is invalid."
           failure: {kind: AUTHENTICATION, message: "Close rejected the token."}
+    - name: updateLead
+      goName: UpdateLead
+      inputType: UpdateLeadInput
+      outputType: Lead
+      kind: mutation
+      description: Replace selected lead name or description fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated lead.}
+        - {id: notFound, goName: NotFound, description: The lead does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Meridian Labs was renamed.
+          output: {id: lead_meridian1, name: Meridian Research}
+    - name: deleteLead
+      goName: DeleteLead
+      inputType: DeleteLeadInput
+      outputType: DeletedLead
+      kind: mutation
+      description: Delete a lead and its child records.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the lead is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Meridian Labs was deleted.
+          output: {leadId: lead_meridian1}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactPage
+      kind: query
+      description: List a bounded page of contacts for one lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one sample contact.
+          output: {contacts: [{id: cont_meridian1, name: Ada, leadId: lead_meridian1}], hasMore: false}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: Contact
+      kind: query
+      description: Fetch one contact by its Close identifier.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the contact.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Meridian Labs contact Ada is returned.
+          output: {id: cont_meridian1, name: Ada, leadId: lead_meridian1}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: Contact
+      kind: mutation
+      description: Replace selected contact name or title fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated contact.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Meridian Labs contact Ada has a new title.
+          output: {id: cont_meridian1, name: Ada, leadId: lead_meridian1}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: DeletedContact
+      kind: mutation
+      description: Delete one contact from its lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the contact is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Meridian Labs contact Ada was deleted.
+          output: {contactId: cont_meridian1}
     - name: getLead
       goName: GetLead
       inputType: GetLeadInput

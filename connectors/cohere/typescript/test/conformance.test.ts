@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { CohereClient } from '../src/client.js';
 import { EmbedInputSchema, RerankInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/cohere/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/cohere/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'embed' || scenario.operation === 'rerank');
 const connection = { provider: 'cohere', name: 'cohere' };
 const progress = { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false };
 

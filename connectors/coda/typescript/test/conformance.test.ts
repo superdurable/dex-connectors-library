@@ -9,7 +9,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { CodaClient } from '../src/client.js';
 import { GetRowInputSchema, ListRowsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/coda/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/coda/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listRows' || scenario.operation === 'getRow');
 const connection = { provider: 'coda', name: 'coda' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeCoda));
