@@ -2,6 +2,8 @@
 
 This runnable Flow calls `cloudflare.NewListZonesStep` and Go `cloudflare.NewListDNSRecordsStep` with the static connection name `cloudflare`. It completes with the typed zone and DNS record pages. Optional branches are unwired and fail the Flow if selected. Its [mock-backed integration test](flow/workflow_mock_integration_test.go) uses a real Dex Worker and Client.
 
+The same Worker also registers `CloudflareCreateDNSRecord`. Start it with a `CreateDNSRecordInput` request containing `zoneId`, `type`, `name`, `content`, `ttl` (seconds or 1 for automatic), and `proxied`. This Flow creates a real DNS record when connected to Cloudflare; check the target zone and name before starting it. The integration test exercises its default mock through a real Dex Worker and Client.
+
 ## Generate the strict Flow Definition
 
 From `connectors/cloudflare/go`, use the latest stable dexcli:

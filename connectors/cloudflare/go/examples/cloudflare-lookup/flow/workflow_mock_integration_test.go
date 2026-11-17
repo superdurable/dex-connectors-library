@@ -24,7 +24,8 @@ import (
 func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	mock := cloudflaremock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	createFlow := NewCreateDNSRecordFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, createFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -68,4 +69,15 @@ func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	require.Equal(t, request, calls[0].Input)
 	require.Equal(t, cloudflare.ListZonesBranchListed, calls[0].Branch)
 	require.Equal(t, flowID, calls[0].FlowID)
+	createRequest := cloudflare.CreateDNSRecordInput{ZoneID: "zone-meridian", Type: "A", Name: "new.meridian.example", Content: "192.0.2.30", TTL: 3600}
+	createFlowID := "cloudflare-create-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(contextWithDeadline, createFlow, createFlowID, createRequest, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	createResult, err := client.WaitForFlow(contextWithDeadline, createFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, createResult.Status, createResult.ErrorMessage)
+	var createdRecord cloudflare.DNSRecord
+	require.NoError(t, createResult.DecodeSingleOutput(&createdRecord))
+	require.Equal(t, "dns-created-meridian", createdRecord.ID)
+	require.Len(t, mock.CreateDNSRecord().Calls(), 1)
 }

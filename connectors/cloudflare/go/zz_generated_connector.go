@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateDNSRecord() sdkgo.Mutation[CreateDNSRecordInput, DNSRecord]
 	ListZones() sdkgo.Query[ListZonesInput, ZonesPage]
 	PurgeCacheByURLs() sdkgo.Mutation[PurgeCacheByURLsInput, CachePurge]
 	PurgeEntireCache() sdkgo.Mutation[PurgeEntireCacheInput, CachePurge]
@@ -51,6 +52,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateDNSRecord() sdkgo.Mutation[CreateDNSRecordInput, DNSRecord] {
+	return operations.client.CreateDNSRecord()
+}
 func (operations clientOperations) ListZones() sdkgo.Query[ListZonesInput, ZonesPage] {
 	return operations.client.ListZones()
 }
@@ -210,6 +214,82 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const CreateDNSRecordBranchCreated sdkgo.BranchID = "created"
+const CreateDNSRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDNSRecordBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateDNSRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateDNSRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDNSRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDNSRecordBranchCreated, Description: "Cloudflare returned the created DNS record."},
+		{ID: CreateDNSRecordBranchProviderRejected, Description: "Cloudflare conclusively rejected creation.", Optional: true},
+		{ID: CreateDNSRecordBranchUncertain, Description: "The record may exist but its identity cannot be confirmed.", Optional: true},
+		{ID: CreateDNSRecordBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDNSRecordResult = sdkgo.MutationResult[DNSRecord]
+
+type CreateDNSRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=cloudflare"`
+	operationID                       struct{}                                        `connector:"operationId=createDNSRecord"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDNSRecordInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDNSRecordResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateDNSRecordResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateDNSRecordResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateDNSRecordResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DNSRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDNSRecordStep[IN any](config CreateDNSRecordStepConfig[IN]) sdkgo.MutationStep[IN, CreateDNSRecordInput, DNSRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("cloudflare connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDNSRecordInput, DNSRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDNSRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDNSRecordResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDNSRecordResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDNSRecordBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDNSRecordBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDNSRecordBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDNSRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const ListZonesBranchListed sdkgo.BranchID = "listed"
 const ListZonesBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const ListZonesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
@@ -301,6 +381,7 @@ var PurgeCacheByURLsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type PurgeCacheByURLsResult = sdkgo.MutationResult[CachePurge]
@@ -378,6 +459,7 @@ var PurgeEntireCacheDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type PurgeEntireCacheResult = sdkgo.MutationResult[CachePurge]
@@ -609,6 +691,7 @@ var UpdateDNSRecordDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateDNSRecordResult = sdkgo.MutationResult[DNSRecord]
@@ -686,6 +769,7 @@ var DeleteDNSRecordDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteDNSRecordResult = sdkgo.MutationResult[DeletedDNSRecord]

@@ -15,10 +15,11 @@ The `cloudflare` Go module exposes typed Dex Steps for Cloudflare. Its [runnable
 | NewPurgeEntireCacheStep (Go) | POST /client/v4/zones/{zone_id}/purge_cache | `ZoneID` | `CachePurge` | `purged` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewListDNSRecordsStep (Go) | GET /client/v4/zones/{zone_id}/dns_records | `ZoneID`, optional page and page size | `DNSRecordsPage` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewGetDNSRecordStep (Go) | GET /client/v4/zones/{zone_id}/dns_records/{record_id} | zone and record IDs | `DNSRecord` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewCreateDNSRecordStep (Go) | POST /client/v4/zones/{zone_id}/dns_records | zone ID, type, name, content, TTL, proxy flag | `DNSRecord` | `created` | `providerRejected`, `uncertain`, `defect` |
 | NewUpdateDNSRecordStep (Go) | PUT /client/v4/zones/{zone_id}/dns_records/{record_id} | zone and record IDs, type, name, content, TTL, proxy flag | `DNSRecord` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewDeleteDNSRecordStep (Go) | DELETE /client/v4/zones/{zone_id}/dns_records/{record_id} | zone and record IDs | `DeletedDNSRecord` | `deleted` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-`purgeCacheByURLs` sends `{"files":[...]}`. `purgeEntireCache` sends `{"purge_everything":true}`. Repeating either purge removes the same cache entries, so retries are safe. Cloudflare confirms acceptance with HTTP 200 and `success: true`; it does not guarantee that content was cached or removed. `updateDNSRecord` overwrites an A, AAAA, CNAME, or TXT record with an absolute value; `deleteDNSRecord` removes one record. Both are repeat safe. DNS creation is omitted because Cloudflare documents no idempotency key for POST and an ambiguous create can leave duplicate records.
+`purgeCacheByURLs` sends `{"files":[...]}`. `purgeEntireCache` sends `{"purge_everything":true}`. Repeating either purge removes the same cache entries, so retries are safe. Cloudflare confirms acceptance with HTTP 200 and `success: true`; it does not guarantee that content was cached or removed. `updateDNSRecord` overwrites an A, AAAA, CNAME, or TXT record with an absolute value; `deleteDNSRecord` removes one record. Both are repeat safe. `createDNSRecord` uses the `limited` tier with at most three possible sends. If an earlier response revealed a record ID, a later attempt reads it before resending. An unconfirmed create at the cap selects `uncertain`, so applications must reconcile possible duplicate records; Cloudflare documents no POST idempotency key.
 
 The Python package is [`dex-connector-cloudflare`](python/README.md), imported as
 `dex_connectors.cloudflare`. The [TypeScript package](typescript/README.md) is
@@ -51,7 +52,7 @@ The generated `cloudflaremock` package installs these default answers:
 - `listZones`: one active `meridian.example` zone.
 - `purgeCacheByURLs`: a successful purge with ID `purge-meridian`.
 - `purgeEntireCache`: a zone-wide purge acceptance.
-- `listDNSRecords`, `getDNSRecord`, `updateDNSRecord`, and `deleteDNSRecord`: sample Meridian DNS records.
+- `listDNSRecords`, `getDNSRecord`, `createDNSRecord`, `updateDNSRecord`, and `deleteDNSRecord`: sample Meridian DNS records.
 
 The [mock-backed example test](go/examples/cloudflare-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
 
@@ -61,6 +62,7 @@ The [mock-backed example test](go/examples/cloudflare-lookup/flow/workflow_mock_
 - [https://developers.cloudflare.com/api/resources/cache/methods/purge/](https://developers.cloudflare.com/api/resources/cache/methods/purge/)
 - [DNS record list](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/list/)
 - [DNS record get](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/get/)
+- [DNS record create](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/create/)
 - [DNS record update](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/update/)
 - [DNS record delete](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/delete/)
 - [https://developers.cloudflare.com/fundamentals/api/get-started/create-token/](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)

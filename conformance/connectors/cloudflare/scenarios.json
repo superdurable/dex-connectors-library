@@ -2294,6 +2294,713 @@
       },
       "name": "purgeCacheByURLs-transport",
       "operation": "purgeCacheByURLs"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"id\":\"dnscreated1\",\"type\":\"A\",\"name\":\"new.meridian.example\",\"content\":\"192.0.2.30\",\"ttl\":3600,\"proxied\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": true,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "providerId": "dnscreated1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": "192.0.2.30",
+          "id": "dnscreated1",
+          "name": "new.meridian.example",
+          "proxied": true,
+          "ttl": 3600,
+          "type": "A"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": true,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-created",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":1004,\"message\":\"invalid\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": "",
+          "id": "",
+          "name": "",
+          "proxied": false,
+          "ttl": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-providerRejected",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":1004,\"message\":\"invalid\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": "",
+          "id": "",
+          "name": "",
+          "proxied": false,
+          "ttl": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-providerRejectedEnvelope",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": "",
+          "id": "",
+          "name": "",
+          "proxied": false,
+          "ttl": 0,
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "bad/id"
+      },
+      "name": "createDNSRecord-defect",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-rateLimit",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-serverUnavailable",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-serverError",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-transportFailure",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": "",
+          "id": "",
+          "name": "",
+          "proxied": false,
+          "ttl": 0,
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-invalidResponse",
+      "operation": "createDNSRecord"
+    },
+    {
+      "attempts": 3,
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zonemrdn1/dns_records",
+          "requestBody": {
+            "content": "192.0.2.30",
+            "name": "new.meridian.example",
+            "proxied": false,
+            "ttl": 3600,
+            "type": "A"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "content": "",
+          "id": "",
+          "name": "",
+          "proxied": false,
+          "ttl": 0,
+          "type": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createDNSRecord-uncertain",
+      "operation": "createDNSRecord"
+    },
+    {
+      "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"id\":\"dnscreated1\",\"type\":\"A\",\"name\":\"new.meridian.example\",\"content\":\"192.0.2.30\",\"ttl\":3600,\"proxied\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/zones/zonemrdn1/dns_records/dnscreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "content": "192.0.2.30",
+          "id": "dnscreated1",
+          "name": "new.meridian.example",
+          "proxied": false,
+          "ttl": 3600,
+          "type": "A"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+      "input": {
+        "content": "192.0.2.30",
+        "name": "new.meridian.example",
+        "proxied": false,
+        "ttl": 3600,
+        "type": "A",
+        "zoneId": "zonemrdn1"
+      },
+      "name": "createDNSRecord-readBack",
+      "operation": "createDNSRecord",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "5fc8f6e7-645a-509f-bd71-1c84c1c5303e",
+          "providerId": "dnscreated1",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

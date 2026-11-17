@@ -257,30 +257,34 @@ func validateDNSReplacement(input UpdateDNSRecordInput) error {
 	if !validCloudflareID(input.ZoneID) || !validCloudflareID(input.RecordID) {
 		return errors.New("zoneId and recordId must be Cloudflare identifiers")
 	}
-	if input.Name == "" || len(input.Name) > 255 || !utf8.ValidString(input.Name) || strings.ContainsFunc(input.Name, unicode.IsControl) || strings.TrimSpace(input.Name) != input.Name {
+	return validateDNSRecordFields(input.Type, input.Name, input.Content, input.TTL, input.Proxied)
+}
+
+func validateDNSRecordFields(recordType, name, content string, ttl int, isProxied bool) error {
+	if name == "" || len(name) > 255 || !utf8.ValidString(name) || strings.ContainsFunc(name, unicode.IsControl) || strings.TrimSpace(name) != name {
 		return errors.New("name must be a complete DNS name")
 	}
-	if input.Content == "" || len(input.Content) > 2048 || !utf8.ValidString(input.Content) || strings.ContainsFunc(input.Content, unicode.IsControl) {
+	if content == "" || len(content) > 2048 || !utf8.ValidString(content) || strings.ContainsFunc(content, unicode.IsControl) {
 		return errors.New("content is invalid")
 	}
-	if input.TTL != 1 && (input.TTL < 60 || input.TTL > 86400) {
+	if ttl != 1 && (ttl < 60 || ttl > 86400) {
 		return errors.New("ttl must be automatic (1) or 60 to 86400 seconds")
 	}
-	switch input.Type {
+	switch recordType {
 	case "A":
-		if address := net.ParseIP(input.Content); address == nil || address.To4() == nil {
+		if address := net.ParseIP(content); address == nil || address.To4() == nil {
 			return errors.New("A content must be an IPv4 address")
 		}
 	case "AAAA":
-		if address := net.ParseIP(input.Content); address == nil || address.To4() != nil {
+		if address := net.ParseIP(content); address == nil || address.To4() != nil {
 			return errors.New("AAAA content must be an IPv6 address")
 		}
 	case "CNAME":
-		if strings.ContainsAny(input.Content, " /:@") {
+		if strings.ContainsAny(content, " /:@") {
 			return errors.New("CNAME content must be a DNS name")
 		}
 	case "TXT":
-		if input.Proxied {
+		if isProxied {
 			return errors.New("TXT records cannot be proxied")
 		}
 	default:

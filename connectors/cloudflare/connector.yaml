@@ -53,6 +53,22 @@ spec:
         - "Open https://dash.cloudflare.com/profile/api-tokens and select My Profile > API Tokens > Create Token."
         - "Create a custom token with Zone > Zone > Read, Zone > Cache Purge, and Zone > DNS > Read/Edit for the zones you will use, then copy it into secret api_token. Leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
   operations:
+    - name: createDNSRecord
+      goName: CreateDNSRecord
+      inputType: CreateDNSRecordInput
+      outputType: DNSRecord
+      kind: mutation
+      description: Create an A, AAAA, CNAME, or TXT DNS record in one zone.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Cloudflare returned the created DNS record.}
+        - {id: providerRejected, goName: ProviderRejected, description: Cloudflare conclusively rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The record may exist but its identity cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Meridian A record was created., output: {id: dns-created-meridian, type: A, name: new.meridian.example, content: 192.0.2.30, ttl: 3600, proxied: false}}
     - name: listZones
       goName: ListZones
       inputType: ListZonesInput

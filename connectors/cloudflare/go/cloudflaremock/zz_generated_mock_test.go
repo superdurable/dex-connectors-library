@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createDNSRecord/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[cloudflare.DNSRecord](`{"id":"dns-created-meridian","type":"A","name":"new.meridian.example","content":"192.0.2.30","ttl":3600,"proxied":false}`)
+			return err
+		}},
 		{name: "listZones/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[cloudflare.ZonesPage](`{"success":true,"result":[{"id":"zone-meridian","name":"meridian.example","status":"active"}]}`)
 			return err
@@ -54,6 +58,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateDNSRecord().Definition().Operation.OperationID != "createDNSRecord" {
+		t.Errorf("createDNSRecord mock has another definition")
+	}
 	if mock.ListZones().Definition().Operation.OperationID != "listZones" {
 		t.Errorf("listZones mock has another definition")
 	}
