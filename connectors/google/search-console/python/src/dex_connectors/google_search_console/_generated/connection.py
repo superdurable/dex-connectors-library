@@ -156,7 +156,7 @@ setattr(new_project_connection, '__module__', 'dex_connectors.google_search_cons
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"baseUrl", "timeout", "maxResponseBytes"}:
+    if set(value) - {"baseUrl", "timeout", "maxResponseBytes", "inspectionBaseUrl"}:
         raise ValueError("Google Search Console configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
     if "baseUrl" in value:
@@ -174,4 +174,9 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(max_response_bytes) is int):
             raise ValueError("Google Search Console configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
+    if "inspectionBaseUrl" in value:
+        inspection_base_url = value["inspectionBaseUrl"]
+        if not (isinstance(inspection_base_url, str)):
+            raise ValueError("Google Search Console configuration inspectionBaseUrl has an invalid type")
+        config_arguments['inspection_base_url'] = inspection_base_url
     return Config(**config_arguments)
