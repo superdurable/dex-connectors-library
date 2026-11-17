@@ -4,6 +4,8 @@ This runnable Flow reads one Buffer channel with `getChannel` through the static
 
 The same Worker also registers `BufferIdeaCreate`. Start it with an organization ID from `listOrganizations`, a title, and text, for example `{"organizationId":"org-1","title":"A launch idea","text":"Draft the announcement"}`. It calls `createIdea` and returns the created idea. The example integration test runs this path with the Buffer mock through a real Dex Worker and Client.
 
+The Worker also registers `BufferScheduledPostCreate`. Supply a channel ID, text, and RFC 3339 UTC time, for example `{"channelId":"channel-1","text":"A launch post","dueAt":"2030-01-01T10:00:00Z"}`. It calls `createScheduledPost` and returns the scheduled post. Its integration test runs with the Buffer mock through a real Dex Worker and Client.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/buffer/go`, run:

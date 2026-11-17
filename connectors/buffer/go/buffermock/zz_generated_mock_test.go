@@ -40,6 +40,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[buffer.PostProfile](`{"id":"post-1","text":"Sample post","channelId":"channel-1"}`)
 			return err
 		}},
+		{name: "createScheduledPost/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.PostProfile](`{"id":"post-2","text":"Scheduled post","channelId":"channel-1"}`)
+			return err
+		}},
+		{name: "publishPostNow/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[buffer.PostProfile](`{"id":"post-3","text":"Published post","channelId":"channel-1"}`)
+			return err
+		}},
 		{name: "editPost/updatedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[buffer.PostProfile](`{"id":"post-1","text":"Updated post","channelId":"channel-1"}`)
 			return err
@@ -79,6 +87,12 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CreatePost().Definition().Operation.OperationID != "createPost" {
 		t.Errorf("createPost mock has another definition")
+	}
+	if mock.CreateScheduledPost().Definition().Operation.OperationID != "createScheduledPost" {
+		t.Errorf("createScheduledPost mock has another definition")
+	}
+	if mock.PublishPostNow().Definition().Operation.OperationID != "publishPostNow" {
+		t.Errorf("publishPostNow mock has another definition")
 	}
 	if mock.EditPost().Definition().Operation.OperationID != "editPost" {
 		t.Errorf("editPost mock has another definition")

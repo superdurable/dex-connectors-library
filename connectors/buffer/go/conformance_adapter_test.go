@@ -58,14 +58,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"createIdea":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreateIdea(), reference, scenario.CallID),
-		"getChannel":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetChannel(), reference),
-		"listOrganizations": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrganizations(), reference),
-		"listChannels":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListChannels(), reference),
-		"getPost":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPost(), reference),
-		"listPosts":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPosts(), reference),
-		"createPost":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePost(), reference, scenario.CallID),
-		"editPost":          newConformanceMutationInvocation(t, scenario.Input, context, client.EditPost(), reference, scenario.CallID),
-		"deletePost":        newConformanceMutationInvocation(t, scenario.Input, context, client.DeletePost(), reference, scenario.CallID),
+		"createIdea":          newConformanceMutationInvocation(t, scenario.Input, context, client.CreateIdea(), reference, scenario.CallID),
+		"createScheduledPost": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateScheduledPost(), reference, scenario.CallID),
+		"publishPostNow":      newConformanceMutationInvocation(t, scenario.Input, context, client.PublishPostNow(), reference, scenario.CallID),
+		"getChannel":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetChannel(), reference),
+		"listOrganizations":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrganizations(), reference),
+		"listChannels":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListChannels(), reference),
+		"getPost":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPost(), reference),
+		"listPosts":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPosts(), reference),
+		"createPost":          newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePost(), reference, scenario.CallID),
+		"editPost":            newConformanceMutationInvocation(t, scenario.Input, context, client.EditPost(), reference, scenario.CallID),
+		"deletePost":          newConformanceMutationInvocation(t, scenario.Input, context, client.DeletePost(), reference, scenario.CallID),
 	}}
 }

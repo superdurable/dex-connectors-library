@@ -176,6 +176,46 @@ spec:
           default: true
           description: Sample Buffer result.
           output: {id: post-1, text: Sample post, channelId: channel-1}
+    - name: createScheduledPost
+      goName: CreateScheduledPost
+      inputType: CreateScheduledPostInput
+      outputType: PostProfile
+      kind: mutation
+      description: Create a text post scheduled for a specific UTC time.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Buffer scheduled the post.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the post., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A scheduled post may have been created but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample scheduled post.
+          output: {id: post-2, text: Scheduled post, channelId: channel-1}
+    - name: publishPostNow
+      goName: PublishPostNow
+      inputType: PublishPostNowInput
+      outputType: PostProfile
+      kind: mutation
+      description: Create a text post for immediate publishing.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Buffer accepted the post for immediate publishing.}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the post., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A post may have been published but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample immediately published post.
+          output: {id: post-3, text: Published post, channelId: channel-1}
     - name: editPost
       goName: EditPost
       inputType: EditPostInput

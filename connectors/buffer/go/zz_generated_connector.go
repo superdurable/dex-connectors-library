@@ -46,6 +46,8 @@ type Operations interface {
 	GetPost() sdkgo.Query[GetPostInput, PostProfile]
 	ListPosts() sdkgo.Query[ListPostsInput, PostsList]
 	CreatePost() sdkgo.Mutation[CreatePostInput, PostProfile]
+	CreateScheduledPost() sdkgo.Mutation[CreateScheduledPostInput, PostProfile]
+	PublishPostNow() sdkgo.Mutation[PublishPostNowInput, PostProfile]
 	EditPost() sdkgo.Mutation[EditPostInput, PostProfile]
 	DeletePost() sdkgo.Mutation[DeletePostInput, PostDeleteResult]
 	GetChannel() sdkgo.Query[GetChannelInput, ChannelProfile]
@@ -70,6 +72,12 @@ func (operations clientOperations) ListPosts() sdkgo.Query[ListPostsInput, Posts
 }
 func (operations clientOperations) CreatePost() sdkgo.Mutation[CreatePostInput, PostProfile] {
 	return operations.client.CreatePost()
+}
+func (operations clientOperations) CreateScheduledPost() sdkgo.Mutation[CreateScheduledPostInput, PostProfile] {
+	return operations.client.CreateScheduledPost()
+}
+func (operations clientOperations) PublishPostNow() sdkgo.Mutation[PublishPostNowInput, PostProfile] {
+	return operations.client.PublishPostNow()
 }
 func (operations clientOperations) EditPost() sdkgo.Mutation[EditPostInput, PostProfile] {
 	return operations.client.EditPost()
@@ -651,6 +659,158 @@ func NewCreatePostStep[IN any](config CreatePostStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreatePostBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateScheduledPostBranchCreated sdkgo.BranchID = "created"
+const CreateScheduledPostBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateScheduledPostBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateScheduledPostBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateScheduledPostDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createScheduledPost"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateScheduledPostBranchCreated, Description: "Buffer scheduled the post."},
+		{ID: CreateScheduledPostBranchProviderRejected, Description: "Buffer conclusively rejected the post.", Optional: true},
+		{ID: CreateScheduledPostBranchUncertain, Description: "A scheduled post may have been created but cannot be confirmed.", Optional: true},
+		{ID: CreateScheduledPostBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateScheduledPostResult = sdkgo.MutationResult[PostProfile]
+
+type CreateScheduledPostStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=buffer"`
+	operationID                       struct{}                                          `connector:"operationId=createScheduledPost"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateScheduledPostInput                 `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateScheduledPostResult]           `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateScheduledPostResult]           `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateScheduledPostResult]           `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateScheduledPostResult]           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateScheduledPostStep[IN any](config CreateScheduledPostStepConfig[IN]) sdkgo.MutationStep[IN, CreateScheduledPostInput, PostProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("buffer connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateScheduledPostInput, PostProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateScheduledPost(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateScheduledPostResult] {
+			branches := make([]sdkgo.BranchTarget[CreateScheduledPostResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateScheduledPostBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateScheduledPostBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateScheduledPostBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateScheduledPostBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const PublishPostNowBranchCreated sdkgo.BranchID = "created"
+const PublishPostNowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishPostNowBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PublishPostNowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishPostNowDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishPostNow"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishPostNowBranchCreated, Description: "Buffer accepted the post for immediate publishing."},
+		{ID: PublishPostNowBranchProviderRejected, Description: "Buffer conclusively rejected the post.", Optional: true},
+		{ID: PublishPostNowBranchUncertain, Description: "A post may have been published but cannot be confirmed.", Optional: true},
+		{ID: PublishPostNowBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type PublishPostNowResult = sdkgo.MutationResult[PostProfile]
+
+type PublishPostNowStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=buffer"`
+	operationID                       struct{}                                          `connector:"operationId=publishPostNow"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) PublishPostNowInput                      `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[PublishPostNowResult]                `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[PublishPostNowResult]                `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[PublishPostNowResult]                `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PublishPostNowResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PostProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewPublishPostNowStep[IN any](config PublishPostNowStepConfig[IN]) sdkgo.MutationStep[IN, PublishPostNowInput, PostProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("buffer connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishPostNowInput, PostProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishPostNow(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishPostNowResult] {
+			branches := make([]sdkgo.BranchTarget[PublishPostNowResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(PublishPostNowBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishPostNowBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PublishPostNowBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishPostNowBranchDefect))
 			}
 			return branches
 		}(),

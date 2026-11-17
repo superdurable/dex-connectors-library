@@ -17,16 +17,18 @@ import (
 
 // Mock is a scripted buffer connection. Script each operation through its accessor.
 type Mock struct {
-	connection        buffer.Connection
-	createIdea        *connectormock.Mutation[buffer.CreateIdeaInput, buffer.IdeaProfile]
-	listOrganizations *connectormock.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList]
-	listChannels      *connectormock.Query[buffer.ListChannelsInput, buffer.ChannelsList]
-	getPost           *connectormock.Query[buffer.GetPostInput, buffer.PostProfile]
-	listPosts         *connectormock.Query[buffer.ListPostsInput, buffer.PostsList]
-	createPost        *connectormock.Mutation[buffer.CreatePostInput, buffer.PostProfile]
-	editPost          *connectormock.Mutation[buffer.EditPostInput, buffer.PostProfile]
-	deletePost        *connectormock.Mutation[buffer.DeletePostInput, buffer.PostDeleteResult]
-	getChannel        *connectormock.Query[buffer.GetChannelInput, buffer.ChannelProfile]
+	connection          buffer.Connection
+	createIdea          *connectormock.Mutation[buffer.CreateIdeaInput, buffer.IdeaProfile]
+	listOrganizations   *connectormock.Query[buffer.ListOrganizationsInput, buffer.OrganizationsList]
+	listChannels        *connectormock.Query[buffer.ListChannelsInput, buffer.ChannelsList]
+	getPost             *connectormock.Query[buffer.GetPostInput, buffer.PostProfile]
+	listPosts           *connectormock.Query[buffer.ListPostsInput, buffer.PostsList]
+	createPost          *connectormock.Mutation[buffer.CreatePostInput, buffer.PostProfile]
+	createScheduledPost *connectormock.Mutation[buffer.CreateScheduledPostInput, buffer.PostProfile]
+	publishPostNow      *connectormock.Mutation[buffer.PublishPostNowInput, buffer.PostProfile]
+	editPost            *connectormock.Mutation[buffer.EditPostInput, buffer.PostProfile]
+	deletePost          *connectormock.Mutation[buffer.DeletePostInput, buffer.PostDeleteResult]
+	getChannel          *connectormock.Query[buffer.GetChannelInput, buffer.ChannelProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -34,15 +36,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createIdea:        connectormock.NewMutation[buffer.CreateIdeaInput, buffer.IdeaProfile](t, buffer.CreateIdeaDefinition),
-		listOrganizations: connectormock.NewQuery[buffer.ListOrganizationsInput, buffer.OrganizationsList](t, buffer.ListOrganizationsDefinition),
-		listChannels:      connectormock.NewQuery[buffer.ListChannelsInput, buffer.ChannelsList](t, buffer.ListChannelsDefinition),
-		getPost:           connectormock.NewQuery[buffer.GetPostInput, buffer.PostProfile](t, buffer.GetPostDefinition),
-		listPosts:         connectormock.NewQuery[buffer.ListPostsInput, buffer.PostsList](t, buffer.ListPostsDefinition),
-		createPost:        connectormock.NewMutation[buffer.CreatePostInput, buffer.PostProfile](t, buffer.CreatePostDefinition),
-		editPost:          connectormock.NewMutation[buffer.EditPostInput, buffer.PostProfile](t, buffer.EditPostDefinition),
-		deletePost:        connectormock.NewMutation[buffer.DeletePostInput, buffer.PostDeleteResult](t, buffer.DeletePostDefinition),
-		getChannel:        connectormock.NewQuery[buffer.GetChannelInput, buffer.ChannelProfile](t, buffer.GetChannelDefinition),
+		createIdea:          connectormock.NewMutation[buffer.CreateIdeaInput, buffer.IdeaProfile](t, buffer.CreateIdeaDefinition),
+		listOrganizations:   connectormock.NewQuery[buffer.ListOrganizationsInput, buffer.OrganizationsList](t, buffer.ListOrganizationsDefinition),
+		listChannels:        connectormock.NewQuery[buffer.ListChannelsInput, buffer.ChannelsList](t, buffer.ListChannelsDefinition),
+		getPost:             connectormock.NewQuery[buffer.GetPostInput, buffer.PostProfile](t, buffer.GetPostDefinition),
+		listPosts:           connectormock.NewQuery[buffer.ListPostsInput, buffer.PostsList](t, buffer.ListPostsDefinition),
+		createPost:          connectormock.NewMutation[buffer.CreatePostInput, buffer.PostProfile](t, buffer.CreatePostDefinition),
+		createScheduledPost: connectormock.NewMutation[buffer.CreateScheduledPostInput, buffer.PostProfile](t, buffer.CreateScheduledPostDefinition),
+		publishPostNow:      connectormock.NewMutation[buffer.PublishPostNowInput, buffer.PostProfile](t, buffer.PublishPostNowDefinition),
+		editPost:            connectormock.NewMutation[buffer.EditPostInput, buffer.PostProfile](t, buffer.EditPostDefinition),
+		deletePost:          connectormock.NewMutation[buffer.DeletePostInput, buffer.PostDeleteResult](t, buffer.DeletePostDefinition),
+		getChannel:          connectormock.NewQuery[buffer.GetChannelInput, buffer.ChannelProfile](t, buffer.GetChannelDefinition),
 	}
 	mock.createIdea.Default(CreateIdeaDefault())
 	mock.listOrganizations.Default(ListOrganizationsDefault())
@@ -50,6 +54,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.getPost.Default(GetPostDefault())
 	mock.listPosts.Default(ListPostsDefault())
 	mock.createPost.Default(CreatePostDefault())
+	mock.createScheduledPost.Default(CreateScheduledPostDefault())
+	mock.publishPostNow.Default(PublishPostNowDefault())
 	mock.editPost.Default(EditPostDefault())
 	mock.deletePost.Default(DeletePostDefault())
 	mock.getChannel.Default(GetChannelDefault())
@@ -94,6 +100,16 @@ func (mock *Mock) CreatePost() *connectormock.Mutation[buffer.CreatePostInput, b
 	return mock.createPost
 }
 
+// CreateScheduledPost returns the createScheduledPost script.
+func (mock *Mock) CreateScheduledPost() *connectormock.Mutation[buffer.CreateScheduledPostInput, buffer.PostProfile] {
+	return mock.createScheduledPost
+}
+
+// PublishPostNow returns the publishPostNow script.
+func (mock *Mock) PublishPostNow() *connectormock.Mutation[buffer.PublishPostNowInput, buffer.PostProfile] {
+	return mock.publishPostNow
+}
+
 // EditPost returns the editPost script.
 func (mock *Mock) EditPost() *connectormock.Mutation[buffer.EditPostInput, buffer.PostProfile] {
 	return mock.editPost
@@ -128,6 +144,12 @@ func (operations mockOperations) ListPosts() sdkgo.Query[buffer.ListPostsInput, 
 }
 func (operations mockOperations) CreatePost() sdkgo.Mutation[buffer.CreatePostInput, buffer.PostProfile] {
 	return operations.mock.createPost
+}
+func (operations mockOperations) CreateScheduledPost() sdkgo.Mutation[buffer.CreateScheduledPostInput, buffer.PostProfile] {
+	return operations.mock.createScheduledPost
+}
+func (operations mockOperations) PublishPostNow() sdkgo.Mutation[buffer.PublishPostNowInput, buffer.PostProfile] {
+	return operations.mock.publishPostNow
 }
 func (operations mockOperations) EditPost() sdkgo.Mutation[buffer.EditPostInput, buffer.PostProfile] {
 	return operations.mock.editPost
@@ -351,6 +373,78 @@ func CreatePostCreatedDefault() connectormock.Case[buffer.PostProfile] {
 
 // CreatePostDefault is the manifest default, createdDefault, which New installs.
 func CreatePostDefault() connectormock.Case[buffer.PostProfile] { return CreatePostCreatedDefault() }
+
+// CreateScheduledPostCreated selects the created branch: Buffer scheduled the post.
+func CreateScheduledPostCreated(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.CreateScheduledPostBranchCreated, value, failure)
+}
+
+// CreateScheduledPostProviderRejected selects the providerRejected branch: Buffer conclusively rejected the post.
+func CreateScheduledPostProviderRejected(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.CreateScheduledPostBranchProviderRejected, value, failure)
+}
+
+// CreateScheduledPostUncertain returns an uncertain createScheduledPost outcome.
+func CreateScheduledPostUncertain(value buffer.PostProfile, failure sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateScheduledPostDefect selects the defect branch: Local input or credentials are invalid.
+func CreateScheduledPostDefect(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.CreateScheduledPostBranchDefect, value, failure)
+}
+
+// CreateScheduledPostRetry asks Dex to retry the createScheduledPost Step, after the delay when it is positive.
+func CreateScheduledPostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Retry[buffer.PostProfile](failure, after)
+}
+
+// CreateScheduledPostCreatedDefault is the manifest mock createdDefault: Sample scheduled post.
+func CreateScheduledPostCreatedDefault() connectormock.Case[buffer.PostProfile] {
+	value := connectormock.MustDecodeOutput[buffer.PostProfile](`{"id":"post-2","text":"Scheduled post","channelId":"channel-1"}`)
+	return connectormock.Branch(buffer.CreateScheduledPostBranchCreated, value, nil)
+}
+
+// CreateScheduledPostDefault is the manifest default, createdDefault, which New installs.
+func CreateScheduledPostDefault() connectormock.Case[buffer.PostProfile] {
+	return CreateScheduledPostCreatedDefault()
+}
+
+// PublishPostNowCreated selects the created branch: Buffer accepted the post for immediate publishing.
+func PublishPostNowCreated(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.PublishPostNowBranchCreated, value, failure)
+}
+
+// PublishPostNowProviderRejected selects the providerRejected branch: Buffer conclusively rejected the post.
+func PublishPostNowProviderRejected(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.PublishPostNowBranchProviderRejected, value, failure)
+}
+
+// PublishPostNowUncertain returns an uncertain publishPostNow outcome.
+func PublishPostNowUncertain(value buffer.PostProfile, failure sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PublishPostNowDefect selects the defect branch: Local input or credentials are invalid.
+func PublishPostNowDefect(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Branch(buffer.PublishPostNowBranchDefect, value, failure)
+}
+
+// PublishPostNowRetry asks Dex to retry the publishPostNow Step, after the delay when it is positive.
+func PublishPostNowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[buffer.PostProfile] {
+	return connectormock.Retry[buffer.PostProfile](failure, after)
+}
+
+// PublishPostNowCreatedDefault is the manifest mock createdDefault: Sample immediately published post.
+func PublishPostNowCreatedDefault() connectormock.Case[buffer.PostProfile] {
+	value := connectormock.MustDecodeOutput[buffer.PostProfile](`{"id":"post-3","text":"Published post","channelId":"channel-1"}`)
+	return connectormock.Branch(buffer.PublishPostNowBranchCreated, value, nil)
+}
+
+// PublishPostNowDefault is the manifest default, createdDefault, which New installs.
+func PublishPostNowDefault() connectormock.Case[buffer.PostProfile] {
+	return PublishPostNowCreatedDefault()
+}
 
 // EditPostUpdated selects the updated branch: Buffer completed the operation.
 func EditPostUpdated(value buffer.PostProfile, failure *sdkgo.Failure) connectormock.Case[buffer.PostProfile] {

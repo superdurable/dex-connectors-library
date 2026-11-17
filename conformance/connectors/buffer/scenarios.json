@@ -2,6 +2,883 @@
   "connector": "buffer",
   "scenarios": [
     {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createPost\":{\"__typename\":\"PostActionSuccess\",\"post\":{\"id\":\"post-2\",\"text\":\"Scheduled post\",\"channelId\":\"channel-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "dueAt": "2030-01-01T10:00:00Z",
+                "mode": "customScheduled",
+                "schedulingType": "automatic",
+                "text": "Scheduled post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-2",
+          "text": "Scheduled post"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Scheduled post"
+      },
+      "name": "createScheduledPost-success",
+      "operation": "createScheduledPost"
+    },
+    {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "dueAt": "2030-01-01T10:00:00Z",
+                "mode": "customScheduled",
+                "schedulingType": "automatic",
+                "text": "Scheduled post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Scheduled post"
+      },
+      "name": "createScheduledPost-providerRejected",
+      "operation": "createScheduledPost"
+    },
+    {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "dueAt": "2030-01-01T10:00:00Z",
+                "mode": "customScheduled",
+                "schedulingType": "automatic",
+                "text": "Scheduled post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Scheduled post"
+      },
+      "name": "createScheduledPost-invalidResponse",
+      "operation": "createScheduledPost"
+    },
+    {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "dueAt": "2030-01-01T10:00:00Z",
+                "mode": "customScheduled",
+                "schedulingType": "automatic",
+                "text": "Scheduled post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Scheduled post"
+      },
+      "name": "createScheduledPost-429",
+      "operation": "createScheduledPost"
+    },
+    {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "dueAt": "2030-01-01T10:00:00Z",
+                "mode": "customScheduled",
+                "schedulingType": "automatic",
+                "text": "Scheduled post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Scheduled post"
+      },
+      "name": "createScheduledPost-503",
+      "operation": "createScheduledPost"
+    },
+    {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "dueAt": "2030-01-01T10:00:00Z",
+                "mode": "customScheduled",
+                "schedulingType": "automatic",
+                "text": "Scheduled post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Scheduled post"
+      },
+      "name": "createScheduledPost-500",
+      "operation": "createScheduledPost"
+    },
+    {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "dueAt": "2030-01-01T10:00:00Z",
+                "mode": "customScheduled",
+                "schedulingType": "automatic",
+                "text": "Scheduled post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Scheduled post"
+      },
+      "name": "createScheduledPost-transportFailure",
+      "operation": "createScheduledPost"
+    },
+    {
+      "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+      "input": {
+        "channelId": "channel-1",
+        "dueAt": "2030-01-01T10:00:00Z",
+        "text": "Scheduled post"
+      },
+      "name": "createScheduledPost-uncertainAfterSendCap",
+      "operation": "createScheduledPost",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "756e4b4c-f603-5eca-ab56-957ae2cbab26",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createPost\":{\"__typename\":\"PostActionSuccess\",\"post\":{\"id\":\"post-3\",\"text\":\"Published post\",\"channelId\":\"channel-1\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "shareNow",
+                "schedulingType": "automatic",
+                "text": "Published post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "channel-1",
+          "id": "post-3",
+          "text": "Published post"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Published post"
+      },
+      "name": "publishPostNow-success",
+      "operation": "publishPostNow"
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}],\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "shareNow",
+                "schedulingType": "automatic",
+                "text": "Published post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Published post"
+      },
+      "name": "publishPostNow-providerRejected",
+      "operation": "publishPostNow"
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "shareNow",
+                "schedulingType": "automatic",
+                "text": "Published post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Published post"
+      },
+      "name": "publishPostNow-invalidResponse",
+      "operation": "publishPostNow"
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "shareNow",
+                "schedulingType": "automatic",
+                "text": "Published post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Published post"
+      },
+      "name": "publishPostNow-429",
+      "operation": "publishPostNow"
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "shareNow",
+                "schedulingType": "automatic",
+                "text": "Published post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Published post"
+      },
+      "name": "publishPostNow-503",
+      "operation": "publishPostNow"
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "shareNow",
+                "schedulingType": "automatic",
+                "text": "Published post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Published post"
+      },
+      "name": "publishPostNow-500",
+      "operation": "publishPostNow"
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { __typename ... on PostActionSuccess { post { id text channelId } } } }",
+            "variables": {
+              "input": {
+                "channelId": "channel-1",
+                "mode": "shareNow",
+                "schedulingType": "automatic",
+                "text": "Published post"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Published post"
+      },
+      "name": "publishPostNow-transportFailure",
+      "operation": "publishPostNow"
+    },
+    {
+      "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "channelId": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2909f836-1398-570a-938a-f30e01eb19ad",
+      "input": {
+        "channelId": "channel-1",
+        "text": "Published post"
+      },
+      "name": "publishPostNow-uncertainAfterSendCap",
+      "operation": "publishPostNow",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "2909f836-1398-570a-938a-f30e01eb19ad",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
       "callId": "1942dc6e-e064-5572-a422-e1d14c18884c",
       "exchanges": [
         {
