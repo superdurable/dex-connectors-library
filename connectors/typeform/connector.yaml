@@ -16,10 +16,10 @@ spec:
       operations: [listForms, getForm, listResponses, upsertWebhook]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-typeform"
       operations: [listForms, getForm, listResponses, upsertWebhook]
-      triggers: []
+      triggers: [responseSubmitted]
   codegen:
     go:
       package: typeform

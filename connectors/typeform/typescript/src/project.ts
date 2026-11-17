@@ -4,12 +4,12 @@
 import type { Call, CredentialProvider } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
-import { TypeformClient } from './client.js';
+import { TypeformClient, type TypeformClientOptions } from './client.js';
 import { newProjectConnection as newGeneratedProjectConnection } from './generated/connection.js';
 import { ConfigSchema, decodeCredentials, type Config, type Credentials } from './generated/models.js';
 
 /** Bind a static Typeform connection from a Dex project. */
-export function newProjectConnection(project: LoadedProject, connectionName: string) {
+export function newProjectConnection(project: LoadedProject, connectionName: string, options: TypeformClientOptions = {}) {
   return newGeneratedProjectConnection(project, connectionName, (loadedProject, name) => {
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'typeform' && entry.connectionName === name);
     if (!selected) throw new TypeError('Typeform project connection is not configured');
@@ -20,6 +20,6 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
         return decodeCredentials(z.record(z.string(), z.unknown()).parse(fields));
       },
     };
-    return new TypeformClient(config, credentials);
+    return new TypeformClient(config, credentials, options);
   });
 }
