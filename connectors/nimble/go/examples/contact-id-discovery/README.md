@@ -1,6 +1,6 @@
 # Nimble contact ID discovery Flow
 
-This runnable Flow calls `listContactIDs` with the static `nimble` Dex Web connection. It stores a bounded contact ID page in an Attribute and completes with the typed result. Start input `{"page":1,"perPage":20}` reads the first page; increment `page` to read another page. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
+This runnable Flow calls `listContactIDs` and `searchContactIDs` with the static `nimble` Dex Web connection. The search branch uses the example keyword `Ada`. The Flow stores a bounded contact ID page in an Attribute and completes with the typed result. Start input `{"page":1,"perPage":20}` reads the first page; increment `page` to read another page. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
 
 ## Strict FDG 2.0 generation
 

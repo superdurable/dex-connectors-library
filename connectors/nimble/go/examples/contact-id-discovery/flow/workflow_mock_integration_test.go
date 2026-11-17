@@ -56,4 +56,7 @@ func TestContactIDDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "5049fb849b85f669e40000dc", output.IDs[0])
 	require.Len(t, mock.ListContactIDs().Calls(), 1)
+	searchCalls := mock.SearchContactIDs().Calls()
+	require.Len(t, searchCalls, 1)
+	require.Equal(t, "Ada", searchCalls[0].Input.Keyword)
 }

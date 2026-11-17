@@ -630,6 +630,1684 @@
       },
       "name": "getContact-transportFailure",
       "operation": "getContact"
+    },
+    {
+      "callId": "nimble-searchContactIDs-success",
+      "exchanges": [
+        {
+          "body": "{\"meta\":{\"page\":1,\"pages\":1,\"per_page\":20,\"total\":1},\"resources\":[\"5049fb849b85f669e40000dc\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/ids",
+          "query": {
+            "keyword": [
+              "Ada"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "ids": [
+            "5049fb849b85f669e40000dc"
+          ],
+          "page": 1,
+          "pages": 1,
+          "perPage": 20,
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Ada",
+        "page": 1,
+        "perPage": 20
+      },
+      "name": "searchContactIDs-success",
+      "operation": "searchContactIDs"
+    },
+    {
+      "callId": "nimble-searchContactIDs-rejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/ids",
+          "query": {
+            "keyword": [
+              "Ada"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "ids": [],
+          "page": 0,
+          "pages": 0,
+          "perPage": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Ada",
+        "page": 1,
+        "perPage": 20
+      },
+      "name": "searchContactIDs-rejected",
+      "operation": "searchContactIDs"
+    },
+    {
+      "callId": "nimble-searchContactIDs-malformed",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/ids",
+          "query": {
+            "keyword": [
+              "Ada"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "ids": [],
+          "page": 0,
+          "pages": 0,
+          "perPage": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Ada",
+        "page": 1,
+        "perPage": 20
+      },
+      "name": "searchContactIDs-malformed",
+      "operation": "searchContactIDs"
+    },
+    {
+      "callId": "nimble-searchContactIDs-rate-limited",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/ids",
+          "query": {
+            "keyword": [
+              "Ada"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Ada",
+        "page": 1,
+        "perPage": 20
+      },
+      "name": "searchContactIDs-rate-limited",
+      "operation": "searchContactIDs"
+    },
+    {
+      "callId": "nimble-searchContactIDs-unavailable",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/ids",
+          "query": {
+            "keyword": [
+              "Ada"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Ada",
+        "page": 1,
+        "perPage": 20
+      },
+      "name": "searchContactIDs-unavailable",
+      "operation": "searchContactIDs"
+    },
+    {
+      "callId": "nimble-searchContactIDs-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/ids",
+          "query": {
+            "keyword": [
+              "Ada"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "Ada",
+        "page": 1,
+        "perPage": 20
+      },
+      "name": "searchContactIDs-transport",
+      "operation": "searchContactIDs"
+    },
+    {
+      "callId": "nimble-searchContactIDs-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "ids": [],
+          "page": 0,
+          "pages": 0,
+          "perPage": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "keyword": "",
+        "page": 0,
+        "perPage": 0
+      },
+      "name": "searchContactIDs-defect",
+      "operation": "searchContactIDs"
+    },
+    {
+      "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"5049fb849b85f669e40000dc\",\"fields\":{\"first name\":[{\"value\":\"Ada\"}],\"last name\":[{\"value\":\"Lovelace\"}],\"email\":[{\"value\":\"ada@example.com\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact",
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            },
+            "record_type": "person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "ada@example.com",
+          "firstName": "Ada",
+          "id": "5049fb849b85f669e40000dc",
+          "lastName": "Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createContact-success",
+      "operation": "createContact"
+    },
+    {
+      "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact",
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            },
+            "record_type": "person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createContact-rejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact",
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            },
+            "record_type": "person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createContact-malformed",
+      "operation": "createContact"
+    },
+    {
+      "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact",
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            },
+            "record_type": "person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createContact-rate-limited",
+      "operation": "createContact"
+    },
+    {
+      "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact",
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            },
+            "record_type": "person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createContact-unavailable",
+      "operation": "createContact"
+    },
+    {
+      "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/contact",
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            },
+            "record_type": "person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "input": {
+        "emailAddress": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createContact-transport",
+      "operation": "createContact"
+    },
+    {
+      "callId": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "377ccce9-3db0-5360-8b1a-815745505ca5",
+      "input": {
+        "emailAddress": "",
+        "firstName": "",
+        "lastName": ""
+      },
+      "name": "createContact-defect",
+      "operation": "createContact"
+    },
+    {
+      "callId": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"5049fb849b85f669e40000dc\",\"fields\":{\"first name\":[{\"value\":\"Ada\"}],\"last name\":[{\"value\":\"Lovelace\"}],\"email\":[{\"value\":\"ada@example.com\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "query": {
+            "type": [
+              "1"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "emailAddress": "ada@example.com",
+          "firstName": "Ada",
+          "id": "5049fb849b85f669e40000dc",
+          "lastName": "Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc",
+        "fields": {
+          "email": [
+            {
+              "value": "ada@example.com"
+            }
+          ],
+          "first name": [
+            {
+              "value": "Ada"
+            }
+          ],
+          "last name": [
+            {
+              "value": "Lovelace"
+            }
+          ]
+        }
+      },
+      "name": "updateContact-success",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "query": {
+            "type": [
+              "1"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc",
+        "fields": {
+          "email": [
+            {
+              "value": "ada@example.com"
+            }
+          ],
+          "first name": [
+            {
+              "value": "Ada"
+            }
+          ],
+          "last name": [
+            {
+              "value": "Lovelace"
+            }
+          ]
+        }
+      },
+      "name": "updateContact-not-found",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "query": {
+            "type": [
+              "1"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc",
+        "fields": {
+          "email": [
+            {
+              "value": "ada@example.com"
+            }
+          ],
+          "first name": [
+            {
+              "value": "Ada"
+            }
+          ],
+          "last name": [
+            {
+              "value": "Lovelace"
+            }
+          ]
+        }
+      },
+      "name": "updateContact-rejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "query": {
+            "type": [
+              "1"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc",
+        "fields": {
+          "email": [
+            {
+              "value": "ada@example.com"
+            }
+          ],
+          "first name": [
+            {
+              "value": "Ada"
+            }
+          ],
+          "last name": [
+            {
+              "value": "Lovelace"
+            }
+          ]
+        }
+      },
+      "name": "updateContact-malformed",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "query": {
+            "type": [
+              "1"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc",
+        "fields": {
+          "email": [
+            {
+              "value": "ada@example.com"
+            }
+          ],
+          "first name": [
+            {
+              "value": "Ada"
+            }
+          ],
+          "last name": [
+            {
+              "value": "Lovelace"
+            }
+          ]
+        }
+      },
+      "name": "updateContact-rate-limited",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "query": {
+            "type": [
+              "1"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc",
+        "fields": {
+          "email": [
+            {
+              "value": "ada@example.com"
+            }
+          ],
+          "first name": [
+            {
+              "value": "Ada"
+            }
+          ],
+          "last name": [
+            {
+              "value": "Lovelace"
+            }
+          ]
+        }
+      },
+      "name": "updateContact-unavailable",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "query": {
+            "type": [
+              "1"
+            ]
+          },
+          "requestBody": {
+            "fields": {
+              "email": [
+                {
+                  "value": "ada@example.com"
+                }
+              ],
+              "first name": [
+                {
+                  "value": "Ada"
+                }
+              ],
+              "last name": [
+                {
+                  "value": "Lovelace"
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc",
+        "fields": {
+          "email": [
+            {
+              "value": "ada@example.com"
+            }
+          ],
+          "first name": [
+            {
+              "value": "Ada"
+            }
+          ],
+          "last name": [
+            {
+              "value": "Lovelace"
+            }
+          ]
+        }
+      },
+      "name": "updateContact-transport",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eeedaf6b-7a8b-5929-a53a-c9d98afd68ba",
+      "input": {
+        "contactId": "",
+        "fields": {}
+      },
+      "name": "updateContact-defect",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "contactId": "5049fb849b85f669e40000dc"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc"
+      },
+      "name": "deleteContact-success",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc"
+      },
+      "name": "deleteContact-not-found",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc"
+      },
+      "name": "deleteContact-rejected",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc"
+      },
+      "name": "deleteContact-rate-limited",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc"
+      },
+      "name": "deleteContact-unavailable",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/contact/5049fb849b85f669e40000dc",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "input": {
+        "contactId": "5049fb849b85f669e40000dc"
+      },
+      "name": "deleteContact-transport",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c562b62a-c6df-516b-95c3-d2340d5d4b69",
+      "input": {
+        "contactId": ""
+      },
+      "name": "deleteContact-defect",
+      "operation": "deleteContact"
     }
   ],
   "schemaVersion": 1

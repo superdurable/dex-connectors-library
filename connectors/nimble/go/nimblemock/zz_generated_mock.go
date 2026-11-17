@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted nimble connection. Script each operation through its accessor.
 type Mock struct {
-	connection     nimble.Connection
-	listContactIDs *connectormock.Query[nimble.ListContactIDsInput, nimble.ContactIDsPage]
-	getContact     *connectormock.Query[nimble.GetContactInput, nimble.ContactMetadata]
+	connection       nimble.Connection
+	listContactIDs   *connectormock.Query[nimble.ListContactIDsInput, nimble.ContactIDsPage]
+	getContact       *connectormock.Query[nimble.GetContactInput, nimble.ContactMetadata]
+	searchContactIDs *connectormock.Query[nimble.SearchContactIDsInput, nimble.ContactIDsPage]
+	createContact    *connectormock.Mutation[nimble.CreateContactInput, nimble.ContactMetadata]
+	updateContact    *connectormock.Mutation[nimble.UpdateContactInput, nimble.ContactMetadata]
+	deleteContact    *connectormock.Mutation[nimble.DeleteContactInput, nimble.DeletedContact]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +31,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listContactIDs: connectormock.NewQuery[nimble.ListContactIDsInput, nimble.ContactIDsPage](t, nimble.ListContactIDsDefinition),
-		getContact:     connectormock.NewQuery[nimble.GetContactInput, nimble.ContactMetadata](t, nimble.GetContactDefinition),
+		listContactIDs:   connectormock.NewQuery[nimble.ListContactIDsInput, nimble.ContactIDsPage](t, nimble.ListContactIDsDefinition),
+		getContact:       connectormock.NewQuery[nimble.GetContactInput, nimble.ContactMetadata](t, nimble.GetContactDefinition),
+		searchContactIDs: connectormock.NewQuery[nimble.SearchContactIDsInput, nimble.ContactIDsPage](t, nimble.SearchContactIDsDefinition),
+		createContact:    connectormock.NewMutation[nimble.CreateContactInput, nimble.ContactMetadata](t, nimble.CreateContactDefinition),
+		updateContact:    connectormock.NewMutation[nimble.UpdateContactInput, nimble.ContactMetadata](t, nimble.UpdateContactDefinition),
+		deleteContact:    connectormock.NewMutation[nimble.DeleteContactInput, nimble.DeletedContact](t, nimble.DeleteContactDefinition),
 	}
 	mock.listContactIDs.Default(ListContactIDsDefault())
 	mock.getContact.Default(GetContactDefault())
+	mock.searchContactIDs.Default(SearchContactIDsDefault())
+	mock.createContact.Default(CreateContactDefault())
+	mock.updateContact.Default(UpdateContactDefault())
+	mock.deleteContact.Default(DeleteContactDefault())
 	connection, err := nimble.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "nimble", Name: connectionName})
 	if err != nil {
 		t.Fatalf("nimble mock connection: %v", err)
@@ -53,6 +65,26 @@ func (mock *Mock) GetContact() *connectormock.Query[nimble.GetContactInput, nimb
 	return mock.getContact
 }
 
+// SearchContactIDs returns the searchContactIDs script.
+func (mock *Mock) SearchContactIDs() *connectormock.Query[nimble.SearchContactIDsInput, nimble.ContactIDsPage] {
+	return mock.searchContactIDs
+}
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[nimble.CreateContactInput, nimble.ContactMetadata] {
+	return mock.createContact
+}
+
+// UpdateContact returns the updateContact script.
+func (mock *Mock) UpdateContact() *connectormock.Mutation[nimble.UpdateContactInput, nimble.ContactMetadata] {
+	return mock.updateContact
+}
+
+// DeleteContact returns the deleteContact script.
+func (mock *Mock) DeleteContact() *connectormock.Mutation[nimble.DeleteContactInput, nimble.DeletedContact] {
+	return mock.deleteContact
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListContactIDs() sdkgo.Query[nimble.ListContactIDsInput, nimble.ContactIDsPage] {
@@ -60,6 +92,18 @@ func (operations mockOperations) ListContactIDs() sdkgo.Query[nimble.ListContact
 }
 func (operations mockOperations) GetContact() sdkgo.Query[nimble.GetContactInput, nimble.ContactMetadata] {
 	return operations.mock.getContact
+}
+func (operations mockOperations) SearchContactIDs() sdkgo.Query[nimble.SearchContactIDsInput, nimble.ContactIDsPage] {
+	return operations.mock.searchContactIDs
+}
+func (operations mockOperations) CreateContact() sdkgo.Mutation[nimble.CreateContactInput, nimble.ContactMetadata] {
+	return operations.mock.createContact
+}
+func (operations mockOperations) UpdateContact() sdkgo.Mutation[nimble.UpdateContactInput, nimble.ContactMetadata] {
+	return operations.mock.updateContact
+}
+func (operations mockOperations) DeleteContact() sdkgo.Mutation[nimble.DeleteContactInput, nimble.DeletedContact] {
+	return operations.mock.deleteContact
 }
 
 // ListContactIDsListed selects the listed branch: Nimble returned the requested contact ID page.
@@ -136,3 +180,152 @@ func GetContactFoundDefault() connectormock.Case[nimble.ContactMetadata] {
 
 // GetContactDefault is the manifest default, foundDefault, which New installs.
 func GetContactDefault() connectormock.Case[nimble.ContactMetadata] { return GetContactFoundDefault() }
+
+// SearchContactIDsListed selects the listed branch: Nimble returned matching contact IDs.
+func SearchContactIDsListed(value nimble.ContactIDsPage, failure *sdkgo.Failure) connectormock.Case[nimble.ContactIDsPage] {
+	return connectormock.Branch(nimble.SearchContactIDsBranchListed, value, failure)
+}
+
+// SearchContactIDsProviderRejected selects the providerRejected branch: Nimble rejected the search.
+func SearchContactIDsProviderRejected(value nimble.ContactIDsPage, failure *sdkgo.Failure) connectormock.Case[nimble.ContactIDsPage] {
+	return connectormock.Branch(nimble.SearchContactIDsBranchProviderRejected, value, failure)
+}
+
+// SearchContactIDsInvalidResponse selects the invalidResponse branch: Nimble returned malformed or oversized JSON.
+func SearchContactIDsInvalidResponse(value nimble.ContactIDsPage, failure *sdkgo.Failure) connectormock.Case[nimble.ContactIDsPage] {
+	return connectormock.Branch(nimble.SearchContactIDsBranchInvalidResponse, value, failure)
+}
+
+// SearchContactIDsDefect selects the defect branch: Invalid keyword or page input.
+func SearchContactIDsDefect(value nimble.ContactIDsPage, failure *sdkgo.Failure) connectormock.Case[nimble.ContactIDsPage] {
+	return connectormock.Branch(nimble.SearchContactIDsBranchDefect, value, failure)
+}
+
+// SearchContactIDsRetry asks Dex to retry the searchContactIDs Step, after the delay when it is positive.
+func SearchContactIDsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[nimble.ContactIDsPage] {
+	return connectormock.Retry[nimble.ContactIDsPage](failure, after)
+}
+
+// SearchContactIDsListedDefault is the manifest mock listedDefault: Example matching contact ID.
+func SearchContactIDsListedDefault() connectormock.Case[nimble.ContactIDsPage] {
+	value := connectormock.MustDecodeOutput[nimble.ContactIDsPage](`{"ids":["5049fb849b85f669e40000dc"],"page":1,"pages":1,"perPage":20,"total":1}`)
+	return connectormock.Branch(nimble.SearchContactIDsBranchListed, value, nil)
+}
+
+// SearchContactIDsDefault is the manifest default, listedDefault, which New installs.
+func SearchContactIDsDefault() connectormock.Case[nimble.ContactIDsPage] {
+	return SearchContactIDsListedDefault()
+}
+
+// CreateContactCreated selects the created branch: Nimble created the contact.
+func CreateContactCreated(value nimble.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Branch(nimble.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Nimble rejected the contact.
+func CreateContactProviderRejected(value nimble.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Branch(nimble.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Invalid contact input or credentials.
+func CreateContactDefect(value nimble.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Branch(nimble.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value nimble.ContactMetadata, failure sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Retry[nimble.ContactMetadata](failure, after)
+}
+
+// CreateContactCreatedDefault is the manifest mock createdDefault: Example created contact.
+func CreateContactCreatedDefault() connectormock.Case[nimble.ContactMetadata] {
+	value := connectormock.MustDecodeOutput[nimble.ContactMetadata](`{"id":"5049fb849b85f669e40000dc","firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
+	return connectormock.Branch(nimble.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createdDefault, which New installs.
+func CreateContactDefault() connectormock.Case[nimble.ContactMetadata] {
+	return CreateContactCreatedDefault()
+}
+
+// UpdateContactUpdated selects the updated branch: Nimble updated the contact.
+func UpdateContactUpdated(value nimble.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Branch(nimble.UpdateContactBranchUpdated, value, failure)
+}
+
+// UpdateContactNotFound selects the notFound branch: Nimble did not find the contact.
+func UpdateContactNotFound(value nimble.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Branch(nimble.UpdateContactBranchNotFound, value, failure)
+}
+
+// UpdateContactProviderRejected selects the providerRejected branch: Nimble rejected the update.
+func UpdateContactProviderRejected(value nimble.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Branch(nimble.UpdateContactBranchProviderRejected, value, failure)
+}
+
+// UpdateContactInvalidResponse selects the invalidResponse branch: Nimble returned an invalid contact.
+func UpdateContactInvalidResponse(value nimble.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Branch(nimble.UpdateContactBranchInvalidResponse, value, failure)
+}
+
+// UpdateContactDefect selects the defect branch: Invalid contact input or credentials.
+func UpdateContactDefect(value nimble.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Branch(nimble.UpdateContactBranchDefect, value, failure)
+}
+
+// UpdateContactRetry asks Dex to retry the updateContact Step, after the delay when it is positive.
+func UpdateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[nimble.ContactMetadata] {
+	return connectormock.Retry[nimble.ContactMetadata](failure, after)
+}
+
+// UpdateContactUpdatedDefault is the manifest mock updatedDefault: Example updated contact.
+func UpdateContactUpdatedDefault() connectormock.Case[nimble.ContactMetadata] {
+	value := connectormock.MustDecodeOutput[nimble.ContactMetadata](`{"id":"5049fb849b85f669e40000dc","firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`)
+	return connectormock.Branch(nimble.UpdateContactBranchUpdated, value, nil)
+}
+
+// UpdateContactDefault is the manifest default, updatedDefault, which New installs.
+func UpdateContactDefault() connectormock.Case[nimble.ContactMetadata] {
+	return UpdateContactUpdatedDefault()
+}
+
+// DeleteContactDeleted selects the deleted branch: Nimble deleted the contact.
+func DeleteContactDeleted(value nimble.DeletedContact, failure *sdkgo.Failure) connectormock.Case[nimble.DeletedContact] {
+	return connectormock.Branch(nimble.DeleteContactBranchDeleted, value, failure)
+}
+
+// DeleteContactNotFound selects the notFound branch: Nimble did not find the contact.
+func DeleteContactNotFound(value nimble.DeletedContact, failure *sdkgo.Failure) connectormock.Case[nimble.DeletedContact] {
+	return connectormock.Branch(nimble.DeleteContactBranchNotFound, value, failure)
+}
+
+// DeleteContactProviderRejected selects the providerRejected branch: Nimble rejected the deletion.
+func DeleteContactProviderRejected(value nimble.DeletedContact, failure *sdkgo.Failure) connectormock.Case[nimble.DeletedContact] {
+	return connectormock.Branch(nimble.DeleteContactBranchProviderRejected, value, failure)
+}
+
+// DeleteContactDefect selects the defect branch: Invalid contact ID or credentials.
+func DeleteContactDefect(value nimble.DeletedContact, failure *sdkgo.Failure) connectormock.Case[nimble.DeletedContact] {
+	return connectormock.Branch(nimble.DeleteContactBranchDefect, value, failure)
+}
+
+// DeleteContactRetry asks Dex to retry the deleteContact Step, after the delay when it is positive.
+func DeleteContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[nimble.DeletedContact] {
+	return connectormock.Retry[nimble.DeletedContact](failure, after)
+}
+
+// DeleteContactDeletedDefault is the manifest mock deletedDefault: Example deleted contact.
+func DeleteContactDeletedDefault() connectormock.Case[nimble.DeletedContact] {
+	value := connectormock.MustDecodeOutput[nimble.DeletedContact](`{"contactId":"5049fb849b85f669e40000dc"}`)
+	return connectormock.Branch(nimble.DeleteContactBranchDeleted, value, nil)
+}
+
+// DeleteContactDefault is the manifest default, deletedDefault, which New installs.
+func DeleteContactDefault() connectormock.Case[nimble.DeletedContact] {
+	return DeleteContactDeletedDefault()
+}
