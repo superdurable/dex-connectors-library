@@ -203,7 +203,7 @@ spec:
       description: Read Telegram file metadata without constructing a token-bearing download URL.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Telegram returned file metadata.}
         - {id: notFound, goName: NotFound, description: Telegram did not recognize the file ID., optional: true}
@@ -224,7 +224,7 @@ spec:
       description: Read administrator user IDs and statuses without profile details.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Telegram returned the administrators.}
         - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the lookup., optional: true}
@@ -244,7 +244,7 @@ spec:
       description: Read a member's numeric user ID and status.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Telegram returned the member.}
         - {id: notFound, goName: NotFound, description: Telegram could not find the member., optional: true}

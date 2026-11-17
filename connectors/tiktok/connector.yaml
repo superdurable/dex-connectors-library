@@ -244,7 +244,7 @@ spec:
       description: Read one page of ad group IDs and names for an authorized advertiser.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: TikTok returned an ad group page.}
         - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the query or token., optional: true}
@@ -264,7 +264,7 @@ spec:
       description: Read one page of ad IDs and names for an authorized advertiser.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: TikTok returned an ad page.}
         - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the query or token., optional: true}

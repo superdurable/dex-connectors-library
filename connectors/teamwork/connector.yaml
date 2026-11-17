@@ -63,7 +63,7 @@ spec:
       description: Read a bounded page of accessible project IDs, names, and states.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Teamwork returned the project page.}
         - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the lookup., optional: true}
@@ -83,7 +83,7 @@ spec:
       description: Read one project's ID, name, and state.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Teamwork returned the project.}
         - {id: notFound, goName: NotFound, description: The project is absent or inaccessible., optional: true}
@@ -145,7 +145,7 @@ spec:
       description: Read a bounded page of task IDs, names, and states.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Teamwork returned the task page.}
         - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the lookup., optional: true}
