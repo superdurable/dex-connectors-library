@@ -1870,6 +1870,1953 @@
       },
       "name": "deleteCustomer-transport",
       "operation": "deleteCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003001",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"products\":{\"pageInfo\":{\"currentPage\":1,\"totalPages\":1,\"totalCount\":1},\"edges\":[{\"node\":{\"id\":\"product-1\",\"name\":\"Example Product\",\"description\":\"Lamp\",\"unitPrice\":\"2.50\",\"isArchived\":false}}]}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "currentPage": 1,
+          "products": [
+            {
+              "businessId": "business-1",
+              "description": "Lamp",
+              "id": "product-1",
+              "isArchived": false,
+              "name": "Example Product",
+              "unitPrice": "2.50"
+            }
+          ],
+          "totalCount": 1,
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-success",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003002",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "products": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-notFound",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "products": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-providerRejected",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "products": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-invalidResponse",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "products": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-defect",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-429",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-5xx",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListProducts($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { products(page: $page, pageSize: $pageSize) { pageInfo { currentPage totalPages totalCount } edges { node { id name description unitPrice isArchived } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listProducts-transport",
+      "operation": "listProducts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003009",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"product\":{\"id\":\"product-1\",\"name\":\"Example Product\",\"description\":\"Lamp\",\"unitPrice\":\"2.50\",\"isArchived\":false}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "description": "Lamp",
+          "id": "product-1",
+          "isArchived": false,
+          "name": "Example Product",
+          "unitPrice": "2.50"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-success",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003010",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-notFound",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-providerRejected",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-invalidResponse",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003013",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "productId": "product-1"
+      },
+      "name": "getProduct-defect",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003014",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-429",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-5xx",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000003016",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetProduct($businessId: ID!, $productId: ID!) { business(id: $businessId) { product(id: $productId) { id name description unitPrice isArchived } } }",
+            "variables": {
+              "businessId": "business-1",
+              "productId": "product-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "getProduct-transport",
+      "operation": "getProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"productCreate\":{\"didSucceed\":true,\"inputErrors\":[],\"product\":{\"id\":\"product-1\",\"name\":\"Example Product\",\"description\":\"Lamp\",\"unitPrice\":\"2.50\",\"isArchived\":false}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "business-1",
+          "description": "Lamp",
+          "id": "product-1",
+          "isArchived": false,
+          "name": "Example Product",
+          "unitPrice": "2.50"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-success",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-providerRejected",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-defect",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-429",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-5xx",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "name": "createProduct-transport",
+      "operation": "createProduct"
+    },
+    {
+      "attempts": 3,
+      "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateProduct($input: ProductCreateInput!) { productCreate(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "description": "Lamp",
+                "incomeAccountId": "account-1",
+                "name": "Example Product",
+                "unitPrice": "2.50"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+      "input": {
+        "businessId": "business-1",
+        "description": "Lamp",
+        "incomeAccountId": "account-1",
+        "name": "Example Product",
+        "unitPrice": "2.50"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "200fba28-5e5e-50b4-a9eb-2e187f9bcd59",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProduct-uncertain",
+      "operation": "createProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"productPatch\":{\"didSucceed\":true,\"inputErrors\":[],\"product\":{\"id\":\"product-1\",\"name\":\"Updated Product\",\"description\":\"Lamp\",\"unitPrice\":\"3.00\",\"isArchived\":false}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "description": "Lamp",
+          "id": "product-1",
+          "isArchived": false,
+          "name": "Updated Product",
+          "unitPrice": "3.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-success",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-providerRejected",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-invalidResponse",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-defect",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-429",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-5xx",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateProduct($input: ProductPatchInput!) { productPatch(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1",
+                "name": "Updated Product",
+                "unitPrice": "3.00"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e6fea57d-afaa-5b23-af54-b9f2ea62e900",
+      "input": {
+        "businessId": "business-1",
+        "name": "Updated Product",
+        "productId": "product-1",
+        "unitPrice": "3.00"
+      },
+      "name": "updateProduct-transport",
+      "operation": "updateProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"productArchive\":{\"didSucceed\":true,\"inputErrors\":[],\"product\":{\"id\":\"product-1\",\"name\":\"Example Product\",\"description\":\"Lamp\",\"unitPrice\":\"2.50\",\"isArchived\":true}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "archived",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "description": "Lamp",
+          "id": "product-1",
+          "isArchived": true,
+          "name": "Example Product",
+          "unitPrice": "2.50"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-success",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-providerRejected",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-invalidResponse",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "description": "",
+          "id": "",
+          "isArchived": false,
+          "name": "",
+          "unitPrice": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-defect",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-429",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-5xx",
+      "operation": "archiveProduct"
+    },
+    {
+      "callId": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation ArchiveProduct($input: ProductArchiveInput!) { productArchive(input: $input) { didSucceed inputErrors { code } product { id name description unitPrice isArchived } } }",
+            "variables": {
+              "input": {
+                "id": "product-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce544198-9eb5-53c0-b91d-feb8f7500ae5",
+      "input": {
+        "businessId": "business-1",
+        "productId": "product-1"
+      },
+      "name": "archiveProduct-transport",
+      "operation": "archiveProduct"
     }
   ],
   "schemaVersion": 1

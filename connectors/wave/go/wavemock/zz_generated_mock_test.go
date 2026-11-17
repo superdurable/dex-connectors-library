@@ -36,6 +36,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[wave.DeletedCustomer](`{"id":"customer-1"}`)
 			return err
 		}},
+		{name: "listProducts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductPage](`{"businessId":"business-1","products":[{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}],"currentPage":1,"totalPages":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "getProduct/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}`)
+			return err
+		}},
+		{name: "createProduct/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}`)
+			return err
+		}},
+		{name: "updateProduct/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Updated Product","unitPrice":"3.00"}`)
+			return err
+		}},
+		{name: "archiveProduct/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50","isArchived":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -60,5 +80,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
 		t.Errorf("deleteCustomer mock has another definition")
+	}
+	if mock.ListProducts().Definition().Operation.OperationID != "listProducts" {
+		t.Errorf("listProducts mock has another definition")
+	}
+	if mock.GetProduct().Definition().Operation.OperationID != "getProduct" {
+		t.Errorf("getProduct mock has another definition")
+	}
+	if mock.CreateProduct().Definition().Operation.OperationID != "createProduct" {
+		t.Errorf("createProduct mock has another definition")
+	}
+	if mock.UpdateProduct().Definition().Operation.OperationID != "updateProduct" {
+		t.Errorf("updateProduct mock has another definition")
+	}
+	if mock.ArchiveProduct().Definition().Operation.OperationID != "archiveProduct" {
+		t.Errorf("archiveProduct mock has another definition")
 	}
 }

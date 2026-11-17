@@ -13,8 +13,13 @@ The Go, Python, and TypeScript `getCustomer` Query reads one customer from a Wav
 | `NewCreateCustomerStep` | Create a named customer in a business | limited, maximum three possible sends |
 | `NewUpdateCustomerStep` | Replace a customer's name by ID | safe |
 | `NewDeleteCustomerStep` | Delete a customer by ID | safe |
+| `NewListProductsStep` | List one 1-based page of products by business ID | safe |
+| `NewGetProductStep` | Read one product by business and product IDs | safe |
+| `NewCreateProductStep` | Create a sold product with a price and income account | limited, maximum three possible sends |
+| `NewUpdateProductStep` | Replace a product's name and unit price | safe |
+| `NewArchiveProductStep` | Archive a product by ID | safe |
 
-Wave's `customerCreate` GraphQL mutation has no documented request idempotency token. After an unknown outcome, the create Step resends within its configured cap and selects `uncertain` when the cap is reached; customer name alone cannot confirm that this request created a record.
+Wave's `customerCreate` and `productCreate` GraphQL mutations have no documented request idempotency token. After an unknown outcome, either create Step resends within its configured cap and selects `uncertain` when the cap is reached; a user-chosen name alone cannot confirm which request created a record. For a sold product, obtain `incomeAccountId` from the Wave API Playground's business accounts query; `unitPrice` is a decimal amount in the business's major currency unit with at most five fractional digits.
 
 ## Connection and configuration
 

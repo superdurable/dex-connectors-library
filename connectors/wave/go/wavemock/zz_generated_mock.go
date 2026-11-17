@@ -23,6 +23,11 @@ type Mock struct {
 	createCustomer *connectormock.Mutation[wave.CreateCustomerInput, wave.CustomerProfile]
 	updateCustomer *connectormock.Mutation[wave.UpdateCustomerInput, wave.CustomerProfile]
 	deleteCustomer *connectormock.Mutation[wave.DeleteCustomerInput, wave.DeletedCustomer]
+	listProducts   *connectormock.Query[wave.ListProductsInput, wave.ProductPage]
+	getProduct     *connectormock.Query[wave.GetProductInput, wave.ProductProfile]
+	createProduct  *connectormock.Mutation[wave.CreateProductInput, wave.ProductProfile]
+	updateProduct  *connectormock.Mutation[wave.UpdateProductInput, wave.ProductProfile]
+	archiveProduct *connectormock.Mutation[wave.ArchiveProductInput, wave.ProductProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,12 +40,22 @@ func New(t testing.TB, connectionName string) *Mock {
 		createCustomer: connectormock.NewMutation[wave.CreateCustomerInput, wave.CustomerProfile](t, wave.CreateCustomerDefinition),
 		updateCustomer: connectormock.NewMutation[wave.UpdateCustomerInput, wave.CustomerProfile](t, wave.UpdateCustomerDefinition),
 		deleteCustomer: connectormock.NewMutation[wave.DeleteCustomerInput, wave.DeletedCustomer](t, wave.DeleteCustomerDefinition),
+		listProducts:   connectormock.NewQuery[wave.ListProductsInput, wave.ProductPage](t, wave.ListProductsDefinition),
+		getProduct:     connectormock.NewQuery[wave.GetProductInput, wave.ProductProfile](t, wave.GetProductDefinition),
+		createProduct:  connectormock.NewMutation[wave.CreateProductInput, wave.ProductProfile](t, wave.CreateProductDefinition),
+		updateProduct:  connectormock.NewMutation[wave.UpdateProductInput, wave.ProductProfile](t, wave.UpdateProductDefinition),
+		archiveProduct: connectormock.NewMutation[wave.ArchiveProductInput, wave.ProductProfile](t, wave.ArchiveProductDefinition),
 	}
 	mock.getCustomer.Default(GetCustomerDefault())
 	mock.listCustomers.Default(ListCustomersDefault())
 	mock.createCustomer.Default(CreateCustomerDefault())
 	mock.updateCustomer.Default(UpdateCustomerDefault())
 	mock.deleteCustomer.Default(DeleteCustomerDefault())
+	mock.listProducts.Default(ListProductsDefault())
+	mock.getProduct.Default(GetProductDefault())
+	mock.createProduct.Default(CreateProductDefault())
+	mock.updateProduct.Default(UpdateProductDefault())
+	mock.archiveProduct.Default(ArchiveProductDefault())
 	connection, err := wave.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "wave", Name: connectionName})
 	if err != nil {
 		t.Fatalf("wave mock connection: %v", err)
@@ -77,6 +92,31 @@ func (mock *Mock) DeleteCustomer() *connectormock.Mutation[wave.DeleteCustomerIn
 	return mock.deleteCustomer
 }
 
+// ListProducts returns the listProducts script.
+func (mock *Mock) ListProducts() *connectormock.Query[wave.ListProductsInput, wave.ProductPage] {
+	return mock.listProducts
+}
+
+// GetProduct returns the getProduct script.
+func (mock *Mock) GetProduct() *connectormock.Query[wave.GetProductInput, wave.ProductProfile] {
+	return mock.getProduct
+}
+
+// CreateProduct returns the createProduct script.
+func (mock *Mock) CreateProduct() *connectormock.Mutation[wave.CreateProductInput, wave.ProductProfile] {
+	return mock.createProduct
+}
+
+// UpdateProduct returns the updateProduct script.
+func (mock *Mock) UpdateProduct() *connectormock.Mutation[wave.UpdateProductInput, wave.ProductProfile] {
+	return mock.updateProduct
+}
+
+// ArchiveProduct returns the archiveProduct script.
+func (mock *Mock) ArchiveProduct() *connectormock.Mutation[wave.ArchiveProductInput, wave.ProductProfile] {
+	return mock.archiveProduct
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetCustomer() sdkgo.Query[wave.GetCustomerInput, wave.CustomerProfile] {
@@ -93,6 +133,21 @@ func (operations mockOperations) UpdateCustomer() sdkgo.Mutation[wave.UpdateCust
 }
 func (operations mockOperations) DeleteCustomer() sdkgo.Mutation[wave.DeleteCustomerInput, wave.DeletedCustomer] {
 	return operations.mock.deleteCustomer
+}
+func (operations mockOperations) ListProducts() sdkgo.Query[wave.ListProductsInput, wave.ProductPage] {
+	return operations.mock.listProducts
+}
+func (operations mockOperations) GetProduct() sdkgo.Query[wave.GetProductInput, wave.ProductProfile] {
+	return operations.mock.getProduct
+}
+func (operations mockOperations) CreateProduct() sdkgo.Mutation[wave.CreateProductInput, wave.ProductProfile] {
+	return operations.mock.createProduct
+}
+func (operations mockOperations) UpdateProduct() sdkgo.Mutation[wave.UpdateProductInput, wave.ProductProfile] {
+	return operations.mock.updateProduct
+}
+func (operations mockOperations) ArchiveProduct() sdkgo.Mutation[wave.ArchiveProductInput, wave.ProductProfile] {
+	return operations.mock.archiveProduct
 }
 
 // GetCustomerFound selects the found branch: Wave returned the customer.
@@ -281,4 +336,190 @@ func DeleteCustomerDeletedDefault() connectormock.Case[wave.DeletedCustomer] {
 // DeleteCustomerDefault is the manifest default, deletedDefault, which New installs.
 func DeleteCustomerDefault() connectormock.Case[wave.DeletedCustomer] {
 	return DeleteCustomerDeletedDefault()
+}
+
+// ListProductsListed selects the listed branch: Wave returned a page of products.
+func ListProductsListed(value wave.ProductPage, failure *sdkgo.Failure) connectormock.Case[wave.ProductPage] {
+	return connectormock.Branch(wave.ListProductsBranchListed, value, failure)
+}
+
+// ListProductsNotFound selects the notFound branch: The business was not found.
+func ListProductsNotFound(value wave.ProductPage, failure *sdkgo.Failure) connectormock.Case[wave.ProductPage] {
+	return connectormock.Branch(wave.ListProductsBranchNotFound, value, failure)
+}
+
+// ListProductsProviderRejected selects the providerRejected branch: Wave rejected the query.
+func ListProductsProviderRejected(value wave.ProductPage, failure *sdkgo.Failure) connectormock.Case[wave.ProductPage] {
+	return connectormock.Branch(wave.ListProductsBranchProviderRejected, value, failure)
+}
+
+// ListProductsInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func ListProductsInvalidResponse(value wave.ProductPage, failure *sdkgo.Failure) connectormock.Case[wave.ProductPage] {
+	return connectormock.Branch(wave.ListProductsBranchInvalidResponse, value, failure)
+}
+
+// ListProductsDefect selects the defect branch: Input or credentials are invalid.
+func ListProductsDefect(value wave.ProductPage, failure *sdkgo.Failure) connectormock.Case[wave.ProductPage] {
+	return connectormock.Branch(wave.ListProductsBranchDefect, value, failure)
+}
+
+// ListProductsRetry asks Dex to retry the listProducts Step, after the delay when it is positive.
+func ListProductsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.ProductPage] {
+	return connectormock.Retry[wave.ProductPage](failure, after)
+}
+
+// ListProductsListedDefault is the manifest mock listedDefault: One example product was listed.
+func ListProductsListedDefault() connectormock.Case[wave.ProductPage] {
+	value := connectormock.MustDecodeOutput[wave.ProductPage](`{"businessId":"business-1","products":[{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}],"currentPage":1,"totalPages":1,"totalCount":1}`)
+	return connectormock.Branch(wave.ListProductsBranchListed, value, nil)
+}
+
+// ListProductsDefault is the manifest default, listedDefault, which New installs.
+func ListProductsDefault() connectormock.Case[wave.ProductPage] { return ListProductsListedDefault() }
+
+// GetProductFound selects the found branch: Wave returned the product.
+func GetProductFound(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.GetProductBranchFound, value, failure)
+}
+
+// GetProductNotFound selects the notFound branch: The business or product was not found.
+func GetProductNotFound(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.GetProductBranchNotFound, value, failure)
+}
+
+// GetProductProviderRejected selects the providerRejected branch: Wave rejected the query.
+func GetProductProviderRejected(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.GetProductBranchProviderRejected, value, failure)
+}
+
+// GetProductInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func GetProductInvalidResponse(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.GetProductBranchInvalidResponse, value, failure)
+}
+
+// GetProductDefect selects the defect branch: Input or credentials are invalid.
+func GetProductDefect(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.GetProductBranchDefect, value, failure)
+}
+
+// GetProductRetry asks Dex to retry the getProduct Step, after the delay when it is positive.
+func GetProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Retry[wave.ProductProfile](failure, after)
+}
+
+// GetProductFoundDefault is the manifest mock foundDefault: One example product was found.
+func GetProductFoundDefault() connectormock.Case[wave.ProductProfile] {
+	value := connectormock.MustDecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}`)
+	return connectormock.Branch(wave.GetProductBranchFound, value, nil)
+}
+
+// GetProductDefault is the manifest default, foundDefault, which New installs.
+func GetProductDefault() connectormock.Case[wave.ProductProfile] { return GetProductFoundDefault() }
+
+// CreateProductCreated selects the created branch: Wave created the product.
+func CreateProductCreated(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.CreateProductBranchCreated, value, failure)
+}
+
+// CreateProductProviderRejected selects the providerRejected branch: Wave rejected the product input.
+func CreateProductProviderRejected(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.CreateProductBranchProviderRejected, value, failure)
+}
+
+// CreateProductUncertain returns an uncertain createProduct outcome.
+func CreateProductUncertain(value wave.ProductProfile, failure sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateProductDefect selects the defect branch: Input or credentials are invalid.
+func CreateProductDefect(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.CreateProductBranchDefect, value, failure)
+}
+
+// CreateProductRetry asks Dex to retry the createProduct Step, after the delay when it is positive.
+func CreateProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Retry[wave.ProductProfile](failure, after)
+}
+
+// CreateProductCreatedDefault is the manifest mock createdDefault: One example product was created.
+func CreateProductCreatedDefault() connectormock.Case[wave.ProductProfile] {
+	value := connectormock.MustDecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50"}`)
+	return connectormock.Branch(wave.CreateProductBranchCreated, value, nil)
+}
+
+// CreateProductDefault is the manifest default, createdDefault, which New installs.
+func CreateProductDefault() connectormock.Case[wave.ProductProfile] {
+	return CreateProductCreatedDefault()
+}
+
+// UpdateProductUpdated selects the updated branch: Wave updated the product.
+func UpdateProductUpdated(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.UpdateProductBranchUpdated, value, failure)
+}
+
+// UpdateProductProviderRejected selects the providerRejected branch: Wave rejected the update.
+func UpdateProductProviderRejected(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.UpdateProductBranchProviderRejected, value, failure)
+}
+
+// UpdateProductInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func UpdateProductInvalidResponse(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.UpdateProductBranchInvalidResponse, value, failure)
+}
+
+// UpdateProductDefect selects the defect branch: Input or credentials are invalid.
+func UpdateProductDefect(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.UpdateProductBranchDefect, value, failure)
+}
+
+// UpdateProductRetry asks Dex to retry the updateProduct Step, after the delay when it is positive.
+func UpdateProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Retry[wave.ProductProfile](failure, after)
+}
+
+// UpdateProductUpdatedDefault is the manifest mock updatedDefault: One example product was updated.
+func UpdateProductUpdatedDefault() connectormock.Case[wave.ProductProfile] {
+	value := connectormock.MustDecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Updated Product","unitPrice":"3.00"}`)
+	return connectormock.Branch(wave.UpdateProductBranchUpdated, value, nil)
+}
+
+// UpdateProductDefault is the manifest default, updatedDefault, which New installs.
+func UpdateProductDefault() connectormock.Case[wave.ProductProfile] {
+	return UpdateProductUpdatedDefault()
+}
+
+// ArchiveProductArchived selects the archived branch: Wave archived the product.
+func ArchiveProductArchived(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.ArchiveProductBranchArchived, value, failure)
+}
+
+// ArchiveProductProviderRejected selects the providerRejected branch: Wave rejected the archive request.
+func ArchiveProductProviderRejected(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.ArchiveProductBranchProviderRejected, value, failure)
+}
+
+// ArchiveProductInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func ArchiveProductInvalidResponse(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.ArchiveProductBranchInvalidResponse, value, failure)
+}
+
+// ArchiveProductDefect selects the defect branch: Input or credentials are invalid.
+func ArchiveProductDefect(value wave.ProductProfile, failure *sdkgo.Failure) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Branch(wave.ArchiveProductBranchDefect, value, failure)
+}
+
+// ArchiveProductRetry asks Dex to retry the archiveProduct Step, after the delay when it is positive.
+func ArchiveProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.ProductProfile] {
+	return connectormock.Retry[wave.ProductProfile](failure, after)
+}
+
+// ArchiveProductArchivedDefault is the manifest mock archivedDefault: One example product was archived.
+func ArchiveProductArchivedDefault() connectormock.Case[wave.ProductProfile] {
+	value := connectormock.MustDecodeOutput[wave.ProductProfile](`{"businessId":"business-1","id":"product-1","name":"Example Product","unitPrice":"2.50","isArchived":true}`)
+	return connectormock.Branch(wave.ArchiveProductBranchArchived, value, nil)
+}
+
+// ArchiveProductDefault is the manifest default, archivedDefault, which New installs.
+func ArchiveProductDefault() connectormock.Case[wave.ProductProfile] {
+	return ArchiveProductArchivedDefault()
 }

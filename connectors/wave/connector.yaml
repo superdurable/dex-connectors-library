@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: wave
   displayName: Wave
-  description: Read and manage Wave customers within a business.
+  description: Read and manage Wave customers and products within a business.
   company: Wave
   categories: [finance-payments]
   version: v0.2.0
@@ -141,3 +141,85 @@ spec:
         - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: One example customer was deleted., output: {id: customer-1}}
+    - name: listProducts
+      goName: ListProducts
+      inputType: ListProductsInput
+      outputType: ProductPage
+      kind: query
+      description: List one page of products and services for a business.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Wave returned a page of products.}
+        - {id: notFound, goName: NotFound, description: The business was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One example product was listed., output: {businessId: business-1, products: [{businessId: business-1, id: product-1, name: Example Product, unitPrice: '2.50'}], currentPage: 1, totalPages: 1, totalCount: 1}}
+    - name: getProduct
+      goName: GetProduct
+      inputType: GetProductInput
+      outputType: ProductProfile
+      kind: query
+      description: Read a product by business and product IDs.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Wave returned the product.}
+        - {id: notFound, goName: NotFound, description: The business or product was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One example product was found., output: {businessId: business-1, id: product-1, name: Example Product, unitPrice: '2.50'}}
+    - name: createProduct
+      goName: CreateProduct
+      inputType: CreateProductInput
+      outputType: ProductProfile
+      kind: mutation
+      description: Create a priced product in a business.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Wave created the product.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the product input., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One example product was created., output: {businessId: business-1, id: product-1, name: Example Product, unitPrice: '2.50'}}
+    - name: updateProduct
+      goName: UpdateProduct
+      inputType: UpdateProductInput
+      outputType: ProductProfile
+      kind: mutation
+      description: Replace a product's name and unit price.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Wave updated the product.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One example product was updated., output: {businessId: business-1, id: product-1, name: Updated Product, unitPrice: '3.00'}}
+    - name: archiveProduct
+      goName: ArchiveProduct
+      inputType: ArchiveProductInput
+      outputType: ProductProfile
+      kind: mutation
+      description: Archive a product by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Wave archived the product.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the archive request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: archivedDefault, branch: archived, default: true, description: One example product was archived., output: {businessId: business-1, id: product-1, name: Example Product, unitPrice: '2.50', isArchived: true}}
