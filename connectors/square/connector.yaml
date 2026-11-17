@@ -46,12 +46,12 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, INVENTORY_READ/WRITE, and INVOICES_READ/WRITE for the corresponding operations. Invoice writes also need ORDERS_WRITE. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
+        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, INVENTORY_READ/WRITE, INVOICES_READ/WRITE, and MERCHANT_PROFILE_READ for the corresponding operations. Invoice writes also need ORDERS_WRITE. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
         required: true
     guide:
       startURL: https://developer.squareup.com/apps
       steps:
-        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, INVENTORY_READ/WRITE, and INVOICES_READ/WRITE for the corresponding operation families; invoice writes also require ORDERS_WRITE. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
+        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, INVENTORY_READ/WRITE, INVOICES_READ/WRITE, and MERCHANT_PROFILE_READ for the corresponding operation families; invoice writes also require ORDERS_WRITE. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: listPayments
@@ -734,3 +734,44 @@ spec:
           description: A synthetic Square reconciled inventory count.
           default: true
           output: {counts: [{catalog_object_id: variation_101, location_id: loc_101, state: IN_STOCK, quantity: "5"}], cursor: ""}
+    - name: listLocations
+      goName: ListLocations
+      inputType: ListLocationsInput
+      outputType: LocationList
+      kind: query
+      description: List seller locations and their IDs.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Square returned seller locations.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: A synthetic Square location list.
+          default: true
+          output: {locations: [{id: loc_101, name: Main, status: ACTIVE, currency: USD}]}
+    - name: getLocation
+      goName: GetLocation
+      inputType: GetLocationInput
+      outputType: Location
+      kind: query
+      description: Read one seller location and its details.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Square returned the seller location.}
+        - {id: notFound, goName: NotFound, description: The location was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: A synthetic Square location.
+          default: true
+          output: {location: {id: loc_101, name: Main, status: ACTIVE, currency: USD}}

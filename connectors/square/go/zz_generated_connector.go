@@ -73,6 +73,8 @@ type Operations interface {
 	CancelInvoice() sdkgo.Mutation[CancelInvoiceInput, Invoice]
 	DeleteInvoice() sdkgo.Mutation[DeleteInvoiceInput, DeletedInvoice]
 	SetInventoryPhysicalCount() sdkgo.Mutation[SetInventoryPhysicalCountInput, InventoryCounts]
+	ListLocations() sdkgo.Query[ListLocationsInput, LocationList]
+	GetLocation() sdkgo.Query[GetLocationInput, Location]
 }
 
 type clientOperations struct{ client *Client }
@@ -175,6 +177,12 @@ func (operations clientOperations) DeleteInvoice() sdkgo.Mutation[DeleteInvoiceI
 }
 func (operations clientOperations) SetInventoryPhysicalCount() sdkgo.Mutation[SetInventoryPhysicalCountInput, InventoryCounts] {
 	return operations.client.SetInventoryPhysicalCount()
+}
+func (operations clientOperations) ListLocations() sdkgo.Query[ListLocationsInput, LocationList] {
+	return operations.client.ListLocations()
+}
+func (operations clientOperations) GetLocation() sdkgo.Query[GetLocationInput, Location] {
+	return operations.client.GetLocation()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -2745,6 +2753,154 @@ func NewSetInventoryPhysicalCountStep[IN any](config SetInventoryPhysicalCountSt
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SetInventoryPhysicalCountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListLocationsBranchListed sdkgo.BranchID = "listed"
+const ListLocationsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListLocationsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListLocationsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListLocationsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLocations"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListLocationsBranchListed, Description: "Square returned seller locations."},
+		{ID: ListLocationsBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: ListLocationsBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: ListLocationsBranchDefect, Description: "Connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListLocationsResult = sdkgo.QueryResult[LocationList]
+
+type ListLocationsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=square"`
+	operationID                    struct{}                                        `connector:"operationId=listLocations"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListLocationsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListLocationsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListLocationsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListLocationsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListLocationsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[LocationList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListLocationsStep[IN any](config ListLocationsStepConfig[IN]) sdkgo.QueryStep[IN, ListLocationsInput, LocationList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListLocationsInput, LocationList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListLocations(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListLocationsResult] {
+			branches := make([]sdkgo.BranchTarget[ListLocationsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListLocationsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListLocationsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListLocationsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListLocationsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetLocationBranchFound sdkgo.BranchID = "found"
+const GetLocationBranchNotFound sdkgo.BranchID = "notFound"
+const GetLocationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetLocationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetLocationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetLocationDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getLocation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetLocationBranchFound, Description: "Square returned the seller location."},
+		{ID: GetLocationBranchNotFound, Description: "The location was not found.", Optional: true},
+		{ID: GetLocationBranchProviderRejected, Description: "Square conclusively rejected the request.", Optional: true},
+		{ID: GetLocationBranchInvalidResponse, Description: "Square returned malformed or oversized JSON.", Optional: true},
+		{ID: GetLocationBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetLocationResult = sdkgo.QueryResult[Location]
+
+type GetLocationStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=square"`
+	operationID                    struct{}                                    `connector:"operationId=getLocation"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetLocationInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetLocationResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetLocationResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetLocationResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetLocationResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetLocationResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Location]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetLocationStep[IN any](config GetLocationStepConfig[IN]) sdkgo.QueryStep[IN, GetLocationInput, Location] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("square connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetLocationInput, Location]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetLocation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetLocationResult] {
+			branches := make([]sdkgo.BranchTarget[GetLocationResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetLocationBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetLocationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetLocationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetLocationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetLocationBranchDefect))
 			}
 			return branches
 		}(),

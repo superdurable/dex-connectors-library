@@ -24,6 +24,7 @@ const (
 	upsertCatalogStepType  = "CreateSquareCatalogItem"
 	setInventoryStepType   = "SetSquareInventoryPhysicalCount"
 	createInvoiceStepType  = "CreateSquareDraftInvoice"
+	listLocationsStepType  = "ListSquareLocations"
 )
 
 // Request is the typed start input for this example.
@@ -66,6 +67,8 @@ type Request struct {
 	InvoiceCustomerID string `json:"invoiceCustomerId,omitempty"`
 	// InvoiceDueDate is the balance due date in YYYY-MM-DD format.
 	InvoiceDueDate string `json:"invoiceDueDate,omitempty"`
+	// ListLocations selects the seller location discovery path.
+	ListLocations bool `json:"listLocations,omitempty"`
 }
 
 // Outcome is the completed resource read.
@@ -86,6 +89,8 @@ type Outcome struct {
 	InventoryCounts square.InventoryCounts `json:"inventoryCounts,omitempty"`
 	// Invoice is the newly created Square draft invoice.
 	Invoice square.Invoice `json:"invoice,omitempty"`
+	// Locations contains the seller's Square locations.
+	Locations square.LocationList `json:"locations,omitempty"`
 }
 
 var outcomeAttribute = dex.DefineAttribute[Outcome]("square-resource-read-outcome")
@@ -153,6 +158,12 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToCreateInvoiceInput,
 			Created:             sdkgo.GoTo(completeInvoice{}),
 		})),
+		dex.DefineStep(square.NewListLocationsStep(square.ListLocationsStepConfig[Request]{
+			StepType: listLocationsStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "square", GroupLabel: "Square", Explanation: "Discover the seller's Square location IDs."},
+			MapToOperationInput: MapToListLocationsInput,
+			Listed:              sdkgo.GoTo(completeLocations{}),
+		})),
 		dex.DefineStep(completeRead{}),
 		dex.DefineStep(completeCashPayment{}),
 		dex.DefineStep(completeRefund{}),
@@ -161,6 +172,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(completeCatalogItem{}),
 		dex.DefineStep(completeInventoryCount{}),
 		dex.DefineStep(completeInvoice{}),
+		dex.DefineStep(completeLocations{}),
 	}
 }
 
@@ -233,6 +245,11 @@ func MapToCreateInvoiceInput(request Request) square.CreateInvoiceInput {
 	return square.CreateInvoiceInput{OrderID: request.InvoiceOrderID, LocationID: request.InvoiceLocationID, CustomerID: request.InvoiceCustomerID, DueDate: request.InvoiceDueDate}
 }
 
+// MapToListLocationsInput requests all seller locations without filters.
+func MapToListLocationsInput(_ Request) square.ListLocationsInput {
+	return square.ListLocationsInput{}
+}
+
 // PrepareRequest rejects invalid local input before a provider call.
 func PrepareRequest(request Request) (Request, error) {
 	if request.RecordCashPayment && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
@@ -272,12 +289,15 @@ func PrepareRequest(request Request) (Request, error) {
 		}
 	}
 	if request.InvoiceOrderID != "" {
-		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "" || request.CatalogItemName != "" || request.InventoryVariationID != "" {
+		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "" || request.CatalogItemName != "" || request.InventoryVariationID != "" || request.ListLocations {
 			return Request{}, errors.New("choose one Square action")
 		}
 		if request.InvoiceLocationID == "" || request.InvoiceCustomerID == "" || request.InvoiceDueDate == "" {
 			return Request{}, errors.New("invoice location, customer, and due date are required")
 		}
+	}
+	if request.ListLocations && (request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "" || request.CatalogItemName != "" || request.InventoryVariationID != "") {
+		return Request{}, errors.New("choose one Square action")
 	}
 	return request, nil
 }
@@ -315,6 +335,9 @@ func (prepareRequest) Execute(ctx dex.Context, request Request) (*dex.StepDecisi
 	}
 	if prepared.InvoiceOrderID != "" {
 		return dex.GoTo(sdkgo.StepRef[Request](createInvoiceStepType), prepared), nil
+	}
+	if prepared.ListLocations {
+		return dex.GoTo(sdkgo.StepRef[Request](listLocationsStepType), prepared), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[Request](readStepType), prepared), nil
 }
@@ -433,6 +456,21 @@ type completeInvoice struct {
 func (completeInvoice) GetStepType() string { return "CompleteInvoice" }
 func (completeInvoice) Execute(ctx dex.Context, result square.CreateInvoiceResult) (*dex.StepDecision, error) {
 	outcome := Outcome{Invoice: result.Value}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:resource-result group-label:"Resource result"
+// dex:explanation text:"Persist the seller locations as the Flow outcome."
+type completeLocations struct {
+	dex.StepDefaultsNoWaitFor[square.ListLocationsResult]
+}
+
+func (completeLocations) GetStepType() string { return "CompleteLocations" }
+func (completeLocations) Execute(ctx dex.Context, result square.ListLocationsResult) (*dex.StepDecision, error) {
+	outcome := Outcome{Locations: result.Value}
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

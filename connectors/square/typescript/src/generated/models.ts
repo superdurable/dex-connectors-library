@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, INVENTORY_READ/WRITE, and INVOICES_READ/WRITE for the corresponding operations. Invoice writes also need ORDERS_WRITE. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token. */
+  /** Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, INVENTORY_READ/WRITE, INVOICES_READ/WRITE, and MERCHANT_PROFILE_READ for the corresponding operations. Invoice writes also need ORDERS_WRITE. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token. */
   accessToken: SecretString;
 }
 

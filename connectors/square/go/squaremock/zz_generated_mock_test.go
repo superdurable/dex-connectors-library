@@ -148,6 +148,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
 			return err
 		}},
+		{name: "listLocations/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.LocationList](`{"locations":[{"id":"loc_101","name":"Main","status":"ACTIVE","currency":"USD"}]}`)
+			return err
+		}},
+		{name: "getLocation/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Location](`{"location":{"id":"loc_101","name":"Main","status":"ACTIVE","currency":"USD"}}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -256,5 +264,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SetInventoryPhysicalCount().Definition().Operation.OperationID != "setInventoryPhysicalCount" {
 		t.Errorf("setInventoryPhysicalCount mock has another definition")
+	}
+	if mock.ListLocations().Definition().Operation.OperationID != "listLocations" {
+		t.Errorf("listLocations mock has another definition")
+	}
+	if mock.GetLocation().Definition().Operation.OperationID != "getLocation" {
+		t.Errorf("getLocation mock has another definition")
 	}
 }

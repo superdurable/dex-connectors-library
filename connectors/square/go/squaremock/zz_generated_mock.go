@@ -51,6 +51,8 @@ type Mock struct {
 	cancelInvoice             *connectormock.Mutation[square.CancelInvoiceInput, square.Invoice]
 	deleteInvoice             *connectormock.Mutation[square.DeleteInvoiceInput, square.DeletedInvoice]
 	setInventoryPhysicalCount *connectormock.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts]
+	listLocations             *connectormock.Query[square.ListLocationsInput, square.LocationList]
+	getLocation               *connectormock.Query[square.GetLocationInput, square.Location]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -91,6 +93,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		cancelInvoice:             connectormock.NewMutation[square.CancelInvoiceInput, square.Invoice](t, square.CancelInvoiceDefinition),
 		deleteInvoice:             connectormock.NewMutation[square.DeleteInvoiceInput, square.DeletedInvoice](t, square.DeleteInvoiceDefinition),
 		setInventoryPhysicalCount: connectormock.NewMutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts](t, square.SetInventoryPhysicalCountDefinition),
+		listLocations:             connectormock.NewQuery[square.ListLocationsInput, square.LocationList](t, square.ListLocationsDefinition),
+		getLocation:               connectormock.NewQuery[square.GetLocationInput, square.Location](t, square.GetLocationDefinition),
 	}
 	mock.listPayments.Default(ListPaymentsDefault())
 	mock.getPayment.Default(GetPaymentDefault())
@@ -125,6 +129,8 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.cancelInvoice.Default(CancelInvoiceDefault())
 	mock.deleteInvoice.Default(DeleteInvoiceDefault())
 	mock.setInventoryPhysicalCount.Default(SetInventoryPhysicalCountDefault())
+	mock.listLocations.Default(ListLocationsDefault())
+	mock.getLocation.Default(GetLocationDefault())
 	connection, err := square.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "square", Name: connectionName})
 	if err != nil {
 		t.Fatalf("square mock connection: %v", err)
@@ -301,6 +307,16 @@ func (mock *Mock) SetInventoryPhysicalCount() *connectormock.Mutation[square.Set
 	return mock.setInventoryPhysicalCount
 }
 
+// ListLocations returns the listLocations script.
+func (mock *Mock) ListLocations() *connectormock.Query[square.ListLocationsInput, square.LocationList] {
+	return mock.listLocations
+}
+
+// GetLocation returns the getLocation script.
+func (mock *Mock) GetLocation() *connectormock.Query[square.GetLocationInput, square.Location] {
+	return mock.getLocation
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListPayments() sdkgo.Query[square.ListPaymentsInput, square.PaymentPage] {
@@ -401,6 +417,12 @@ func (operations mockOperations) DeleteInvoice() sdkgo.Mutation[square.DeleteInv
 }
 func (operations mockOperations) SetInventoryPhysicalCount() sdkgo.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts] {
 	return operations.mock.setInventoryPhysicalCount
+}
+func (operations mockOperations) ListLocations() sdkgo.Query[square.ListLocationsInput, square.LocationList] {
+	return operations.mock.listLocations
+}
+func (operations mockOperations) GetLocation() sdkgo.Query[square.GetLocationInput, square.Location] {
+	return operations.mock.getLocation
 }
 
 // ListPaymentsListed selects the listed branch: List one page of Square payments.
@@ -1632,3 +1654,78 @@ func SetInventoryPhysicalCountDefaultAnswer() connectormock.Case[square.Inventor
 func SetInventoryPhysicalCountDefault() connectormock.Case[square.InventoryCounts] {
 	return SetInventoryPhysicalCountDefaultAnswer()
 }
+
+// ListLocationsListed selects the listed branch: Square returned seller locations.
+func ListLocationsListed(value square.LocationList, failure *sdkgo.Failure) connectormock.Case[square.LocationList] {
+	return connectormock.Branch(square.ListLocationsBranchListed, value, failure)
+}
+
+// ListLocationsProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func ListLocationsProviderRejected(value square.LocationList, failure *sdkgo.Failure) connectormock.Case[square.LocationList] {
+	return connectormock.Branch(square.ListLocationsBranchProviderRejected, value, failure)
+}
+
+// ListLocationsInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func ListLocationsInvalidResponse(value square.LocationList, failure *sdkgo.Failure) connectormock.Case[square.LocationList] {
+	return connectormock.Branch(square.ListLocationsBranchInvalidResponse, value, failure)
+}
+
+// ListLocationsDefect selects the defect branch: Connection credentials are invalid.
+func ListLocationsDefect(value square.LocationList, failure *sdkgo.Failure) connectormock.Case[square.LocationList] {
+	return connectormock.Branch(square.ListLocationsBranchDefect, value, failure)
+}
+
+// ListLocationsRetry asks Dex to retry the listLocations Step, after the delay when it is positive.
+func ListLocationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.LocationList] {
+	return connectormock.Retry[square.LocationList](failure, after)
+}
+
+// ListLocationsDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square location list.
+func ListLocationsDefaultAnswer() connectormock.Case[square.LocationList] {
+	value := connectormock.MustDecodeOutput[square.LocationList](`{"locations":[{"id":"loc_101","name":"Main","status":"ACTIVE","currency":"USD"}]}`)
+	return connectormock.Branch(square.ListLocationsBranchListed, value, nil)
+}
+
+// ListLocationsDefault is the manifest default, defaultAnswer, which New installs.
+func ListLocationsDefault() connectormock.Case[square.LocationList] {
+	return ListLocationsDefaultAnswer()
+}
+
+// GetLocationFound selects the found branch: Square returned the seller location.
+func GetLocationFound(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchFound, value, failure)
+}
+
+// GetLocationNotFound selects the notFound branch: The location was not found.
+func GetLocationNotFound(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchNotFound, value, failure)
+}
+
+// GetLocationProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func GetLocationProviderRejected(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchProviderRejected, value, failure)
+}
+
+// GetLocationInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetLocationInvalidResponse(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchInvalidResponse, value, failure)
+}
+
+// GetLocationDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetLocationDefect(value square.Location, failure *sdkgo.Failure) connectormock.Case[square.Location] {
+	return connectormock.Branch(square.GetLocationBranchDefect, value, failure)
+}
+
+// GetLocationRetry asks Dex to retry the getLocation Step, after the delay when it is positive.
+func GetLocationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Location] {
+	return connectormock.Retry[square.Location](failure, after)
+}
+
+// GetLocationDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square location.
+func GetLocationDefaultAnswer() connectormock.Case[square.Location] {
+	value := connectormock.MustDecodeOutput[square.Location](`{"location":{"id":"loc_101","name":"Main","status":"ACTIVE","currency":"USD"}}`)
+	return connectormock.Branch(square.GetLocationBranchFound, value, nil)
+}
+
+// GetLocationDefault is the manifest default, defaultAnswer, which New installs.
+func GetLocationDefault() connectormock.Case[square.Location] { return GetLocationDefaultAnswer() }

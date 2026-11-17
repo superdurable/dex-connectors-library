@@ -173,4 +173,19 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, invoiceFlowID, invoiceCalls[0].FlowID)
 	require.Equal(t, MapToCreateInvoiceInput(invoiceInput), invoiceCalls[0].Input)
 	require.Equal(t, square.CreateInvoiceBranchCreated, invoiceCalls[0].Branch)
+	locationsFlowID := "square-locations-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	locationsInput := Request{ListLocations: true}
+	_, err = client.StartFlow(ctx, flow, locationsFlowID, locationsInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	locationsResult, err := client.WaitForFlow(ctx, locationsFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, locationsResult.Status, locationsResult.ErrorMessage)
+	var locationsOutcome Outcome
+	require.NoError(t, locationsResult.DecodeSingleOutput(&locationsOutcome))
+	require.Equal(t, "loc_101", locationsOutcome.Locations.Locations[0]["id"])
+	locationsCalls := mock.ListLocations().Calls()
+	require.Len(t, locationsCalls, 1)
+	require.Equal(t, locationsFlowID, locationsCalls[0].FlowID)
+	require.Equal(t, square.ListLocationsInput{}, locationsCalls[0].Input)
+	require.Equal(t, square.ListLocationsBranchListed, locationsCalls[0].Branch)
 }

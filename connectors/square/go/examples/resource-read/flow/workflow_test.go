@@ -22,6 +22,7 @@ func TestRequestMappingAndFlowIdentity(t *testing.T) {
 	require.Equal(t, "Coffee", MapToUpsertCatalogObjectInput(Request{CatalogItemName: "Coffee"}).Object["item_data"].(map[string]any)["name"])
 	require.Equal(t, square.SetInventoryPhysicalCountInput{CatalogObjectID: "variation_101", LocationID: "loc_101", Quantity: "5", OccurredAt: "2026-11-17T12:00:00Z"}, MapToSetInventoryPhysicalCountInput(Request{InventoryVariationID: "variation_101", InventoryLocationID: "loc_101", InventoryQuantity: "5", InventoryOccurredAt: "2026-11-17T12:00:00Z"}))
 	require.Equal(t, square.CreateInvoiceInput{OrderID: "order_101", LocationID: "loc_101", CustomerID: "customer_101", DueDate: "2030-01-24"}, MapToCreateInvoiceInput(Request{InvoiceOrderID: "order_101", InvoiceLocationID: "loc_101", InvoiceCustomerID: "customer_101", InvoiceDueDate: "2030-01-24"}))
+	require.Equal(t, square.ListLocationsInput{}, MapToListLocationsInput(Request{ListLocations: true}))
 	require.Equal(t, FlowType, dex.GetFinalFlowType(NewFlow(square.Connection{})))
 	require.Equal(t, "PrepareResourceRead", dex.GetFinalStepType[Request](prepareRequest{}))
 }

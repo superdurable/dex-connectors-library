@@ -48,6 +48,8 @@ The Python package is [`dex-connector-square`](python/README.md), imported as
 | `PublishInvoice` | `PublishInvoiceInput` | `Invoice` | `published` |
 | `CancelInvoice` | `CancelInvoiceInput` | `Invoice` | `canceled` |
 | `DeleteInvoice` | `DeleteInvoiceInput` | `DeletedInvoice` | `deleted` |
+| `ListLocations` | `ListLocationsInput` | `LocationList` | `listed` |
+| `GetLocation` | `GetLocationInput` | `Location` | `found` |
 
 Each operation has optional `providerRejected`, `invalidResponse`, and `defect` branches; reads and payment actions also have optional `notFound` where applicable. Unwired optional branches fail the Flow. Reads and writes use async Execute durability and the default one-hour retry budget. All writes use the `safe` repeat tier. `CreatePayment`, `UpdatePayment`, and `RefundPayment` pass a stable Square idempotency key in the request body. `CancelPayment` and `CompletePayment` read the payment status after an unknown response before repeating the action.
 
@@ -62,6 +64,8 @@ Catalog operations require `ITEMS_READ` or `ITEMS_WRITE`. List and text search r
 Inventory operations require `INVENTORY_READ` or `INVENTORY_WRITE`. `RetrieveInventoryCount` reads one `ITEM_VARIATION` and optionally restricts results to one location; use `Cursor` for another page. `SetInventoryPhysicalCount` reconciles the observed `IN_STOCK` quantity at one location using Square's batch-change endpoint. Supply a nonnegative decimal `Quantity` string and the actual observation time as RFC3339 `OccurredAt`; retries retain that time and the same UUID idempotency key. Find the variation ID under Square Dashboard > Items & services > Item library and the location ID under Account & Settings > Business > Locations. Square's inventory change affects stock, so verify the location and observed quantity before starting the Flow.
 
 Invoice reads require `INVOICES_READ`; writes require `INVOICES_WRITE` and `ORDERS_WRITE`. `ListInvoices` pages by location; `GetInvoice` returns the complete provider invoice. `CreateInvoice` creates a draft email invoice for an open order and a customer with an email address, with one `BALANCE` payment due on `DueDate` (`YYYY-MM-DD`). `UpdateInvoice` changes its description by current version; blank clears the description. `PublishInvoice` starts Square delivery and payment processing for a draft invoice, using the current version and a stable provider idempotency key. `CancelInvoice` stops collection on a published invoice; `DeleteInvoice` permanently removes a draft invoice and cancels its order. Read the current version with `GetInvoice` before an action. Find the location and order in Square Dashboard > Orders, the customer in Customer Directory, and the draft invoice in Invoices. Square may charge a card on file when publishing an existing invoice configured for automatic payment; inspect the invoice before publishing. The connector's create path uses email delivery and no automatic card charge.
+
+Location reads require `MERCHANT_PROFILE_READ`. `ListLocations` returns seller locations, including inactive ones, so a Flow can discover IDs before querying orders, invoices, or inventory. `GetLocation` accepts a Square location ID or `main` for the primary location. Neither operation changes location configuration.
 
 ## Authentication and configuration
 
@@ -107,6 +111,8 @@ flow := resourceread.NewFlow(mock.Connection())
 - [https://developer.squareup.com/reference/square/inventory-api/batch-change-inventory](https://developer.squareup.com/reference/square/inventory-api/batch-change-inventory)
 - [https://developer.squareup.com/reference/square/invoices-api](https://developer.squareup.com/reference/square/invoices-api)
 - [https://developer.squareup.com/docs/invoices-api/create-publish-invoices](https://developer.squareup.com/docs/invoices-api/create-publish-invoices)
+- [https://developer.squareup.com/reference/square/locations-api/list-locations](https://developer.squareup.com/reference/square/locations-api/list-locations)
+- [https://developer.squareup.com/reference/square/locations-api/retrieve-location](https://developer.squareup.com/reference/square/locations-api/retrieve-location)
 - [https://developer.squareup.com/docs/payments-api/retrieve-payments](https://developer.squareup.com/docs/payments-api/retrieve-payments)
 
 ## Unverified live behavior
