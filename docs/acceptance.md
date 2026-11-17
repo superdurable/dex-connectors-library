@@ -174,9 +174,12 @@ catalog on the daily schedule.
 With the latest stable Dex CLI development server running, execute:
 
 ```bash
-dexcli dev -durability process-crash-safe
+dexcli dev -durability process-crash-safe -open=false
 make test-integration
 ```
+
+`-open=false` keeps the server from opening Dex Web in a browser; stop it when
+the tests finish.
 
 Test servers skip the per-write fsync that `dexcli dev` performs by default;
 they need to survive only a process kill.
