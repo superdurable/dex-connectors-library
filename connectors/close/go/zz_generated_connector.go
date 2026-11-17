@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListSMS() sdkgo.Query[ListSMSInput, SMSPage]
+	GetSMS() sdkgo.Query[GetSMSInput, SMSActivity]
+	CreateSMS() sdkgo.Mutation[CreateSMSInput, SMSActivity]
+	UpdateSMSDraft() sdkgo.Mutation[UpdateSMSDraftInput, SMSActivity]
+	DeleteSMS() sdkgo.Mutation[DeleteSMSInput, DeletedSMS]
 	ListEmails() sdkgo.Query[ListEmailsInput, EmailPage]
 	GetEmail() sdkgo.Query[GetEmailInput, EmailActivity]
 	CreateEmail() sdkgo.Mutation[CreateEmailInput, EmailActivity]
@@ -79,6 +84,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListSMS() sdkgo.Query[ListSMSInput, SMSPage] {
+	return operations.client.ListSMS()
+}
+func (operations clientOperations) GetSMS() sdkgo.Query[GetSMSInput, SMSActivity] {
+	return operations.client.GetSMS()
+}
+func (operations clientOperations) CreateSMS() sdkgo.Mutation[CreateSMSInput, SMSActivity] {
+	return operations.client.CreateSMS()
+}
+func (operations clientOperations) UpdateSMSDraft() sdkgo.Mutation[UpdateSMSDraftInput, SMSActivity] {
+	return operations.client.UpdateSMSDraft()
+}
+func (operations clientOperations) DeleteSMS() sdkgo.Mutation[DeleteSMSInput, DeletedSMS] {
+	return operations.client.DeleteSMS()
+}
 func (operations clientOperations) ListEmails() sdkgo.Query[ListEmailsInput, EmailPage] {
 	return operations.client.ListEmails()
 }
@@ -320,6 +340,380 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListSMSBranchListed sdkgo.BranchID = "listed"
+const ListSMSBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSMSBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSMSBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSMSDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSMS"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSMSBranchListed, Description: "Close returned the listSMS result."},
+		{ID: ListSMSBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: ListSMSBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: ListSMSBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSMSResult = sdkgo.QueryResult[SMSPage]
+
+type ListSMSStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=close"`
+	operationID                    struct{}                                   `connector:"operationId=listSMS"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSMSInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSMSResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSMSResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSMSResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSMSResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SMSPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewListSMSStep[IN any](config ListSMSStepConfig[IN]) sdkgo.QueryStep[IN, ListSMSInput, SMSPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSMSInput, SMSPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSMS(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSMSResult] {
+			branches := make([]sdkgo.BranchTarget[ListSMSResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSMSBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSMSBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSMSBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSMSBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSMSBranchFound sdkgo.BranchID = "found"
+const GetSMSBranchNotFound sdkgo.BranchID = "notFound"
+const GetSMSBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSMSBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSMSBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSMSDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSMS"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSMSBranchFound, Description: "Close returned the getSMS result."},
+		{ID: GetSMSBranchNotFound, Description: "The SMS activity does not exist.", Optional: true},
+		{ID: GetSMSBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: GetSMSBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: GetSMSBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSMSResult = sdkgo.QueryResult[SMSActivity]
+
+type GetSMSStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=close"`
+	operationID                    struct{}                                       `connector:"operationId=getSMS"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSMSInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSMSResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSMSResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSMSResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSMSResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSMSResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SMSActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetSMSStep[IN any](config GetSMSStepConfig[IN]) sdkgo.QueryStep[IN, GetSMSInput, SMSActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSMSInput, SMSActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSMS(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSMSResult] {
+			branches := make([]sdkgo.BranchTarget[GetSMSResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSMSBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSMSBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSMSBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSMSBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSMSBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateSMSBranchCreated sdkgo.BranchID = "created"
+const CreateSMSBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSMSBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateSMSBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateSMSDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSMS"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSMSBranchCreated, Description: "Close returned the createSMS result."},
+		{ID: CreateSMSBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: CreateSMSBranchUncertain, Description: "The SMS may have been created or sent but its identity could not be confirmed.", Optional: true},
+		{ID: CreateSMSBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateSMSResult = sdkgo.MutationResult[SMSActivity]
+
+type CreateSMSStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=close"`
+	operationID                       struct{}                                          `connector:"operationId=createSMS"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSMSInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSMSResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSMSResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateSMSResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateSMSResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SMSActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateSMSStep[IN any](config CreateSMSStepConfig[IN]) sdkgo.MutationStep[IN, CreateSMSInput, SMSActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSMSInput, SMSActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateSMS(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSMSResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSMSResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSMSBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSMSBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateSMSBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSMSBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateSMSDraftBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSMSDraftBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSMSDraftBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSMSDraftBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateSMSDraftBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSMSDraftDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSMSDraft"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSMSDraftBranchUpdated, Description: "Close returned the updateSMSDraft result."},
+		{ID: UpdateSMSDraftBranchNotFound, Description: "The SMS activity does not exist.", Optional: true},
+		{ID: UpdateSMSDraftBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: UpdateSMSDraftBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateSMSDraftBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSMSDraftResult = sdkgo.MutationResult[SMSActivity]
+
+type UpdateSMSDraftStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=close"`
+	operationID                       struct{}                                          `connector:"operationId=updateSMSDraft"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSMSDraftInput                      `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSMSDraftResult]                `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSMSDraftResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSMSDraftResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateSMSDraftResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateSMSDraftResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SMSActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSMSDraftStep[IN any](config UpdateSMSDraftStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSMSDraftInput, SMSActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSMSDraftInput, SMSActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSMSDraft(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSMSDraftResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSMSDraftResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSMSDraftBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSMSDraftBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSMSDraftBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateSMSDraftBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSMSDraftBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSMSBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSMSBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSMSBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteSMSBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSMSDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSMS"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSMSBranchDeleted, Description: "Close returned the deleteSMS result."},
+		{ID: DeleteSMSBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: DeleteSMSBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteSMSBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSMSResult = sdkgo.MutationResult[DeletedSMS]
+
+type DeleteSMSStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=close"`
+	operationID                       struct{}                                         `connector:"operationId=deleteSMS"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSMSInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSMSResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteSMSResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteSMSResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteSMSResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedSMS]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSMSStep[IN any](config DeleteSMSStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSMSInput, DeletedSMS] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSMSInput, DeletedSMS]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSMS(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSMSResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSMSResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSMSBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSMSBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteSMSBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSMSBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListEmailsBranchListed sdkgo.BranchID = "listed"

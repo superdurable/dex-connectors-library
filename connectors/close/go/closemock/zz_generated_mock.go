@@ -18,6 +18,11 @@ import (
 // Mock is a scripted close connection. Script each operation through its accessor.
 type Mock struct {
 	connection        close.Connection
+	listSMS           *connectormock.Query[close.ListSMSInput, close.SMSPage]
+	getSMS            *connectormock.Query[close.GetSMSInput, close.SMSActivity]
+	createSMS         *connectormock.Mutation[close.CreateSMSInput, close.SMSActivity]
+	updateSMSDraft    *connectormock.Mutation[close.UpdateSMSDraftInput, close.SMSActivity]
+	deleteSMS         *connectormock.Mutation[close.DeleteSMSInput, close.DeletedSMS]
 	listEmails        *connectormock.Query[close.ListEmailsInput, close.EmailPage]
 	getEmail          *connectormock.Query[close.GetEmailInput, close.EmailActivity]
 	createEmail       *connectormock.Mutation[close.CreateEmailInput, close.EmailActivity]
@@ -60,6 +65,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listSMS:           connectormock.NewQuery[close.ListSMSInput, close.SMSPage](t, close.ListSMSDefinition),
+		getSMS:            connectormock.NewQuery[close.GetSMSInput, close.SMSActivity](t, close.GetSMSDefinition),
+		createSMS:         connectormock.NewMutation[close.CreateSMSInput, close.SMSActivity](t, close.CreateSMSDefinition),
+		updateSMSDraft:    connectormock.NewMutation[close.UpdateSMSDraftInput, close.SMSActivity](t, close.UpdateSMSDraftDefinition),
+		deleteSMS:         connectormock.NewMutation[close.DeleteSMSInput, close.DeletedSMS](t, close.DeleteSMSDefinition),
 		listEmails:        connectormock.NewQuery[close.ListEmailsInput, close.EmailPage](t, close.ListEmailsDefinition),
 		getEmail:          connectormock.NewQuery[close.GetEmailInput, close.EmailActivity](t, close.GetEmailDefinition),
 		createEmail:       connectormock.NewMutation[close.CreateEmailInput, close.EmailActivity](t, close.CreateEmailDefinition),
@@ -96,6 +106,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteContact:     connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
 		getLead:           connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
 	}
+	mock.listSMS.Default(ListSMSDefault())
+	mock.getSMS.Default(GetSMSDefault())
+	mock.createSMS.Default(CreateSMSDefault())
+	mock.updateSMSDraft.Default(UpdateSMSDraftDefault())
+	mock.deleteSMS.Default(DeleteSMSDefault())
 	mock.listEmails.Default(ListEmailsDefault())
 	mock.getEmail.Default(GetEmailDefault())
 	mock.createEmail.Default(CreateEmailDefault())
@@ -141,6 +156,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() close.Connection { return mock.connection }
+
+// ListSMS returns the listSMS script.
+func (mock *Mock) ListSMS() *connectormock.Query[close.ListSMSInput, close.SMSPage] {
+	return mock.listSMS
+}
+
+// GetSMS returns the getSMS script.
+func (mock *Mock) GetSMS() *connectormock.Query[close.GetSMSInput, close.SMSActivity] {
+	return mock.getSMS
+}
+
+// CreateSMS returns the createSMS script.
+func (mock *Mock) CreateSMS() *connectormock.Mutation[close.CreateSMSInput, close.SMSActivity] {
+	return mock.createSMS
+}
+
+// UpdateSMSDraft returns the updateSMSDraft script.
+func (mock *Mock) UpdateSMSDraft() *connectormock.Mutation[close.UpdateSMSDraftInput, close.SMSActivity] {
+	return mock.updateSMSDraft
+}
+
+// DeleteSMS returns the deleteSMS script.
+func (mock *Mock) DeleteSMS() *connectormock.Mutation[close.DeleteSMSInput, close.DeletedSMS] {
+	return mock.deleteSMS
+}
 
 // ListEmails returns the listEmails script.
 func (mock *Mock) ListEmails() *connectormock.Query[close.ListEmailsInput, close.EmailPage] {
@@ -313,6 +353,21 @@ func (mock *Mock) GetLead() *connectormock.Query[close.GetLeadInput, close.Lead]
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListSMS() sdkgo.Query[close.ListSMSInput, close.SMSPage] {
+	return operations.mock.listSMS
+}
+func (operations mockOperations) GetSMS() sdkgo.Query[close.GetSMSInput, close.SMSActivity] {
+	return operations.mock.getSMS
+}
+func (operations mockOperations) CreateSMS() sdkgo.Mutation[close.CreateSMSInput, close.SMSActivity] {
+	return operations.mock.createSMS
+}
+func (operations mockOperations) UpdateSMSDraft() sdkgo.Mutation[close.UpdateSMSDraftInput, close.SMSActivity] {
+	return operations.mock.updateSMSDraft
+}
+func (operations mockOperations) DeleteSMS() sdkgo.Mutation[close.DeleteSMSInput, close.DeletedSMS] {
+	return operations.mock.deleteSMS
+}
 func (operations mockOperations) ListEmails() sdkgo.Query[close.ListEmailsInput, close.EmailPage] {
 	return operations.mock.listEmails
 }
@@ -418,6 +473,188 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[close.DeleteCont
 func (operations mockOperations) GetLead() sdkgo.Query[close.GetLeadInput, close.Lead] {
 	return operations.mock.getLead
 }
+
+// ListSMSListed selects the listed branch: Close returned the listSMS result.
+func ListSMSListed(value close.SMSPage, failure *sdkgo.Failure) connectormock.Case[close.SMSPage] {
+	return connectormock.Branch(close.ListSMSBranchListed, value, failure)
+}
+
+// ListSMSProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func ListSMSProviderRejected(value close.SMSPage, failure *sdkgo.Failure) connectormock.Case[close.SMSPage] {
+	return connectormock.Branch(close.ListSMSBranchProviderRejected, value, failure)
+}
+
+// ListSMSInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func ListSMSInvalidResponse(value close.SMSPage, failure *sdkgo.Failure) connectormock.Case[close.SMSPage] {
+	return connectormock.Branch(close.ListSMSBranchInvalidResponse, value, failure)
+}
+
+// ListSMSDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListSMSDefect(value close.SMSPage, failure *sdkgo.Failure) connectormock.Case[close.SMSPage] {
+	return connectormock.Branch(close.ListSMSBranchDefect, value, failure)
+}
+
+// ListSMSRetry asks Dex to retry the listSMS Step, after the delay when it is positive.
+func ListSMSRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.SMSPage] {
+	return connectormock.Retry[close.SMSPage](failure, after)
+}
+
+// ListSMSListedDefault is the manifest mock listedDefault: A Meridian Labs SMS activity is available.
+func ListSMSListedDefault() connectormock.Case[close.SMSPage] {
+	value := connectormock.MustDecodeOutput[close.SMSPage](`{"messages":[{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}],"hasMore":false}`)
+	return connectormock.Branch(close.ListSMSBranchListed, value, nil)
+}
+
+// ListSMSDefault is the manifest default, listedDefault, which New installs.
+func ListSMSDefault() connectormock.Case[close.SMSPage] { return ListSMSListedDefault() }
+
+// GetSMSFound selects the found branch: Close returned the getSMS result.
+func GetSMSFound(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.GetSMSBranchFound, value, failure)
+}
+
+// GetSMSNotFound selects the notFound branch: The SMS activity does not exist.
+func GetSMSNotFound(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.GetSMSBranchNotFound, value, failure)
+}
+
+// GetSMSProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func GetSMSProviderRejected(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.GetSMSBranchProviderRejected, value, failure)
+}
+
+// GetSMSInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func GetSMSInvalidResponse(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.GetSMSBranchInvalidResponse, value, failure)
+}
+
+// GetSMSDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetSMSDefect(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.GetSMSBranchDefect, value, failure)
+}
+
+// GetSMSRetry asks Dex to retry the getSMS Step, after the delay when it is positive.
+func GetSMSRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.SMSActivity] {
+	return connectormock.Retry[close.SMSActivity](failure, after)
+}
+
+// GetSMSFoundDefault is the manifest mock foundDefault: A Meridian Labs SMS activity is available.
+func GetSMSFoundDefault() connectormock.Case[close.SMSActivity] {
+	value := connectormock.MustDecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}`)
+	return connectormock.Branch(close.GetSMSBranchFound, value, nil)
+}
+
+// GetSMSDefault is the manifest default, foundDefault, which New installs.
+func GetSMSDefault() connectormock.Case[close.SMSActivity] { return GetSMSFoundDefault() }
+
+// CreateSMSCreated selects the created branch: Close returned the createSMS result.
+func CreateSMSCreated(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.CreateSMSBranchCreated, value, failure)
+}
+
+// CreateSMSProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func CreateSMSProviderRejected(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.CreateSMSBranchProviderRejected, value, failure)
+}
+
+// CreateSMSUncertain returns an uncertain createSMS outcome.
+func CreateSMSUncertain(value close.SMSActivity, failure sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSMSDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateSMSDefect(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.CreateSMSBranchDefect, value, failure)
+}
+
+// CreateSMSRetry asks Dex to retry the createSMS Step, after the delay when it is positive.
+func CreateSMSRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.SMSActivity] {
+	return connectormock.Retry[close.SMSActivity](failure, after)
+}
+
+// CreateSMSCreatedDefault is the manifest mock createdDefault: A Meridian Labs SMS activity is available.
+func CreateSMSCreatedDefault() connectormock.Case[close.SMSActivity] {
+	value := connectormock.MustDecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}`)
+	return connectormock.Branch(close.CreateSMSBranchCreated, value, nil)
+}
+
+// CreateSMSDefault is the manifest default, createdDefault, which New installs.
+func CreateSMSDefault() connectormock.Case[close.SMSActivity] { return CreateSMSCreatedDefault() }
+
+// UpdateSMSDraftUpdated selects the updated branch: Close returned the updateSMSDraft result.
+func UpdateSMSDraftUpdated(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.UpdateSMSDraftBranchUpdated, value, failure)
+}
+
+// UpdateSMSDraftNotFound selects the notFound branch: The SMS activity does not exist.
+func UpdateSMSDraftNotFound(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.UpdateSMSDraftBranchNotFound, value, failure)
+}
+
+// UpdateSMSDraftProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func UpdateSMSDraftProviderRejected(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.UpdateSMSDraftBranchProviderRejected, value, failure)
+}
+
+// UpdateSMSDraftInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func UpdateSMSDraftInvalidResponse(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.UpdateSMSDraftBranchInvalidResponse, value, failure)
+}
+
+// UpdateSMSDraftDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateSMSDraftDefect(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.UpdateSMSDraftBranchDefect, value, failure)
+}
+
+// UpdateSMSDraftRetry asks Dex to retry the updateSMSDraft Step, after the delay when it is positive.
+func UpdateSMSDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.SMSActivity] {
+	return connectormock.Retry[close.SMSActivity](failure, after)
+}
+
+// UpdateSMSDraftUpdatedDefault is the manifest mock updatedDefault: A Meridian Labs SMS activity is available.
+func UpdateSMSDraftUpdatedDefault() connectormock.Case[close.SMSActivity] {
+	value := connectormock.MustDecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Updated"}`)
+	return connectormock.Branch(close.UpdateSMSDraftBranchUpdated, value, nil)
+}
+
+// UpdateSMSDraftDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSMSDraftDefault() connectormock.Case[close.SMSActivity] {
+	return UpdateSMSDraftUpdatedDefault()
+}
+
+// DeleteSMSDeleted selects the deleted branch: Close returned the deleteSMS result.
+func DeleteSMSDeleted(value close.DeletedSMS, failure *sdkgo.Failure) connectormock.Case[close.DeletedSMS] {
+	return connectormock.Branch(close.DeleteSMSBranchDeleted, value, failure)
+}
+
+// DeleteSMSProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func DeleteSMSProviderRejected(value close.DeletedSMS, failure *sdkgo.Failure) connectormock.Case[close.DeletedSMS] {
+	return connectormock.Branch(close.DeleteSMSBranchProviderRejected, value, failure)
+}
+
+// DeleteSMSInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func DeleteSMSInvalidResponse(value close.DeletedSMS, failure *sdkgo.Failure) connectormock.Case[close.DeletedSMS] {
+	return connectormock.Branch(close.DeleteSMSBranchInvalidResponse, value, failure)
+}
+
+// DeleteSMSDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteSMSDefect(value close.DeletedSMS, failure *sdkgo.Failure) connectormock.Case[close.DeletedSMS] {
+	return connectormock.Branch(close.DeleteSMSBranchDefect, value, failure)
+}
+
+// DeleteSMSRetry asks Dex to retry the deleteSMS Step, after the delay when it is positive.
+func DeleteSMSRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.DeletedSMS] {
+	return connectormock.Retry[close.DeletedSMS](failure, after)
+}
+
+// DeleteSMSDeletedDefault is the manifest mock deletedDefault: A Meridian Labs SMS activity is available.
+func DeleteSMSDeletedDefault() connectormock.Case[close.DeletedSMS] {
+	value := connectormock.MustDecodeOutput[close.DeletedSMS](`{"smsId":"acti_sms_meridian1"}`)
+	return connectormock.Branch(close.DeleteSMSBranchDeleted, value, nil)
+}
+
+// DeleteSMSDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSMSDefault() connectormock.Case[close.DeletedSMS] { return DeleteSMSDeletedDefault() }
 
 // ListEmailsListed selects the listed branch: Close returned the listEmails result.
 func ListEmailsListed(value close.EmailPage, failure *sdkgo.Failure) connectormock.Case[close.EmailPage] {

@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listSMS/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSPage](`{"messages":[{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getSMS/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}`)
+			return err
+		}},
+		{name: "createSMS/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}`)
+			return err
+		}},
+		{name: "updateSMSDraft/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Updated"}`)
+			return err
+		}},
+		{name: "deleteSMS/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedSMS](`{"smsId":"acti_sms_meridian1"}`)
+			return err
+		}},
 		{name: "listEmails/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.EmailPage](`{"emails":[{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}],"hasMore":false}`)
 			return err
@@ -166,6 +186,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListSMS().Definition().Operation.OperationID != "listSMS" {
+		t.Errorf("listSMS mock has another definition")
+	}
+	if mock.GetSMS().Definition().Operation.OperationID != "getSMS" {
+		t.Errorf("getSMS mock has another definition")
+	}
+	if mock.CreateSMS().Definition().Operation.OperationID != "createSMS" {
+		t.Errorf("createSMS mock has another definition")
+	}
+	if mock.UpdateSMSDraft().Definition().Operation.OperationID != "updateSMSDraft" {
+		t.Errorf("updateSMSDraft mock has another definition")
+	}
+	if mock.DeleteSMS().Definition().Operation.OperationID != "deleteSMS" {
+		t.Errorf("deleteSMS mock has another definition")
+	}
 	if mock.ListEmails().Definition().Operation.OperationID != "listEmails" {
 		t.Errorf("listEmails mock has another definition")
 	}
