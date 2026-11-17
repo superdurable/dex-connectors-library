@@ -24,7 +24,8 @@ import (
 func TestDocumentSearchUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := opensearchmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	getFlow := NewDocumentGetFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, getFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestDocumentSearchUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, int64(1), output.Total)
 	require.Len(t, mock.SearchDocuments().Calls(), 1)
+	getFlowID := "opensearch-document-get-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, getFlow, getFlowID, opensearch.GetDocumentInput{Index: "products", DocumentID: "sku-42"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	getResult, err := client.WaitForFlow(ctx, getFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, getResult.Status, getResult.ErrorMessage)
+	var retrieved opensearch.RetrievedDocument
+	require.NoError(t, getResult.DecodeSingleOutput(&retrieved))
+	require.Equal(t, "sku-42", retrieved.ID)
+	require.Len(t, mock.GetDocument().Calls(), 1)
 }

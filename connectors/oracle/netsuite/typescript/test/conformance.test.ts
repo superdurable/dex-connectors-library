@@ -8,7 +8,7 @@ import { OracleNetSuiteClient } from '../src/client.js';
 import { GetCustomerInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/oracle/netsuite/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/oracle/netsuite/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'getCustomer');
 const connection = { provider: 'oracle-netsuite', name: 'oracle-netsuite' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeOracleNetSuite, ''));
 

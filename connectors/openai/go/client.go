@@ -1,9 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package openai implements stored Responses of the OpenAI Responses API as
-// Dex Connector operations: the createResponse Mutation and the
-// retrieveResponse Query.
+// Package openai implements stored Responses and Conversations of the OpenAI
+// Responses API as typed Dex Connector operations.
 //
 // Text generation Steps use the llm connector,
 // github.com/superdurable/dex-connectors-library/connectors/superdurable/llm,

@@ -105,7 +105,7 @@ func decodeTransaction(body []byte, requestedTransactionID string) (TransactionS
 	if err := json.Unmarshal(body, &wire); err != nil {
 		return TransactionStatus{}, err
 	}
-	if wire.Data.ID != requestedTransactionID || strings.TrimSpace(wire.Data.Status) == "" || len(wire.Data.CurrencyCode) != 3 {
+	if !validTransactionID(wire.Data.ID) || requestedTransactionID != "" && wire.Data.ID != requestedTransactionID || strings.TrimSpace(wire.Data.Status) == "" || len(wire.Data.CurrencyCode) != 3 {
 		return TransactionStatus{}, fmt.Errorf("transaction identity, status, or currency missing")
 	}
 	return TransactionStatus{ID: wire.Data.ID, Status: wire.Data.Status, CurrencyCode: wire.Data.CurrencyCode}, nil

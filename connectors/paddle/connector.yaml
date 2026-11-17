@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: paddle
   displayName: Paddle
-  description: Read selected Paddle transaction status through the Paddle Billing API.
+  description: Manage transactions, subscriptions, customers, discounts, products, and prices through the Paddle Billing API.
   company: Paddle
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: paddle
   languages:
@@ -33,12 +33,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow transaction reads.
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow Billing operations.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum complete transaction response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large transactions.
+        description: Maximum complete Billing API response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large pages or transactions.
         default: 1048576
   auth:
     type: apiKey
@@ -48,13 +48,569 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read, copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown; blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
+        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read/write, subscription.read/write, customer.read/write, discount.read/write, product.read/write, and price.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
     guide:
       startURL: https://sandbox-vendors.paddle.com
       steps:
-        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read, set an expiry, and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
-        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret txn_ transaction ID on the Paddle Transactions page or from an API response and pass it as transactionId; blank is invalid.
+        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read and, for Go management operations, transaction.write, subscription.read, subscription.write, customer.read, customer.write, discount.read, discount.write, product.read, product.write, price.read, and price.write; set an expiry and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
+        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find non-secret txn_, ctm_, dsc_, pro_, and pri_ IDs on the Paddle Transactions, Customers, Catalog > Discounts, Catalog > Products, and product Prices pages or in API responses. Use a unique customer email for createCustomer, a unique alphanumeric code and percentage for createDiscount, a product name plus enabled tax category for createProduct, and a product ID plus private description and minor-unit amount for createPrice; blank required values are invalid.
   operations:
+    - name: listCustomers
+      goName: ListCustomers
+      inputType: ListCustomersInput
+      outputType: CustomerPage
+      kind: query
+      description: List Paddle customers with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned a customer page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected the listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample customer page is returned.
+          output: {items: [{id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: active}], hasMore: false, nextCursor: ''}
+    - name: getCustomer
+      goName: GetCustomer
+      inputType: CustomerIDInput
+      outputType: PaddleCustomer
+      kind: query
+      description: Read a Paddle customer.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the customer.}
+        - {id: notFound, goName: NotFound, description: Customer is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample customer is returned.
+          output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: active}
+    - name: createCustomer
+      goName: CreateCustomer
+      inputType: CreateCustomerInput
+      outputType: PaddleCustomer
+      kind: mutation
+      description: Create a Paddle customer by unique email address.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Paddle created the customer.}
+        - {id: uncertain, goName: Uncertain, description: Customer creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample customer is created.
+          output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: active}
+    - name: updateCustomer
+      goName: UpdateCustomer
+      inputType: UpdateCustomerInput
+      outputType: PaddleCustomer
+      kind: mutation
+      description: Replace a Paddle customer's name and email.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle updated the customer.}
+        - {id: notFound, goName: NotFound, description: Customer is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample customer is updated.
+          output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: active}
+    - name: archiveCustomer
+      goName: ArchiveCustomer
+      inputType: CustomerIDInput
+      outputType: PaddleCustomer
+      kind: mutation
+      description: Archive a Paddle customer.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Paddle archived the customer.}
+        - {id: notFound, goName: NotFound, description: Customer is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected archival., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: archived
+          default: true
+          description: A sample customer is archived.
+          output: {id: ctm_01hv8wptq8987qeep44cyrewp9, email: customer@example.com, name: Sample Customer, status: archived}
+    - name: listDiscounts
+      goName: ListDiscounts
+      inputType: ListDiscountsInput
+      outputType: DiscountPage
+      kind: query
+      description: List Paddle discounts with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned the listDiscounts.}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample discount is returned.
+          output: {items: [{id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: active}], hasMore: false, nextCursor: ''}
+    - name: getDiscount
+      goName: GetDiscount
+      inputType: DiscountIDInput
+      outputType: PaddleDiscount
+      kind: query
+      description: Read a Paddle discount.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the getDiscount.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample discount is returned.
+          output: {id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: active}
+    - name: createDiscount
+      goName: CreateDiscount
+      inputType: CreateDiscountInput
+      outputType: PaddleDiscount
+      kind: mutation
+      description: Create a percentage discount with a unique checkout code.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Paddle returned the createDiscount.}
+        - {id: uncertain, goName: Uncertain, description: Discount creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample discount is returned.
+          output: {id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: active}
+    - name: updateDiscount
+      goName: UpdateDiscount
+      inputType: UpdateDiscountInput
+      outputType: PaddleDiscount
+      kind: mutation
+      description: Replace a Paddle discount description and percentage amount.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle returned the updateDiscount.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample discount is returned.
+          output: {id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: active}
+    - name: archiveDiscount
+      goName: ArchiveDiscount
+      inputType: DiscountIDInput
+      outputType: PaddleDiscount
+      kind: mutation
+      description: Archive a Paddle discount.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Paddle returned the archiveDiscount.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: archived
+          default: true
+          description: A sample discount is returned.
+          output: {id: dsc_01gtgztp8fpchantd5g1wrksa3, code: SAVE10, description: Sample discount, type: percentage, amount: '10', status: archived}
+    - name: listProducts
+      goName: ListProducts
+      inputType: ListProductsInput
+      outputType: ProductPage
+      kind: query
+      description: List Paddle catalog products.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned the listProducts.}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample product is returned.
+          output: {items: [{id: pro_01htz88xpr0mm7b3ta2pjkr7w2, name: Sample Product, taxCategory: standard, status: active}], hasMore: false, nextCursor: ''}
+    - name: getProduct
+      goName: GetProduct
+      inputType: ProductIDInput
+      outputType: PaddleProduct
+      kind: query
+      description: Read a Paddle catalog product.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the getProduct.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample product is returned.
+          output: {id: pro_01htz88xpr0mm7b3ta2pjkr7w2, name: Sample Product, taxCategory: standard, status: active}
+    - name: createProduct
+      goName: CreateProduct
+      inputType: CreateProductInput
+      outputType: PaddleProduct
+      kind: mutation
+      description: Create a Paddle catalog product.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Paddle returned the createProduct.}
+        - {id: uncertain, goName: Uncertain, description: Product creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample product is returned.
+          output: {id: pro_01htz88xpr0mm7b3ta2pjkr7w2, name: Sample Product, taxCategory: standard, status: active}
+    - name: updateProduct
+      goName: UpdateProduct
+      inputType: UpdateProductInput
+      outputType: PaddleProduct
+      kind: mutation
+      description: Replace a Paddle product name and description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle returned the updateProduct.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample product is returned.
+          output: {id: pro_01htz88xpr0mm7b3ta2pjkr7w2, name: Sample Product, taxCategory: standard, status: active}
+    - name: archiveProduct
+      goName: ArchiveProduct
+      inputType: ProductIDInput
+      outputType: PaddleProduct
+      kind: mutation
+      description: Archive a Paddle catalog product.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Paddle returned the archiveProduct.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: archived
+          default: true
+          description: A sample product is returned.
+          output: {id: pro_01htz88xpr0mm7b3ta2pjkr7w2, name: Sample Product, taxCategory: standard, status: archived}
+    - name: listPrices
+      goName: ListPrices
+      inputType: ListPricesInput
+      outputType: PricePage
+      kind: query
+      description: List Paddle prices for a product.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned the listPrices.}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample price is returned.
+          output: {items: [{id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: active, billingInterval: month, billingFrequency: 1}], hasMore: false, nextCursor: ''}
+    - name: getPrice
+      goName: GetPrice
+      inputType: PriceIDInput
+      outputType: PaddlePrice
+      kind: query
+      description: Read a Paddle price.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the getPrice.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample price is returned.
+          output: {id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: active, billingInterval: month, billingFrequency: 1}
+    - name: createPrice
+      goName: CreatePrice
+      inputType: CreatePriceInput
+      outputType: PaddlePrice
+      kind: mutation
+      description: Create a product price.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Paddle returned the createPrice.}
+        - {id: uncertain, goName: Uncertain, description: Price creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample price is returned.
+          output: {id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: active, billingInterval: month, billingFrequency: 1}
+    - name: updatePrice
+      goName: UpdatePrice
+      inputType: UpdatePriceInput
+      outputType: PaddlePrice
+      kind: mutation
+      description: Replace a price description and unit amount.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle returned the updatePrice.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample price is returned.
+          output: {id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: active, billingInterval: month, billingFrequency: 1}
+    - name: archivePrice
+      goName: ArchivePrice
+      inputType: PriceIDInput
+      outputType: PaddlePrice
+      kind: mutation
+      description: Archive a Paddle price.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Paddle returned the archivePrice.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: archived
+          default: true
+          description: A sample price is returned.
+          output: {id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: archived, billingInterval: month, billingFrequency: 1}
+    - name: listTransactions
+      goName: ListTransactions
+      inputType: ListTransactionsInput
+      outputType: TransactionPage
+      kind: query
+      description: List Paddle transactions with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned the listTransactions.}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample transaction is returned.
+          output: {items: [{id: txn_01hv8wptq8987qeep44cyrewp9, status: completed, currencyCode: USD}], hasMore: false, nextCursor: ''}
+    - name: createTransaction
+      goName: CreateTransaction
+      inputType: CreateTransactionInput
+      outputType: TransactionStatus
+      kind: mutation
+      description: Create a draft transaction for one catalog price.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Paddle returned the createTransaction.}
+        - {id: uncertain, goName: Uncertain, description: Draft transaction creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample transaction is returned.
+          output: {id: txn_01hv8wptq8987qeep44cyrewp9, status: draft, currencyCode: USD}
+    - name: updateTransaction
+      goName: UpdateTransaction
+      inputType: UpdateTransactionInput
+      outputType: TransactionStatus
+      kind: mutation
+      description: Attach a customer and billing address to a draft transaction.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle returned the updateTransaction.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample transaction is returned.
+          output: {id: txn_01hv8wptq8987qeep44cyrewp9, status: ready, currencyCode: USD}
+    - name: cancelTransaction
+      goName: CancelTransaction
+      inputType: GetTransactionInput
+      outputType: TransactionStatus
+      kind: mutation
+      description: Cancel an eligible Paddle transaction.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: canceled, goName: Canceled, description: Paddle returned the cancelTransaction.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: canceledDefault
+          branch: canceled
+          default: true
+          description: A sample transaction is returned.
+          output: {id: txn_01hv8wptq8987qeep44cyrewp9, status: canceled, currencyCode: USD}
+    - name: listSubscriptions
+      goName: ListSubscriptions
+      inputType: ListSubscriptionsInput
+      outputType: SubscriptionPage
+      kind: query
+      description: List Paddle Billing subscriptions with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned subscriptions.}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample subscription is returned.
+          output: {items: [{id: sub_01hv8y5ehszzq0yv20ttx3166y, status: active, nextBilledAt: '2030-05-12T10:37:59Z'}], hasMore: false, nextCursor: ''}
+    - name: getSubscription
+      goName: GetSubscription
+      inputType: SubscriptionIDInput
+      outputType: PaddleSubscription
+      kind: query
+      description: Read one Paddle Billing subscription.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the subscription.}
+        - {id: notFound, goName: NotFound, description: Paddle did not find the subscription., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample subscription is returned.
+          output: {id: sub_01hv8y5ehszzq0yv20ttx3166y, status: active, nextBilledAt: '2030-05-12T10:37:59Z'}
+    - name: setNextBillingDate
+      goName: SetNextBillingDate
+      inputType: SetNextBillingDateInput
+      outputType: PaddleSubscription
+      kind: mutation
+      description: Move the next subscription renewal without immediate collection.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle moved the next renewal.}
+        - {id: notFound, goName: NotFound, description: Paddle did not find the subscription., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle rejected the date change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample next renewal is returned.
+          output: {id: sub_01hv8y5ehszzq0yv20ttx3166y, status: active, nextBilledAt: '2030-06-12T10:37:59Z'}
     - name: getTransaction
       goName: GetTransaction
       inputType: GetTransactionInput
@@ -63,7 +619,7 @@ spec:
       description: Read one transaction's ID, status, and currency without customer or payment details.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Paddle returned the transaction.}
         - {id: notFound, goName: NotFound, description: Paddle did not expose the transaction., optional: true}

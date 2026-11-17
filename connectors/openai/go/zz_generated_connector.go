@@ -48,6 +48,13 @@ type Connection struct {
 type Operations interface {
 	CreateResponse() sdkgo.Mutation[CreateRequest, Response]
 	RetrieveResponse() sdkgo.Query[RetrieveRequest, Response]
+	DeleteResponse() sdkgo.Mutation[DeleteResponseRequest, DeletedResponse]
+	CreateConversation() sdkgo.Mutation[CreateConversationRequest, Conversation]
+	RetrieveConversation() sdkgo.Query[ConversationIDRequest, Conversation]
+	UpdateConversation() sdkgo.Mutation[UpdateConversationRequest, Conversation]
+	DeleteConversation() sdkgo.Mutation[ConversationIDRequest, DeletedResponse]
+	ListFiles() sdkgo.Query[ListFilesRequest, FilePage]
+	DeleteFile() sdkgo.Mutation[FileIDRequest, DeletedResponse]
 }
 
 type clientOperations struct{ client *Client }
@@ -57,6 +64,27 @@ func (operations clientOperations) CreateResponse() sdkgo.Mutation[CreateRequest
 }
 func (operations clientOperations) RetrieveResponse() sdkgo.Query[RetrieveRequest, Response] {
 	return operations.client.RetrieveResponse()
+}
+func (operations clientOperations) DeleteResponse() sdkgo.Mutation[DeleteResponseRequest, DeletedResponse] {
+	return operations.client.DeleteResponse()
+}
+func (operations clientOperations) CreateConversation() sdkgo.Mutation[CreateConversationRequest, Conversation] {
+	return operations.client.CreateConversation()
+}
+func (operations clientOperations) RetrieveConversation() sdkgo.Query[ConversationIDRequest, Conversation] {
+	return operations.client.RetrieveConversation()
+}
+func (operations clientOperations) UpdateConversation() sdkgo.Mutation[UpdateConversationRequest, Conversation] {
+	return operations.client.UpdateConversation()
+}
+func (operations clientOperations) DeleteConversation() sdkgo.Mutation[ConversationIDRequest, DeletedResponse] {
+	return operations.client.DeleteConversation()
+}
+func (operations clientOperations) ListFiles() sdkgo.Query[ListFilesRequest, FilePage] {
+	return operations.client.ListFiles()
+}
+func (operations clientOperations) DeleteFile() sdkgo.Mutation[FileIDRequest, DeletedResponse] {
+	return operations.client.DeleteFile()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -220,6 +248,8 @@ var CreateResponseDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(2000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 3, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateResponseResult = sdkgo.MutationResult[Response]
@@ -244,6 +274,8 @@ type CreateResponseStepConfig[IN any] struct {
 	TextStream                        *dex.Stream[string]                            `connector:"textStream"`
 	TextOptions                       []dex.BufferedTextStreamOption                 `connector:"textOptions"`
 	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.MutationStep[IN, CreateRequest, Response] {
@@ -281,6 +313,7 @@ func NewCreateResponseStep[IN any](config CreateResponseStepConfig[IN]) sdkgo.Mu
 		ProgressStream:  config.ProgressStream,
 		TextStream:      config.TextStream, TextOptions: config.TextOptions,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -355,6 +388,556 @@ func NewRetrieveResponseStep[IN any](config RetrieveResponseStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(RetrieveResponseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteResponseBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteResponseBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteResponseBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteResponseBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteResponseBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteResponseDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteResponse"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteResponseBranchDeleted, Description: "OpenAI deleted the stored response."},
+		{ID: DeleteResponseBranchNotFound, Description: "The response no longer exists.", Optional: true},
+		{ID: DeleteResponseBranchProviderRejected, Description: "OpenAI rejected deletion.", Optional: true},
+		{ID: DeleteResponseBranchInvalidResponse, Description: "OpenAI returned an invalid deletion receipt.", Optional: true},
+		{ID: DeleteResponseBranchDefect, Description: "The response ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteResponseResult = sdkgo.MutationResult[DeletedResponse]
+
+type DeleteResponseStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=openai"`
+	operationID                       struct{}                                              `connector:"operationId=deleteResponse"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteResponseRequest                        `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteResponseResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteResponseResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteResponseResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteResponseResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteResponseResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedResponse]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteResponseStep[IN any](config DeleteResponseStepConfig[IN]) sdkgo.MutationStep[IN, DeleteResponseRequest, DeletedResponse] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteResponseRequest, DeletedResponse]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteResponse(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteResponseResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteResponseResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteResponseBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteResponseBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteResponseBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteResponseBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteResponseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateConversationBranchCreated sdkgo.BranchID = "created"
+const CreateConversationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateConversationBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateConversationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateConversationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createConversation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateConversationBranchCreated, Description: "OpenAI created the conversation."},
+		{ID: CreateConversationBranchProviderRejected, Description: "OpenAI rejected the conversation request.", Optional: true},
+		{ID: CreateConversationBranchUncertain, Description: "A sent request may have created a conversation that cannot be found without its ID.", Optional: true},
+		{ID: CreateConversationBranchDefect, Description: "Input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateConversationResult = sdkgo.MutationResult[Conversation]
+
+type CreateConversationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=openai"`
+	operationID                       struct{}                                           `connector:"operationId=createConversation"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateConversationRequest                 `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateConversationResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateConversationResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateConversationResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateConversationResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Conversation]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateConversationStep[IN any](config CreateConversationStepConfig[IN]) sdkgo.MutationStep[IN, CreateConversationRequest, Conversation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateConversationRequest, Conversation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateConversation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateConversationResult] {
+			branches := make([]sdkgo.BranchTarget[CreateConversationResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateConversationBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateConversationBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateConversationBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateConversationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const RetrieveConversationBranchFound sdkgo.BranchID = "found"
+const RetrieveConversationBranchNotFound sdkgo.BranchID = "notFound"
+const RetrieveConversationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RetrieveConversationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const RetrieveConversationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RetrieveConversationDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "retrieveConversation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RetrieveConversationBranchFound, Description: "OpenAI returned the conversation."},
+		{ID: RetrieveConversationBranchNotFound, Description: "The conversation does not exist.", Optional: true},
+		{ID: RetrieveConversationBranchProviderRejected, Description: "OpenAI rejected the lookup.", Optional: true},
+		{ID: RetrieveConversationBranchInvalidResponse, Description: "OpenAI returned invalid conversation data.", Optional: true},
+		{ID: RetrieveConversationBranchDefect, Description: "Input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RetrieveConversationResult = sdkgo.QueryResult[Conversation]
+
+type RetrieveConversationStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=openai"`
+	operationID                    struct{}                                        `connector:"operationId=retrieveConversation"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                  `connector:"configurationUI"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ConversationIDRequest                  `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[RetrieveConversationResult]        `connector:"branch=found"`
+	NotFound                       sdkgo.Target[RetrieveConversationResult]        `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[RetrieveConversationResult]        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[RetrieveConversationResult]        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[RetrieveConversationResult]        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Conversation]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewRetrieveConversationStep[IN any](config RetrieveConversationStepConfig[IN]) sdkgo.QueryStep[IN, ConversationIDRequest, Conversation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ConversationIDRequest, Conversation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.RetrieveConversation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RetrieveConversationResult] {
+			branches := make([]sdkgo.BranchTarget[RetrieveConversationResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(RetrieveConversationBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RetrieveConversationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RetrieveConversationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(RetrieveConversationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RetrieveConversationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateConversationBranchUpdated sdkgo.BranchID = "updated"
+const UpdateConversationBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateConversationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateConversationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateConversationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateConversationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateConversation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateConversationBranchUpdated, Description: "OpenAI updated the conversation."},
+		{ID: UpdateConversationBranchNotFound, Description: "The conversation does not exist.", Optional: true},
+		{ID: UpdateConversationBranchProviderRejected, Description: "OpenAI rejected the update.", Optional: true},
+		{ID: UpdateConversationBranchInvalidResponse, Description: "OpenAI returned invalid conversation data.", Optional: true},
+		{ID: UpdateConversationBranchDefect, Description: "Input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateConversationResult = sdkgo.MutationResult[Conversation]
+
+type UpdateConversationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=openai"`
+	operationID                       struct{}                                           `connector:"operationId=updateConversation"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                     `connector:"configurationUI"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateConversationRequest                 `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateConversationResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateConversationResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateConversationResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateConversationResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateConversationResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Conversation]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateConversationStep[IN any](config UpdateConversationStepConfig[IN]) sdkgo.MutationStep[IN, UpdateConversationRequest, Conversation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateConversationRequest, Conversation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdateConversation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateConversationResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateConversationResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateConversationBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateConversationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateConversationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateConversationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateConversationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteConversationBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteConversationBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteConversationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteConversationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteConversationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteConversationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteConversation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteConversationBranchDeleted, Description: "OpenAI deleted the conversation."},
+		{ID: DeleteConversationBranchNotFound, Description: "The conversation no longer exists.", Optional: true},
+		{ID: DeleteConversationBranchProviderRejected, Description: "OpenAI rejected deletion.", Optional: true},
+		{ID: DeleteConversationBranchInvalidResponse, Description: "OpenAI returned an invalid deletion receipt.", Optional: true},
+		{ID: DeleteConversationBranchDefect, Description: "Input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteConversationResult = sdkgo.MutationResult[DeletedResponse]
+
+type DeleteConversationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=openai"`
+	operationID                       struct{}                                              `connector:"operationId=deleteConversation"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) ConversationIDRequest                        `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteConversationResult]                `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteConversationResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteConversationResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteConversationResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteConversationResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedResponse]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteConversationStep[IN any](config DeleteConversationStepConfig[IN]) sdkgo.MutationStep[IN, ConversationIDRequest, DeletedResponse] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ConversationIDRequest, DeletedResponse]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteConversation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteConversationResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteConversationResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteConversationBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteConversationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteConversationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteConversationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteConversationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListFilesBranchFound sdkgo.BranchID = "found"
+const ListFilesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFilesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFilesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFilesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listFiles"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFilesBranchFound, Description: "OpenAI returned a file page."},
+		{ID: ListFilesBranchProviderRejected, Description: "OpenAI rejected the file list.", Optional: true},
+		{ID: ListFilesBranchInvalidResponse, Description: "OpenAI returned an invalid file page.", Optional: true},
+		{ID: ListFilesBranchDefect, Description: "Page parameters or connection are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFilesResult = sdkgo.QueryResult[FilePage]
+
+type ListFilesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=openai"`
+	operationID                    struct{}                                    `connector:"operationId=listFiles"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI              `connector:"configurationUI"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListFilesRequest                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[ListFilesResult]               `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[ListFilesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFilesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFilesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FilePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListFilesStep[IN any](config ListFilesStepConfig[IN]) sdkgo.QueryStep[IN, ListFilesRequest, FilePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListFilesRequest, FilePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListFiles(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFilesResult] {
+			branches := make([]sdkgo.BranchTarget[ListFilesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(ListFilesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFilesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFilesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFilesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteFileBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteFileBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteFileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteFileBranchDeleted, Description: "OpenAI deleted the file."},
+		{ID: DeleteFileBranchNotFound, Description: "The file no longer exists.", Optional: true},
+		{ID: DeleteFileBranchProviderRejected, Description: "OpenAI rejected file deletion.", Optional: true},
+		{ID: DeleteFileBranchInvalidResponse, Description: "OpenAI returned an invalid deletion receipt.", Optional: true},
+		{ID: DeleteFileBranchDefect, Description: "File ID or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteFileResult = sdkgo.MutationResult[DeletedResponse]
+
+type DeleteFileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=openai"`
+	operationID                       struct{}                                              `connector:"operationId=deleteFile"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) FileIDRequest                                `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteFileResult]                        `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteFileResult]                        `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteFileResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteFileResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteFileResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedResponse]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteFileStep[IN any](config DeleteFileStepConfig[IN]) sdkgo.MutationStep[IN, FileIDRequest, DeletedResponse] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("openai connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, FileIDRequest, DeletedResponse]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteFileResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteFileResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteFileBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteFileBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteFileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteFileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteFileBranchDefect))
 			}
 			return branches
 		}(),
