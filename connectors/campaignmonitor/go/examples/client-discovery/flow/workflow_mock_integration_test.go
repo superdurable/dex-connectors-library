@@ -57,4 +57,5 @@ func TestClientDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "sample-client-id", output.Clients[0].ID)
 	require.Len(t, mock.ListClients().Calls(), 1)
 	require.Len(t, mock.ListSubscriberLists().Calls(), 1)
+	require.Len(t, mock.ListSubscribers().Calls(), 1)
 }

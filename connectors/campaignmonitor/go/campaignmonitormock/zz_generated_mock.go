@@ -18,6 +18,7 @@ import (
 // Mock is a scripted campaignmonitor connection. Script each operation through its accessor.
 type Mock struct {
 	connection          campaignmonitor.Connection
+	listSubscribers     *connectormock.Query[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage]
 	listSubscriberLists *connectormock.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists]
 	getSubscriber       *connectormock.Query[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile]
 	upsertSubscriber    *connectormock.Mutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity]
@@ -31,6 +32,7 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listSubscribers:     connectormock.NewQuery[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage](t, campaignmonitor.ListSubscribersDefinition),
 		listSubscriberLists: connectormock.NewQuery[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists](t, campaignmonitor.ListSubscriberListsDefinition),
 		getSubscriber:       connectormock.NewQuery[campaignmonitor.GetSubscriberInput, campaignmonitor.SubscriberProfile](t, campaignmonitor.GetSubscriberDefinition),
 		upsertSubscriber:    connectormock.NewMutation[campaignmonitor.UpsertSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.UpsertSubscriberDefinition),
@@ -38,6 +40,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteSubscriber:    connectormock.NewMutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.DeleteSubscriberDefinition),
 		listClients:         connectormock.NewQuery[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList](t, campaignmonitor.ListClientsDefinition),
 	}
+	mock.listSubscribers.Default(ListSubscribersDefault())
 	mock.listSubscriberLists.Default(ListSubscriberListsDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
 	mock.upsertSubscriber.Default(UpsertSubscriberDefault())
@@ -54,6 +57,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() campaignmonitor.Connection { return mock.connection }
+
+// ListSubscribers returns the listSubscribers script.
+func (mock *Mock) ListSubscribers() *connectormock.Query[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage] {
+	return mock.listSubscribers
+}
 
 // ListSubscriberLists returns the listSubscriberLists script.
 func (mock *Mock) ListSubscriberLists() *connectormock.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists] {
@@ -87,6 +95,9 @@ func (mock *Mock) ListClients() *connectormock.Query[campaignmonitor.ListClients
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListSubscribers() sdkgo.Query[campaignmonitor.ListSubscribersInput, campaignmonitor.SubscribersPage] {
+	return operations.mock.listSubscribers
+}
 func (operations mockOperations) ListSubscriberLists() sdkgo.Query[campaignmonitor.ListSubscriberListsInput, campaignmonitor.SubscriberLists] {
 	return operations.mock.listSubscriberLists
 }
@@ -104,6 +115,42 @@ func (operations mockOperations) DeleteSubscriber() sdkgo.Mutation[campaignmonit
 }
 func (operations mockOperations) ListClients() sdkgo.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList] {
 	return operations.mock.listClients
+}
+
+// ListSubscribersListed selects the listed branch: Campaign Monitor returned a subscriber page.
+func ListSubscribersListed(value campaignmonitor.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscribersPage] {
+	return connectormock.Branch(campaignmonitor.ListSubscribersBranchListed, value, failure)
+}
+
+// ListSubscribersProviderRejected selects the providerRejected branch: Campaign Monitor rejected the page lookup.
+func ListSubscribersProviderRejected(value campaignmonitor.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscribersPage] {
+	return connectormock.Branch(campaignmonitor.ListSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListSubscribersInvalidResponse selects the invalidResponse branch: Campaign Monitor returned malformed or oversized JSON.
+func ListSubscribersInvalidResponse(value campaignmonitor.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscribersPage] {
+	return connectormock.Branch(campaignmonitor.ListSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListSubscribersDefect selects the defect branch: Local input or credentials are invalid.
+func ListSubscribersDefect(value campaignmonitor.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.SubscribersPage] {
+	return connectormock.Branch(campaignmonitor.ListSubscribersBranchDefect, value, failure)
+}
+
+// ListSubscribersRetry asks Dex to retry the listSubscribers Step, after the delay when it is positive.
+func ListSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.SubscribersPage] {
+	return connectormock.Retry[campaignmonitor.SubscribersPage](failure, after)
+}
+
+// ListSubscribersListedDefault is the manifest mock listedDefault: Sample page of active subscribers.
+func ListSubscribersListedDefault() connectormock.Case[campaignmonitor.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.SubscribersPage](`{"subscribers":[{"email":"subscriber@example.com","name":"Sample Subscriber","state":"Active"}],"pageNumber":1,"pageSize":100,"totalRecords":1,"numberOfPages":1}`)
+	return connectormock.Branch(campaignmonitor.ListSubscribersBranchListed, value, nil)
+}
+
+// ListSubscribersDefault is the manifest default, listedDefault, which New installs.
+func ListSubscribersDefault() connectormock.Case[campaignmonitor.SubscribersPage] {
+	return ListSubscribersListedDefault()
 }
 
 // ListSubscriberListsListed selects the listed branch: Campaign Monitor returned the client's lists.

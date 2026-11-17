@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: campaignmonitor
   displayName: Campaign Monitor
-  description: Discover Campaign Monitor clients and lists and manage subscribers.
+  description: Discover Campaign Monitor clients, lists, and subscribers and manage subscribers.
   company: Campaign Monitor
   categories: [marketing]
   version: v0.2.0
@@ -55,6 +55,26 @@ spec:
         - Save the key in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Rotate it on the same page when access should end.
         - This key is for an account you control. Public integrations should use Campaign Monitor OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
   operations:
+    - name: listSubscribers
+      goName: ListSubscribers
+      inputType: ListSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: List one page of subscribers in a selected list state.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Campaign Monitor returned a subscriber page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the page lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample page of active subscribers.
+          output: {subscribers: [{email: subscriber@example.com, name: Sample Subscriber, state: Active}], pageNumber: 1, pageSize: 100, totalRecords: 1, numberOfPages: 1}
     - name: listSubscriberLists
       goName: ListSubscriberLists
       inputType: ListSubscriberListsInput

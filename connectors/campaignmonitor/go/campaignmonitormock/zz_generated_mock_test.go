@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listSubscribers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SubscribersPage](`{"subscribers":[{"email":"subscriber@example.com","name":"Sample Subscriber","state":"Active"}],"pageNumber":1,"pageSize":100,"totalRecords":1,"numberOfPages":1}`)
+			return err
+		}},
 		{name: "listSubscriberLists/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[campaignmonitor.SubscriberLists](`{"lists":[{"id":"list-1","name":"Newsletter"}]}`)
 			return err
@@ -50,6 +54,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListSubscribers().Definition().Operation.OperationID != "listSubscribers" {
+		t.Errorf("listSubscribers mock has another definition")
+	}
 	if mock.ListSubscriberLists().Definition().Operation.OperationID != "listSubscriberLists" {
 		t.Errorf("listSubscriberLists mock has another definition")
 	}

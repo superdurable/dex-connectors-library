@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListSubscribers() sdkgo.Query[ListSubscribersInput, SubscribersPage]
 	ListSubscriberLists() sdkgo.Query[ListSubscriberListsInput, SubscriberLists]
 	GetSubscriber() sdkgo.Query[GetSubscriberInput, SubscriberProfile]
 	UpsertSubscriber() sdkgo.Mutation[UpsertSubscriberInput, SubscriberIdentity]
@@ -50,6 +51,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListSubscribers() sdkgo.Query[ListSubscribersInput, SubscribersPage] {
+	return operations.client.ListSubscribers()
+}
 func (operations clientOperations) ListSubscriberLists() sdkgo.Query[ListSubscriberListsInput, SubscriberLists] {
 	return operations.client.ListSubscriberLists()
 }
@@ -204,6 +208,77 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListSubscribersBranchListed sdkgo.BranchID = "listed"
+const ListSubscribersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscribersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscribersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscribersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscribers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscribersBranchListed, Description: "Campaign Monitor returned a subscriber page."},
+		{ID: ListSubscribersBranchProviderRejected, Description: "Campaign Monitor rejected the page lookup.", Optional: true},
+		{ID: ListSubscribersBranchInvalidResponse, Description: "Campaign Monitor returned malformed or oversized JSON.", Optional: true},
+		{ID: ListSubscribersBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscribersResult = sdkgo.QueryResult[SubscribersPage]
+
+type ListSubscribersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=campaignmonitor"`
+	operationID                    struct{}                                           `connector:"operationId=listSubscribers"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubscribersInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSubscribersResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSubscribersResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscribersResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscribersResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscribersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscribersStep[IN any](config ListSubscribersStepConfig[IN]) sdkgo.QueryStep[IN, ListSubscribersInput, SubscribersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("campaignmonitor connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscribersInput, SubscribersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscribers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscribersResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscribersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSubscribersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscribersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscribersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscribersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListSubscriberListsBranchListed sdkgo.BranchID = "listed"

@@ -2,6 +2,373 @@
   "connector": "campaignmonitor",
   "scenarios": [
     {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"Results\":[{\"EmailAddress\":\"subscriber@example.com\",\"Name\":\"Sample Subscriber\",\"State\":\"Active\"}],\"PageNumber\":1,\"PageSize\":100,\"TotalNumberOfRecords\":1,\"NumberOfPages\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/active.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "numberOfPages": 1,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "subscribers": [
+            {
+              "email": "subscriber@example.com",
+              "name": "Sample Subscriber",
+              "state": "Active"
+            }
+          ],
+          "totalRecords": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "state": "active"
+      },
+      "name": "listSubscribers-success",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/active.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "numberOfPages": 0,
+          "pageNumber": 0,
+          "pageSize": 0,
+          "subscribers": [],
+          "totalRecords": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "state": "active"
+      },
+      "name": "listSubscribers-providerRejected",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/active.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "numberOfPages": 0,
+          "pageNumber": 0,
+          "pageSize": 0,
+          "subscribers": [],
+          "totalRecords": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "state": "active"
+      },
+      "name": "listSubscribers-invalidResponse",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/active.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "state": "active"
+      },
+      "name": "listSubscribers-429",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/active.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "state": "active"
+      },
+      "name": "listSubscribers-503",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/active.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "state": "active"
+      },
+      "name": "listSubscribers-500",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/active.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "state": "active"
+      },
+      "name": "listSubscribers-transportFailure",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "numberOfPages": 0,
+          "pageNumber": 0,
+          "pageSize": 0,
+          "subscribers": [],
+          "totalRecords": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "state": "active"
+      },
+      "name": "listSubscribers-defect",
+      "operation": "listSubscribers"
+    },
+    {
       "callId": "e0fe733b-53e2-4cb1-b8d3-033b51abe7d6",
       "exchanges": [
         {

@@ -16,9 +16,10 @@ const (
 	// FlowType is the stable example Flow identity.
 	FlowType = "CampaignMonitorClientDiscovery"
 	// ConnectionName is the static Dex Web connection used by this example.
-	ConnectionName    = "campaignmonitor"
-	operationStepType = "CallListClients"
-	listsStepType     = "CallListSubscriberLists"
+	ConnectionName      = "campaignmonitor"
+	operationStepType   = "CallListClients"
+	listsStepType       = "CallListSubscriberLists"
+	subscribersStepType = "CallListSubscribers"
 )
 
 var clientsListAttribute = dex.DefineAttribute[campaignmonitor.ClientsList]("campaignmonitor-clients-list")
@@ -54,6 +55,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Campaign Monitor", Explanation: "List subscriber lists for the first accessible client."},
 			Connection:          flow.connection,
 			MapToOperationInput: mapSubscriberListsInput,
+			Listed:              sdkgo.GoTo(listFirstSubscribers{}),
+		})),
+		dex.DefineStep(listFirstSubscribers{}),
+		dex.DefineStep(campaignmonitor.NewListSubscribersStep(campaignmonitor.ListSubscribersStepConfig[campaignmonitor.ListSubscribersInput]{
+			StepType: subscribersStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Campaign Monitor", Explanation: "Read the first page of active subscribers in the first list."},
+			Connection:          flow.connection,
+			MapToOperationInput: mapSubscribersInput,
 			Listed:              sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
@@ -134,14 +143,36 @@ func mapSubscriberListsInput(input campaignmonitor.ListSubscriberListsInput) cam
 	return input
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow after subscriber list discovery."
-type completeResult struct {
+// dex:group group-id:provider group-label:"Campaign Monitor"
+// dex:explanation text:"Read active subscribers in the first available list."
+type listFirstSubscribers struct {
 	dex.StepDefaultsNoWaitFor[campaignmonitor.ListSubscriberListsResult]
 }
 
+func (listFirstSubscribers) GetStepType() string { return "ListFirstSubscribers" }
+func (listFirstSubscribers) Execute(ctx dex.Context, result campaignmonitor.ListSubscriberListsResult) (*dex.StepDecision, error) {
+	if len(result.Value.Lists) == 0 {
+		clients, err := clientsListAttribute.Get(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return dex.GracefulComplete(clients), nil
+	}
+	return dex.GoTo(sdkgo.StepRef[campaignmonitor.ListSubscribersInput](subscribersStepType), campaignmonitor.ListSubscribersInput{ListID: result.Value.Lists[0].ID, State: "active", PageNumber: 1, PageSize: 100}), nil
+}
+
+func mapSubscribersInput(input campaignmonitor.ListSubscribersInput) campaignmonitor.ListSubscribersInput {
+	return input
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow after active subscriber discovery."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[campaignmonitor.ListSubscribersResult]
+}
+
 func (completeResult) GetStepType() string { return "CompleteListClients" }
-func (completeResult) Execute(ctx dex.Context, _ campaignmonitor.ListSubscriberListsResult) (*dex.StepDecision, error) {
+func (completeResult) Execute(ctx dex.Context, _ campaignmonitor.ListSubscribersResult) (*dex.StepDecision, error) {
 	clients, err := clientsListAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
