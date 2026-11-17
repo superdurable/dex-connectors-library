@@ -6557,6 +6557,2087 @@
       ],
       "name": "deleteTimeEntry-absence-after-unknown",
       "operation": "deleteTimeEntry"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000112",
+      "exchanges": [
+        {
+          "body": "{\"users\":[{\"id\":6001,\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\",\"is_active\":true}],\"links\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "users": [
+            {
+              "email": "ada@example.com",
+              "firstName": "Ada",
+              "id": 6001,
+              "isActive": true,
+              "lastName": "Lee"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listUsers-success",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000113",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listUsers-rejected",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000114",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listUsers-rate-limit",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000115",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listUsers-server-error",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000116",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listUsers-unavailable",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000117",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listUsers-transport",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000118",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listUsers-invalid",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000119",
+      "exchanges": [
+        {
+          "body": "{\"id\":6001,\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\",\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": 6001,
+          "isActive": true,
+          "lastName": "Lee"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 6001
+      },
+      "name": "getUser-success",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000120",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 6001
+      },
+      "name": "getUser-rejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000121",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 6001
+      },
+      "name": "getUser-rate-limit",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000122",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 6001
+      },
+      "name": "getUser-server-error",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000123",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 6001
+      },
+      "name": "getUser-unavailable",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000124",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 6001
+      },
+      "name": "getUser-transport",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000125",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 6001
+      },
+      "name": "getUser-not-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000126",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 6001
+      },
+      "name": "getUser-invalid",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000127",
+      "exchanges": [
+        {
+          "body": "{\"id\":6001,\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\",\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": 6001,
+          "isActive": true,
+          "lastName": "Lee"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getCurrentUser-success",
+      "operation": "getCurrentUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000128",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getCurrentUser-rejected",
+      "operation": "getCurrentUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000129",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getCurrentUser-rate-limit",
+      "operation": "getCurrentUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000130",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getCurrentUser-server-error",
+      "operation": "getCurrentUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000131",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getCurrentUser-unavailable",
+      "operation": "getCurrentUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000132",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getCurrentUser-transport",
+      "operation": "getCurrentUser"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000133",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getCurrentUser-invalid",
+      "operation": "getCurrentUser"
+    },
+    {
+      "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "exchanges": [
+        {
+          "body": "{\"id\":6001,\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\",\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+          "providerId": "6001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": 6001,
+          "isActive": true,
+          "lastName": "Lee"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "createUser-success",
+      "operation": "createUser"
+    },
+    {
+      "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "createUser-rejected",
+      "operation": "createUser"
+    },
+    {
+      "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "createUser-rate-limit",
+      "operation": "createUser"
+    },
+    {
+      "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "createUser-server-error",
+      "operation": "createUser"
+    },
+    {
+      "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "createUser-unavailable",
+      "operation": "createUser"
+    },
+    {
+      "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "email": "ada@example.com",
+            "first_name": "Ada",
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "createUser-transport",
+      "operation": "createUser"
+    },
+    {
+      "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "exchanges": [
+        {
+          "body": "{\"id\":6001,\"first_name\":\"Ada\",\"last_name\":\"Lee\",\"email\":\"ada@example.com\",\"is_active\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/6001",
+          "requestBody": {
+            "first_name": "Ada",
+            "is_active": true,
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": 6001,
+          "isActive": true,
+          "lastName": "Lee"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "input": {
+        "firstName": "Ada",
+        "id": 6001,
+        "isActive": true,
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "updateUser-success",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/6001",
+          "requestBody": {
+            "first_name": "Ada",
+            "is_active": true,
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "input": {
+        "firstName": "Ada",
+        "id": 6001,
+        "isActive": true,
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "updateUser-rejected",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/6001",
+          "requestBody": {
+            "first_name": "Ada",
+            "is_active": true,
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "input": {
+        "firstName": "Ada",
+        "id": 6001,
+        "isActive": true,
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "updateUser-rate-limit",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/6001",
+          "requestBody": {
+            "first_name": "Ada",
+            "is_active": true,
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "input": {
+        "firstName": "Ada",
+        "id": 6001,
+        "isActive": true,
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "updateUser-server-error",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/6001",
+          "requestBody": {
+            "first_name": "Ada",
+            "is_active": true,
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "input": {
+        "firstName": "Ada",
+        "id": 6001,
+        "isActive": true,
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "updateUser-unavailable",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/6001",
+          "requestBody": {
+            "first_name": "Ada",
+            "is_active": true,
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "input": {
+        "firstName": "Ada",
+        "id": 6001,
+        "isActive": true,
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "updateUser-transport",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/6001",
+          "requestBody": {
+            "first_name": "Ada",
+            "is_active": true,
+            "is_contractor": true,
+            "last_name": "Lee"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a966c28-f262-5893-a441-89d07eb471a9",
+      "input": {
+        "firstName": "Ada",
+        "id": 6001,
+        "isActive": true,
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "updateUser-not-found",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 6001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "input": {
+        "id": 6001
+      },
+      "name": "deleteUser-success",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "input": {
+        "id": 6001
+      },
+      "name": "deleteUser-rejected",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "input": {
+        "id": 6001
+      },
+      "name": "deleteUser-rate-limit",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "input": {
+        "id": 6001
+      },
+      "name": "deleteUser-server-error",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "input": {
+        "id": 6001
+      },
+      "name": "deleteUser-unavailable",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "input": {
+        "id": 6001
+      },
+      "name": "deleteUser-transport",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/users/6001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aa1e84e8-3865-59e5-a7a9-a4f047547ddb",
+      "input": {
+        "id": 6001
+      },
+      "name": "deleteUser-not-found",
+      "operation": "deleteUser"
+    },
+    {
+      "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": 0,
+          "isActive": false,
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3d806012-a593-52b9-997d-82efebeca7d3",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "isContractor": true,
+        "lastName": "Lee"
+      },
+      "name": "createUser-send-cap-uncertain",
+      "operation": "createUser",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "3d806012-a593-52b9-997d-82efebeca7d3",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

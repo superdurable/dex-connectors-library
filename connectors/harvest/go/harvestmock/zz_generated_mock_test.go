@@ -33,6 +33,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "deleteClient/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedClient](`{"id":2001}`); return err }},
+		{name: "listUsers/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserPage](`{"users":[{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}]}`)
+			return err
+		}},
+		{name: "getUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserRecord](`{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}`)
+			return err
+		}},
+		{name: "getCurrentUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserRecord](`{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}`)
+			return err
+		}},
+		{name: "createUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserRecord](`{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}`)
+			return err
+		}},
+		{name: "updateUser/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.UserRecord](`{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}`)
+			return err
+		}},
+		{name: "deleteUser/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedUser](`{"id":6001}`); return err }},
 		{name: "listProjects/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.ProjectPage](`{"projects":[{"id":3001,"name":"Meridian Website","isActive":true}]}`)
 			return err
@@ -106,6 +127,24 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteClient().Definition().Operation.OperationID != "deleteClient" {
 		t.Errorf("deleteClient mock has another definition")
+	}
+	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
+		t.Errorf("listUsers mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
+	if mock.GetCurrentUser().Definition().Operation.OperationID != "getCurrentUser" {
+		t.Errorf("getCurrentUser mock has another definition")
+	}
+	if mock.CreateUser().Definition().Operation.OperationID != "createUser" {
+		t.Errorf("createUser mock has another definition")
+	}
+	if mock.UpdateUser().Definition().Operation.OperationID != "updateUser" {
+		t.Errorf("updateUser mock has another definition")
+	}
+	if mock.DeleteUser().Definition().Operation.OperationID != "deleteUser" {
+		t.Errorf("deleteUser mock has another definition")
 	}
 	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
 		t.Errorf("listProjects mock has another definition")

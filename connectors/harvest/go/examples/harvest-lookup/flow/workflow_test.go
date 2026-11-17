@@ -17,7 +17,7 @@ func TestMapToListProjectsInput(t *testing.T) {
 }
 
 func TestMapToListClientsInput(t *testing.T) {
-	require.Equal(t, harvest.ListClientsInput{PerPage: 10}, MapToListClientsInput(harvest.GetTimeEntryResult{}))
+	require.Equal(t, harvest.ListClientsInput{PerPage: 10}, MapToListClientsInput(harvest.GetCurrentUserResult{}))
 }
 
 func TestMapToGetTimeEntryInput(t *testing.T) {

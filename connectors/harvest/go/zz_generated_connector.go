@@ -46,6 +46,12 @@ type Operations interface {
 	CreateClient() sdkgo.Mutation[CreateClientInput, ClientRecord]
 	UpdateClient() sdkgo.Mutation[UpdateClientInput, ClientRecord]
 	DeleteClient() sdkgo.Mutation[DeleteClientInput, DeletedClient]
+	ListUsers() sdkgo.Query[ListUsersInput, UserPage]
+	GetUser() sdkgo.Query[GetUserInput, UserRecord]
+	GetCurrentUser() sdkgo.Query[GetCurrentUserInput, UserRecord]
+	CreateUser() sdkgo.Mutation[CreateUserInput, UserRecord]
+	UpdateUser() sdkgo.Mutation[UpdateUserInput, UserRecord]
+	DeleteUser() sdkgo.Mutation[DeleteUserInput, DeletedUser]
 	ListProjects() sdkgo.Query[ListProjectsInput, ProjectPage]
 	GetTimeEntry() sdkgo.Query[GetTimeEntryInput, TimeEntry]
 	CreateTimeEntryByDuration() sdkgo.Mutation[CreateTimeEntryByDurationInput, TimeEntry]
@@ -77,6 +83,24 @@ func (operations clientOperations) UpdateClient() sdkgo.Mutation[UpdateClientInp
 }
 func (operations clientOperations) DeleteClient() sdkgo.Mutation[DeleteClientInput, DeletedClient] {
 	return operations.client.DeleteClient()
+}
+func (operations clientOperations) ListUsers() sdkgo.Query[ListUsersInput, UserPage] {
+	return operations.client.ListUsers()
+}
+func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, UserRecord] {
+	return operations.client.GetUser()
+}
+func (operations clientOperations) GetCurrentUser() sdkgo.Query[GetCurrentUserInput, UserRecord] {
+	return operations.client.GetCurrentUser()
+}
+func (operations clientOperations) CreateUser() sdkgo.Mutation[CreateUserInput, UserRecord] {
+	return operations.client.CreateUser()
+}
+func (operations clientOperations) UpdateUser() sdkgo.Mutation[UpdateUserInput, UserRecord] {
+	return operations.client.UpdateUser()
+}
+func (operations clientOperations) DeleteUser() sdkgo.Mutation[DeleteUserInput, DeletedUser] {
+	return operations.client.DeleteUser()
 }
 func (operations clientOperations) ListProjects() sdkgo.Query[ListProjectsInput, ProjectPage] {
 	return operations.client.ListProjects()
@@ -618,6 +642,445 @@ func NewDeleteClientStep[IN any](config DeleteClientStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteClientBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListUsersBranchListed sdkgo.BranchID = "listed"
+const ListUsersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListUsersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListUsersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListUsersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listUsers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListUsersBranchListed, Description: "Harvest confirmed the user result."},
+		{ID: ListUsersBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: ListUsersBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: ListUsersBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListUsersResult = sdkgo.QueryResult[UserPage]
+
+type ListUsersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=harvest"`
+	operationID                    struct{}                                    `connector:"operationId=listUsers"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListUsersInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListUsersResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListUsersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListUsersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListUsersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListUsersStep[IN any](config ListUsersStepConfig[IN]) sdkgo.QueryStep[IN, ListUsersInput, UserPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListUsersInput, UserPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListUsers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListUsersResult] {
+			branches := make([]sdkgo.BranchTarget[ListUsersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListUsersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListUsersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListUsersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListUsersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetUserBranchFound sdkgo.BranchID = "found"
+const GetUserBranchNotFound sdkgo.BranchID = "notFound"
+const GetUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserBranchFound, Description: "Harvest confirmed the user result."},
+		{ID: GetUserBranchNotFound, Description: "The user does not exist.", Optional: true},
+		{ID: GetUserBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: GetUserBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: GetUserBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserResult = sdkgo.QueryResult[UserRecord]
+
+type GetUserStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=harvest"`
+	operationID                    struct{}                                      `connector:"operationId=getUser"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserInput                         `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetUserResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetUserResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, GetUserInput, UserRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserInput, UserRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCurrentUserBranchFound sdkgo.BranchID = "found"
+const GetCurrentUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCurrentUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCurrentUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCurrentUserDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCurrentUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCurrentUserBranchFound, Description: "Harvest confirmed the user result."},
+		{ID: GetCurrentUserBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: GetCurrentUserBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: GetCurrentUserBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCurrentUserResult = sdkgo.QueryResult[UserRecord]
+
+type GetCurrentUserStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=harvest"`
+	operationID                    struct{}                                      `connector:"operationId=getCurrentUser"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCurrentUserInput                  `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCurrentUserResult]            `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetCurrentUserResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCurrentUserResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCurrentUserResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetCurrentUserStep[IN any](config GetCurrentUserStepConfig[IN]) sdkgo.QueryStep[IN, GetCurrentUserInput, UserRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCurrentUserInput, UserRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCurrentUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCurrentUserResult] {
+			branches := make([]sdkgo.BranchTarget[GetCurrentUserResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCurrentUserBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCurrentUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCurrentUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCurrentUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateUserBranchCreated sdkgo.BranchID = "created"
+const CreateUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateUserBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateUserBranchCreated, Description: "Harvest confirmed the user result."},
+		{ID: CreateUserBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: CreateUserBranchUncertain, Description: "A submitted user invitation may have succeeded.", Optional: true},
+		{ID: CreateUserBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateUserResult = sdkgo.MutationResult[UserRecord]
+
+type CreateUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=harvest"`
+	operationID                       struct{}                                         `connector:"operationId=createUser"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateUserInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateUserResult]                   `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateUserResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateUserResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateUserResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UserRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateUserStep[IN any](config CreateUserStepConfig[IN]) sdkgo.MutationStep[IN, CreateUserInput, UserRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateUserInput, UserRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateUserResult] {
+			branches := make([]sdkgo.BranchTarget[CreateUserResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateUserBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateUserBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateUserBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateUserBranchUpdated sdkgo.BranchID = "updated"
+const UpdateUserBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateUserBranchUpdated, Description: "Harvest confirmed the user result."},
+		{ID: UpdateUserBranchNotFound, Description: "The user does not exist.", Optional: true},
+		{ID: UpdateUserBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: UpdateUserBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateUserResult = sdkgo.MutationResult[UserRecord]
+
+type UpdateUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=harvest"`
+	operationID                       struct{}                                         `connector:"operationId=updateUser"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateUserInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateUserResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateUserResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateUserResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateUserResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UserRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateUserStep[IN any](config UpdateUserStepConfig[IN]) sdkgo.MutationStep[IN, UpdateUserInput, UserRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateUserInput, UserRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateUserResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateUserResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateUserBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateUserBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteUserBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteUserBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteUserBranchDeleted, Description: "Harvest confirmed the user result."},
+		{ID: DeleteUserBranchNotFound, Description: "The user does not exist.", Optional: true},
+		{ID: DeleteUserBranchProviderRejected, Description: "Harvest rejected the operation.", Optional: true},
+		{ID: DeleteUserBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteUserResult = sdkgo.MutationResult[DeletedUser]
+
+type DeleteUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=harvest"`
+	operationID                       struct{}                                          `connector:"operationId=deleteUser"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteUserInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteUserResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteUserResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteUserResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteUserResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedUser]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteUserStep[IN any](config DeleteUserStepConfig[IN]) sdkgo.MutationStep[IN, DeleteUserInput, DeletedUser] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteUserInput, DeletedUser]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteUserResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteUserResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteUserBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteUserBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteUserBranchDefect))
 			}
 			return branches
 		}(),
