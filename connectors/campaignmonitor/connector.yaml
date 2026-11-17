@@ -55,6 +55,108 @@ spec:
         - Save the key in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Rotate it on the same page when access should end.
         - This key is for an account you control. Public integrations should use Campaign Monitor OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
   operations:
+    - name: listSegments
+      goName: ListSegments
+      inputType: ListSegmentsInput
+      outputType: SegmentsList
+      kind: query
+      description: List segment IDs and names for one subscriber list.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Campaign Monitor returned the list's segments.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected segment discovery., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample segment list.
+          output: {segments: [{id: segment-1, listId: list-1, title: Recent readers}]}
+    - name: getSegment
+      goName: GetSegment
+      inputType: GetSegmentInput
+      outputType: SegmentProfile
+      kind: query
+      description: Read a segment's title, list, rules, and active count.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Campaign Monitor returned the segment.}
+        - {id: notFound, goName: NotFound, description: Campaign Monitor did not find the segment., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample segment.
+          output: {id: segment-1, listId: list-1, title: Recent readers, activeSubscribers: 1, ruleGroups: [{rules: [{ruleType: EmailAddress, clause: 'CONTAINS @example.com'}]}]}
+    - name: createSegment
+      goName: CreateSegment
+      inputType: CreateSegmentInput
+      outputType: SegmentIdentity
+      kind: mutation
+      description: Create a segment with optional rule groups.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Campaign Monitor created the segment.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected segment creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A segment may have been created but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample created segment.
+          output: {id: segment-2, listId: list-1, title: Campaign readers}
+    - name: updateSegment
+      goName: UpdateSegment
+      inputType: UpdateSegmentInput
+      outputType: SegmentIdentity
+      kind: mutation
+      description: Replace a segment's title and optionally its complete rule groups.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Campaign Monitor updated the segment.}
+        - {id: notFound, goName: NotFound, description: Campaign Monitor did not find the segment., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample updated segment.
+          output: {id: segment-1, listId: "", title: Updated readers}
+    - name: deleteSegment
+      goName: DeleteSegment
+      inputType: DeleteSegmentInput
+      outputType: SegmentIdentity
+      kind: mutation
+      description: Delete one segment by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Campaign Monitor deleted the segment.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample deleted segment.
+          output: {id: segment-1, listId: "", title: ""}
     - name: getList
       goName: GetList
       inputType: GetListInput

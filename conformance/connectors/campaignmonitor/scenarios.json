@@ -2,6 +2,2005 @@
   "connector": "campaignmonitor",
   "scenarios": [
     {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [
+        {
+          "body": "[{\"SegmentID\":\"segment-2\",\"ListID\":\"list-1\",\"Title\":\"Campaign readers\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "segment-2",
+          "listId": "list-1",
+          "title": "Campaign readers"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "list-1",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-confirmedReadback",
+      "operation": "createSegment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "[{\"SegmentID\":\"segment-1\",\"ListID\":\"list-1\",\"Title\":\"Recent readers\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "segments": [
+            {
+              "id": "segment-1",
+              "listId": "list-1",
+              "title": "Recent readers"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "listSegments-success",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "segments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "listSegments-providerRejected",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "segments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "listSegments-invalidResponse",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "listSegments-429",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "listSegments-503",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "listSegments-500",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "list-1"
+      },
+      "name": "listSegments-transportFailure",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "segments": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": ""
+      },
+      "name": "listSegments-defect",
+      "operation": "listSegments"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"SegmentID\":\"segment-1\",\"ListID\":\"list-1\",\"Title\":\"Recent readers\",\"ActiveSubscribers\":1,\"RuleGroups\":[{\"Rules\":[{\"RuleType\":\"EmailAddress\",\"Clause\":\"CONTAINS @example.com\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "activeSubscribers": 1,
+          "id": "segment-1",
+          "listId": "list-1",
+          "ruleGroups": [
+            {
+              "rules": [
+                {
+                  "clause": "CONTAINS @example.com",
+                  "ruleType": "EmailAddress"
+                }
+              ]
+            }
+          ],
+          "title": "Recent readers"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "getSegment-success",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "activeSubscribers": 0,
+          "id": "",
+          "listId": "",
+          "ruleGroups": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "getSegment-providerRejected",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "activeSubscribers": 0,
+          "id": "",
+          "listId": "",
+          "ruleGroups": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "getSegment-invalidResponse",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "getSegment-429",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "getSegment-503",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "getSegment-500",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "getSegment-transportFailure",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "activeSubscribers": 0,
+          "id": "",
+          "listId": "",
+          "ruleGroups": [],
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": ""
+      },
+      "name": "getSegment-defect",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "activeSubscribers": 0,
+          "id": "",
+          "listId": "",
+          "ruleGroups": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "getSegment-notFound",
+      "operation": "getSegment"
+    },
+    {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [
+        {
+          "body": "\"segment-2\"",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/segments/list-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Campaign readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "segment-2",
+          "listId": "list-1",
+          "title": "Campaign readers"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "list-1",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-success",
+      "operation": "createSegment"
+    },
+    {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/segments/list-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Campaign readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "list-1",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-providerRejected",
+      "operation": "createSegment"
+    },
+    {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/segments/list-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Campaign readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "list-1",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-429",
+      "operation": "createSegment"
+    },
+    {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/segments/list-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Campaign readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "list-1",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-503",
+      "operation": "createSegment"
+    },
+    {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/segments/list-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Campaign readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "list-1",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-500",
+      "operation": "createSegment"
+    },
+    {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/segments/list-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Campaign readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "list-1",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-transportFailure",
+      "operation": "createSegment"
+    },
+    {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-defect",
+      "operation": "createSegment"
+    },
+    {
+      "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/list-1/segments.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "628843f6-6b82-54aa-aa6f-95475546caea",
+      "input": {
+        "listId": "list-1",
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "title": "Campaign readers"
+      },
+      "name": "createSegment-uncertainAfterSendCap",
+      "operation": "createSegment",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/segments/segment-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Updated readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "segment-1",
+          "listId": "",
+          "title": "Updated readers"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "segment-1",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-success",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/segments/segment-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Updated readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "segment-1",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-providerRejected",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/segments/segment-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Updated readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "segment-1",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-429",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/segments/segment-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Updated readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "segment-1",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-503",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/segments/segment-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Updated readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "segment-1",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-500",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/segments/segment-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Updated readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "segment-1",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-transportFailure",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-defect",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [
+        {
+          "body": "unexpected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/segments/segment-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Updated readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "segment-1",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-invalidResponse",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/segments/segment-1.json",
+          "requestBody": {
+            "RuleGroups": [
+              {
+                "Rules": [
+                  {
+                    "Clause": "CONTAINS @example.com",
+                    "RuleType": "EmailAddress"
+                  }
+                ]
+              }
+            ],
+            "Title": "Updated readers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ac836d6-83da-50b9-970d-d776cd544c27",
+      "input": {
+        "ruleGroups": [
+          {
+            "rules": [
+              {
+                "clause": "CONTAINS @example.com",
+                "ruleType": "EmailAddress"
+              }
+            ]
+          }
+        ],
+        "segmentId": "segment-1",
+        "title": "Updated readers"
+      },
+      "name": "updateSegment-notFound",
+      "operation": "updateSegment"
+    },
+    {
+      "callId": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "segment-1",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "deleteSegment-success",
+      "operation": "deleteSegment"
+    },
+    {
+      "callId": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "deleteSegment-providerRejected",
+      "operation": "deleteSegment"
+    },
+    {
+      "callId": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "deleteSegment-429",
+      "operation": "deleteSegment"
+    },
+    {
+      "callId": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "deleteSegment-503",
+      "operation": "deleteSegment"
+    },
+    {
+      "callId": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "deleteSegment-500",
+      "operation": "deleteSegment"
+    },
+    {
+      "callId": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "deleteSegment-transportFailure",
+      "operation": "deleteSegment"
+    },
+    {
+      "callId": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "input": {
+        "segmentId": ""
+      },
+      "name": "deleteSegment-defect",
+      "operation": "deleteSegment"
+    },
+    {
+      "callId": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "exchanges": [
+        {
+          "body": "unexpected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/segments/segment-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "listId": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a5534ba-3261-563a-b891-586d1ae8702c",
+      "input": {
+        "segmentId": "segment-1"
+      },
+      "name": "deleteSegment-invalidResponse",
+      "operation": "deleteSegment"
+    },
+    {
       "callId": "fc2df31d-a87e-5bf8-9f71-355ac81279d3",
       "exchanges": [
         {

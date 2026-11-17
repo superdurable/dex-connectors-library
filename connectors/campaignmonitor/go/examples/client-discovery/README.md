@@ -4,6 +4,8 @@ This runnable Flow calls `listClients`, then `listSubscriberLists` for the first
 
 The same Worker registers `CampaignMonitorListCreate`. Start it with a client ID returned by `listClients`, a unique title, and an unsubscribe setting, for example `{"clientId":"client-1","title":"Campaign updates","unsubscribeSetting":"AllClientLists"}`. It calls `createList` and returns the new list ID. Its mock-backed integration test runs through a real Dex Worker and Client.
 
+The Worker also registers `CampaignMonitorSegmentCreate`. Start it with a list ID from `listSubscriberLists`, a title, and optional rule groups, for example `{"listId":"list-1","title":"Recent readers","ruleGroups":[{"rules":[{"ruleType":"EmailAddress","clause":"CONTAINS @example.com"}]}]}`. It calls `createSegment` and returns the new segment ID. Its integration test runs against the mock through a real Dex Worker and Client.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/campaignmonitor/go`, run:

@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listSegments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SegmentsList](`{"segments":[{"id":"segment-1","listId":"list-1","title":"Recent readers"}]}`)
+			return err
+		}},
+		{name: "getSegment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SegmentProfile](`{"id":"segment-1","listId":"list-1","title":"Recent readers","activeSubscribers":1,"ruleGroups":[{"rules":[{"ruleType":"EmailAddress","clause":"CONTAINS @example.com"}]}]}`)
+			return err
+		}},
+		{name: "createSegment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SegmentIdentity](`{"id":"segment-2","listId":"list-1","title":"Campaign readers"}`)
+			return err
+		}},
+		{name: "updateSegment/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SegmentIdentity](`{"id":"segment-1","listId":"","title":"Updated readers"}`)
+			return err
+		}},
+		{name: "deleteSegment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.SegmentIdentity](`{"id":"segment-1","listId":"","title":""}`)
+			return err
+		}},
 		{name: "getList/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[campaignmonitor.ListProfile](`{"id":"list-1","title":"Newsletter","unsubscribeSetting":"AllClientLists","confirmedOptIn":false}`)
 			return err
@@ -70,6 +90,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListSegments().Definition().Operation.OperationID != "listSegments" {
+		t.Errorf("listSegments mock has another definition")
+	}
+	if mock.GetSegment().Definition().Operation.OperationID != "getSegment" {
+		t.Errorf("getSegment mock has another definition")
+	}
+	if mock.CreateSegment().Definition().Operation.OperationID != "createSegment" {
+		t.Errorf("createSegment mock has another definition")
+	}
+	if mock.UpdateSegment().Definition().Operation.OperationID != "updateSegment" {
+		t.Errorf("updateSegment mock has another definition")
+	}
+	if mock.DeleteSegment().Definition().Operation.OperationID != "deleteSegment" {
+		t.Errorf("deleteSegment mock has another definition")
+	}
 	if mock.GetList().Definition().Operation.OperationID != "getList" {
 		t.Errorf("getList mock has another definition")
 	}

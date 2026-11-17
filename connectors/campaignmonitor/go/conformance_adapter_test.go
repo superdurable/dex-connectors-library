@@ -60,6 +60,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listSegments":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSegments(), reference),
+		"getSegment":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSegment(), reference),
+		"createSegment":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSegment(), reference, scenario.CallID),
+		"updateSegment":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateSegment(), reference, scenario.CallID),
+		"deleteSegment":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteSegment(), reference, scenario.CallID),
 		"getList":             newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetList(), reference),
 		"createList":          newConformanceMutationInvocation(t, scenario.Input, context, client.CreateList(), reference, scenario.CallID),
 		"updateList":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateList(), reference, scenario.CallID),
