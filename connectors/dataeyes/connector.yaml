@@ -15,6 +15,11 @@ spec:
       package: dex-connector-dataeyes
       operations: [readWebPage]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-dataeyes"
+      operations: [readWebPage]
+      triggers: []
   codegen:
     go:
       package: dataeyes
