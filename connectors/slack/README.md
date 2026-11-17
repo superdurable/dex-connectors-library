@@ -1,6 +1,6 @@
 # Slack Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.7.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.8.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 
@@ -15,8 +15,14 @@ messages.
 ## Agent tools
 
 The Go, TypeScript, and Python packages offer all seven operations to Dex agent
-hosts. Both posts recommend approval and claim no safe retry, so a host runs each post
-once. The reads need no approval:
+hosts. Both posts recommend approval and claim no safe retry. From Go v1.8.0,
+TypeScript v0.8.0, and Python v0.6.0 their tool metadata also carries
+`repeatOnUnknown: limited` and `maxSends: 3`: a post whose outcome is unknown
+may be sent up to three times (see [Operations](#operations)). Dex agent hosts
+honor that cap from Dex Agents 0.6.12: enable these posts with a cap above 1
+only after no Worker older than 0.6.12 runs that session Flow type, and do not
+roll back below 0.6.12 while a bounded call is open. A cap of 1 is safe on any
+Worker. The reads need no approval:
 
 - `slack_list_channels` (`listChannels`) finds channel IDs from a name such as
   `#general`. The post tools tell the model to look a channel up with it
@@ -36,7 +42,7 @@ the same tools for host tests.
 
 ## TypeScript package
 
-`@superdurable/connector-slack@0.7.0` implements every Go operation and Trigger for TypeScript Dex Flows:
+`@superdurable/connector-slack@0.8.0` implements every Go operation and Trigger for TypeScript Dex Flows:
 the channel discovery, channel history and thread reads, and message post operations; from 0.6.0 the
 `channelThreadCreated` and `threadReplyCreated` Triggers through Socket Mode or a host's relay; and from 0.7.0
 `postButtonMessage` and the `buttonClicked` Trigger through Socket Mode. The [runnable thread approval example](typescript/examples/thread-approval/README.md)
@@ -409,41 +415,64 @@ Posting sends the stable Dex Call ID as Slack `client_msg_id`. [Slack's
 `chat.postMessage` reference](https://docs.slack.dev/reference/methods/chat.postMessage/)
 does not list `client_msg_id` as an argument; it mentions the field only in
 duplicate-related error descriptions. Its replay deduplication behavior remains
-unverified. A connection loss after dispatch, a 409, other 5xx, an `ok:false`
-`internal_error` or `fatal_error` without a timestamp, or a successful response
-without a usable message identity selects `uncertain` and requires reconciliation.
-The connector does not resend after such an outcome. A traced DNS, connect, or
-TLS failure before a connection exists, HTTP 429, and HTTP 503 return Retry.
+unverified, so a resend may post a duplicate message.
+
+The three posts declare `execution.repeatOnUnknown: limited` with
+`maxSends: 3`. From Go v1.8.0, a connection loss after dispatch, other 5xx, or
+an `ok:false` `internal_error` or `fatal_error` without a timestamp is an
+unknown outcome: the attempt returns Retry, and the next attempt resends with
+the same `client_msg_id`, because a lost timestamp cannot be read back. Each
+Step call sends at most three times, counting an attempt that may have sent
+without recording it. An unknown outcome on the third possible send selects
+`uncertain` and requires reconciliation. A Step lowers or raises the cap, from
+1 (never resend) to 10, with the factory config's `MaxSends`. A 409 and a
+successful response without a usable message identity still select `uncertain`
+at once and are never resent: they mean Slack accepted the post, so the outcome
+is not unknown and a resend would certainly duplicate it. Definite refusals are
+never resent. A definite refusal of a first send selects `providerRejected`;
+a definite refusal of a resend selects `uncertain`, because an earlier send of
+the same call may have posted the message. The
+retry policy allows ten attempts within five minutes, enough for three sends
+and their rate-limit, credential-refresh, and read-back retries. A traced DNS,
+connect, or TLS failure before a connection exists, HTTP 429, and HTTP 503
+return Retry without counting a send.
 An HTTP 2xx carrying
 `ok:false` `ratelimited` or `service_unavailable` also retries after recording
 that the request was not processed. [Slack's method error descriptions](https://docs.slack.dev/reference/methods/chat.postMessage/)
 describe rate limiting with `Retry-After` and temporary service unavailability;
 their HTTP statuses and live delivery behavior remain unverified. An
-`internal_error` or `fatal_error` with a returned timestamp is read back;
-without one it remains `uncertain`. A complete HTTP 2xx `ok:false` post with
+`internal_error` or `fatal_error` with a returned timestamp is read back and
+never resent. A complete HTTP 2xx `ok:false` post with
 `invalid_auth`, `token_expired`, or `token_revoked`, or any HTTP 401, forces a
 credential refresh within the Step deadline margin. If refresh supplies a
 changed valid bot token, the fence permits one retry on the next Step attempt
 with the same `client_msg_id`; a failed, invalid, or unchanged refresh selects
-`providerRejected`. The post is never sent twice in one attempt.
+`providerRejected`, or `uncertain` after an earlier possible send. The post is never sent twice in one attempt.
 Slack's 409 behavior remains unverified.
 The shared single-dispatch fence uses synchronous Step durability to persist
 its claim and safe-retry evidence.
 A known accepted message timestamp is checkpointed for read-back through
 `conversations.replies`; an unavailable read-back retries without a new post,
-while an inconclusive read-back remains `uncertain`. Read-back uses the remaining
-Step context; a timeout retries read-back on the next attempt without posting.
-Before a post, a transient credential lookup failure records `notSent` and
+while an inconclusive read-back remains `uncertain`. Slack returns a timestamp
+only for a message it created, so a checkpointed timestamp is never resent.
+Read-back uses the remaining Step context; a timeout retries read-back on the
+next attempt without posting.
+Before a first post, a transient credential lookup failure records `notSent` and
 retries. Reauthorization-required or missing bot credentials record `notSent`
 and select `defect` with an authentication failure and reconnect guidance.
+Before a resend, an earlier post may have landed, so nothing is recorded: a
+transient credential failure retries, and terminal credentials select
+`uncertain` with reconnect guidance.
 During read-back, a transient credential failure retries without another post;
 reauthorization-required or missing user credentials select `uncertain` with
 the known message timestamp in the receipt and reconnect guidance.
 For replies, whether Slack excludes the parent message when `oldest` and `latest`
 name the reply and `limit=1` is unverified. A parent-only result selects
-`uncertain`. Missing or stale checkpoints do not authorize a resend. Released
-versions never wrote a fence marker: a post Step retry spanning the upgrade
-from v1.1.1 at attempt two or later selects `uncertain` without posting.
+`uncertain`. A missing checkpoint counts as one possible send per attempt and
+permits a resend only below the cap; a checkpoint from another call fails
+closed to `uncertain`. Checkpoints written by v1.7.0 and earlier carry no send
+count, and each is read as the most sends its attempt allows, so a post Step
+retry spanning the upgrade never exceeds three sends.
 The fence bounds each request inside the Step attempt. An application must not
 override these post Steps to async durability, which cannot preserve the
 fence's heartbeat across retries.
@@ -486,7 +515,7 @@ with the request and button Triggers on one shared runner.
 
 ## Python package
 
-`dex-connector-slack==0.5.0` implements every Go operation and Trigger for
+`dex-connector-slack==0.6.0` implements every Go operation and Trigger for
 Python Dex Flows: the channel discovery, channel history and thread reads, the
 channel, thread, and button message posts, the `channelThreadCreated` and
 `threadReplyCreated` Triggers through Socket Mode or a host's relay, and the

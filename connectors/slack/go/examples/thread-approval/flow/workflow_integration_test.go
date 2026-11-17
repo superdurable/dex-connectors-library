@@ -27,7 +27,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadApprovalExampleRetriesSafePostsAndNeverResendsUnknownPostsWithRealDex(t *testing.T) {
+func TestThreadApprovalExampleRetriesSafePostsAndResendsUnknownPostsUpToTheCapWithRealDex(t *testing.T) {
 	provider := newSlackProvider(t)
 	defer provider.Close()
 	flow, harness := newSlackIntegrationHarness(t, provider.URL)
@@ -92,7 +92,8 @@ func TestThreadApprovalExampleRetriesSafePostsAndNeverResendsUnknownPostsWithRea
 	uncertainResult, err := harness.client.WaitForFlow(ctx, uncertainFlowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, uncertainResult.Status)
-	require.Equal(t, 1, provider.postCount("3.0"))
+	// A fatal_error 5xx leaves the outcome unknown, so the post resends up to the declared cap.
+	require.Equal(t, int(slack.PostThreadReplyDefinition.MaxSends), provider.postCount("3.0"))
 
 	acceptedRoot := slack.MessageEvent{
 		TeamID: teamID, ChannelID: "C1", Timestamp: "5.0", ThreadTimestamp: "5.0", UserID: "U1", Text: "request approval",
@@ -147,7 +148,8 @@ func TestThreadApprovalExampleRetriesSafePostsAndNeverResendsUnknownPostsWithRea
 	gatewayResult, err := harness.client.WaitForFlow(ctx, gatewayFlowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, gatewayResult.Status)
-	require.Equal(t, 1, provider.postCount("9.0"))
+	// A 504 also leaves the outcome unknown, so the post resends up to the declared cap.
+	require.Equal(t, int(slack.PostThreadReplyDefinition.MaxSends), provider.postCount("9.0"))
 
 	malformedRoot := slack.MessageEvent{
 		TeamID: teamID, ChannelID: "C1", Timestamp: "11.0", ThreadTimestamp: "11.0", UserID: "U1", Text: "request approval",
@@ -165,7 +167,8 @@ func TestThreadApprovalExampleRetriesSafePostsAndNeverResendsUnknownPostsWithRea
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, malformedResult.Status)
 	require.Contains(t, malformedResult.ErrorMessage, "uncertain")
-	require.Equal(t, 1, provider.postCount("11.0"))
+	// A malformed response cannot be confirmed, so the post resends up to the declared cap.
+	require.Equal(t, int(slack.PostThreadReplyDefinition.MaxSends), provider.postCount("11.0"))
 }
 
 type slackIntegrationCredentialSource struct {

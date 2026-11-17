@@ -6,17 +6,17 @@ metadata:
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
   categories: [communication]
-  version: v1.7.0
+  version: v1.8.0
 spec:
   provider: slack
   languages:
     python:
-      version: v0.5.0
+      version: v0.6.0
       package: dex-connector-slack
       operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply, postButtonMessage]
       triggers: [channelThreadCreated, threadReplyCreated, buttonClicked]
     typescript:
-      version: v0.7.0
+      version: v0.8.0
       package: "@superdurable/connector-slack"
       operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, listChannelMessages, postChannelMessage, postThreadReply, postButtonMessage]
       triggers: [channelThreadCreated, threadReplyCreated, buttonClicked]
@@ -429,16 +429,19 @@ spec:
         - {id: defect, goName: Defect, description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true}
       agent:
         exposed: true
-        # No retry claim: client_msg_id dedupe is unverified and the fence relies on host checkpoints.
+        # No retry claim: the limited tier may resend an unconfirmed post, and client_msg_id dedupe is unverified.
         approval: recommended
-        # defect is raised before chat.postMessage is sent; every path that may have posted is uncertain.
+        # defect is raised before any chat.postMessage could be sent; a post unconfirmed at the send cap is uncertain.
         branches: {providerRejected: rejected, uncertain: unknown, defect: rejected}
         description: "Post one new top-level message to a Slack channel. Supply the channel ID and the message text. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find. The app must be a member of the channel."
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only HTTP 429/503, complete HTTP 2xx rate-limit or service-unavailable refusals, HTTP 401 or complete HTTP 2xx credential refusals followed by successful refresh, proven-unsent, pre-dispatch, and read-back failures retry; client_msg_id replay is unverified, and a lost timestamp cannot be read back, so a broader replay could publish another message."}}
+        # A duplicate chat message is acceptable; client_msg_id replay is unverified and a lost timestamp cannot be read back.
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: personWaiting, explanation: "Ten attempts within five minutes fit three possible sends of an unconfirmed message plus their rate-limit, credential-refresh, and read-back retries; a channel message delivered later than that no longer reaches people when they expect it, so the Flow fails instead."}}
       mocks:
         - name: messageSent
           branch: sent
@@ -467,16 +470,19 @@ spec:
       branches: *postBranches
       agent:
         exposed: true
-        # No retry claim: client_msg_id dedupe is unverified and the fence relies on host checkpoints.
+        # No retry claim: the limited tier may resend an unconfirmed post, and client_msg_id dedupe is unverified.
         approval: recommended
-        # defect is raised before chat.postMessage is sent; every path that may have posted is uncertain.
+        # defect is raised before any chat.postMessage could be sent; a post unconfirmed at the send cap is uncertain.
         branches: {providerRejected: rejected, uncertain: unknown, defect: rejected}
         description: "Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text. When the user names a channel, such as #general, find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find."
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only HTTP 429/503, complete HTTP 2xx rate-limit or service-unavailable refusals, HTTP 401 or complete HTTP 2xx credential refusals followed by successful refresh, proven-unsent, pre-dispatch, and read-back failures retry; client_msg_id replay is unverified, and a lost timestamp cannot be read back, so a broader replay could publish another reply."}}
+        # A duplicate thread reply is acceptable; client_msg_id replay is unverified and a lost timestamp cannot be read back.
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: personWaiting, explanation: "Ten attempts within five minutes fit three possible sends of an unconfirmed reply plus their rate-limit, credential-refresh, and read-back retries; a thread reply delivered later than that no longer reaches people when they expect it, so the Flow fails instead."}}
       mocks:
         - name: replySent
           branch: sent
@@ -510,7 +516,10 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Only HTTP 429/503, complete HTTP 2xx rate-limit or service-unavailable refusals, HTTP 401 or complete HTTP 2xx credential refusals followed by successful refresh, proven-unsent, pre-dispatch, and read-back failures retry; client_msg_id replay is unverified, and a lost timestamp cannot be read back, so a broader replay could publish another button message."}}
+        # A duplicate button message is acceptable; client_msg_id replay is unverified and a lost timestamp cannot be read back.
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: personWaiting, explanation: "Ten attempts within five minutes fit three possible sends of an unconfirmed button message plus their rate-limit, credential-refresh, and read-back retries; an approval request delivered later than that no longer reaches people when they expect it, so the Flow fails instead."}}
       mocks:
         - name: buttonMessageSent
           branch: sent

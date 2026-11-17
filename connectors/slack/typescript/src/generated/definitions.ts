@@ -182,7 +182,7 @@ export const PostChannelMessageDefinition: MutationDefinition = {
     { id: "uncertain", description: "The dispatched message outcome cannot be confirmed.", optional: true },
     { id: "defect", description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 10, totalDurationMs: 300000 } },
   repeatOnUnknown: "limited",
   maxSends: 3,
 };
@@ -213,7 +213,7 @@ export const PostThreadReplyDefinition: MutationDefinition = {
     { id: "uncertain", description: "The dispatched message outcome cannot be confirmed.", optional: true },
     { id: "defect", description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 10, totalDurationMs: 300000 } },
   repeatOnUnknown: "limited",
   maxSends: 3,
 };
@@ -244,7 +244,7 @@ export const PostButtonMessageDefinition: MutationDefinition = {
     { id: "uncertain", description: "The dispatched message outcome cannot be confirmed.", optional: true },
     { id: "defect", description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 10, totalDurationMs: 300000 } },
   repeatOnUnknown: "limited",
   maxSends: 3,
 };
