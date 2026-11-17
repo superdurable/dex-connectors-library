@@ -1,10 +1,10 @@
 {
   "connectorId": "trello",
-  "releaseTag": "connectors/atlassian/trello/go/v0.24.0",
+  "releaseTag": "connectors/atlassian/trello/go/v0.24.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-atlassian-trello",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "factories": [
     {
@@ -162,7 +162,7 @@
       "kind": "mutation",
       "operationId": "createCard",
       "inputType": "CreateCardInput",
-      "description": "Create one card in a list with a name, a plain-text description, a due date, labels, members, and a position. Sync durability and a checkpoint prevent replay after ambiguous responses; 429 and 503 retry.",
+      "description": "Create one card in a list with a name, a plain-text description, a due date, labels, members, and a position. Sync durability and a send-counting checkpoint resend an ambiguous outcome only within the send cap; 429 and 503 retry.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -366,7 +366,7 @@
       "kind": "mutation",
       "operationId": "addComment",
       "inputType": "AddCommentInput",
-      "description": "Add one plain-text comment, authored by the token's member, to a card. Sync durability and a checkpoint prevent replay after ambiguous responses; 429 and 503 retry.",
+      "description": "Add one plain-text comment, authored by the token's member, to a card. Sync durability and a send-counting checkpoint resend an ambiguous outcome only within the send cap; 429 and 503 retry.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

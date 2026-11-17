@@ -6,16 +6,16 @@ metadata:
   description: List and read Trello cards on a board or list with open, closed, and due-date filters, create cards and comments without silent duplicates, move, archive, reopen, reschedule, or relabel cards, and receive each card created, changed, commented, or deleted on a board.
   company: Atlassian
   categories: [project-management]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: trello
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listCards, getCard, createCard, updateCard, addComment]
       triggers: [cardChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       operations: [listCards, getCard, createCard, updateCard, addComment]
       triggers: [cardChanged]
   codegen:
@@ -172,13 +172,13 @@ spec:
       inputType: CreateCardInput
       outputType: CreateCardOutput
       kind: mutation
-      description: Create one card in a list with a name, a plain-text description, a due date, labels, members, and a position. Sync durability and a checkpoint prevent replay after ambiguous responses; 429 and 503 retry.
+      description: Create one card in a list with a name, a plain-text description, a due date, labels, members, and a position. Sync durability and a send-counting checkpoint resend an ambiguous outcome only within the send cap; 429 and 503 retry.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Trello created the card and returned its ID.}
         - {id: providerRejected, goName: ProviderRejected, description: "Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt re-sends a slow create, and Trello has no idempotency key.
       execution:
@@ -239,14 +239,14 @@ spec:
       inputType: AddCommentInput
       outputType: AddCommentOutput
       kind: mutation
-      description: Add one plain-text comment, authored by the token's member, to a card. Sync durability and a checkpoint prevent replay after ambiguous responses; 429 and 503 retry.
+      description: Add one plain-text comment, authored by the token's member, to a card. Sync durability and a send-counting checkpoint resend an ambiguous outcome only within the send cap; 429 and 503 retry.
       idempotency: required
       authorization: required
       branches:
         - {id: added, goName: Added, description: Trello added the comment and returned its action ID.}
         - {id: notFound, goName: NotFound, description: The card does not exist; nothing was added., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

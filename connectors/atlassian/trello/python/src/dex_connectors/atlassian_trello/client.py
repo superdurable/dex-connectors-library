@@ -333,6 +333,10 @@ def decode_card(value: object, detail: bool) -> Card:
     )
 
 
+DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses proving Trello refused a write; any other status leaves its outcome unknown."""
+
+
 def classify_response(
     operation: str, subject: str, response: ProviderResponse, *, write: bool = False, repeatable: bool = False
 ) -> tuple[str, Failure | None, float]:
@@ -404,7 +408,7 @@ def classify_response(
                 ),
                 0,
             )
-        if status < 400 or status >= 500 or status == 408:
+        if status not in DEFINITE_WRITE_REFUSAL_STATUSES:
             return (
                 "uncertain",
                 failure(
@@ -444,7 +448,7 @@ def classify_response(
                 )
             if response.oversized:
                 return (
-                    "invalidResponse",
+                    "retry" if repeatable else "invalidResponse",
                     failure(
                         operation,
                         FailureKind.RESPONSE_TOO_LARGE,
@@ -454,7 +458,7 @@ def classify_response(
                 )
             if response.reflects_secret:
                 return (
-                    "invalidResponse",
+                    "retry" if repeatable else "invalidResponse",
                     failure(
                         operation,
                         FailureKind.PROTOCOL,
@@ -463,6 +467,17 @@ def classify_response(
                     0,
                 )
             return "accepted", None, 0
+        if repeatable and status not in DEFINITE_WRITE_REFUSAL_STATUSES:
+            # Resending absolute values changes nothing, so an unknown outcome retries.
+            return (
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    f"Trello {subject} outcome is unknown after HTTP {status}, so the update is sent again",
+                ),
+                delay,
+            )
         if status < 400 or status >= 500:
             return (
                 "invalidResponse",

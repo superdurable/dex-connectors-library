@@ -169,7 +169,8 @@ func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *test
 	require.NotNil(t, uncertain.UncertainCreate)
 	require.Equal(t, sdkgo.FailureTransport, uncertain.UncertainCreate.FailureKind)
 	require.NotEmpty(t, uncertain.UncertainCreate.CallID)
-	require.Equal(t, 1, provider.createCount(cardName), "a timeout after dispatch is never retried")
+	sendCap := int(trello.CreateCardDefinition.MaxSends)
+	require.Equal(t, sendCap, provider.createCount(cardName), "a timeout after dispatch is resent up to the send cap")
 
 	ctx := integrationContext(t)
 	require.NoError(t, harness.client.InvokeRPC(ctx, flowID, harness.flow.ConfirmCreatedCard, ConfirmCreatedCardInput{CardID: missingCardID}, nil))
@@ -184,7 +185,7 @@ func TestTimeoutAfterDispatchIsReconciledWithoutCreatingAgainWithRealDex(t *test
 	require.Equal(t, createdID, record.CardID)
 	require.Nil(t, record.UncertainCreate)
 	require.Equal(t, 1, record.CreateAttempts)
-	require.Equal(t, 1, provider.createCount(cardName), "reconciliation adopted the existing card")
+	require.Equal(t, sendCap, provider.createCount(cardName), "reconciliation adopted an existing card without another create")
 	require.Len(t, provider.commentTexts(createdID), 1)
 }
 
@@ -196,13 +197,14 @@ func TestServerErrorIsCreatedAgainOnlyAfterOperatorApprovalWithRealDex(t *testin
 
 	uncertain := harness.waitForPhase(t, flowID, PhaseNeedsReconciliation)
 	require.Equal(t, sdkgo.FailureAvailability, uncertain.UncertainCreate.FailureKind)
-	require.Equal(t, 1, provider.createCount(cardName))
+	sendCap := int(trello.CreateCardDefinition.MaxSends)
+	require.Equal(t, sendCap, provider.createCount(cardName), "each 5xx is resent up to the send cap")
 
 	require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ApproveCardCreateRetry, nil, nil))
 	record := harness.waitForFlowOutput(t, flowID)
 	require.Equal(t, PhaseReady, record.Phase)
 	require.Equal(t, 2, record.CreateAttempts)
-	require.Equal(t, 2, provider.createCount(cardName), "only the approved retry sent a second create")
+	require.Equal(t, sendCap+1, provider.createCount(cardName), "only the approved retry sent another create")
 }
 
 // TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex verifies one create during a healthy slow request.
@@ -258,19 +260,20 @@ func TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
 	require.Len(t, provider.commentTexts(provider.cardIDForName(cardName)), 1, "one Step execution dispatches one comment request")
 }
 
-func TestCommentTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
+func TestCommentTimeoutResendsUpToTheSendCapThenFailsWithRealDex(t *testing.T) {
 	provider := newFakeTrello(t)
 	harness := newTrelloHarness(t, provider, shortRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
 
 	cardName := "[REQ-3008] " + markerCommentTimeout + " Freight door stuck"
 	flowID := harness.startRequestFlow(t, "comment-timeout", requestInput("REQ-3008", markerCommentTimeout+" Freight door stuck"))
 	harness.waitForFailedBranch(t, flowID, "uncertain")
-	require.Len(t, provider.commentTexts(provider.cardIDForName(cardName)), 1, "an uncertain comment is never re-sent")
+	require.Len(t, provider.commentTexts(provider.cardIDForName(cardName)), int(trello.AddCommentDefinition.MaxSends),
+		"an unconfirmed comment is resent up to the send cap")
 }
 
-// TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex replaces the Worker while Trello holds
-// the create; the next attempt finds the heartbeat checkpoint and sends nothing, and an operator confirms the card.
-func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringCreateResendsWithinTheSendCapWithRealDex replaces the Worker while Trello holds the create;
+// the next attempts count the checkpointed claim, resend only up to the send cap, and an operator confirms the card.
+func TestLostWorkerDuringCreateResendsWithinTheSendCapWithRealDex(t *testing.T) {
 	provider := newFakeTrello(t)
 	provider.holdsCreate = make(chan struct{})
 	harness := newTrelloHarness(t, provider, slowRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
@@ -279,19 +282,19 @@ func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *te
 	require.Eventually(t, func() bool { return provider.createCount(cardName) == 1 }, 30*time.Second, 50*time.Millisecond,
 		"the first attempt must reach Trello")
 	harness.replaceWorker(t)
-
-	uncertain := harness.waitForPhase(t, flowID, PhaseNeedsReconciliation)
+	// Released held creates answer without a card, so every resend stays unconfirmed.
 	close(provider.holdsCreate)
-	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", uncertain.UncertainCreate.FailureMessage,
-		"the new Worker's attempt found the checkpoint the lost attempt recorded")
+
+	harness.waitForPhase(t, flowID, PhaseNeedsReconciliation)
 	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.createCount(cardName), "the attempt on the new Worker did not resend the create")
+	sendCap := int(trello.CreateCardDefinition.MaxSends)
+	require.Equal(t, sendCap, provider.createCount(cardName), "the new Worker's attempts counted the lost claim and stopped at the cap")
 
 	createdID := provider.cardIDForName(cardName)
 	require.NoError(t, harness.client.InvokeRPC(integrationContext(t), flowID, harness.flow.ConfirmCreatedCard, ConfirmCreatedCardInput{CardID: createdID}, nil))
 	record := harness.waitForFlowOutput(t, flowID)
 	require.Equal(t, PhaseReady, record.Phase)
-	require.Equal(t, 1, provider.createCount(cardName))
+	require.Equal(t, sendCap, provider.createCount(cardName))
 }
 
 func TestRejectedMoveFailsBeforeCommentWithRealDex(t *testing.T) {
@@ -463,7 +466,7 @@ func (provider *fakeTrello) createCard(response http.ResponseWriter, request *ht
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"error":"API_TOKEN_LIMIT_EXCEEDED","message":"Rate limit exceeded SENTINEL"}`)
 	case strings.Contains(name, markerUnavailable) && attempt == 1:
 		provider.writeText(response, http.StatusServiceUnavailable, "SENTINEL service unavailable")
-	case strings.Contains(name, markerServerError) && attempt == 1:
+	case strings.Contains(name, markerServerError) && attempt <= int(trello.CreateCardDefinition.MaxSends):
 		provider.writeText(response, http.StatusInternalServerError, "SENTINEL internal error")
 	case strings.Contains(name, markerCreateTimeout):
 		provider.storeCard(body.Name, body.IDList, body.Due, body.IDLabels, body.IDMembers)

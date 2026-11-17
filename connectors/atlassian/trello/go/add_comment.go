@@ -71,20 +71,23 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	session, cancel, startFailure := client.startSession(call, addCommentOperationID)
-	if startFailure != nil {
-		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, startFailure, sdkgo.Receipt{})
-	}
-	defer cancel()
-	if attempt, isFinal := singleDispatchAttemptBeforeSend(call, claimSingleDispatch(call, session.context), addCommentOperationID, requested,
-		client.receipt(session, trelloResponse{}, cardID)); isFinal {
+	write, attempt, isFinal := startFencedWrite(call, AddCommentDefinition, addCommentOperationID, requested, AddCommentBranchDefect, client.receipt(&operationSession{call: call}, trelloResponse{}, cardID))
+	if isFinal {
 		return attempt
 	}
-	result := client.exchange(session, trelloRequest{
+	session, cancel, startFailure := client.startSession(call, addCommentOperationID)
+	if startFailure != nil {
+		return sessionFailureAttempt(write, addCommentOperationID, startFailure, requested, AddCommentBranchDefect)
+	}
+	defer cancel()
+	result, attempt, isFinal := dispatchFencedWrite(write, client, session, trelloRequest{
 		method: http.MethodPost, path: joinPath("cards", cardID, "actions", "comments"), payload: addCommentFields{Text: input.Text},
-	})
+	}, addCommentOperationID, requested, AddCommentBranchDefect)
+	if isFinal {
+		return attempt
+	}
 	receipt := client.receipt(session, result.response, cardID)
-	if attempt, isFinal := singleDispatchAttemptForWrite(call, client.classifyUnkeyedWrite(addCommentOperationID, addCommentFailureSubject, result),
+	if attempt, isFinal := attemptForWrite(write, addCommentOperationID, client.classifyUnkeyedWrite(addCommentOperationID, addCommentFailureSubject, result),
 		requested, receipt, singleDispatchBranches{
 			notFound: AddCommentBranchNotFound, providerRejected: AddCommentBranchProviderRejected, defect: AddCommentBranchDefect,
 		}); isFinal {
@@ -92,8 +95,9 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	action, err := decodeJSONObject[commentActionResource](result.response.body)
 	if err != nil || !trelloIDPattern.MatchString(action.ID) {
-		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Trello accepted the comment but returned an unusable action reference"), receipt)
+		return resendOrSelectUncertain(write, requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Trello accepted the comment but returned an unusable action reference"), receipt)
 	}
+	recordAcceptedWrite(write, action.ID)
 	output := requested
 	output.CommentID = action.ID
 	if trelloIDPattern.MatchString(action.IDMemberCreator) {

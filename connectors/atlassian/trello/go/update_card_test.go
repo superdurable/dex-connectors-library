@@ -130,7 +130,8 @@ func TestUpdateCardRetriesAmbiguousOutcomesAndMapsRejections(t *testing.T) {
 		"redirect": {reply: func(response http.ResponseWriter) {
 			response.Header().Set("Location", "https://attacker.example/")
 			response.WriteHeader(http.StatusFound)
-		}, branch: trello.UpdateCardBranchInvalidResponse},
+		}, retry: true},
+		"conflict": {reply: func(response http.ResponseWriter) { writeText(t, response, http.StatusConflict, "SENTINEL") }, retry: true},
 	} {
 		provider := newRecordingTrello(t, func(response http.ResponseWriter, _ *http.Request, _ int) { test.reply(response) })
 		isClosed := true

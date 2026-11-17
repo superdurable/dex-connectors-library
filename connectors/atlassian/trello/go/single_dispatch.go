@@ -5,79 +5,27 @@ package trello
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
+// minimumSingleDispatchWindow is the least attempt time in which a Trello write may start.
 const minimumSingleDispatchWindow = 3 * time.Second
 
-// singleDispatchMarker is the Dex heartbeat checkpoint recorded before a non-idempotent request is sent.
-type singleDispatchMarker struct {
-	DispatchedCallID sdkgo.CallID `json:"trelloDispatchedCallId"`
-	Attempt          int32        `json:"trelloAttempt"`
-	CanRetry         bool         `json:"trelloCanRetry,omitempty"`
-}
-
-// singleDispatchClaim is whether this attempt may send its non-idempotent Trello request.
-type singleDispatchClaim uint8
-
-const (
-	// singleDispatchGranted means this attempt may send after recording its claim.
-	singleDispatchGranted singleDispatchClaim = iota + 1
-	// singleDispatchAlreadySent means an earlier attempt of this Step execution may have sent it.
-	singleDispatchAlreadySent
-	// singleDispatchNotRecorded means Dex did not accept the marker, so nothing may be sent yet.
-	singleDispatchNotRecorded
-	// singleDispatchInsufficientTime means this attempt cannot safely start a write.
-	singleDispatchInsufficientTime
-)
-
-const earlierDispatchMessage = "an earlier attempt of this Step may have sent the request, so it is not sent again"
-
-// claimSingleDispatch permits a send only after this attempt records its own marker.
-func claimSingleDispatch(call sdkgo.Call, requestContext context.Context) singleDispatchClaim {
-	var marker singleDispatchMarker
-	isMarkerFound, err := call.Context.GetLastHeartbeatValue(&marker)
-	if err != nil {
-		return singleDispatchAlreadySent
-	}
-	attempt := call.Context.Attempt()
-	if isMarkerFound && (!marker.CanRetry || marker.DispatchedCallID != call.ID || marker.Attempt != attempt-1) {
-		return singleDispatchAlreadySent
-	}
-	if !isMarkerFound && attempt > 1 {
-		return singleDispatchAlreadySent
-	}
-	if deadline, hasDeadline := requestContext.Deadline(); hasDeadline && time.Until(deadline) < minimumSingleDispatchWindow {
-		releaseSingleDispatch(call)
-		return singleDispatchInsufficientTime
-	}
-	if err := call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID, Attempt: attempt}); err != nil {
-		return singleDispatchNotRecorded
-	}
-	return singleDispatchGranted
-}
-
-// releaseSingleDispatch records a safe retry; a lost checkpoint cannot authorize another send.
-func releaseSingleDispatch(call sdkgo.Call) {
-	// A failed release cannot authorize another attempt to send.
-	_ = call.Context.RecordHeartbeat(singleDispatchMarker{DispatchedCallID: call.ID, Attempt: call.Context.Attempt(), CanRetry: true})
-}
-
-// singleDispatchAttemptBeforeSend ends the attempt unless the claim was granted.
-func singleDispatchAttemptBeforeSend[OUT any](call sdkgo.Call, claim singleDispatchClaim, operationID string, requested OUT, receipt sdkgo.Receipt) (sdkgo.MutationAttempt[OUT], bool) {
-	switch claim {
-	case singleDispatchGranted:
-		return sdkgo.MutationAttempt[OUT]{}, false
-	case singleDispatchNotRecorded:
-		releaseSingleDispatch(call)
-		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Dex did not record the dispatch checkpoint, so nothing was sent to Trello"), 0), true
-	case singleDispatchInsufficientTime:
-		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "The attempt has too little time left to send a Trello write"), 0), true
-	default:
-		return sdkgo.NewMutationUncertain(requested, newFailure(operationID, sdkgo.FailureTransport, earlierDispatchMessage), receipt), true
-	}
+// fencedWrite is one attempt of a non-idempotent Trello write behind the shared single-dispatch fence.
+// Trello offers no lookup by Call ID, so an unknown outcome resends while the send cap allows and
+// selects uncertain at the cap.
+type fencedWrite struct {
+	fence *singledispatch.Fence
+	// decision is the fence's checkpoint decision for this attempt.
+	decision singledispatch.Decision
+	// canResendUnknownOutcome is true while another send stays within the cap.
+	canResendUnknownOutcome bool
+	// hasPossibleEarlierSend is true when an earlier send of this call may have taken effect.
+	hasPossibleEarlierSend bool
 }
 
 // singleDispatchBranches names an operation's branches for the shared single-dispatch outcome mapping.
@@ -87,25 +35,127 @@ type singleDispatchBranches struct {
 	defect           sdkgo.BranchID
 }
 
-// singleDispatchAttemptForWrite maps a send; safe retries and local defects release the marker.
-func singleDispatchAttemptForWrite[OUT any](call sdkgo.Call, classification writeClassification, requested OUT, receipt sdkgo.Receipt, branches singleDispatchBranches) (sdkgo.MutationAttempt[OUT], bool) {
+// startFencedWrite decides whether this attempt may send. It returns a terminal attempt when it may not.
+func startFencedWrite[OUT any](call sdkgo.Call, definition sdkgo.MutationDefinition, operationID string, echo OUT, defect sdkgo.BranchID, receipt sdkgo.Receipt) (*fencedWrite, sdkgo.MutationAttempt[OUT], bool) {
+	fence, err := singledispatch.NewFence(call, definition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return nil, sdkgo.NewMutationBranch(defect, echo, failurePointer(operationID, sdkgo.FailureLocalDefect, "Trello dispatch fence could not be constructed"), sdkgo.Receipt{}), true
+	}
+	decision := fence.Decide()
+	switch {
+	case decision.Kind == singledispatch.FailClosed:
+		return nil, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello dispatch checkpoint is unreadable, so nothing was sent in this attempt"), 0), true
+	case decision.Kind == singledispatch.ReadBackRequired:
+		return nil, sdkgo.NewMutationUncertain(echo, newFailure(operationID, sdkgo.FailureTransport,
+			"earlier attempts of this Step may have sent the request and the send cap is reached, so it is not sent again"), receipt), true
+	case decision.Marker.ProviderID != "":
+		return nil, sdkgo.NewMutationUncertain(echo, newFailure(operationID, sdkgo.FailureTransport,
+			"an earlier attempt of this Step was accepted, so the request is not sent again"), receipt), true
+	}
+	return &fencedWrite{
+		fence: fence, decision: decision,
+		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
+		hasPossibleEarlierSend:  decision.MaximumPriorSends > 0,
+	}, sdkgo.MutationAttempt[OUT]{}, false
+}
+
+// sessionFailureAttempt maps a credential failure before the send.
+func sessionFailureAttempt[OUT any](write *fencedWrite, operationID string, failure *sdkgo.Failure, echo OUT, defect sdkgo.BranchID) sdkgo.MutationAttempt[OUT] {
+	// notSent after a possible earlier send would hide it, so only a first-send decision records it.
+	if write.decision.Kind == singledispatch.SendAllowed {
+		if err := write.fence.RecordNotSent(); err != nil {
+			return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello setup failed and the not-sent checkpoint could not be recorded"), 0)
+		}
+	}
+	return defectOrSelectUncertain(write, defect, echo, *failure, sdkgo.Receipt{})
+}
+
+// dispatchFencedWrite sends once behind the fence; it returns a terminal attempt when the fence forbids sending.
+func dispatchFencedWrite[OUT any](write *fencedWrite, client *Client, session *operationSession, request trelloRequest, operationID string, echo OUT, defect sdkgo.BranchID) (exchangeResult, sdkgo.MutationAttempt[OUT], bool) {
+	var result exchangeResult
+	if deadline, hasDeadline := session.context.Deadline(); hasDeadline && time.Until(deadline) < minimumSingleDispatchWindow {
+		// notSent after a possible earlier send would hide it, so only a first-send decision records it.
+		if write.decision.Kind == singledispatch.SendAllowed {
+			if err := write.fence.RecordNotSent(); err != nil {
+				return result, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello not-sent checkpoint could not be recorded"), 0), true
+			}
+		}
+		return result, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "The attempt has too little time left to send a Trello write"), 0), true
+	}
+	err := write.fence.Dispatch(func(requestContext context.Context) error {
+		fencedSession := *session
+		fencedSession.context = requestContext
+		result = client.exchange(&fencedSession, request)
+		return nil
+	})
+	switch {
+	case err == nil:
+		return result, sdkgo.MutationAttempt[OUT]{}, false
+	case errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime):
+		return result, sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello dispatch checkpoint or request budget is unavailable, so nothing was sent"), 0), true
+	default:
+		return result, defectOrSelectUncertain(write, defect, echo, newFailure(operationID, sdkgo.FailureLocalDefect, "Trello dispatch was not allowed"), sdkgo.Receipt{}), true
+	}
+}
+
+// attemptForWrite maps a sent request: a definite outcome selects its branch, and an unknown one
+// resends while the send cap allows.
+func attemptForWrite[OUT any](write *fencedWrite, operationID string, classification writeClassification, echo OUT, receipt sdkgo.Receipt, branches singleDispatchBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	switch classification.outcome {
 	case writeAccepted:
 		return sdkgo.MutationAttempt[OUT]{}, false
 	case writeRetry:
-		releaseSingleDispatch(call)
+		if err := write.fence.RecordCanResend(); err != nil {
+			return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello retry checkpoint could not be recorded"), classification.retryAfter), true
+		}
 		return sdkgo.NewMutationRetry[OUT](classification.failure, classification.retryAfter), true
 	case writeDefect:
-		releaseSingleDispatch(call)
-		return sdkgo.NewMutationBranch(branches.defect, requested, &classification.failure, receipt), true
+		// The request was never built, so nothing was sent; a lost checkpoint only keeps the claim.
+		_ = write.fence.RecordCanResend()
+		return defectOrSelectUncertain(write, branches.defect, echo, classification.failure, receipt), true
 	case writeNotFound:
-		if branches.notFound != "" {
-			return sdkgo.NewMutationBranch(branches.notFound, requested, &classification.failure, receipt), true
+		branch := branches.notFound
+		if branch == "" {
+			branch = branches.providerRejected
 		}
-		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &classification.failure, receipt), true
+		return rejectOrSelectUncertain(write, operationID, branch, echo, classification.failure, receipt), true
 	case writeRejected:
-		return sdkgo.NewMutationBranch(branches.providerRejected, requested, &classification.failure, receipt), true
+		return rejectOrSelectUncertain(write, operationID, branches.providerRejected, echo, classification.failure, receipt), true
 	default:
-		return sdkgo.NewMutationUncertain(requested, classification.failure, receipt), true
+		return resendOrSelectUncertain(write, echo, classification.failure, receipt), true
 	}
+}
+
+// recordAcceptedWrite saves the accepted identity so a replayed attempt never resends it.
+func recordAcceptedWrite(write *fencedWrite, providerID string) {
+	// The accepted result stands; a lost identity checkpoint only keeps the claim.
+	_ = write.fence.RecordProviderID(providerID)
+}
+
+// resendOrSelectUncertain retries an unknown outcome while the send cap allows another send.
+func resendOrSelectUncertain[OUT any](write *fencedWrite, echo OUT, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if write.canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return sdkgo.NewMutationRetry[OUT](failure, 0)
+	}
+	return sdkgo.NewMutationUncertain(echo, failure, receipt)
+}
+
+// rejectOrSelectUncertain selects a refusal branch only when no earlier send may have written.
+func rejectOrSelectUncertain[OUT any](write *fencedWrite, operationID string, branch sdkgo.BranchID, echo OUT, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if write.hasPossibleEarlierSend {
+		return sdkgo.NewMutationUncertain(echo, failure, receipt)
+	}
+	if err := write.fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[OUT](newFailure(operationID, sdkgo.FailureAvailability, "Trello rejection checkpoint could not be recorded"), 0)
+	}
+	return sdkgo.NewMutationBranch(branch, echo, &failure, receipt)
+}
+
+// defectOrSelectUncertain selects defect only when no earlier send may have written.
+func defectOrSelectUncertain[OUT any](write *fencedWrite, defect sdkgo.BranchID, echo OUT, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[OUT] {
+	if write.hasPossibleEarlierSend {
+		return sdkgo.NewMutationUncertain(echo, failure, receipt)
+	}
+	return sdkgo.NewMutationBranch(defect, echo, &failure, receipt)
 }

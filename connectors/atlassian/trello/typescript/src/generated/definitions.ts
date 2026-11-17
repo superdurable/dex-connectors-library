@@ -86,7 +86,7 @@ export const CreateCardBranch = {
 export const CreateCardBranchCreated = CreateCardBranch.Created;
 /** Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created. */
 export const CreateCardBranchProviderRejected = CreateCardBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically. */
+/** The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically. */
 export const CreateCardBranchUncertain = CreateCardBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateCardBranchDefect = CreateCardBranch.Defect;
@@ -96,7 +96,7 @@ export const CreateCardDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "Trello created the card and returned its ID." },
     { id: "providerRejected", description: "Trello conclusively rejected the card, such as an unknown list, label, or member, or missing permission; nothing was created.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", optional: true },
+    { id: "uncertain", description: "The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the card may exist and must not be created again automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
@@ -154,7 +154,7 @@ export const AddCommentBranchAdded = AddCommentBranch.Added;
 export const AddCommentBranchNotFound = AddCommentBranch.NotFound;
 /** Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added. */
 export const AddCommentBranchProviderRejected = AddCommentBranch.ProviderRejected;
-/** The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically. */
+/** The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically. */
 export const AddCommentBranchUncertain = AddCommentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddCommentBranchDefect = AddCommentBranch.Defect;
@@ -165,7 +165,7 @@ export const AddCommentDefinition: MutationDefinition = {
     { id: "added", description: "Trello added the comment and returned its action ID." },
     { id: "notFound", description: "The card does not exist; nothing was added.", optional: true },
     { id: "providerRejected", description: "Trello conclusively rejected the comment, such as missing permission or invalid text; nothing was added.", optional: true },
-    { id: "uncertain", description: "The request was sent but its outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true },
+    { id: "uncertain", description: "The send cap is reached and the outcome cannot be confirmed; Trello has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

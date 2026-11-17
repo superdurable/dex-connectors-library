@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-atlassian-trello",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Trello card and comment operations and the cardChanged poll Trigger for Dex Flows",
   "repository": {
     "type": "git",
