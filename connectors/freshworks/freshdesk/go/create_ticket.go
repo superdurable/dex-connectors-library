@@ -79,43 +79,41 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v2/tickets. A 429, 503, or traced pre-connection failure retries only
-// in the next attempt; other unconfirmed dispatched outcomes select uncertain without resending.
+// Invoke sends POST /api/v2/tickets under the single-dispatch fence and the manifest send cap.
+// A 429, 503, or traced pre-connection failure retries; another unknown outcome resends while the
+// cap allows and selects uncertain at the cap, because Freshdesk has no ticket read-back by Call ID.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	if err := validateCreateTicketInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, freshdeskFailurePointer(sdkgo.FailureValidation, createTicketOperation, err.Error()), sdkgo.Receipt{})
 	}
 	writeBudget := newFreshdeskWriteBudget(call.Context, CreateTicketDefinition.StepDefaults.ExecuteMethodTimeout)
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend[CreateTicketOutput](inspectSingleDispatch(call), createTicketOperation,
-		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
-		return attempt
+	permit, priorAttempt := beginFreshdeskWrite[CreateTicketOutput](call, operation.client, createTicketOperation,
+		CreateTicketDefinition.StepDefaults.ExecuteMethodTimeout, CreateTicketBranchDefect)
+	if priorAttempt != nil {
+		return *priorAttempt
 	}
 	credentials, failure, isTransient := operation.client.resolveCredentials(call, createTicketOperation)
 	if failure != nil {
-		if isTransient || call.Context.Attempt() > 1 {
-			permitSingleDispatchRetry(call)
-			return sdkgo.NewMutationRetry[CreateTicketOutput](*failure, 0)
-		}
-		return sdkgo.NewMutationBranch(CreateTicketBranchDefect, CreateTicketOutput{}, failure, sdkgo.Receipt{})
+		return credentialAttempt[CreateTicketOutput](permit, *failure, isTransient, CreateTicketBranchDefect)
 	}
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend[CreateTicketOutput](recordSingleDispatch(call), createTicketOperation,
-		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
-		return attempt
-	}
-	result := operation.client.exchange(call, credentials, createTicketOperation, freshdeskRequest{
+	result, dispatchAttempt := sendFreshdeskWrite[CreateTicketOutput](permit, operation.client, credentials, createTicketOperation, freshdeskRequest{
 		method: http.MethodPost, path: "/tickets", payload: buildCreateTicketRequest(input),
 	}, writeBudget)
+	if dispatchAttempt != nil {
+		return *dispatchAttempt
+	}
 	receipt := operation.client.receipt(call, result.response, 0)
-	if attempt, isTerminal := singleDispatchAttemptForExchange[CreateTicketOutput](call, result, receipt, singleDispatchBranches{
+	if attempt, isTerminal := freshdeskWriteAttemptForExchange[CreateTicketOutput](permit, result, receipt, singleDispatchBranches{
 		providerRejected: CreateTicketBranchProviderRejected, defect: CreateTicketBranchDefect,
 	}); isTerminal {
 		return attempt
 	}
 	ticket, err := decodeTicketBody(result.response.body, 0)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(CreateTicketOutput{}, freshdeskFailure(sdkgo.FailureProtocol, createTicketOperation,
-			"Freshdesk accepted the ticket but returned an invalid ticket: "+err.Error()), receipt)
+		return acceptedWriteAttempt[CreateTicketOutput](permit, call, operation.client, result.response, freshdeskFailure(sdkgo.FailureProtocol, createTicketOperation,
+			"Freshdesk accepted the ticket but returned an invalid ticket: "+err.Error()))
 	}
+	recordAcceptedWrite(permit, ticket.ID)
 	return sdkgo.NewMutationBranch(CreateTicketBranchCreated, CreateTicketOutput{Ticket: ticket}, nil, operation.client.receipt(call, result.response, ticket.ID))
 }
 

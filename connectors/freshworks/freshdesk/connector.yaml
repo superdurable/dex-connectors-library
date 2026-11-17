@@ -6,7 +6,7 @@ metadata:
   description: Search, read, create, and update Freshdesk tickets, add private notes or public replies, and start Flows when tickets are created or updated, keeping Freshdesk's own integer statuses and priorities.
   company: Freshworks
   categories: [customer-support]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: freshdesk
   codegen:
@@ -14,12 +14,12 @@ spec:
       package: freshdesk
   languages:
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-freshworks-freshdesk
       operations: [searchTickets, getTicket, createTicket, updateTicket, addNote]
       triggers: [ticketChanged]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-freshdesk"
       operations: [searchTickets, getTicket, createTicket, updateTicket, addNote]
       triggers: [ticketChanged]
@@ -33,7 +33,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete Freshdesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or notes are unusually large. An oversized response selects invalidResponse, or uncertain for a write."
+        description: "Maximum complete Freshdesk API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example when ticket descriptions or notes are unusually large. An oversized read response selects invalidResponse, and an oversized write answer repeats the write within its send cap."
         required: false
         default: 4194304
       - name: pollInterval
@@ -144,17 +144,18 @@ spec:
       inputType: CreateTicketInput
       outputType: CreateTicketOutput
       kind: mutation
-      description: Create one ticket for a requester email. The Step runs with sync durability; 429, 503, and traced pre-connection failures permit one next-attempt resend, while other dispatched outcomes are never resent.
+      description: "Create one ticket for a requester email. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Freshdesk documents no idempotency key or ticket read-back by Call ID, so an unknown outcome resends the ticket while the send cap allows and selects uncertain at the cap."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: Freshdesk created the ticket and returned it.}
         - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the ticket, such as an unknown status, group, or agent; no ticket was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the ticket may exist; the connector never resends it.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The ticket may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the ticket ID with an invalid ticket. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Freshdesk does not document whether a 503 means no ticket was accepted, so retrying that response could duplicate a ticket."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Freshdesk has no idempotency key or ticket read-back by Call ID, so every resend below the send cap may create another ticket."}}
       mocks:
         - name: createdCustomerIssue
           branch: created
@@ -177,11 +178,13 @@ spec:
         - {id: updated, goName: Updated, description: "The ticket holds the requested values, written now or by an earlier attempt."}
         - {id: notFound, goName: NotFound, description: The ticket does not exist or is not visible to the connection's agent., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the change, such as an unknown status, a missing required field, or a spam or deleted ticket.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Freshdesk returned an invalid or oversized ticket, so the change may have been applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Freshdesk returned an invalid or oversized ticket on the read before the change, so this attempt sent no change. An invalid answer after the change is sent repeats the absolute change instead.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # The write sets final field values and a complete tag list, so a repeat leaves one result.
+        repeatOnUnknown: safe
       mocks:
         - name: reprioritizedCustomerIssue
           branch: updated
@@ -199,25 +202,26 @@ spec:
           failure: {kind: PROVIDER_REJECTION, message: "Freshdesk rejected the ticket update."}
         - name: invalidUpdatedTicket
           branch: invalidResponse
-          description: "The update succeeded but its ticket answer is malformed."
-          failure: {kind: PROTOCOL, message: "Freshdesk returned an invalid updated ticket."}
+          description: "The ticket read before the change is malformed, so no change was sent."
+          failure: {kind: PROTOCOL, message: "Freshdesk returned an invalid ticket."}
     - name: addNote
       goName: AddNote
       inputType: AddNoteInput
       outputType: AddNoteOutput
       kind: mutation
-      description: Add one private note or one public reply to a ticket. The Step runs with sync durability; 429, 503, and traced pre-connection failures permit one next-attempt resend, while other dispatched outcomes are never resent.
+      description: "Add one private note or one public reply to a ticket. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Freshdesk documents no idempotency key or conversation read-back by Call ID, so an unknown outcome resends the note or reply while the send cap allows and selects uncertain at the cap."
       idempotency: required
       branches:
         - {id: added, goName: Added, description: Freshdesk added the note or reply and returned it.}
         - {id: notFound, goName: NotFound, description: "The ticket does not exist or is not visible to the connection's agent; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Freshdesk conclusively rejected the note or reply; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was sent but its outcome cannot be confirmed, so the note or reply may exist; the connector never resends it.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The note or reply may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Freshdesk returned the conversation ID with an invalid conversation. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Freshdesk does not document whether a 503 means no note or reply was accepted, so retrying that response could duplicate it."}}
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Freshdesk has no idempotency key or conversation read-back by Call ID, so every resend below the send cap may add another note or reply."}}
       mocks:
         - name: customerIssuePrivateNote
           branch: added

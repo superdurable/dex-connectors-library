@@ -4,9 +4,10 @@
 // Package freshdesk implements Freshdesk ticket operations as Dex connector Steps:
 // searchTickets and getTicket read tickets, updateTicket changes ticket fields and
 // tags so that a repeated attempt writes nothing twice, and createTicket and addNote
-// create a ticket or add one note or reply. A 429, 503, or proven unsent request
-// may retry in the next attempt; other dispatched outcomes are never resent. The
-// ticketChanged poll Trigger starts a Flow for each ticket created or updated.
+// create a ticket or add one note or reply under the single-dispatch fence. A 429,
+// 503, or proven unsent request retries; another unknown outcome is resent while
+// the manifest send cap allows and selects uncertain at the cap. The ticketChanged
+// poll Trigger starts a Flow for each ticket created or updated.
 //
 // The connector authenticates with an agent's API key over HTTP Basic, the key as
 // the user name and X as the password, and sends every request to

@@ -4,6 +4,7 @@
 package freshdesk_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -19,9 +20,17 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := freshdesk.New(freshdesk.Config{Domain: testDomain}, testCredentialProvider(), freshdesk.WithAPIBaseURL(endpoint), freshdesk.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := newFreshdeskDexContext("conformance")
+	if len(scenario.PriorHeartbeat) != 0 {
+		context.previousHeartbeat = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
+		var marker struct {
+			Attempt int32 `json:"attempt"`
+		}
+		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
+		context.attempt = marker.Attempt + 1
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
-			context.previousHeartbeat = context.recordedHeartbeat
+			context.previousHeartbeat = append(json.RawMessage(nil), context.recordedHeartbeat...)
 			context.recordedHeartbeat = nil
 			context.attempt = int32(attempt)
 		}

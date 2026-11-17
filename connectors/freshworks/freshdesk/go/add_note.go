@@ -54,28 +54,22 @@ func (AddNoteOperation) IdempotencyKey(callID sdkgo.CallID, _ AddNoteInput) sdkg
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v2/tickets/{id}/notes or /reply. A 429, 503, or traced pre-connection
-// failure retries in the next attempt; other unconfirmed dispatched outcomes select uncertain.
+// Invoke sends POST /api/v2/tickets/{id}/notes or /reply under the single-dispatch fence and the
+// manifest send cap. A 429, 503, or traced pre-connection failure retries; another unknown outcome
+// resends while the cap allows and selects uncertain at the cap.
 func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sdkgo.MutationAttempt[AddNoteOutput] {
 	if err := validateAddNoteInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, freshdeskFailurePointer(sdkgo.FailureValidation, addNoteOperation, err.Error()), sdkgo.Receipt{})
 	}
 	writeBudget := newFreshdeskWriteBudget(call.Context, AddNoteDefinition.StepDefaults.ExecuteMethodTimeout)
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend[AddNoteOutput](inspectSingleDispatch(call), addNoteOperation,
-		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
-		return attempt
+	permit, priorAttempt := beginFreshdeskWrite[AddNoteOutput](call, operation.client, addNoteOperation,
+		AddNoteDefinition.StepDefaults.ExecuteMethodTimeout, AddNoteBranchDefect)
+	if priorAttempt != nil {
+		return *priorAttempt
 	}
 	credentials, failure, isTransient := operation.client.resolveCredentials(call, addNoteOperation)
 	if failure != nil {
-		if isTransient || call.Context.Attempt() > 1 {
-			permitSingleDispatchRetry(call)
-			return sdkgo.NewMutationRetry[AddNoteOutput](*failure, 0)
-		}
-		return sdkgo.NewMutationBranch(AddNoteBranchDefect, AddNoteOutput{}, failure, sdkgo.Receipt{})
-	}
-	if attempt, isTerminal := singleDispatchAttemptBeforeSend[AddNoteOutput](recordSingleDispatch(call), addNoteOperation,
-		operation.client.receipt(call, freshdeskResponse{}, 0)); isTerminal {
-		return attempt
+		return credentialAttempt[AddNoteOutput](permit, *failure, isTransient, AddNoteBranchDefect)
 	}
 	request := freshdeskRequest{method: http.MethodPost, path: ticketPath(input.TicketID) + "/notes",
 		payload: privateNoteRequestWire{Body: plainTextToFreshdeskHTML(input.Body), Private: true}}
@@ -83,18 +77,22 @@ func (operation AddNoteOperation) Invoke(call sdkgo.Call, input AddNoteInput) sd
 		request = freshdeskRequest{method: http.MethodPost, path: ticketPath(input.TicketID) + "/reply",
 			payload: publicReplyRequestWire{Body: plainTextToFreshdeskHTML(input.Body)}}
 	}
-	result := operation.client.exchange(call, credentials, addNoteOperation, request, writeBudget)
+	result, dispatchAttempt := sendFreshdeskWrite[AddNoteOutput](permit, operation.client, credentials, addNoteOperation, request, writeBudget)
+	if dispatchAttempt != nil {
+		return *dispatchAttempt
+	}
 	receipt := operation.client.receipt(call, result.response, 0)
-	if attempt, isTerminal := singleDispatchAttemptForExchange[AddNoteOutput](call, result, receipt, singleDispatchBranches{
+	if attempt, isTerminal := freshdeskWriteAttemptForExchange[AddNoteOutput](permit, result, receipt, singleDispatchBranches{
 		notFound: AddNoteBranchNotFound, providerRejected: AddNoteBranchProviderRejected, defect: AddNoteBranchDefect,
 	}); isTerminal {
 		return attempt
 	}
 	conversation, err := decodeAddedConversation(result.response.body, input)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(AddNoteOutput{}, freshdeskFailure(sdkgo.FailureProtocol, addNoteOperation,
-			"Freshdesk accepted the note but returned an invalid conversation: "+err.Error()), receipt)
+		return acceptedWriteAttempt[AddNoteOutput](permit, call, operation.client, result.response, freshdeskFailure(sdkgo.FailureProtocol, addNoteOperation,
+			"Freshdesk accepted the note but returned an invalid conversation: "+err.Error()))
 	}
+	recordAcceptedWrite(permit, conversation.ID)
 	return sdkgo.NewMutationBranch(AddNoteBranchAdded, AddNoteOutput{Conversation: conversation}, nil, operation.client.receipt(call, result.response, conversation.ID))
 }
 

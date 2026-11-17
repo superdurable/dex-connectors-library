@@ -6,7 +6,7 @@ import html
 import ipaddress
 import json
 import re
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parseaddr
 from typing import Any, TypeVar
@@ -14,12 +14,21 @@ from typing import Any, TypeVar
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
     Receipt,
+)
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+    Marker,
 )
 
 from ._generated import definitions as defs
@@ -45,17 +54,20 @@ _TIME = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:[.,][0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
 )
 Output = TypeVar("Output")
+# Only these statuses prove Freshdesk applied nothing; any other non-2xx answer may have been applied.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+_MAXIMUM_PROVIDER_ID = 2**63 - 1
 
 
 @dataclass(frozen=True, slots=True)
-class _Checkpoint:
-    dispatched_call_id: str = field(metadata={"dex_json_name": "freshdeskDispatchedCallId"})
-    dispatched_attempt: int = field(
-        default=0, metadata={"dex_json_name": "freshdeskDispatchedAttempt", "dex_json_omit_default": True}
-    )
-    retry_attempt: int = field(
-        default=0, metadata={"dex_json_name": "freshdeskRetryAttempt", "dex_json_omit_default": True}
-    )
+class _WritePermit:
+    """A fence that allows this attempt to send, with its send-cap facts."""
+
+    fence: Fence
+    # No earlier attempt of this call may have sent.
+    is_first_send: bool
+    # This attempt's send leaves room under the cap for one more.
+    can_resend_unknown_outcome: bool
 
 
 def _zero_ticket() -> Ticket:
@@ -523,104 +535,207 @@ def _validate_status_priority(status: int | None, priority: int | None) -> None:
         raise ValueError("Freshdesk priority is invalid")
 
 
-async def _single_dispatch_before(
-    client: Client, call: Call, operation: str, zero: Output
-) -> MutationAttempt[Output] | None:
-    context = call.context
-    if context is None:
-        return MutationAttempt.uncertain(
+async def _begin_write(
+    client: Client, call: Call, operation: str, definition: MutationDefinition, zero: Output
+) -> tuple[_WritePermit | None, MutationAttempt[Output] | None]:
+    """Decide whether this attempt may send; Freshdesk has no read-back by Call ID."""
+    try:
+        fence = Fence(call, definition.step_defaults.execute_method_timeout, max_sends=call.max_sends)
+        decision = await fence.decide()
+    except ValueError:
+        return None, MutationAttempt.branch_result(
+            "defect",
+            zero,
+            Receipt(),
+            client.failure(operation, "LOCAL_DEFECT", "single-dispatch fence could not start"),
+        )
+    if decision.kind == DecisionKind.FAIL_CLOSED:
+        # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+        return None, MutationAttempt.retry(
+            client.failure(
+                operation,
+                "AVAILABILITY",
+                "the single-dispatch checkpoint could not be read; nothing was sent in this attempt",
+            )
+        )
+    if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        return None, MutationAttempt.uncertain(
             zero,
             client.failure(
                 operation,
                 "TRANSPORT",
-                "an earlier attempt of this Step may have sent the request, so it is not sent again",
+                "earlier attempts may have sent the request and the send cap is reached, "
+                "so it is not sent again",
             ),
-            client.receipt(call),
+            client.receipt(call, object_id=_marker_provider_id(decision.marker)),
         )
-    try:
-        if context.has_last_heartbeat_value():
-            marker = context.get_last_heartbeat_value(_Checkpoint)
-            if (
-                marker is None
-                or marker.dispatched_call_id != str(call.id)
-                or marker.retry_attempt != context.attempt
-            ):
-                raise ValueError
-        elif context.attempt != 1:
-            raise ValueError
-    except (ValueError, TypeError, AttributeError):
-        return MutationAttempt.uncertain(
+    if (
+        decision.kind == DecisionKind.READ_BACK_THEN_RESEND_ALLOWED
+        and decision.marker is not None
+        and decision.marker.provider_id
+    ):
+        # A saved provider ID proves Freshdesk accepted the write, so it is never resent.
+        return None, MutationAttempt.uncertain(
             zero,
             client.failure(
                 operation,
                 "TRANSPORT",
-                "an earlier attempt of this Step may have sent the request, so it is not sent again",
+                "Freshdesk accepted an earlier attempt's write, and its answer was lost",
             ),
-            client.receipt(call),
+            client.receipt(call, object_id=_marker_provider_id(decision.marker)),
         )
-    return None
+    prior_sends = decision.prior_send_upper_bound
+    return _WritePermit(fence, prior_sends == 0, prior_sends + 1 < call.max_sends), None
 
 
-async def _permit_retry(call: Call) -> None:
-    if call.context is None:
-        return
+async def _credential_attempt(
+    client: Client, permit: _WritePermit, failure: Failure, transient: bool, zero: Output
+) -> MutationAttempt[Output]:
+    """Map a credential failure before any send in this attempt."""
+    if not permit.is_first_send:
+        # notSent would hide the earlier possible send, so nothing is recorded.
+        if transient:
+            return MutationAttempt.retry(failure)
+        return MutationAttempt.uncertain(zero, failure, Receipt())
     try:
-        await call.context.heartbeat(_Checkpoint(str(call.id), retry_attempt=call.context.attempt + 1))
+        await permit.fence.record_not_sent()
     except Exception:
-        pass  # A failed checkpoint deliberately makes the next attempt fail closed.
-
-
-async def _record_dispatch(
-    client: Client, call: Call, operation: str, zero: Output
-) -> MutationAttempt[Output] | None:
-    if call.context is None:
         return MutationAttempt.retry(
-            client.failure(
-                operation, "AVAILABILITY", "Dex did not record the dispatch checkpoint; nothing was sent"
-            )
+            client.failure(failure.operation, "AVAILABILITY", "Dex did not record the not-sent checkpoint")
         )
-    try:
-        await call.context.heartbeat(_Checkpoint(str(call.id), dispatched_attempt=call.context.attempt))
-    except Exception:
-        await _permit_retry(call)
-        return MutationAttempt.retry(
-            client.failure(
-                operation, "AVAILABILITY", "Dex did not record the dispatch checkpoint; nothing was sent"
-            )
-        )
-    return None
+    if transient:
+        return MutationAttempt.retry(failure)
+    return MutationAttempt.branch_result("defect", zero, Receipt(), failure)
 
 
-async def _single_dispatch_exchange(
+async def _send_write(
     client: Client,
     call: Call,
+    permit: _WritePermit,
     operation: str,
+    key: str,
+    path: str,
+    payload: dict[str, Any],
+    write_budget: float,
+) -> tuple[Exchange | None, MutationAttempt[Any] | None]:
+    """Dispatch one POST under the fence; a refused dispatch returns its Retry attempt."""
+    try:
+        exchange = await permit.fence.dispatch(
+            lambda deadline: client.exchange(
+                call,
+                operation,
+                key,
+                "POST",
+                path,
+                payload=payload,
+                write_budget=write_budget,
+                deadline=deadline,
+            )
+        )
+    except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+        # Dispatch refused before sending, so nothing reached Freshdesk in this attempt.
+        return None, MutationAttempt.retry(
+            client.failure(operation, "AVAILABILITY", "Freshdesk write was not dispatched")
+        )
+    return exchange, None
+
+
+async def _write_exchange_attempt(
+    client: Client,
+    call: Call,
+    permit: _WritePermit,
     exchange: Exchange,
     zero: Output,
     not_found: str = "providerRejected",
 ) -> MutationAttempt[Output] | None:
+    """Map a sent write; only a definite refusal selects a refusal branch."""
     if exchange.outcome == "succeeded":
         return None
+    assert exchange.failure is not None
     if exchange.outcome in ("rateLimited", "notSent", "serviceUnavailable"):
-        await _permit_retry(call)
-        assert exchange.failure is not None
+        try:
+            await permit.fence.record_can_resend()
+        except Exception:
+            pass  # A lost checkpoint leaves the claim, so the next attempt counts this send.
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
     receipt = client.receipt(call, exchange)
-    if exchange.outcome in ("unavailable", "invalid"):
-        assert exchange.failure is not None
-        return MutationAttempt.uncertain(zero, exchange.failure, receipt)
-    branch = (
-        not_found
-        if exchange.outcome == "notFound"
-        else "defect"
-        if exchange.outcome == "defect"
-        else "providerRejected"
-    )
-    return MutationAttempt.branch_result(branch, zero, receipt, exchange.failure)
+    if exchange.outcome == "notFound":
+        return await _reject_write(client, permit, exchange.failure, receipt, not_found, zero)
+    if exchange.outcome == "defect" and permit.is_first_send:
+        # defect would hide an earlier possible send, so only a first send selects it.
+        return await _reject_write(client, permit, exchange.failure, Receipt(), "defect", zero)
+    if exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+        return await _reject_write(client, permit, exchange.failure, receipt, "providerRejected", zero)
+    return _resend_or_uncertain(permit, zero, exchange.failure, exchange.retry_after, receipt)
+
+
+async def _reject_write(
+    client: Client, permit: _WritePermit, failure: Failure, receipt: Receipt, branch: str, zero: Output
+) -> MutationAttempt[Output]:
+    """Select a refusal branch only when no earlier send of this call may have applied."""
+    if not permit.is_first_send:
+        return MutationAttempt.uncertain(zero, failure, receipt)
+    try:
+        await permit.fence.record_can_resend()
+    except Exception:
+        return MutationAttempt.retry(
+            client.failure(failure.operation, "AVAILABILITY", "Dex did not record the refusal checkpoint")
+        )
+    return MutationAttempt.branch_result(branch, zero, receipt, failure)
+
+
+def _resend_or_uncertain(
+    permit: _WritePermit, zero: Output, failure: Failure, retry_after: float, receipt: Receipt
+) -> MutationAttempt[Output]:
+    """Retry an unknown outcome while the send cap allows another send."""
+    if permit.can_resend_unknown_outcome:
+        # The claim stays the last marker, so the next attempt counts this send.
+        return MutationAttempt.retry(failure, retry_after)
+    return MutationAttempt.uncertain(zero, failure, receipt)
+
+
+async def _accepted_write_attempt(
+    client: Client, call: Call, permit: _WritePermit, exchange: Exchange, zero: Output, failure: Failure
+) -> MutationAttempt[Output]:
+    """Handle a 2xx body that failed to decode; only an answer without an ID is resent."""
+    provider_id = _accepted_provider_id(exchange.body)
+    if not provider_id:
+        return _resend_or_uncertain(permit, zero, failure, 0, client.receipt(call, exchange))
+    await _record_accepted_write(permit, provider_id)
+    return MutationAttempt.uncertain(zero, failure, client.receipt(call, exchange, provider_id))
+
+
+def _accepted_provider_id(body: bytes) -> int:
+    """Return the positive top-level integer id of a 2xx body, or 0 when it has none."""
+    try:
+        document = json.loads(body)
+    except (ValueError, TypeError):
+        return 0
+    if not isinstance(document, dict):
+        return 0
+    provider_id = document.get("id")
+    if type(provider_id) is not int or not 1 <= provider_id <= _MAXIMUM_PROVIDER_ID:
+        return 0
+    return provider_id
+
+
+async def _record_accepted_write(permit: _WritePermit, provider_id: int) -> None:
+    try:
+        await permit.fence.record_provider_id(str(provider_id))
+    except Exception:
+        pass  # The accepted response already proves success; this checkpoint only helps recovery.
+
+
+def _marker_provider_id(marker: Marker | None) -> int:
+    """Return a checkpointed Freshdesk ID for the Receipt, or 0 when none is valid."""
+    if marker is None or not marker.provider_id.isdigit():
+        return 0
+    provider_id = int(marker.provider_id)
+    return provider_id if 1 <= provider_id <= _MAXIMUM_PROVIDER_ID else 0
 
 
 class CreateTicketOperation:
-    """Create one Freshdesk ticket under a heartbeat dispatch checkpoint."""
+    """Create one Freshdesk ticket under the single-dispatch fence and its send cap."""
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -634,7 +749,7 @@ class CreateTicketOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: CreateTicketInput) -> MutationAttempt[CreateTicketOutput]:
-        """Send the ticket once, retrying only proven safe outcomes."""
+        """Send the ticket, resending an unknown outcome while the send cap allows."""
         operation, zero = "createTicket", CreateTicketOutput(_zero_ticket())
         write_budget = _write_budget(
             call, self.definition().step_defaults.execute_method_timeout.total_seconds()
@@ -661,18 +776,13 @@ class CreateTicketOperation:
             return MutationAttempt.branch_result(
                 "defect", zero, Receipt(), self.client.failure(operation, "VALIDATION", str(error))
             )
-        terminal = await _single_dispatch_before(self.client, call, operation, zero)
-        if terminal:
+        permit, terminal = await _begin_write(self.client, call, operation, self.definition(), zero)
+        if permit is None:
+            assert terminal is not None
             return terminal
         key, failure, transient = await self.client.resolve_credentials(call, operation)
         if failure:
-            if transient or call.context and call.context.attempt > 1:
-                await _permit_retry(call)
-                return MutationAttempt.retry(failure)
-            return MutationAttempt.branch_result("defect", zero, Receipt(), failure)
-        terminal = await _record_dispatch(self.client, call, operation, zero)
-        if terminal:
-            return terminal
+            return await _credential_attempt(self.client, permit, failure, transient, zero)
         payload: dict[str, Any] = {
             "subject": input.subject,
             "description": _html(input.description),
@@ -689,24 +799,31 @@ class CreateTicketOperation:
         ):
             if value:
                 payload[name] = value
-        exchange = await self.client.exchange(
-            call, operation, key, "POST", "/tickets", payload=payload, write_budget=write_budget
+        exchange, terminal = await _send_write(
+            self.client, call, permit, operation, key, "/tickets", payload, write_budget
         )
-        terminal = await _single_dispatch_exchange(self.client, call, operation, exchange, zero)
+        if exchange is None:
+            assert terminal is not None
+            return terminal
+        terminal = await _write_exchange_attempt(self.client, call, permit, exchange, zero)
         if terminal:
             return terminal
         try:
             ticket = _ticket(exchange.body)
         except (ValueError, TypeError) as error:
-            return MutationAttempt.uncertain(
+            return await _accepted_write_attempt(
+                self.client,
+                call,
+                permit,
+                exchange,
                 zero,
                 self.client.failure(
                     operation,
                     "PROTOCOL",
                     f"Freshdesk accepted the ticket but returned an invalid ticket: {error}",
                 ),
-                self.client.receipt(call, exchange),
             )
+        await _record_accepted_write(permit, ticket.id)
         return MutationAttempt.branch_result(
             "created", CreateTicketOutput(ticket), self.client.receipt(call, exchange, ticket.id)
         )
@@ -804,19 +921,24 @@ class UpdateTicketOperation:
                 self.client.receipt(call, first, input.ticket_id),
             )
         second = await self.client.exchange(call, operation, key, "PUT", path, payload=payload)
+        if second.outcome not in ("succeeded", "notFound", "defect") and not (
+            second.outcome == "rejected" and second.status in _DEFINITE_REFUSAL_STATUSES
+        ):
+            # The PUT sets final values, so an unknown outcome repeats it.
+            assert second.failure is not None
+            return MutationAttempt.retry(second.failure, second.retry_after)
         terminal = _mutation_terminal(self.client, call, second, current_output, input.ticket_id)
         if terminal:
             return terminal
         try:
             updated = _ticket(second.body, input.ticket_id)
         except (ValueError, TypeError) as error:
-            return MutationAttempt.branch_result(
-                "invalidResponse",
-                current_output,
-                self.client.receipt(call, second, input.ticket_id),
+            return MutationAttempt.retry(
                 self.client.failure(
-                    operation, "PROTOCOL", f"Freshdesk returned an invalid updated ticket: {error}"
-                ),
+                    operation,
+                    "PROTOCOL",
+                    f"Freshdesk accepted the change but returned an invalid updated ticket: {error}",
+                )
             )
         return MutationAttempt.branch_result(
             "updated", UpdateTicketOutput(updated), self.client.receipt(call, second, input.ticket_id)
@@ -824,7 +946,7 @@ class UpdateTicketOperation:
 
 
 class AddNoteOperation:
-    """Add one private note or public reply under a dispatch checkpoint."""
+    """Add one private note or public reply under the single-dispatch fence and its send cap."""
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -838,7 +960,7 @@ class AddNoteOperation:
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: AddNoteInput) -> MutationAttempt[AddNoteOutput]:
-        """Dispatch one note or reply and map confirmed and uncertain outcomes."""
+        """Send the note or reply, resending an unknown outcome while the send cap allows."""
         operation, zero = "addNote", AddNoteOutput(_zero_conversation())
         write_budget = _write_budget(
             call, self.definition().step_defaults.execute_method_timeout.total_seconds()
@@ -851,28 +973,26 @@ class AddNoteOperation:
             return MutationAttempt.branch_result(
                 "defect", zero, Receipt(), self.client.failure(operation, "VALIDATION", str(error))
             )
-        terminal = await _single_dispatch_before(self.client, call, operation, zero)
-        if terminal:
+        permit, terminal = await _begin_write(self.client, call, operation, self.definition(), zero)
+        if permit is None:
+            assert terminal is not None
             return terminal
         key, failure, transient = await self.client.resolve_credentials(call, operation)
         if failure:
-            if transient or call.context and call.context.attempt > 1:
-                await _permit_retry(call)
-                return MutationAttempt.retry(failure)
-            return MutationAttempt.branch_result("defect", zero, Receipt(), failure)
-        terminal = await _record_dispatch(self.client, call, operation, zero)
-        if terminal:
-            return terminal
+            return await _credential_attempt(self.client, permit, failure, transient, zero)
         path = f"/tickets/{input.ticket_id}/" + ("reply" if input.is_public_reply else "notes")
-        payload = (
+        payload: dict[str, Any] = (
             {"body": _html(input.body)}
             if input.is_public_reply
             else {"body": _html(input.body), "private": True}
         )
-        exchange = await self.client.exchange(
-            call, operation, key, "POST", path, payload=payload, write_budget=write_budget
+        exchange, terminal = await _send_write(
+            self.client, call, permit, operation, key, path, payload, write_budget
         )
-        terminal = await _single_dispatch_exchange(self.client, call, operation, exchange, zero, "notFound")
+        if exchange is None:
+            assert terminal is not None
+            return terminal
+        terminal = await _write_exchange_attempt(self.client, call, permit, exchange, zero, "notFound")
         if terminal:
             return terminal
         try:
@@ -888,15 +1008,19 @@ class AddNoteOperation:
                 is_private=False if input.is_public_reply else private,
             )
         except (ValueError, TypeError) as error:
-            return MutationAttempt.uncertain(
+            return await _accepted_write_attempt(
+                self.client,
+                call,
+                permit,
+                exchange,
                 zero,
                 self.client.failure(
                     operation,
                     "PROTOCOL",
                     f"Freshdesk accepted the note but returned an invalid conversation: {error}",
                 ),
-                self.client.receipt(call, exchange),
             )
+        await _record_accepted_write(permit, conversation.id)
         return MutationAttempt.branch_result(
             "added", AddNoteOutput(conversation), self.client.receipt(call, exchange, conversation.id)
         )
