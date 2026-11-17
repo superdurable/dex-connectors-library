@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCandidates/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[greenhouse.CandidateProfilesPage](`{"candidates":[{"id":53883394,"firstName":"Sample","lastName":"Candidate"}],"nextCursor":""}`)
+			return err
+		}},
 		{name: "getCandidate/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[greenhouse.CandidateProfile](`{"id":53883394,"firstName":"Sample","lastName":"Candidate"}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCandidates().Definition().Operation.OperationID != "listCandidates" {
+		t.Errorf("listCandidates mock has another definition")
+	}
 	if mock.GetCandidate().Definition().Operation.OperationID != "getCandidate" {
 		t.Errorf("getCandidate mock has another definition")
 	}

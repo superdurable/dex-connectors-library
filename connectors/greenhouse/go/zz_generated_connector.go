@@ -42,11 +42,15 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListCandidates() sdkgo.Query[ListCandidatesInput, CandidateProfilesPage]
 	GetCandidate() sdkgo.Query[GetCandidateInput, CandidateProfile]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListCandidates() sdkgo.Query[ListCandidatesInput, CandidateProfilesPage] {
+	return operations.client.ListCandidates()
+}
 func (operations clientOperations) GetCandidate() sdkgo.Query[GetCandidateInput, CandidateProfile] {
 	return operations.client.GetCandidate()
 }
@@ -239,6 +243,77 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListCandidatesBranchListed sdkgo.BranchID = "listed"
+const ListCandidatesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCandidatesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCandidatesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCandidatesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCandidates"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCandidatesBranchListed, Description: "Greenhouse returned a candidate page."},
+		{ID: ListCandidatesBranchProviderRejected, Description: "Greenhouse conclusively rejected the list request.", Optional: true},
+		{ID: ListCandidatesBranchInvalidResponse, Description: "Greenhouse returned malformed or oversized page data.", Optional: true},
+		{ID: ListCandidatesBranchDefect, Description: "Page settings or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCandidatesResult = sdkgo.QueryResult[CandidateProfilesPage]
+
+type ListCandidatesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                 `connector:"connectorId=greenhouse"`
+	operationID                    struct{}                                                 `connector:"operationId=listCandidates"`
+	StepType                       string                                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                     Connection                                               `connector:"connection"`
+	ConnectionName                 string                                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCandidatesInput                             `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCandidatesResult]                       `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCandidatesResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCandidatesResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCandidatesResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CandidateProfilesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewListCandidatesStep[IN any](config ListCandidatesStepConfig[IN]) sdkgo.QueryStep[IN, ListCandidatesInput, CandidateProfilesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("greenhouse connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCandidatesInput, CandidateProfilesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCandidates(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCandidatesResult] {
+			branches := make([]sdkgo.BranchTarget[ListCandidatesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCandidatesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCandidatesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCandidatesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCandidatesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetCandidateBranchFound sdkgo.BranchID = "found"
