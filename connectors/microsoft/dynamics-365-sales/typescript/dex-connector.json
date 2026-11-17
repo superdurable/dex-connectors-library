@@ -1,6 +1,6 @@
 {
   "connectorId": "microsoft-dynamics-365-sales",
-  "releaseTag": "connectors/microsoft/dynamics-365-sales/go/v0.1.0",
+  "releaseTag": "connectors/microsoft/dynamics-365-sales/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-microsoft-dynamics-365-sales",
