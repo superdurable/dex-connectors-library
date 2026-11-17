@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listEcommerceCustomers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomersPage](`{"customers":[{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}],"total":1}`)
+			return err
+		}},
+		{name: "getEcommerceCustomer/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+			return err
+		}},
+		{name: "createEcommerceCustomer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+			return err
+		}},
+		{name: "updateEcommerceCustomer/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+			return err
+		}},
+		{name: "deleteEcommerceCustomer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.EcommerceCustomerDeletion](`{"customerId":"15","deleted":true}`)
+			return err
+		}},
 		{name: "listConnections/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.ConnectionsPage](`{"connections":[{"id":"1","service":"fooCommerce","externalId":"store-1","name":"Store"}],"total":1}`)
 			return err
@@ -190,6 +210,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListEcommerceCustomers().Definition().Operation.OperationID != "listEcommerceCustomers" {
+		t.Errorf("listEcommerceCustomers mock has another definition")
+	}
+	if mock.GetEcommerceCustomer().Definition().Operation.OperationID != "getEcommerceCustomer" {
+		t.Errorf("getEcommerceCustomer mock has another definition")
+	}
+	if mock.CreateEcommerceCustomer().Definition().Operation.OperationID != "createEcommerceCustomer" {
+		t.Errorf("createEcommerceCustomer mock has another definition")
+	}
+	if mock.UpdateEcommerceCustomer().Definition().Operation.OperationID != "updateEcommerceCustomer" {
+		t.Errorf("updateEcommerceCustomer mock has another definition")
+	}
+	if mock.DeleteEcommerceCustomer().Definition().Operation.OperationID != "deleteEcommerceCustomer" {
+		t.Errorf("deleteEcommerceCustomer mock has another definition")
+	}
 	if mock.ListConnections().Definition().Operation.OperationID != "listConnections" {
 		t.Errorf("listConnections mock has another definition")
 	}

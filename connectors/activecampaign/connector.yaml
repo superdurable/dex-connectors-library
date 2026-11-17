@@ -55,6 +55,108 @@ spec:
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
         - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, deal operations need Deals and pipeline management permission, CRM account writes need account management permission, and ecommerce connection writes need integration management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listEcommerceCustomers
+      goName: ListEcommerceCustomers
+      inputType: ListEcommerceCustomersInput
+      outputType: EcommerceCustomersPage
+      kind: query
+      description: List Deep Data ecommerce customers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample ecommerce customer result.
+          output: {customers: [{id: '15', connectionId: '3', externalId: store-customer-1, email: 'person@example.com'}], total: 1}
+    - name: getEcommerceCustomer
+      goName: GetEcommerceCustomer
+      inputType: GetEcommerceCustomerInput
+      outputType: EcommerceCustomerMetadata
+      kind: query
+      description: Read one Deep Data ecommerce customer.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: notFound, goName: NotFound, description: No customer exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample ecommerce customer result.
+          output: {id: '15', connectionId: '3', externalId: store-customer-1, email: 'person@example.com'}
+    - name: createEcommerceCustomer
+      goName: CreateEcommerceCustomer
+      inputType: CreateEcommerceCustomerInput
+      outputType: EcommerceCustomerMetadata
+      kind: mutation
+      description: Create one ecommerce customer with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: uncertain, goName: Uncertain, description: Bounded customer creation could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample ecommerce customer result.
+          output: {id: '15', connectionId: '3', externalId: store-customer-1, email: 'person@example.com'}
+    - name: updateEcommerceCustomer
+      goName: UpdateEcommerceCustomer
+      inputType: UpdateEcommerceCustomerInput
+      outputType: EcommerceCustomerMetadata
+      kind: mutation
+      description: Replace selected ecommerce customer identity fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: notFound, goName: NotFound, description: No customer exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample ecommerce customer result.
+          output: {id: '15', connectionId: '3', externalId: store-customer-1, email: 'person@example.com'}
+    - name: deleteEcommerceCustomer
+      goName: DeleteEcommerceCustomer
+      inputType: DeleteEcommerceCustomerInput
+      outputType: EcommerceCustomerDeletion
+      kind: mutation
+      description: Delete one Deep Data ecommerce customer.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign completed the ecommerce customer operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample ecommerce customer result.
+          output: {customerId: '15', deleted: true}
     - name: listConnections
       goName: ListConnections
       inputType: ListConnectionsInput

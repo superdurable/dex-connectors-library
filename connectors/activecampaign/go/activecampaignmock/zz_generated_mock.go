@@ -18,6 +18,11 @@ import (
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
 	connection                 activecampaign.Connection
+	listEcommerceCustomers     *connectormock.Query[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage]
+	getEcommerceCustomer       *connectormock.Query[activecampaign.GetEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
+	createEcommerceCustomer    *connectormock.Mutation[activecampaign.CreateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
+	updateEcommerceCustomer    *connectormock.Mutation[activecampaign.UpdateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata]
+	deleteEcommerceCustomer    *connectormock.Mutation[activecampaign.DeleteEcommerceCustomerInput, activecampaign.EcommerceCustomerDeletion]
 	listConnections            *connectormock.Query[activecampaign.ListConnectionsInput, activecampaign.ConnectionsPage]
 	getConnection              *connectormock.Query[activecampaign.GetConnectionInput, activecampaign.ConnectionMetadata]
 	createConnection           *connectormock.Mutation[activecampaign.CreateConnectionInput, activecampaign.ConnectionMetadata]
@@ -66,6 +71,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listEcommerceCustomers:     connectormock.NewQuery[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage](t, activecampaign.ListEcommerceCustomersDefinition),
+		getEcommerceCustomer:       connectormock.NewQuery[activecampaign.GetEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.GetEcommerceCustomerDefinition),
+		createEcommerceCustomer:    connectormock.NewMutation[activecampaign.CreateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.CreateEcommerceCustomerDefinition),
+		updateEcommerceCustomer:    connectormock.NewMutation[activecampaign.UpdateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata](t, activecampaign.UpdateEcommerceCustomerDefinition),
+		deleteEcommerceCustomer:    connectormock.NewMutation[activecampaign.DeleteEcommerceCustomerInput, activecampaign.EcommerceCustomerDeletion](t, activecampaign.DeleteEcommerceCustomerDefinition),
 		listConnections:            connectormock.NewQuery[activecampaign.ListConnectionsInput, activecampaign.ConnectionsPage](t, activecampaign.ListConnectionsDefinition),
 		getConnection:              connectormock.NewQuery[activecampaign.GetConnectionInput, activecampaign.ConnectionMetadata](t, activecampaign.GetConnectionDefinition),
 		createConnection:           connectormock.NewMutation[activecampaign.CreateConnectionInput, activecampaign.ConnectionMetadata](t, activecampaign.CreateConnectionDefinition),
@@ -108,6 +118,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		syncContact:                connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
 		updateContact:              connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listEcommerceCustomers.Default(ListEcommerceCustomersDefault())
+	mock.getEcommerceCustomer.Default(GetEcommerceCustomerDefault())
+	mock.createEcommerceCustomer.Default(CreateEcommerceCustomerDefault())
+	mock.updateEcommerceCustomer.Default(UpdateEcommerceCustomerDefault())
+	mock.deleteEcommerceCustomer.Default(DeleteEcommerceCustomerDefault())
 	mock.listConnections.Default(ListConnectionsDefault())
 	mock.getConnection.Default(GetConnectionDefault())
 	mock.createConnection.Default(CreateConnectionDefault())
@@ -159,6 +174,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListEcommerceCustomers returns the listEcommerceCustomers script.
+func (mock *Mock) ListEcommerceCustomers() *connectormock.Query[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage] {
+	return mock.listEcommerceCustomers
+}
+
+// GetEcommerceCustomer returns the getEcommerceCustomer script.
+func (mock *Mock) GetEcommerceCustomer() *connectormock.Query[activecampaign.GetEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata] {
+	return mock.getEcommerceCustomer
+}
+
+// CreateEcommerceCustomer returns the createEcommerceCustomer script.
+func (mock *Mock) CreateEcommerceCustomer() *connectormock.Mutation[activecampaign.CreateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata] {
+	return mock.createEcommerceCustomer
+}
+
+// UpdateEcommerceCustomer returns the updateEcommerceCustomer script.
+func (mock *Mock) UpdateEcommerceCustomer() *connectormock.Mutation[activecampaign.UpdateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata] {
+	return mock.updateEcommerceCustomer
+}
+
+// DeleteEcommerceCustomer returns the deleteEcommerceCustomer script.
+func (mock *Mock) DeleteEcommerceCustomer() *connectormock.Mutation[activecampaign.DeleteEcommerceCustomerInput, activecampaign.EcommerceCustomerDeletion] {
+	return mock.deleteEcommerceCustomer
+}
 
 // ListConnections returns the listConnections script.
 func (mock *Mock) ListConnections() *connectormock.Query[activecampaign.ListConnectionsInput, activecampaign.ConnectionsPage] {
@@ -367,6 +407,21 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListEcommerceCustomers() sdkgo.Query[activecampaign.ListEcommerceCustomersInput, activecampaign.EcommerceCustomersPage] {
+	return operations.mock.listEcommerceCustomers
+}
+func (operations mockOperations) GetEcommerceCustomer() sdkgo.Query[activecampaign.GetEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata] {
+	return operations.mock.getEcommerceCustomer
+}
+func (operations mockOperations) CreateEcommerceCustomer() sdkgo.Mutation[activecampaign.CreateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata] {
+	return operations.mock.createEcommerceCustomer
+}
+func (operations mockOperations) UpdateEcommerceCustomer() sdkgo.Mutation[activecampaign.UpdateEcommerceCustomerInput, activecampaign.EcommerceCustomerMetadata] {
+	return operations.mock.updateEcommerceCustomer
+}
+func (operations mockOperations) DeleteEcommerceCustomer() sdkgo.Mutation[activecampaign.DeleteEcommerceCustomerInput, activecampaign.EcommerceCustomerDeletion] {
+	return operations.mock.deleteEcommerceCustomer
+}
 func (operations mockOperations) ListConnections() sdkgo.Query[activecampaign.ListConnectionsInput, activecampaign.ConnectionsPage] {
 	return operations.mock.listConnections
 }
@@ -489,6 +544,196 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// ListEcommerceCustomersListed selects the listed branch: ActiveCampaign completed the ecommerce customer operation.
+func ListEcommerceCustomersListed(value activecampaign.EcommerceCustomersPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomersPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceCustomersBranchListed, value, failure)
+}
+
+// ListEcommerceCustomersProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListEcommerceCustomersProviderRejected(value activecampaign.EcommerceCustomersPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomersPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceCustomersBranchProviderRejected, value, failure)
+}
+
+// ListEcommerceCustomersInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListEcommerceCustomersInvalidResponse(value activecampaign.EcommerceCustomersPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomersPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceCustomersBranchInvalidResponse, value, failure)
+}
+
+// ListEcommerceCustomersDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListEcommerceCustomersDefect(value activecampaign.EcommerceCustomersPage, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomersPage] {
+	return connectormock.Branch(activecampaign.ListEcommerceCustomersBranchDefect, value, failure)
+}
+
+// ListEcommerceCustomersRetry asks Dex to retry the listEcommerceCustomers Step, after the delay when it is positive.
+func ListEcommerceCustomersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceCustomersPage] {
+	return connectormock.Retry[activecampaign.EcommerceCustomersPage](failure, after)
+}
+
+// ListEcommerceCustomersListedDefault is the manifest mock listedDefault: Sample ecommerce customer result.
+func ListEcommerceCustomersListedDefault() connectormock.Case[activecampaign.EcommerceCustomersPage] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceCustomersPage](`{"customers":[{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}],"total":1}`)
+	return connectormock.Branch(activecampaign.ListEcommerceCustomersBranchListed, value, nil)
+}
+
+// ListEcommerceCustomersDefault is the manifest default, listedDefault, which New installs.
+func ListEcommerceCustomersDefault() connectormock.Case[activecampaign.EcommerceCustomersPage] {
+	return ListEcommerceCustomersListedDefault()
+}
+
+// GetEcommerceCustomerFound selects the found branch: ActiveCampaign completed the ecommerce customer operation.
+func GetEcommerceCustomerFound(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceCustomerBranchFound, value, failure)
+}
+
+// GetEcommerceCustomerNotFound selects the notFound branch: No customer exists at the selected ID.
+func GetEcommerceCustomerNotFound(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceCustomerBranchNotFound, value, failure)
+}
+
+// GetEcommerceCustomerProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func GetEcommerceCustomerProviderRejected(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceCustomerBranchProviderRejected, value, failure)
+}
+
+// GetEcommerceCustomerInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func GetEcommerceCustomerInvalidResponse(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceCustomerBranchInvalidResponse, value, failure)
+}
+
+// GetEcommerceCustomerDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetEcommerceCustomerDefect(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.GetEcommerceCustomerBranchDefect, value, failure)
+}
+
+// GetEcommerceCustomerRetry asks Dex to retry the getEcommerceCustomer Step, after the delay when it is positive.
+func GetEcommerceCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Retry[activecampaign.EcommerceCustomerMetadata](failure, after)
+}
+
+// GetEcommerceCustomerFoundDefault is the manifest mock foundDefault: Sample ecommerce customer result.
+func GetEcommerceCustomerFoundDefault() connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+	return connectormock.Branch(activecampaign.GetEcommerceCustomerBranchFound, value, nil)
+}
+
+// GetEcommerceCustomerDefault is the manifest default, foundDefault, which New installs.
+func GetEcommerceCustomerDefault() connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return GetEcommerceCustomerFoundDefault()
+}
+
+// CreateEcommerceCustomerCreated selects the created branch: ActiveCampaign completed the ecommerce customer operation.
+func CreateEcommerceCustomerCreated(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.CreateEcommerceCustomerBranchCreated, value, failure)
+}
+
+// CreateEcommerceCustomerUncertain returns an uncertain createEcommerceCustomer outcome.
+func CreateEcommerceCustomerUncertain(value activecampaign.EcommerceCustomerMetadata, failure sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateEcommerceCustomerProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func CreateEcommerceCustomerProviderRejected(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.CreateEcommerceCustomerBranchProviderRejected, value, failure)
+}
+
+// CreateEcommerceCustomerDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateEcommerceCustomerDefect(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.CreateEcommerceCustomerBranchDefect, value, failure)
+}
+
+// CreateEcommerceCustomerRetry asks Dex to retry the createEcommerceCustomer Step, after the delay when it is positive.
+func CreateEcommerceCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Retry[activecampaign.EcommerceCustomerMetadata](failure, after)
+}
+
+// CreateEcommerceCustomerCreatedDefault is the manifest mock createdDefault: Sample ecommerce customer result.
+func CreateEcommerceCustomerCreatedDefault() connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+	return connectormock.Branch(activecampaign.CreateEcommerceCustomerBranchCreated, value, nil)
+}
+
+// CreateEcommerceCustomerDefault is the manifest default, createdDefault, which New installs.
+func CreateEcommerceCustomerDefault() connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return CreateEcommerceCustomerCreatedDefault()
+}
+
+// UpdateEcommerceCustomerUpdated selects the updated branch: ActiveCampaign completed the ecommerce customer operation.
+func UpdateEcommerceCustomerUpdated(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.UpdateEcommerceCustomerBranchUpdated, value, failure)
+}
+
+// UpdateEcommerceCustomerNotFound selects the notFound branch: No customer exists at the selected ID.
+func UpdateEcommerceCustomerNotFound(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.UpdateEcommerceCustomerBranchNotFound, value, failure)
+}
+
+// UpdateEcommerceCustomerProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func UpdateEcommerceCustomerProviderRejected(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.UpdateEcommerceCustomerBranchProviderRejected, value, failure)
+}
+
+// UpdateEcommerceCustomerInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func UpdateEcommerceCustomerInvalidResponse(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.UpdateEcommerceCustomerBranchInvalidResponse, value, failure)
+}
+
+// UpdateEcommerceCustomerDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateEcommerceCustomerDefect(value activecampaign.EcommerceCustomerMetadata, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Branch(activecampaign.UpdateEcommerceCustomerBranchDefect, value, failure)
+}
+
+// UpdateEcommerceCustomerRetry asks Dex to retry the updateEcommerceCustomer Step, after the delay when it is positive.
+func UpdateEcommerceCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return connectormock.Retry[activecampaign.EcommerceCustomerMetadata](failure, after)
+}
+
+// UpdateEcommerceCustomerUpdatedDefault is the manifest mock updatedDefault: Sample ecommerce customer result.
+func UpdateEcommerceCustomerUpdatedDefault() connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceCustomerMetadata](`{"id":"15","connectionId":"3","externalId":"store-customer-1","email":"person@example.com"}`)
+	return connectormock.Branch(activecampaign.UpdateEcommerceCustomerBranchUpdated, value, nil)
+}
+
+// UpdateEcommerceCustomerDefault is the manifest default, updatedDefault, which New installs.
+func UpdateEcommerceCustomerDefault() connectormock.Case[activecampaign.EcommerceCustomerMetadata] {
+	return UpdateEcommerceCustomerUpdatedDefault()
+}
+
+// DeleteEcommerceCustomerDeleted selects the deleted branch: ActiveCampaign completed the ecommerce customer operation.
+func DeleteEcommerceCustomerDeleted(value activecampaign.EcommerceCustomerDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerDeletion] {
+	return connectormock.Branch(activecampaign.DeleteEcommerceCustomerBranchDeleted, value, failure)
+}
+
+// DeleteEcommerceCustomerProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func DeleteEcommerceCustomerProviderRejected(value activecampaign.EcommerceCustomerDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerDeletion] {
+	return connectormock.Branch(activecampaign.DeleteEcommerceCustomerBranchProviderRejected, value, failure)
+}
+
+// DeleteEcommerceCustomerInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func DeleteEcommerceCustomerInvalidResponse(value activecampaign.EcommerceCustomerDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerDeletion] {
+	return connectormock.Branch(activecampaign.DeleteEcommerceCustomerBranchInvalidResponse, value, failure)
+}
+
+// DeleteEcommerceCustomerDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteEcommerceCustomerDefect(value activecampaign.EcommerceCustomerDeletion, failure *sdkgo.Failure) connectormock.Case[activecampaign.EcommerceCustomerDeletion] {
+	return connectormock.Branch(activecampaign.DeleteEcommerceCustomerBranchDefect, value, failure)
+}
+
+// DeleteEcommerceCustomerRetry asks Dex to retry the deleteEcommerceCustomer Step, after the delay when it is positive.
+func DeleteEcommerceCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.EcommerceCustomerDeletion] {
+	return connectormock.Retry[activecampaign.EcommerceCustomerDeletion](failure, after)
+}
+
+// DeleteEcommerceCustomerDeletedDefault is the manifest mock deletedDefault: Sample ecommerce customer result.
+func DeleteEcommerceCustomerDeletedDefault() connectormock.Case[activecampaign.EcommerceCustomerDeletion] {
+	value := connectormock.MustDecodeOutput[activecampaign.EcommerceCustomerDeletion](`{"customerId":"15","deleted":true}`)
+	return connectormock.Branch(activecampaign.DeleteEcommerceCustomerBranchDeleted, value, nil)
+}
+
+// DeleteEcommerceCustomerDefault is the manifest default, deletedDefault, which New installs.
+func DeleteEcommerceCustomerDefault() connectormock.Case[activecampaign.EcommerceCustomerDeletion] {
+	return DeleteEcommerceCustomerDeletedDefault()
 }
 
 // ListConnectionsListed selects the listed branch: ActiveCampaign completed the ecommerce connection operation.

@@ -13947,6 +13947,1581 @@
       },
       "name": "deleteConnection-transportFailure",
       "operation": "deleteConnection"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomCustomers\":[{\"id\":\"15\",\"connectionid\":\"3\",\"externalid\":\"store-customer-1\",\"email\":\"person@example.com\"}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-customer-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "customers": [
+            {
+              "connectionId": "3",
+              "email": "person@example.com",
+              "externalId": "store-customer-1",
+              "id": "15"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "listEcommerceCustomers-success",
+      "operation": "listEcommerceCustomers"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-customer-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customers": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "listEcommerceCustomers-providerRejected",
+      "operation": "listEcommerceCustomers"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomCustomers\":{},\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-customer-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customers": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "listEcommerceCustomers-invalidResponse",
+      "operation": "listEcommerceCustomers"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customers": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "bad",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "listEcommerceCustomers-defect",
+      "operation": "listEcommerceCustomers"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-customer-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "listEcommerceCustomers-rateLimit",
+      "operation": "listEcommerceCustomers"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-customer-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "listEcommerceCustomers-serverUnavailable",
+      "operation": "listEcommerceCustomers"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers",
+          "query": {
+            "filters[connectionid]": [
+              "3"
+            ],
+            "filters[email]": [
+              "person@example.com"
+            ],
+            "filters[externalid]": [
+              "store-customer-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "listEcommerceCustomers-transportFailure",
+      "operation": "listEcommerceCustomers"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"ecomCustomer\":{\"id\":\"15\",\"connectionid\":\"3\",\"externalid\":\"store-customer-1\",\"email\":\"person@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "connectionId": "3",
+          "email": "person@example.com",
+          "externalId": "store-customer-1",
+          "id": "15"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "15"
+      },
+      "name": "getEcommerceCustomer-success",
+      "operation": "getEcommerceCustomer"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "15"
+      },
+      "name": "getEcommerceCustomer-providerRejected",
+      "operation": "getEcommerceCustomer"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "15"
+      },
+      "name": "getEcommerceCustomer-invalidResponse",
+      "operation": "getEcommerceCustomer"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "15"
+      },
+      "name": "getEcommerceCustomer-notFound",
+      "operation": "getEcommerceCustomer"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "bad"
+      },
+      "name": "getEcommerceCustomer-defect",
+      "operation": "getEcommerceCustomer"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "15"
+      },
+      "name": "getEcommerceCustomer-rateLimit",
+      "operation": "getEcommerceCustomer"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "15"
+      },
+      "name": "getEcommerceCustomer-serverUnavailable",
+      "operation": "getEcommerceCustomer"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "15"
+      },
+      "name": "getEcommerceCustomer-transportFailure",
+      "operation": "getEcommerceCustomer"
+    },
+    {
+      "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "exchanges": [
+        {
+          "body": "{\"ecomCustomer\":{\"id\":\"15\",\"connectionid\":\"3\",\"externalid\":\"store-customer-1\",\"email\":\"person@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecomCustomers",
+          "requestBody": {
+            "ecomCustomer": {
+              "connectionid": "3",
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+          "providerId": "15",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "connectionId": "3",
+          "email": "person@example.com",
+          "externalId": "store-customer-1",
+          "id": "15"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "createEcommerceCustomer-success",
+      "operation": "createEcommerceCustomer"
+    },
+    {
+      "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecomCustomers",
+          "requestBody": {
+            "ecomCustomer": {
+              "connectionid": "3",
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "createEcommerceCustomer-providerRejected",
+      "operation": "createEcommerceCustomer"
+    },
+    {
+      "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecomCustomers",
+          "requestBody": {
+            "ecomCustomer": {
+              "connectionid": "3",
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "createEcommerceCustomer-uncertain",
+      "operation": "createEcommerceCustomer"
+    },
+    {
+      "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "input": {
+        "connectionId": "bad",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "createEcommerceCustomer-defect",
+      "operation": "createEcommerceCustomer"
+    },
+    {
+      "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecomCustomers",
+          "requestBody": {
+            "ecomCustomer": {
+              "connectionid": "3",
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "createEcommerceCustomer-rateLimit",
+      "operation": "createEcommerceCustomer"
+    },
+    {
+      "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecomCustomers",
+          "requestBody": {
+            "ecomCustomer": {
+              "connectionid": "3",
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "createEcommerceCustomer-serverUnavailable",
+      "operation": "createEcommerceCustomer"
+    },
+    {
+      "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ecomCustomers",
+          "requestBody": {
+            "ecomCustomer": {
+              "connectionid": "3",
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8b401ef5-8df5-56cc-a2af-e2a2f78e6094",
+      "input": {
+        "connectionId": "3",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "createEcommerceCustomer-transportFailure",
+      "operation": "createEcommerceCustomer"
+    },
+    {
+      "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "exchanges": [
+        {
+          "body": "{\"ecomCustomer\":{\"id\":\"15\",\"connectionid\":\"3\",\"externalid\":\"store-customer-1\",\"email\":\"person@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ecomCustomers/15",
+          "requestBody": {
+            "ecomCustomer": {
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "connectionId": "3",
+          "email": "person@example.com",
+          "externalId": "store-customer-1",
+          "id": "15"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "input": {
+        "customerId": "15",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "updateEcommerceCustomer-success",
+      "operation": "updateEcommerceCustomer"
+    },
+    {
+      "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ecomCustomers/15",
+          "requestBody": {
+            "ecomCustomer": {
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "input": {
+        "customerId": "15",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "updateEcommerceCustomer-providerRejected",
+      "operation": "updateEcommerceCustomer"
+    },
+    {
+      "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ecomCustomers/15",
+          "requestBody": {
+            "ecomCustomer": {
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "input": {
+        "customerId": "15",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "updateEcommerceCustomer-invalidResponse",
+      "operation": "updateEcommerceCustomer"
+    },
+    {
+      "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ecomCustomers/15",
+          "requestBody": {
+            "ecomCustomer": {
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "input": {
+        "customerId": "15",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "updateEcommerceCustomer-notFound",
+      "operation": "updateEcommerceCustomer"
+    },
+    {
+      "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "connectionId": "",
+          "email": "",
+          "externalId": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "input": {
+        "customerId": "bad",
+        "externalId": "store-customer-1"
+      },
+      "name": "updateEcommerceCustomer-defect",
+      "operation": "updateEcommerceCustomer"
+    },
+    {
+      "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ecomCustomers/15",
+          "requestBody": {
+            "ecomCustomer": {
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "input": {
+        "customerId": "15",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "updateEcommerceCustomer-rateLimit",
+      "operation": "updateEcommerceCustomer"
+    },
+    {
+      "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ecomCustomers/15",
+          "requestBody": {
+            "ecomCustomer": {
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "input": {
+        "customerId": "15",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "updateEcommerceCustomer-serverUnavailable",
+      "operation": "updateEcommerceCustomer"
+    },
+    {
+      "callId": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ecomCustomers/15",
+          "requestBody": {
+            "ecomCustomer": {
+              "email": "person@example.com",
+              "externalid": "store-customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60cb813c-c05f-53f1-b8b2-33525195dff8",
+      "input": {
+        "customerId": "15",
+        "email": "person@example.com",
+        "externalId": "store-customer-1"
+      },
+      "name": "updateEcommerceCustomer-transportFailure",
+      "operation": "updateEcommerceCustomer"
+    },
+    {
+      "callId": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "customerId": "15",
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "input": {
+        "customerId": "15"
+      },
+      "name": "deleteEcommerceCustomer-success",
+      "operation": "deleteEcommerceCustomer"
+    },
+    {
+      "callId": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customerId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "input": {
+        "customerId": "15"
+      },
+      "name": "deleteEcommerceCustomer-providerRejected",
+      "operation": "deleteEcommerceCustomer"
+    },
+    {
+      "callId": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customerId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "input": {
+        "customerId": "15"
+      },
+      "name": "deleteEcommerceCustomer-invalidResponse",
+      "operation": "deleteEcommerceCustomer"
+    },
+    {
+      "callId": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customerId": "",
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "input": {
+        "customerId": "bad"
+      },
+      "name": "deleteEcommerceCustomer-defect",
+      "operation": "deleteEcommerceCustomer"
+    },
+    {
+      "callId": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "input": {
+        "customerId": "15"
+      },
+      "name": "deleteEcommerceCustomer-rateLimit",
+      "operation": "deleteEcommerceCustomer"
+    },
+    {
+      "callId": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "input": {
+        "customerId": "15"
+      },
+      "name": "deleteEcommerceCustomer-serverUnavailable",
+      "operation": "deleteEcommerceCustomer"
+    },
+    {
+      "callId": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/ecomCustomers/15",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50e55d47-ed9c-559e-b6fe-63ee092adbbb",
+      "input": {
+        "customerId": "15"
+      },
+      "name": "deleteEcommerceCustomer-transportFailure",
+      "operation": "deleteEcommerceCustomer"
     }
   ],
   "schemaVersion": 1
