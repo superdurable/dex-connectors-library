@@ -12,10 +12,14 @@ def test_connection_fields_have_guidance_and_safe_defaults() -> None:
     manifest = yaml.safe_load((Path(__file__).parents[2] / "connector.yaml").read_text())
     auth = manifest["spec"]["auth"]
     assert auth["type"] == "apiKey"
-    assert auth["guide"]["startURL"] == "https://developer.paypal.com/braintree/articles/control-panel/important-gateway-credentials"
+    assert (
+        auth["guide"]["startURL"]
+        == "https://developer.paypal.com/braintree/articles/control-panel/important-gateway-credentials"
+    )
     assert all("blank" in step.lower() for step in auth["guide"]["steps"])
     assert [(field["name"], field["type"]) for field in auth["fields"]] == [
-        ("publicKey", "string"), ("privateKey", "secretString")
+        ("publicKey", "string"),
+        ("privateKey", "secretString"),
     ]
     assert "API Keys" in auth["fields"][0]["description"]
     assert "not secret" in auth["fields"][0]["description"]
@@ -23,11 +27,25 @@ def test_connection_fields_have_guidance_and_safe_defaults() -> None:
     assert "blank" in auth["fields"][0]["description"]
 
     fields = manifest["spec"]["configuration"]["fields"]
-    assert {field["name"] for field in fields} == {"baseUrl", "apiVersion", "timeout", "maxResponseBytes"}
+    assert {field["name"] for field in fields} == {
+        "baseUrl",
+        "apiVersion",
+        "timeout",
+        "maxResponseBytes",
+        "evidenceDirectory",
+    }
     for field in fields:
-        assert field["default"]
+        if field["name"] == "evidenceDirectory":
+            assert field["default"] == ""
+        else:
+            assert field["default"]
         assert "Blank" in field["description"]
-        assert str(field["default"]) not in field["description"]
+        if field["default"]:
+            assert str(field["default"]) not in field["description"]
     assert "bytes" in next(field["description"] for field in fields if field["name"] == "maxResponseBytes")
     assert "duration" in next(field["description"] for field in fields if field["name"] == "timeout")
     assert "/graphql" in next(field["description"] for field in fields if field["name"] == "baseUrl")
+    evidence_guidance = next(field["description"] for field in fields if field["name"] == "evidenceDirectory")
+    assert "absolute" in evidence_guidance.lower()
+    assert "SHA-256" in evidence_guidance
+    assert "disables file uploads" in evidence_guidance
