@@ -494,12 +494,17 @@ func rejectUnlessEarlierSendIsUnconfirmed(
 
 // rejectRefusedSend classifies a definite Gmail refusal of this attempt's POST. With no earlier
 // possible send, canResend proves nothing was sent, so agent hosts report failure, not unknown.
-// Any other status, such as 408 or 409, keeps the claim.
+// Any other status, such as 408 or 409, leaves the outcome unknown: Retry keeps the claim, so the
+// next attempt reads back Sent Mail before any resend.
 func rejectRefusedSend(
 	fence *singledispatch.Fence, decision singledispatch.Decision, statusCode int,
 	branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt,
 ) sdkgo.MutationAttempt[SendMessageOutput] {
-	if decision.MaximumPriorSends == 0 && isRefusedBeforeProcessing(statusCode) {
+	if !isRefusedBeforeProcessing(statusCode) {
+		failure.Message += "; Gmail may still have processed the request"
+		return sdkgo.NewMutationRetry[SendMessageOutput](failure, 0)
+	}
+	if decision.MaximumPriorSends == 0 {
 		_ = fence.RecordCanResend() // A failed checkpoint leaves the claim, so the outcome stays unknown.
 	}
 	return rejectUnlessEarlierSendIsUnconfirmed(decision, branch, failure, receipt)

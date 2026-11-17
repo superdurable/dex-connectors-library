@@ -475,10 +475,13 @@ class SendService:
 
         With no earlier possible send, canResend proves nothing was sent, so
         agent hosts report failure instead of an unknown outcome. Only a
-        status in ``_REFUSED_BEFORE_PROCESSING_STATUSES`` proves that; any
-        other, such as 408 or 409, keeps the claim.
+        status in ``_REFUSED_BEFORE_PROCESSING_STATUSES`` proves that. Any
+        other, such as 408 or 409, leaves the outcome unknown: Retry keeps the
+        claim, so the next attempt reads back Sent Mail before any resend.
         """
-        if status in _REFUSED_BEFORE_PROCESSING_STATUSES and execution.fence is not None and (
+        if status not in _REFUSED_BEFORE_PROCESSING_STATUSES:
+            return _retry(outcome, kind, f"{message}; Gmail may still have processed the request")
+        if execution.fence is not None and (
             await execution.fence.decide()
         ).prior_send_upper_bound == 0:
             try:

@@ -411,7 +411,7 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
+        "branch": "",
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
           "attempt": 1,
@@ -419,14 +419,8 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "messageId": "",
-          "recipients": [],
-          "sender": "",
-          "threadId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -465,7 +459,7 @@
         }
       ],
       "expected": {
-        "branch": "providerRejected",
+        "branch": "",
         "failureKind": "CONFLICT",
         "heartbeat": {
           "attempt": 1,
@@ -473,14 +467,8 @@
           "sendCount": 1,
           "state": "claimed"
         },
-        "output": {
-          "messageId": "",
-          "recipients": [],
-          "sender": "",
-          "threadId": ""
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },

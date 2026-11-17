@@ -387,10 +387,12 @@ const refusedBeforeProcessingStatuses: ReadonlySet<number> = new Set([400, 401, 
 /**
  * Classify a definite Gmail refusal of this attempt's POST. With no earlier possible send, canResend
  * proves nothing was sent, so agent hosts report failure instead of an unknown outcome. Only a status in
- * `refusedBeforeProcessingStatuses` proves that; any other, such as 408 or 409, keeps the claim.
+ * `refusedBeforeProcessingStatuses` proves that. Any other, such as 408 or 409, leaves the outcome unknown:
+ * Retry keeps the claim, so the next attempt reads back Sent Mail before any resend.
  */
 async function rejectRefusedSend(fence: Fence, status: number, branch: string, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<SendMessageOutput>> {
-  if (refusedBeforeProcessingStatuses.has(status) && (fence.decide().priorSendUpperBound ?? 0) === 0) await recordSafeResend(fence);
+  if (!refusedBeforeProcessingStatuses.has(status)) return newMutationRetry({ ...rejection, message: `${rejection.message}; Gmail may still have processed the request` });
+  if ((fence.decide().priorSendUpperBound ?? 0) === 0) await recordSafeResend(fence);
   return rejectUnlessEarlierSendIsUnconfirmed(fence, branch, receipt, rejection);
 }
 

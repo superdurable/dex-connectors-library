@@ -640,22 +640,36 @@ func TestGmailRejectedFirstSendIsProviderRejected(t *testing.T) {
 	})
 }
 
-// TestGmailUnprovenRefusalOnFirstSendKeepsTheClaim leaves a 4xx outside the allowlist unknown.
-func TestGmailUnprovenRefusalOnFirstSendKeepsTheClaim(t *testing.T) {
+// TestGmailUnprovenRefusalOnFirstSendRetriesUnknown repeats a 4xx outside the allowlist, reading back first.
+func TestGmailUnprovenRefusalOnFirstSendRetriesUnknown(t *testing.T) {
 	for _, statusCode := range []int{http.StatusRequestTimeout, http.StatusConflict, http.StatusTeapot} {
 		t.Run(strconv.Itoa(statusCode), func(t *testing.T) {
 			forSendAndReply(t, func(t *testing.T, isReply bool) {
-				fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(statusCode)})
+				fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+					if sendNumber == 1 {
+						response.WriteHeader(statusCode)
+						return
+					}
+					_, _ = response.Write([]byte(`{"id":"sent-2","threadId":"thread-1"}`))
+				}})
+				client := newGmailClient(t, fake.URL)
 				stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
-				result := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), isReply)
-				require.NoError(t, result.err)
-				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), result.branch)
+				first := runGmailSendAttempt(stepContext, client, isReply)
+				var retry *sdkgo.RetryError
+				require.ErrorAs(t, first.err, &retry)
+				require.Contains(t, retry.Failure.Message, "Gmail may still have processed the request")
 				stepContext.AdvanceAttempt()
 				var marker singledispatch.Marker
 				hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
 				require.NoError(t, err)
 				require.True(t, hasMarker)
 				require.Equal(t, singledispatch.StateClaimed, marker.State)
+				second := runGmailSendAttempt(stepContext, client, isReply)
+				require.NoError(t, second.err)
+				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
+				sends, searches, _, _ := fake.counts()
+				require.Equal(t, 2, sends)
+				require.Equal(t, 1, searches)
 			})
 		})
 	}

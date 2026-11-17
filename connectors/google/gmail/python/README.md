@@ -146,14 +146,16 @@ message ID. Both operations declare `repeatOnUnknown: limited` with
 outcome stayed unknown, a Sent Mail miss or failed search resends with the same
 Message-ID while fewer than that many sends may have taken effect. At the cap a
 miss returns Retry without another POST, and the Flow fails when its retry
-budget is exhausted. A saved Gmail message ID and a definite 4xx are never
-resent. A definite 4xx, or a rejected or unusable reply source read, selects its
+budget is exhausted. A saved Gmail message ID and an allowlisted 4xx refusal
+are never resent. An allowlisted 4xx refusal, or a rejected or unusable reply
+source read, selects its
 branch only when no earlier send is possible; otherwise it returns Retry,
 because the earlier send may still be delivered. A POST status of 400, 401,
 403, 404, 411, 413, 414, 415, or 422 with no earlier possible send proves Gmail
-refused it before processing, so it first records `canResend` and Dex Agents
-report a failure rather than an unknown outcome. Any other 4xx, such as 408 or
-409, keeps the claim. A 503 is treated like any other 5xx. A definite 429 refusal, or a
+refused it before processing, so it records `canResend` and selects
+`providerRejected`. Any other 4xx except 429, such as 408 or 409, leaves the
+outcome unknown: it returns Retry and keeps the claim, so the next attempt
+reads back Sent Mail and resends below the cap. A 503 is treated like any other 5xx. A definite 429 refusal, or a
 transport failure proven to precede dispatch, permits a later send. The
 manifest limits sends and replies to seven attempts within five minutes;
 `max_sends_override` on the generated Step factory changes one Step's cap.

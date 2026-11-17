@@ -324,14 +324,15 @@ async def test_rejected_first_send_is_provider_rejected(operation_id: str) -> No
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 @pytest.mark.parametrize("status", [408, 409, 418])
-async def test_unproven_refusal_on_first_send_keeps_the_claim(operation_id: str, status: int) -> None:
-    """A 4xx outside the refusal allowlist does not prove Gmail sent nothing, so the claim stays."""
+async def test_unproven_refusal_on_first_send_retries_unknown(operation_id: str, status: int) -> None:
+    """A 4xx outside the refusal allowlist leaves the outcome unknown, so Retry keeps the claim."""
     context = HeartbeatContext()
     attempt, _ = await _invoke(
         _call(context, operation_id=operation_id),
         httpx.MockTransport(_gmail(httpx.Response(200, json={"messages": []}), httpx.Response(status))),
     )
-    assert attempt.branch == "providerRejected"
+    assert attempt.kind == "retry" and attempt.failure is not None
+    assert "Gmail may still have processed the request" in attempt.failure.message
     assert context.heartbeats[-1].state == State.CLAIMED
     assert State.CAN_RESEND not in [value.state for value in context.heartbeats]
 
