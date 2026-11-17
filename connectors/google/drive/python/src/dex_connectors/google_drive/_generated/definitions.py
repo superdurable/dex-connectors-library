@@ -90,7 +90,7 @@ UPLOAD_FILE_DEFINITION = MutationDefinition(
         BranchDefinition(UPLOADED, "Google Drive created the file or returned the file an earlier attempt created.", False),
         BranchDefinition(PROVIDER_REJECTED, "Google conclusively rejected the upload or duplicate lookup, such as a missing or read-only parent folder.", True),
         BranchDefinition(INVALID_RESPONSE, "Google returned an invalid or oversized duplicate-lookup response before any upload was sent.", True),
-        BranchDefinition(UNCERTAIN, "The dispatched upload outcome cannot be confirmed.", True),
+        BranchDefinition(UNCERTAIN, "The upload outcome was still unconfirmed when the send cap was reached.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
