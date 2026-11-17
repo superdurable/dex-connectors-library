@@ -6,7 +6,7 @@ metadata:
   description: Send text and markdown messages to WeCom (WeChat Work) group chats through a group robot webhook, or to members, departments, and tags through a self-built application.
   company: Tencent
   categories: [communication]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: wecom
   codegen:
@@ -86,14 +86,14 @@ spec:
       inputType: SendGroupRobotMessageInput
       outputType: SentGroupRobotMessage
       kind: mutation
-      description: Post one text or markdown message to the group chat that owns the robot webhook. WeCom offers no idempotency key for robot posts, so an unconfirmed post selects uncertain instead of posting again.
+      description: Post one text or markdown message to the group chat that owns the robot webhook. WeCom offers no idempotency key for robot posts, so an unknown outcome posts again up to the send cap and the group may show a duplicate.
       idempotency: required
       authorization: required
       branches:
         - {id: sent, goName: Sent, description: WeCom accepted the message for the group chat with errcode 0.}
         - {id: providerRejected, goName: ProviderRejected, description: "WeCom conclusively refused the post, such as a removed or disabled robot, an invalid key, or content over the size limit; nothing was posted.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The post may have reached WeCom but its acceptance was not confirmed; check the group chat before posting again.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, the connection method, the webhook key, or the dispatch checkpoint is invalid; nothing was posted.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The post may have reached WeCom, but the send cap was reached or a later post was refused; check the group chat before posting again.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input, the connection method, the webhook key, or the dispatch fence is invalid; nothing was posted.", optional: true}
       # Sync exposes the single-dispatch heartbeat to retries; WeCom robot posts have no idempotency key.
       execution:
         executeMethodTimeout: 30s
@@ -116,12 +116,14 @@ spec:
       branches:
         - {id: sent, goName: Sent, description: "WeCom accepted the message and returned its msgid; any recipients it could not reach are listed in the output."}
         - {id: providerRejected, goName: ProviderRejected, description: "WeCom conclusively refused the send or the access token request, such as an invalid secret or AgentId, an untrusted Worker IP, or no valid recipient; nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "A retry came 3 hours 50 minutes or more after the first attempt, past the safe part of WeCom's four-hour duplicate check, and an earlier attempt may have delivered the message; check with the recipients before sending again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "An earlier attempt may have delivered the message, and a retry either came 3 hours 50 minutes or more after the first attempt, past the safe part of WeCom's four-hour duplicate check, or WeCom refused the access token request; check with the recipients before sending again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, the connection method, or the application credentials are invalid; nothing was sent.", optional: true}
       # The default one-hour retry window stays inside the four-hour duplicate_check_interval; only a longer ExecuteRetry override reaches uncertain.
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # WeCom's duplicate check suppresses a repeat of the identical request, so an unknown outcome retries.
+        repeatOnUnknown: safe
       mocks:
         - name: textDelivered
           branch: sent

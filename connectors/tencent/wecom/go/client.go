@@ -172,6 +172,17 @@ func decodeProviderEnvelope(body []byte, target any) (int, bool) {
 	return *envelope.Errcode, true
 }
 
+// isDefiniteRefusalStatus reports the HTTP statuses that prove WeCom refused the request.
+func isDefiniteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	}
+	return false
+}
+
 // isRetryableErrcode reports the codes WeCom returns without processing the call.
 func isRetryableErrcode(errcode int) bool {
 	return errcode == errcodeSystemBusy || errcode == errcodeFrequencyLimited || errcode == errcodeConcurrencyLimited

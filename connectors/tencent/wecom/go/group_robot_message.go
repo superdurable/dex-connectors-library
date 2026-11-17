@@ -76,50 +76,68 @@ func (SendGroupRobotMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ Send
 
 var webhookKeyPattern = regexp.MustCompile(`^[A-Za-z0-9-]{8,64}$`)
 
-// Invoke posts once, retries only posts WeCom proved it did not process, and selects uncertain otherwise.
+// Invoke posts under a single-dispatch fence. WeCom robot posts have no idempotency key or
+// read-back, so an unknown outcome resends while possible sends stay below call.MaxSends() and
+// selects uncertain at the cap. A definite refusal is never resent.
 func (operation SendGroupRobotMessageOperation) Invoke(call sdkgo.Call, input SendGroupRobotMessageInput) sdkgo.MutationAttempt[SentGroupRobotMessage] {
-	fence, err := singledispatch.NewFence(call, SendGroupRobotMessageDefinition.StepDefaults.ExecuteMethodTimeout)
-	if err != nil {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom dispatch fence is unavailable")
-	}
-	if decision := fence.Decide(); decision.Kind != singledispatch.SendAllowed {
-		return uncertainGroupRobotPost(sdkgo.FailureTransport, "an earlier attempt may have posted to WeCom; check the group chat before posting again")
-	}
 	if message := validateGroupRobotInput(input); message != "" {
 		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureValidation, message)
 	}
+	fence, err := singledispatch.NewFence(call, SendGroupRobotMessageDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
+	if err != nil {
+		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom dispatch fence is unavailable")
+	}
+	decision := fence.Decide()
+	if decision.Kind != singledispatch.FailClosed && decision.Marker.ProviderID == groupRobotAcceptedMarker {
+		// An earlier attempt saw errcode 0, so the post is confirmed without posting again.
+		return sdkgo.NewMutationBranch(SendGroupRobotMessageBranchSent, newSentGroupRobotMessage(input), nil, sdkgo.Receipt{})
+	}
+	switch decision.Kind {
+	case singledispatch.FailClosed:
+		return retryGroupRobotPost(sdkgo.FailureAvailability, "WeCom dispatch checkpoint is unreadable; nothing was posted in this attempt", 0)
+	case singledispatch.ReadBackRequired:
+		return uncertainGroupRobotPost(sdkgo.FailureTransport, "an earlier attempt may have posted to WeCom and the send cap is reached; check the group chat before posting again")
+	}
+	post := groupRobotPost{
+		fence: fence,
+		// This attempt's send would be the last one the cap allows when no further send remains.
+		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
+		// An earlier send may have posted, so a refusal of this resend cannot prove nothing changed.
+		hasPossibleEarlierSend: decision.MaximumPriorSends > 0,
+	}
 	credentials, err := operation.client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureAuthentication, "WeCom group robot credentials are unavailable")
+		return post.localFailure(sdkgo.FailureAuthentication, "WeCom group robot credentials are unavailable")
 	}
 	if credentials.AuthMethodID != groupRobotAuthMethodID {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureValidation, "sendGroupRobotMessage needs a connection that uses the group-robot method")
+		return post.localFailure(sdkgo.FailureValidation, "sendGroupRobotMessage needs a connection that uses the group-robot method")
 	}
 	webhookKey := credentials.WebhookKey.Reveal()
 	if !webhookKeyPattern.MatchString(webhookKey) {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureAuthentication, "webhook_key must be only the value after key= in the robot webhook address")
+		return post.localFailure(sdkgo.FailureAuthentication, "webhook_key must be only the value after key= in the robot webhook address")
 	}
 	body, err := json.Marshal(newGroupRobotRequest(input))
 	if err != nil {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom group robot request could not be encoded")
+		return post.localFailure(sdkgo.FailureLocalDefect, "WeCom group robot request could not be encoded")
 	}
 	endpoint := operation.client.baseURL + "/cgi-bin/webhook/send?" + url.Values{"key": {webhookKey}}.Encode()
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom group robot request could not be built")
+		return post.localFailure(sdkgo.FailureLocalDefect, "WeCom group robot request could not be built")
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/json")
 	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, sdkgo.FailureLocalDefect, "WeCom group robot request is invalid")
+		return post.localFailure(sdkgo.FailureLocalDefect, "WeCom group robot request is invalid")
 	}
 	var didGetConnection atomic.Bool
 	var response *http.Response
 	err = fence.Dispatch(func(requestContext context.Context) error {
 		trace := &httptrace.ClientTrace{GotConn: func(httptrace.GotConnInfo) { didGetConnection.Store(true) }}
 		request = request.WithContext(httptrace.WithClientTrace(requestContext, trace))
-		response, err = operation.client.httpClient.Do(request)
-		return err
+		var sendErr error
+		response, sendErr = operation.client.httpClient.Do(request)
+		return sendErr
 	})
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
@@ -128,43 +146,50 @@ func (operation SendGroupRobotMessageOperation) Invoke(call sdkgo.Call, input Se
 		// The error embeds the request URL, which carries the webhook key, so only fixed messages are kept.
 		// Only net/http's Transport proves a dial-phase failure sent nothing; any other error may follow a sent post.
 		if operation.client.hasStandardTransport && !didGetConnection.Load() && isUnsentDialError(err) {
-			if checkpointErr := fence.RecordCanResend(); checkpointErr == nil {
-				return retryGroupRobotPost(sdkgo.FailureTransport, "WeCom could not be reached before posting", 0)
-			}
+			// A lost canResend checkpoint leaves the claim, which the next attempt counts as a send.
+			_ = fence.RecordCanResend()
+			return retryGroupRobotPost(sdkgo.FailureTransport, "WeCom could not be reached before posting", 0)
 		}
-		return uncertainGroupRobotPost(sdkgo.FailureTransport, "WeCom group robot post outcome is unknown")
+		return post.resendOrSelectUncertain(sdkgo.FailureTransport, "WeCom group robot post outcome is unknown", 0)
 	}
 	// Closing the response cannot change the provider outcome already received.
 	defer func() { _ = response.Body.Close() }()
-	return classifyGroupRobotResponse(fence, response, operation.client.maxResponseBytes, input)
+	return post.classifyResponse(response, operation.client.maxResponseBytes, input)
 }
 
-func classifyGroupRobotResponse(fence *singledispatch.Fence, response *http.Response, maxResponseBytes int64, input SendGroupRobotMessageInput) sdkgo.MutationAttempt[SentGroupRobotMessage] {
+// groupRobotPost holds one attempt's fence and its send-cap decision.
+type groupRobotPost struct {
+	fence                   *singledispatch.Fence
+	canResendUnknownOutcome bool
+	hasPossibleEarlierSend  bool
+}
+
+func (post groupRobotPost) classifyResponse(response *http.Response, maxResponseBytes int64, input SendGroupRobotMessageInput) sdkgo.MutationAttempt[SentGroupRobotMessage] {
 	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
 		kind := sdkgo.FailureAvailability
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		// A lost checkpoint makes the next attempt fail closed as uncertain; it never permits a blind resend.
-		_ = fence.RecordCanResend()
+		// A lost checkpoint leaves the claim, which the next attempt counts as a send.
+		_ = post.fence.RecordCanResend()
 		return retryGroupRobotPost(kind, "WeCom did not process the group robot post", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
-	if response.StatusCode >= 500 || response.StatusCode == http.StatusRequestTimeout {
-		return uncertainGroupRobotPost(sdkgo.FailureAvailability, "WeCom group robot post outcome is unknown")
+	if isDefiniteRefusalStatus(response.StatusCode) {
+		return post.rejectOrSelectUncertain(sdkgo.FailureProviderRejection, "WeCom rejected the group robot post with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	if response.StatusCode != http.StatusOK {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchProviderRejected, sdkgo.FailureProviderRejection, "WeCom rejected the group robot post with HTTP "+strconv.Itoa(response.StatusCode))
+		return post.resendOrSelectUncertain(sdkgo.FailureAvailability, "WeCom group robot post outcome is unknown after HTTP "+strconv.Itoa(response.StatusCode), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
 	if err != nil {
-		return uncertainGroupRobotPost(sdkgo.FailureTransport, "WeCom group robot response could not be read")
+		return post.resendOrSelectUncertain(sdkgo.FailureTransport, "WeCom group robot response could not be read", 0)
 	}
 	errcode, ok := decodeProviderEnvelope(body, nil)
 	if !ok {
-		return uncertainGroupRobotPost(sdkgo.FailureProtocol, "WeCom group robot response is malformed")
+		return post.resendOrSelectUncertain(sdkgo.FailureProtocol, "WeCom group robot response is malformed", 0)
 	}
 	if isRetryableErrcode(errcode) {
-		_ = fence.RecordCanResend()
+		_ = post.fence.RecordCanResend()
 		retryAfter := time.Duration(0)
 		if errcode == errcodeFrequencyLimited {
 			retryAfter = groupRobotRateLimitWindow
@@ -172,9 +197,48 @@ func classifyGroupRobotResponse(fence *singledispatch.Fence, response *http.Resp
 		return retryGroupRobotPost(failureKindForErrcode(errcode), rejectionMessage("WeCom deferred the group robot post", errcode), retryAfter)
 	}
 	if errcode != errcodeSuccess {
-		return rejectedGroupRobotPost(SendGroupRobotMessageBranchProviderRejected, failureKindForErrcode(errcode), rejectionMessage("WeCom rejected the group robot post", errcode))
+		return post.rejectOrSelectUncertain(failureKindForErrcode(errcode), rejectionMessage("WeCom rejected the group robot post", errcode))
 	}
-	return sdkgo.NewMutationBranch(SendGroupRobotMessageBranchSent, SentGroupRobotMessage{MessageType: input.MessageType, ContentBytes: len(input.Content)}, nil, sdkgo.Receipt{})
+	// A lost acceptance checkpoint leaves the claim, which a later attempt counts as a send.
+	_ = post.fence.RecordProviderID(groupRobotAcceptedMarker)
+	return sdkgo.NewMutationBranch(SendGroupRobotMessageBranchSent, newSentGroupRobotMessage(input), nil, sdkgo.Receipt{})
+}
+
+// groupRobotAcceptedMarker is the checkpoint provider ID of a post WeCom accepted; robot posts return no message ID.
+const groupRobotAcceptedMarker = "errcode-0"
+
+func newSentGroupRobotMessage(input SendGroupRobotMessageInput) SentGroupRobotMessage {
+	return SentGroupRobotMessage{MessageType: input.MessageType, ContentBytes: len(input.Content)}
+}
+
+// resendOrSelectUncertain retries a possibly sent post while the send cap allows another send.
+func (post groupRobotPost) resendOrSelectUncertain(kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[SentGroupRobotMessage] {
+	if post.canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return retryGroupRobotPost(kind, message, retryAfter)
+	}
+	return uncertainGroupRobotPost(kind, message)
+}
+
+// rejectOrSelectUncertain selects providerRejected only when no earlier send of this call may have posted.
+func (post groupRobotPost) rejectOrSelectUncertain(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentGroupRobotMessage] {
+	if post.hasPossibleEarlierSend {
+		return uncertainGroupRobotPost(kind, message)
+	}
+	// The branch is terminal, so a lost canResend checkpoint cannot cause a resend.
+	_ = post.fence.RecordCanResend()
+	return rejectedGroupRobotPost(SendGroupRobotMessageBranchProviderRejected, kind, message)
+}
+
+// localFailure selects defect only when no earlier send of this call may have posted.
+func (post groupRobotPost) localFailure(kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SentGroupRobotMessage] {
+	if post.hasPossibleEarlierSend {
+		// notSent would hide the earlier possible send, so nothing is recorded.
+		return retryGroupRobotPost(kind, message+"; nothing was posted in this attempt", 0)
+	}
+	// The branch is terminal, so a lost notSent checkpoint cannot cause a resend.
+	_ = post.fence.RecordNotSent()
+	return rejectedGroupRobotPost(SendGroupRobotMessageBranchDefect, kind, message)
 }
 
 // validateGroupRobotInput returns a safe message describing the first invalid field, or "".
