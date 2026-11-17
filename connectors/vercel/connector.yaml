@@ -177,7 +177,7 @@ spec:
       inputType: CreateProjectInput
       outputType: Project
       kind: mutation
-      description: Create a named Vercel project.
+      description: Create a named Vercel project with bounded sends; an unknown result cannot be confirmed by name and may be uncertain.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
@@ -259,7 +259,7 @@ spec:
       inputType: ProjectDomainInput
       outputType: ProjectDomain
       kind: mutation
-      description: Assign a domain to a project.
+      description: Assign a domain to a project with bounded sends; an unknown result cannot be confirmed by domain name and may be uncertain.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}

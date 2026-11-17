@@ -21,7 +21,7 @@ The TypeScript package is [`@superdurable/connector-vercel`](typescript/README.m
 | NewDeleteDeploymentStep | DELETE /v13/deployments/{id} | deployment ID and optional team ID | `DeletedDeployment` | `deleted` | `providerRejected`, `defect` |
 | NewListProjectsStep | GET /v9/projects | optional team ID | `ProjectsPage` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
 | NewGetProjectStep | GET /v9/projects/{idOrName} | project ID or name, optional team ID | `Project` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
-| NewCreateProjectStep | POST /v9/projects | project name, optional team ID | `Project` | `created` | `providerRejected`, `defect` |
+| NewCreateProjectStep | POST /v9/projects | project name, optional team ID | `Project` | `created` | `providerRejected`, `uncertain`, `defect` |
 | NewUpdateProjectStep | PATCH /v9/projects/{idOrName} | project ID, replacement name, optional team ID | `Project` | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | NewDeleteProjectStep | DELETE /v9/projects/{idOrName} | project ID or name, optional team ID | `DeletedProject` | `deleted` | `providerRejected`, `defect` |
 | NewListProjectDomainsStep | GET /v9/projects/{idOrName}/domains | project ID, optional team ID | `ProjectDomainsPage` | `listed` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
@@ -31,7 +31,7 @@ The TypeScript package is [`@superdurable/connector-vercel`](typescript/README.m
 | NewRemoveProjectDomainStep | DELETE /v9/projects/{idOrName}/domains/{domain} | project ID, domain, optional team ID | `RemovedProjectDomain` | `removed` | `providerRejected`, `defect` |
 | NewVerifyProjectDomainStep | POST /v9/projects/{idOrName}/domains/{domain}/verify | project ID, domain, optional team ID | `ProjectDomain` | `verified` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-Deployment, project, and domain reads are safe Queries. Cancellation, deletion, absolute project rename, domain branch assignment, domain removal, and domain verification are safe Mutations. An already absent deployment, project, or domain assignment counts as deleted or removed. Project creation and domain assignment are limited to three possible sends per call and select uncertainty when the result cannot be confirmed. Creating deployments requires file upload and is deferred as a binary-heavy operation. Environment variable operations are omitted because variable values may be secrets and the connector contract forbids placing secrets in Flow input or output.
+Deployment, project, and domain reads are safe Queries. Cancellation, deletion, absolute project rename, domain branch assignment, domain removal, and domain verification are safe Mutations. An already absent deployment, project, or domain assignment counts as deleted or removed. Project creation and domain assignment are limited to three possible sends per call. Vercel provides no request marker or idempotency key for these operations, so a lookup by project or domain name cannot establish which call created it. After an unknown result, the connector resends within the cap and selects `uncertain` when the cap is reached or a later conclusive response cannot establish the earlier outcome. Creating deployments requires file upload and is deferred as a binary-heavy operation. Environment variable operations are omitted because variable values may be secrets and the connector contract forbids placing secrets in Flow input or output.
 
 ## Authorization
 

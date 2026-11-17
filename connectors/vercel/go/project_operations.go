@@ -144,6 +144,7 @@ func (operation CreateProjectOperation) Invoke(call sdkgo.Call, input CreateProj
 		return mutationFailure[Project]("createProject", "defect", sdkgo.FailureLocalDefect, "Vercel project dispatch could not be initialized")
 	}
 	decision := fence.Decide()
+	// A project name cannot identify the call that created it.
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return projectUncertain()
 	}

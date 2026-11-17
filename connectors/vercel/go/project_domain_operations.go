@@ -150,6 +150,7 @@ func (operation AddProjectDomainOperation) Invoke(call sdkgo.Call, input Project
 		return mutationFailure[ProjectDomain]("addProjectDomain", "defect", sdkgo.FailureLocalDefect, "Vercel domain dispatch could not be initialized")
 	}
 	decision := fence.Decide()
+	// A domain name cannot identify the call that assigned it.
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return domainUncertain()
 	}
