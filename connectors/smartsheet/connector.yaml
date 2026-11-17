@@ -341,3 +341,86 @@ spec:
         - {id: defect, goName: Defect, description: Column ID or credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: One sample column is deleted., output: {columnId: 2001}}
+    - name: getFolder
+      goName: GetFolder
+      inputType: GetFolderInput
+      outputType: FolderSummary
+      kind: query
+      description: Get one folder's metadata.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Smartsheet found the folder.}
+        - {id: notFound, goName: NotFound, description: Folder notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Folder providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Folder invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: Folder defect outcome., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Sample folder found outcome., output: {id: 5001, name: Meridian Folder} }
+    - name: createFolderInWorkspace
+      goName: CreateFolderInWorkspace
+      inputType: CreateFolderInWorkspaceInput
+      outputType: FolderSummary
+      kind: mutation
+      description: Create one folder in a workspace.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Smartsheet created the folder.}
+        - {id: providerRejected, goName: ProviderRejected, description: Folder providerRejected outcome., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Folder uncertain outcome., optional: true}
+        - {id: defect, goName: Defect, description: Folder defect outcome., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Sample folder created outcome., output: {id: 5001, name: Meridian Folder} }
+    - name: createFolderInFolder
+      goName: CreateFolderInFolder
+      inputType: CreateFolderInFolderInput
+      outputType: FolderSummary
+      kind: mutation
+      description: Create one nested folder.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Smartsheet created the folder.}
+        - {id: providerRejected, goName: ProviderRejected, description: Folder providerRejected outcome., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Folder uncertain outcome., optional: true}
+        - {id: defect, goName: Defect, description: Folder defect outcome., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Sample folder created outcome., output: {id: 5001, name: Meridian Folder} }
+    - name: updateFolder
+      goName: UpdateFolder
+      inputType: UpdateFolderInput
+      outputType: FolderSummary
+      kind: mutation
+      description: Rename one folder.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Smartsheet updated the folder.}
+        - {id: notFound, goName: NotFound, description: Folder notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Folder providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Folder invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: Folder defect outcome., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Sample folder updated outcome., output: {id: 5001, name: Meridian Folder} }
+    - name: deleteFolder
+      goName: DeleteFolder
+      inputType: DeleteFolderInput
+      outputType: DeleteFolderOutput
+      kind: mutation
+      description: Delete one folder.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Smartsheet deleted the folder.}
+        - {id: notFound, goName: NotFound, description: Folder notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Folder providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Folder invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: Folder defect outcome., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Sample folder deleted outcome., output: {folderId: 5001} }

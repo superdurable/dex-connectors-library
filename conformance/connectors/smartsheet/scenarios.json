@@ -4629,6 +4629,1478 @@
       },
       "name": "deleteColumn-transport",
       "operation": "deleteColumn"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":5001,\"name\":\"Meridian Folder\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/5001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 5001,
+          "name": "Meridian Folder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": 5001
+      },
+      "name": "getFolder-found",
+      "operation": "getFolder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/5001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": 5001
+      },
+      "name": "getFolder-notFound",
+      "operation": "getFolder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/5001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": 5001
+      },
+      "name": "getFolder-providerRejected",
+      "operation": "getFolder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/5001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": 5001
+      },
+      "name": "getFolder-invalidResponse",
+      "operation": "getFolder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": 0
+      },
+      "name": "getFolder-defect",
+      "operation": "getFolder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/5001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": 5001
+      },
+      "name": "getFolder-rateLimited",
+      "operation": "getFolder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/5001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": 5001
+      },
+      "name": "getFolder-serverUnavailable",
+      "operation": "getFolder"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/5001/metadata",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folderId": 5001
+      },
+      "name": "getFolder-transport",
+      "operation": "getFolder"
+    },
+    {
+      "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0,\"result\":{\"id\":5001,\"name\":\"Meridian Folder\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/4001/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+          "providerId": "5001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 5001,
+          "name": "Meridian Folder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "input": {
+        "name": "Meridian Folder",
+        "workspaceId": 4001
+      },
+      "name": "createFolderInWorkspace-created",
+      "operation": "createFolderInWorkspace"
+    },
+    {
+      "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/4001/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "input": {
+        "name": "Meridian Folder",
+        "workspaceId": 4001
+      },
+      "name": "createFolderInWorkspace-providerRejected",
+      "operation": "createFolderInWorkspace"
+    },
+    {
+      "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "input": {
+        "name": "Meridian Folder",
+        "workspaceId": 0
+      },
+      "name": "createFolderInWorkspace-defect",
+      "operation": "createFolderInWorkspace"
+    },
+    {
+      "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/4001/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "input": {
+        "name": "Meridian Folder",
+        "workspaceId": 4001
+      },
+      "name": "createFolderInWorkspace-rateLimited",
+      "operation": "createFolderInWorkspace"
+    },
+    {
+      "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/4001/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "input": {
+        "name": "Meridian Folder",
+        "workspaceId": 4001
+      },
+      "name": "createFolderInWorkspace-serverUnavailable",
+      "operation": "createFolderInWorkspace"
+    },
+    {
+      "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/workspaces/4001/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "input": {
+        "name": "Meridian Folder",
+        "workspaceId": 4001
+      },
+      "name": "createFolderInWorkspace-transport",
+      "operation": "createFolderInWorkspace"
+    },
+    {
+      "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+      "input": {
+        "name": "Meridian Folder",
+        "workspaceId": 4001
+      },
+      "name": "createFolderInWorkspace-uncertain",
+      "operation": "createFolderInWorkspace",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "17f3c46e-8cf1-5538-898e-6296b0b8ac38",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0,\"result\":{\"id\":5001,\"name\":\"Meridian Folder\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/5002/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+          "providerId": "5001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 5001,
+          "name": "Meridian Folder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "input": {
+        "folderId": 5002,
+        "name": "Meridian Folder"
+      },
+      "name": "createFolderInFolder-created",
+      "operation": "createFolderInFolder"
+    },
+    {
+      "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/5002/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "input": {
+        "folderId": 5002,
+        "name": "Meridian Folder"
+      },
+      "name": "createFolderInFolder-providerRejected",
+      "operation": "createFolderInFolder"
+    },
+    {
+      "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "input": {
+        "folderId": 0,
+        "name": "Meridian Folder"
+      },
+      "name": "createFolderInFolder-defect",
+      "operation": "createFolderInFolder"
+    },
+    {
+      "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/5002/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "input": {
+        "folderId": 5002,
+        "name": "Meridian Folder"
+      },
+      "name": "createFolderInFolder-rateLimited",
+      "operation": "createFolderInFolder"
+    },
+    {
+      "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/5002/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "input": {
+        "folderId": 5002,
+        "name": "Meridian Folder"
+      },
+      "name": "createFolderInFolder-serverUnavailable",
+      "operation": "createFolderInFolder"
+    },
+    {
+      "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/5002/folders",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "input": {
+        "folderId": 5002,
+        "name": "Meridian Folder"
+      },
+      "name": "createFolderInFolder-transport",
+      "operation": "createFolderInFolder"
+    },
+    {
+      "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+      "input": {
+        "folderId": 5002,
+        "name": "Meridian Folder"
+      },
+      "name": "createFolderInFolder-uncertain",
+      "operation": "createFolderInFolder",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "aca0a554-5f32-56a4-b33e-a9296b1c48ea",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0,\"result\":{\"id\":5001,\"name\":\"Meridian Folder\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 5001,
+          "name": "Meridian Folder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-updated",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-notFound",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-providerRejected",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-invalidResponse",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 0,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-defect",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-rateLimited",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-serverUnavailable",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/folders/5001",
+          "requestBody": {
+            "name": "Meridian Folder"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ac5d9f5f-f174-58e0-9878-b5be2c6b8f59",
+      "input": {
+        "folderId": 5001,
+        "name": "Meridian Folder"
+      },
+      "name": "updateFolder-transport",
+      "operation": "updateFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "folderId": 5001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-deleted",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "folderId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-notFound",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "folderId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-providerRejected",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "folderId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-invalidResponse",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "folderId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 0
+      },
+      "name": "deleteFolder-defect",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-rateLimited",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-serverUnavailable",
+      "operation": "deleteFolder"
+    },
+    {
+      "callId": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/folders/5001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "75b9cb44-5b8c-5efa-b44a-6b46819cbf51",
+      "input": {
+        "folderId": 5001
+      },
+      "name": "deleteFolder-transport",
+      "operation": "deleteFolder"
     }
   ],
   "schemaVersion": 1

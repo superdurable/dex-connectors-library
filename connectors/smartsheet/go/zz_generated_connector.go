@@ -55,6 +55,11 @@ type Operations interface {
 	AddColumn() sdkgo.Mutation[AddColumnInput, ColumnSummary]
 	UpdateColumn() sdkgo.Mutation[UpdateColumnInput, ColumnSummary]
 	DeleteColumn() sdkgo.Mutation[DeleteColumnInput, DeleteColumnOutput]
+	GetFolder() sdkgo.Query[GetFolderInput, FolderSummary]
+	CreateFolderInWorkspace() sdkgo.Mutation[CreateFolderInWorkspaceInput, FolderSummary]
+	CreateFolderInFolder() sdkgo.Mutation[CreateFolderInFolderInput, FolderSummary]
+	UpdateFolder() sdkgo.Mutation[UpdateFolderInput, FolderSummary]
+	DeleteFolder() sdkgo.Mutation[DeleteFolderInput, DeleteFolderOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -103,6 +108,21 @@ func (operations clientOperations) UpdateColumn() sdkgo.Mutation[UpdateColumnInp
 }
 func (operations clientOperations) DeleteColumn() sdkgo.Mutation[DeleteColumnInput, DeleteColumnOutput] {
 	return operations.client.DeleteColumn()
+}
+func (operations clientOperations) GetFolder() sdkgo.Query[GetFolderInput, FolderSummary] {
+	return operations.client.GetFolder()
+}
+func (operations clientOperations) CreateFolderInWorkspace() sdkgo.Mutation[CreateFolderInWorkspaceInput, FolderSummary] {
+	return operations.client.CreateFolderInWorkspace()
+}
+func (operations clientOperations) CreateFolderInFolder() sdkgo.Mutation[CreateFolderInFolderInput, FolderSummary] {
+	return operations.client.CreateFolderInFolder()
+}
+func (operations clientOperations) UpdateFolder() sdkgo.Mutation[UpdateFolderInput, FolderSummary] {
+	return operations.client.UpdateFolder()
+}
+func (operations clientOperations) DeleteFolder() sdkgo.Mutation[DeleteFolderInput, DeleteFolderOutput] {
+	return operations.client.DeleteFolder()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1379,6 +1399,391 @@ func NewDeleteColumnStep[IN any](config DeleteColumnStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteColumnBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetFolderBranchFound sdkgo.BranchID = "found"
+const GetFolderBranchNotFound sdkgo.BranchID = "notFound"
+const GetFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetFolderDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetFolderBranchFound, Description: "Smartsheet found the folder."},
+		{ID: GetFolderBranchNotFound, Description: "Folder notFound outcome.", Optional: true},
+		{ID: GetFolderBranchProviderRejected, Description: "Folder providerRejected outcome.", Optional: true},
+		{ID: GetFolderBranchInvalidResponse, Description: "Folder invalidResponse outcome.", Optional: true},
+		{ID: GetFolderBranchDefect, Description: "Folder defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetFolderResult = sdkgo.QueryResult[FolderSummary]
+
+type GetFolderStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=smartsheet"`
+	operationID                    struct{}                                         `connector:"operationId=getFolder"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetFolderInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetFolderResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetFolderResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetFolderResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetFolderResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetFolderResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FolderSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetFolderStep[IN any](config GetFolderStepConfig[IN]) sdkgo.QueryStep[IN, GetFolderInput, FolderSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetFolderInput, FolderSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetFolderResult] {
+			branches := make([]sdkgo.BranchTarget[GetFolderResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetFolderBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetFolderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateFolderInWorkspaceBranchCreated sdkgo.BranchID = "created"
+const CreateFolderInWorkspaceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateFolderInWorkspaceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateFolderInWorkspaceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateFolderInWorkspaceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createFolderInWorkspace"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateFolderInWorkspaceBranchCreated, Description: "Smartsheet created the folder."},
+		{ID: CreateFolderInWorkspaceBranchProviderRejected, Description: "Folder providerRejected outcome.", Optional: true},
+		{ID: CreateFolderInWorkspaceBranchUncertain, Description: "Folder uncertain outcome.", Optional: true},
+		{ID: CreateFolderInWorkspaceBranchDefect, Description: "Folder defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateFolderInWorkspaceResult = sdkgo.MutationResult[FolderSummary]
+
+type CreateFolderInWorkspaceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                            `connector:"operationId=createFolderInWorkspace"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateFolderInWorkspaceInput               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateFolderInWorkspaceResult]         `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateFolderInWorkspaceResult]         `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateFolderInWorkspaceResult]         `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateFolderInWorkspaceResult]         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FolderSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateFolderInWorkspaceStep[IN any](config CreateFolderInWorkspaceStepConfig[IN]) sdkgo.MutationStep[IN, CreateFolderInWorkspaceInput, FolderSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateFolderInWorkspaceInput, FolderSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateFolderInWorkspace(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateFolderInWorkspaceResult] {
+			branches := make([]sdkgo.BranchTarget[CreateFolderInWorkspaceResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateFolderInWorkspaceBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateFolderInWorkspaceBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateFolderInWorkspaceBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateFolderInWorkspaceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateFolderInFolderBranchCreated sdkgo.BranchID = "created"
+const CreateFolderInFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateFolderInFolderBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateFolderInFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateFolderInFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createFolderInFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateFolderInFolderBranchCreated, Description: "Smartsheet created the folder."},
+		{ID: CreateFolderInFolderBranchProviderRejected, Description: "Folder providerRejected outcome.", Optional: true},
+		{ID: CreateFolderInFolderBranchUncertain, Description: "Folder uncertain outcome.", Optional: true},
+		{ID: CreateFolderInFolderBranchDefect, Description: "Folder defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateFolderInFolderResult = sdkgo.MutationResult[FolderSummary]
+
+type CreateFolderInFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                            `connector:"operationId=createFolderInFolder"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateFolderInFolderInput                  `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateFolderInFolderResult]            `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateFolderInFolderResult]            `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateFolderInFolderResult]            `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateFolderInFolderResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FolderSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateFolderInFolderStep[IN any](config CreateFolderInFolderStepConfig[IN]) sdkgo.MutationStep[IN, CreateFolderInFolderInput, FolderSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateFolderInFolderInput, FolderSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateFolderInFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateFolderInFolderResult] {
+			branches := make([]sdkgo.BranchTarget[CreateFolderInFolderResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateFolderInFolderBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateFolderInFolderBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateFolderInFolderBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateFolderInFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateFolderBranchUpdated sdkgo.BranchID = "updated"
+const UpdateFolderBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateFolderBranchUpdated, Description: "Smartsheet updated the folder."},
+		{ID: UpdateFolderBranchNotFound, Description: "Folder notFound outcome.", Optional: true},
+		{ID: UpdateFolderBranchProviderRejected, Description: "Folder providerRejected outcome.", Optional: true},
+		{ID: UpdateFolderBranchInvalidResponse, Description: "Folder invalidResponse outcome.", Optional: true},
+		{ID: UpdateFolderBranchDefect, Description: "Folder defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateFolderResult = sdkgo.MutationResult[FolderSummary]
+
+type UpdateFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                            `connector:"operationId=updateFolder"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateFolderInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateFolderResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateFolderResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateFolderResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateFolderResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateFolderResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[FolderSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateFolderStep[IN any](config UpdateFolderStepConfig[IN]) sdkgo.MutationStep[IN, UpdateFolderInput, FolderSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateFolderInput, FolderSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateFolderResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateFolderResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateFolderBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateFolderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteFolderBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteFolderBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteFolderBranchDeleted, Description: "Smartsheet deleted the folder."},
+		{ID: DeleteFolderBranchNotFound, Description: "Folder notFound outcome.", Optional: true},
+		{ID: DeleteFolderBranchProviderRejected, Description: "Folder providerRejected outcome.", Optional: true},
+		{ID: DeleteFolderBranchInvalidResponse, Description: "Folder invalidResponse outcome.", Optional: true},
+		{ID: DeleteFolderBranchDefect, Description: "Folder defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteFolderResult = sdkgo.MutationResult[DeleteFolderOutput]
+
+type DeleteFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteFolder"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteFolderInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteFolderResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteFolderResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteFolderResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteFolderResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteFolderResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteFolderOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteFolderStep[IN any](config DeleteFolderStepConfig[IN]) sdkgo.MutationStep[IN, DeleteFolderInput, DeleteFolderOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteFolderInput, DeleteFolderOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteFolderResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteFolderResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteFolderBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteFolderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteFolderBranchDefect))
 			}
 			return branches
 		}(),

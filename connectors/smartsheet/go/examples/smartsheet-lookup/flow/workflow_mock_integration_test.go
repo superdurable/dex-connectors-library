@@ -180,3 +180,41 @@ func TestColumnLookupMockWithRealDex(t *testing.T) {
 	require.Equal(t, int64(2001), column.ID)
 	require.Len(t, mock.GetColumn().Calls(), 1)
 }
+func TestFolderLookupMockWithRealDex(t *testing.T) {
+	mock := smartsheetmock.New(t, ConnectionName)
+	flow := NewFolderLookupFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, cache.Close()) }()
+	server := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if server == "" {
+		server = "127.0.0.1:9580"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: server})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult))
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: server})
+	require.NoError(t, err)
+	defer func() { require.NoError(t, client.Close()) }()
+	flowID := "smartsheet-folder-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, flow, flowID, smartsheet.GetFolderInput{FolderID: 5001}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var folder smartsheet.FolderSummary
+	require.NoError(t, result.DecodeSingleOutput(&folder))
+	require.Equal(t, int64(5001), folder.ID)
+	require.Len(t, mock.GetFolder().Calls(), 1)
+}

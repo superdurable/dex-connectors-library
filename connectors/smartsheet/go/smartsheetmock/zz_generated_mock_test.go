@@ -76,6 +76,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[smartsheet.DeleteColumnOutput](`{"columnId":2001}`)
 			return err
 		}},
+		{name: "getFolder/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.FolderSummary](`{"id":5001,"name":"Meridian Folder"}`)
+			return err
+		}},
+		{name: "createFolderInWorkspace/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.FolderSummary](`{"id":5001,"name":"Meridian Folder"}`)
+			return err
+		}},
+		{name: "createFolderInFolder/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.FolderSummary](`{"id":5001,"name":"Meridian Folder"}`)
+			return err
+		}},
+		{name: "updateFolder/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.FolderSummary](`{"id":5001,"name":"Meridian Folder"}`)
+			return err
+		}},
+		{name: "deleteFolder/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteFolderOutput](`{"folderId":5001}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -130,5 +150,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteColumn().Definition().Operation.OperationID != "deleteColumn" {
 		t.Errorf("deleteColumn mock has another definition")
+	}
+	if mock.GetFolder().Definition().Operation.OperationID != "getFolder" {
+		t.Errorf("getFolder mock has another definition")
+	}
+	if mock.CreateFolderInWorkspace().Definition().Operation.OperationID != "createFolderInWorkspace" {
+		t.Errorf("createFolderInWorkspace mock has another definition")
+	}
+	if mock.CreateFolderInFolder().Definition().Operation.OperationID != "createFolderInFolder" {
+		t.Errorf("createFolderInFolder mock has another definition")
+	}
+	if mock.UpdateFolder().Definition().Operation.OperationID != "updateFolder" {
+		t.Errorf("updateFolder mock has another definition")
+	}
+	if mock.DeleteFolder().Definition().Operation.OperationID != "deleteFolder" {
+		t.Errorf("deleteFolder mock has another definition")
 	}
 }
