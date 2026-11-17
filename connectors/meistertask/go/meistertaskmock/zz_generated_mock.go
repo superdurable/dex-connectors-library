@@ -17,11 +17,15 @@ import (
 
 // Mock is a scripted meistertask connection. Script each operation through its accessor.
 type Mock struct {
-	connection meistertask.Connection
-	listTasks  *connectormock.Query[meistertask.ListTasksInput, meistertask.TasksPage]
-	getTask    *connectormock.Query[meistertask.GetTaskInput, meistertask.TaskSummary]
-	updateTask *connectormock.Mutation[meistertask.UpdateTaskInput, meistertask.TaskSummary]
-	createTask *connectormock.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary]
+	connection    meistertask.Connection
+	listProjects  *connectormock.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage]
+	getProject    *connectormock.Query[meistertask.GetProjectInput, meistertask.ProjectSummary]
+	updateProject *connectormock.Mutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary]
+	createProject *connectormock.Mutation[meistertask.CreateProjectInput, meistertask.ProjectSummary]
+	listTasks     *connectormock.Query[meistertask.ListTasksInput, meistertask.TasksPage]
+	getTask       *connectormock.Query[meistertask.GetTaskInput, meistertask.TaskSummary]
+	updateTask    *connectormock.Mutation[meistertask.UpdateTaskInput, meistertask.TaskSummary]
+	createTask    *connectormock.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,11 +33,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listTasks:  connectormock.NewQuery[meistertask.ListTasksInput, meistertask.TasksPage](t, meistertask.ListTasksDefinition),
-		getTask:    connectormock.NewQuery[meistertask.GetTaskInput, meistertask.TaskSummary](t, meistertask.GetTaskDefinition),
-		updateTask: connectormock.NewMutation[meistertask.UpdateTaskInput, meistertask.TaskSummary](t, meistertask.UpdateTaskDefinition),
-		createTask: connectormock.NewMutation[meistertask.CreateTaskInput, meistertask.TaskSummary](t, meistertask.CreateTaskDefinition),
+		listProjects:  connectormock.NewQuery[meistertask.ListProjectsInput, meistertask.ProjectsPage](t, meistertask.ListProjectsDefinition),
+		getProject:    connectormock.NewQuery[meistertask.GetProjectInput, meistertask.ProjectSummary](t, meistertask.GetProjectDefinition),
+		updateProject: connectormock.NewMutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary](t, meistertask.UpdateProjectDefinition),
+		createProject: connectormock.NewMutation[meistertask.CreateProjectInput, meistertask.ProjectSummary](t, meistertask.CreateProjectDefinition),
+		listTasks:     connectormock.NewQuery[meistertask.ListTasksInput, meistertask.TasksPage](t, meistertask.ListTasksDefinition),
+		getTask:       connectormock.NewQuery[meistertask.GetTaskInput, meistertask.TaskSummary](t, meistertask.GetTaskDefinition),
+		updateTask:    connectormock.NewMutation[meistertask.UpdateTaskInput, meistertask.TaskSummary](t, meistertask.UpdateTaskDefinition),
+		createTask:    connectormock.NewMutation[meistertask.CreateTaskInput, meistertask.TaskSummary](t, meistertask.CreateTaskDefinition),
 	}
+	mock.listProjects.Default(ListProjectsDefault())
+	mock.getProject.Default(GetProjectDefault())
+	mock.updateProject.Default(UpdateProjectDefault())
+	mock.createProject.Default(CreateProjectDefault())
 	mock.listTasks.Default(ListTasksDefault())
 	mock.getTask.Default(GetTaskDefault())
 	mock.updateTask.Default(UpdateTaskDefault())
@@ -48,6 +60,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() meistertask.Connection { return mock.connection }
+
+// ListProjects returns the listProjects script.
+func (mock *Mock) ListProjects() *connectormock.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage] {
+	return mock.listProjects
+}
+
+// GetProject returns the getProject script.
+func (mock *Mock) GetProject() *connectormock.Query[meistertask.GetProjectInput, meistertask.ProjectSummary] {
+	return mock.getProject
+}
+
+// UpdateProject returns the updateProject script.
+func (mock *Mock) UpdateProject() *connectormock.Mutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary] {
+	return mock.updateProject
+}
+
+// CreateProject returns the createProject script.
+func (mock *Mock) CreateProject() *connectormock.Mutation[meistertask.CreateProjectInput, meistertask.ProjectSummary] {
+	return mock.createProject
+}
 
 // ListTasks returns the listTasks script.
 func (mock *Mock) ListTasks() *connectormock.Query[meistertask.ListTasksInput, meistertask.TasksPage] {
@@ -71,6 +103,18 @@ func (mock *Mock) CreateTask() *connectormock.Mutation[meistertask.CreateTaskInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListProjects() sdkgo.Query[meistertask.ListProjectsInput, meistertask.ProjectsPage] {
+	return operations.mock.listProjects
+}
+func (operations mockOperations) GetProject() sdkgo.Query[meistertask.GetProjectInput, meistertask.ProjectSummary] {
+	return operations.mock.getProject
+}
+func (operations mockOperations) UpdateProject() sdkgo.Mutation[meistertask.UpdateProjectInput, meistertask.ProjectSummary] {
+	return operations.mock.updateProject
+}
+func (operations mockOperations) CreateProject() sdkgo.Mutation[meistertask.CreateProjectInput, meistertask.ProjectSummary] {
+	return operations.mock.createProject
+}
 func (operations mockOperations) ListTasks() sdkgo.Query[meistertask.ListTasksInput, meistertask.TasksPage] {
 	return operations.mock.listTasks
 }
@@ -82,6 +126,160 @@ func (operations mockOperations) UpdateTask() sdkgo.Mutation[meistertask.UpdateT
 }
 func (operations mockOperations) CreateTask() sdkgo.Mutation[meistertask.CreateTaskInput, meistertask.TaskSummary] {
 	return operations.mock.createTask
+}
+
+// ListProjectsListed selects the listed branch: MeisterTask returned the projects.
+func ListProjectsListed(value meistertask.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectsPage] {
+	return connectormock.Branch(meistertask.ListProjectsBranchListed, value, failure)
+}
+
+// ListProjectsProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func ListProjectsProviderRejected(value meistertask.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectsPage] {
+	return connectormock.Branch(meistertask.ListProjectsBranchProviderRejected, value, failure)
+}
+
+// ListProjectsInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func ListProjectsInvalidResponse(value meistertask.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectsPage] {
+	return connectormock.Branch(meistertask.ListProjectsBranchInvalidResponse, value, failure)
+}
+
+// ListProjectsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListProjectsDefect(value meistertask.ProjectsPage, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectsPage] {
+	return connectormock.Branch(meistertask.ListProjectsBranchDefect, value, failure)
+}
+
+// ListProjectsRetry asks Dex to retry the listProjects Step, after the delay when it is positive.
+func ListProjectsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.ProjectsPage] {
+	return connectormock.Retry[meistertask.ProjectsPage](failure, after)
+}
+
+// ListProjectsListedDefault is the manifest mock listedDefault: A sample project is available.
+func ListProjectsListedDefault() connectormock.Case[meistertask.ProjectsPage] {
+	value := connectormock.MustDecodeOutput[meistertask.ProjectsPage](`{"projects":[{"id":"123","name":"Example Project","status":"1"}],"page":1}`)
+	return connectormock.Branch(meistertask.ListProjectsBranchListed, value, nil)
+}
+
+// ListProjectsDefault is the manifest default, listedDefault, which New installs.
+func ListProjectsDefault() connectormock.Case[meistertask.ProjectsPage] {
+	return ListProjectsListedDefault()
+}
+
+// GetProjectFound selects the found branch: MeisterTask returned the project.
+func GetProjectFound(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.GetProjectBranchFound, value, failure)
+}
+
+// GetProjectNotFound selects the notFound branch: MeisterTask did not expose the project.
+func GetProjectNotFound(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.GetProjectBranchNotFound, value, failure)
+}
+
+// GetProjectProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func GetProjectProviderRejected(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.GetProjectBranchProviderRejected, value, failure)
+}
+
+// GetProjectInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func GetProjectInvalidResponse(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.GetProjectBranchInvalidResponse, value, failure)
+}
+
+// GetProjectDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetProjectDefect(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.GetProjectBranchDefect, value, failure)
+}
+
+// GetProjectRetry asks Dex to retry the getProject Step, after the delay when it is positive.
+func GetProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Retry[meistertask.ProjectSummary](failure, after)
+}
+
+// GetProjectFoundDefault is the manifest mock foundDefault: A sample project is available.
+func GetProjectFoundDefault() connectormock.Case[meistertask.ProjectSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.ProjectSummary](`{"id":"123","name":"Example Project","status":"1"}`)
+	return connectormock.Branch(meistertask.GetProjectBranchFound, value, nil)
+}
+
+// GetProjectDefault is the manifest default, foundDefault, which New installs.
+func GetProjectDefault() connectormock.Case[meistertask.ProjectSummary] {
+	return GetProjectFoundDefault()
+}
+
+// UpdateProjectUpdated selects the updated branch: MeisterTask returned the project.
+func UpdateProjectUpdated(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.UpdateProjectBranchUpdated, value, failure)
+}
+
+// UpdateProjectNotFound selects the notFound branch: MeisterTask did not expose the project.
+func UpdateProjectNotFound(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.UpdateProjectBranchNotFound, value, failure)
+}
+
+// UpdateProjectProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func UpdateProjectProviderRejected(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.UpdateProjectBranchProviderRejected, value, failure)
+}
+
+// UpdateProjectInvalidResponse selects the invalidResponse branch: MeisterTask returned malformed or oversized JSON.
+func UpdateProjectInvalidResponse(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.UpdateProjectBranchInvalidResponse, value, failure)
+}
+
+// UpdateProjectDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateProjectDefect(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.UpdateProjectBranchDefect, value, failure)
+}
+
+// UpdateProjectRetry asks Dex to retry the updateProject Step, after the delay when it is positive.
+func UpdateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Retry[meistertask.ProjectSummary](failure, after)
+}
+
+// UpdateProjectUpdatedDefault is the manifest mock updatedDefault: A sample project is available.
+func UpdateProjectUpdatedDefault() connectormock.Case[meistertask.ProjectSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.ProjectSummary](`{"id":"123","name":"Updated Project","status":"1"}`)
+	return connectormock.Branch(meistertask.UpdateProjectBranchUpdated, value, nil)
+}
+
+// UpdateProjectDefault is the manifest default, updatedDefault, which New installs.
+func UpdateProjectDefault() connectormock.Case[meistertask.ProjectSummary] {
+	return UpdateProjectUpdatedDefault()
+}
+
+// CreateProjectCreated selects the created branch: MeisterTask returned the project.
+func CreateProjectCreated(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.CreateProjectBranchCreated, value, failure)
+}
+
+// CreateProjectProviderRejected selects the providerRejected branch: MeisterTask conclusively rejected the request.
+func CreateProjectProviderRejected(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.CreateProjectBranchProviderRejected, value, failure)
+}
+
+// CreateProjectUncertain returns an uncertain createProject outcome.
+func CreateProjectUncertain(value meistertask.ProjectSummary, failure sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateProjectDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateProjectDefect(value meistertask.ProjectSummary, failure *sdkgo.Failure) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Branch(meistertask.CreateProjectBranchDefect, value, failure)
+}
+
+// CreateProjectRetry asks Dex to retry the createProject Step, after the delay when it is positive.
+func CreateProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[meistertask.ProjectSummary] {
+	return connectormock.Retry[meistertask.ProjectSummary](failure, after)
+}
+
+// CreateProjectCreatedDefault is the manifest mock createdDefault: A sample project is available.
+func CreateProjectCreatedDefault() connectormock.Case[meistertask.ProjectSummary] {
+	value := connectormock.MustDecodeOutput[meistertask.ProjectSummary](`{"id":"123","name":"Example Project","status":"1"}`)
+	return connectormock.Branch(meistertask.CreateProjectBranchCreated, value, nil)
+}
+
+// CreateProjectDefault is the manifest default, createdDefault, which New installs.
+func CreateProjectDefault() connectormock.Case[meistertask.ProjectSummary] {
+	return CreateProjectCreatedDefault()
 }
 
 // ListTasksListed selects the listed branch: MeisterTask returned a page of tasks.

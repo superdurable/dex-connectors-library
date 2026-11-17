@@ -1411,6 +1411,1276 @@
       },
       "name": "getTask-extraFields",
       "operation": "getTask"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "[{\"id\":123,\"name\":\"Example Project\",\"status\":1}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "projects": [
+            {
+              "id": "123",
+              "name": "Example Project",
+              "status": "1"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listProjects-success",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listProjects-providerRejected",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listProjects-invalidResponse",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listProjects-429",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listProjects-503",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "items": [
+              "10"
+            ],
+            "page": [
+              "1"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "items": 10,
+        "page": 1,
+        "status": "all"
+      },
+      "name": "listProjects-transport",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{\"id\":123,\"name\":\"Example Project\",\"status\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "123",
+          "name": "Example Project",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-success",
+      "operation": "getProject"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-notFound",
+      "operation": "getProject"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-providerRejected",
+      "operation": "getProject"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-invalidResponse",
+      "operation": "getProject"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-429",
+      "operation": "getProject"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-503",
+      "operation": "getProject"
+    },
+    {
+      "callId": "ea9b3b96-4f72-5973-94c6-0a46705a691d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects/123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectId": "123"
+      },
+      "name": "getProject-transport",
+      "operation": "getProject"
+    },
+    {
+      "callId": "180da628-8922-5b57-8300-9921cf84a094",
+      "exchanges": [
+        {
+          "body": "{\"id\":123,\"name\":\"Updated Project\",\"status\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123",
+          "requestBody": {
+            "name": "Updated Project",
+            "notes": "Updated notes",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "123",
+          "name": "Updated Project",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "180da628-8922-5b57-8300-9921cf84a094",
+      "input": {
+        "name": "Updated Project",
+        "notes": "Updated notes",
+        "projectId": "123",
+        "status": 1
+      },
+      "name": "updateProject-success",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "180da628-8922-5b57-8300-9921cf84a094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123",
+          "requestBody": {
+            "name": "Updated Project",
+            "notes": "Updated notes",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "180da628-8922-5b57-8300-9921cf84a094",
+      "input": {
+        "name": "Updated Project",
+        "notes": "Updated notes",
+        "projectId": "123",
+        "status": 1
+      },
+      "name": "updateProject-notFound",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "180da628-8922-5b57-8300-9921cf84a094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123",
+          "requestBody": {
+            "name": "Updated Project",
+            "notes": "Updated notes",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "180da628-8922-5b57-8300-9921cf84a094",
+      "input": {
+        "name": "Updated Project",
+        "notes": "Updated notes",
+        "projectId": "123",
+        "status": 1
+      },
+      "name": "updateProject-providerRejected",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "180da628-8922-5b57-8300-9921cf84a094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123",
+          "requestBody": {
+            "name": "Updated Project",
+            "notes": "Updated notes",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "180da628-8922-5b57-8300-9921cf84a094",
+      "input": {
+        "name": "Updated Project",
+        "notes": "Updated notes",
+        "projectId": "123",
+        "status": 1
+      },
+      "name": "updateProject-invalidResponse",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "180da628-8922-5b57-8300-9921cf84a094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123",
+          "requestBody": {
+            "name": "Updated Project",
+            "notes": "Updated notes",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "180da628-8922-5b57-8300-9921cf84a094",
+      "input": {
+        "name": "Updated Project",
+        "notes": "Updated notes",
+        "projectId": "123",
+        "status": 1
+      },
+      "name": "updateProject-429",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "180da628-8922-5b57-8300-9921cf84a094",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123",
+          "requestBody": {
+            "name": "Updated Project",
+            "notes": "Updated notes",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "180da628-8922-5b57-8300-9921cf84a094",
+      "input": {
+        "name": "Updated Project",
+        "notes": "Updated notes",
+        "projectId": "123",
+        "status": 1
+      },
+      "name": "updateProject-503",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "180da628-8922-5b57-8300-9921cf84a094",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/projects/123",
+          "requestBody": {
+            "name": "Updated Project",
+            "notes": "Updated notes",
+            "status": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "180da628-8922-5b57-8300-9921cf84a094",
+      "input": {
+        "name": "Updated Project",
+        "notes": "Updated notes",
+        "projectId": "123",
+        "status": 1
+      },
+      "name": "updateProject-transport",
+      "operation": "updateProject"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{\"id\":123,\"name\":\"Example Project\",\"status\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "providerId": "123",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "123",
+          "name": "Example Project",
+          "status": "1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-success",
+      "operation": "createProject"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-providerRejected",
+      "operation": "createProject"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-429",
+      "operation": "createProject"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-503",
+      "operation": "createProject"
+    },
+    {
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "name": "createProject-transport",
+      "operation": "createProject"
+    },
+    {
+      "attempts": 3,
+      "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/projects",
+          "requestBody": {
+            "name": "Example Project",
+            "notes": "Details"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-meistertask-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+      "input": {
+        "name": "Example Project",
+        "notes": "Details"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "937f7ee8-b044-5dc9-b2b2-4a9d4342883b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createProject-uncertain",
+      "operation": "createProject"
     }
   ],
   "schemaVersion": 1

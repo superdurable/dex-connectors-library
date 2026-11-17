@@ -54,7 +54,90 @@ spec:
       steps:
         - Sign in at MindMeister API page > Add personal access token, select userinfo.profile, userinfo.email, and meistertask scopes, and copy the secret opaque token into Dex Web api_token. Blank is invalid. Revoke it on the same page. A MindMeister Basic account and team-admin approval may be required to access that page.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret positive numeric task ID in MeisterTask task details or GET /tasks and pass it as taskId; blank is invalid. The token owner needs access to the task.
+        - Find non-secret positive project IDs in MeisterTask Projects or GET /projects. Pass one as projectId for getProject or updateProject; blank is invalid. ListProjects page and items are positive integers, with zero selecting the provider first page or size; blank status uses active projects.
   operations:
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ProjectsPage
+      kind: query
+      description: Read one page of projects visible to the token owner.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: MeisterTask returned the projects.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample project is available.
+          output: {projects: [{id: '123', name: Example Project, status: '1'}], page: 1}
+    - name: getProject
+      goName: GetProject
+      inputType: GetProjectInput
+      outputType: ProjectSummary
+      kind: query
+      description: Read one project's identity and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: MeisterTask returned the project.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the project., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample project is available.
+          output: {id: '123', name: Example Project, status: '1'}
+    - name: updateProject
+      goName: UpdateProject
+      inputType: UpdateProjectInput
+      outputType: ProjectSummary
+      kind: mutation
+      description: Set a project's name, notes, or status to absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: MeisterTask returned the project.}
+        - {id: notFound, goName: NotFound, description: MeisterTask did not expose the project., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MeisterTask returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample project is available.
+          output: {id: '123', name: Updated Project, status: '1'}
+    - name: createProject
+      goName: CreateProject
+      inputType: CreateProjectInput
+      outputType: ProjectSummary
+      kind: mutation
+      description: Create a named project.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, dispatchFence: true, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: MeisterTask returned the project.}
+        - {id: providerRejected, goName: ProviderRejected, description: MeisterTask conclusively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded; inspect projects before manual retry., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample project is available.
+          output: {id: '123', name: Example Project, status: '1'}
     - name: listTasks
       goName: ListTasks
       inputType: ListTasksInput
