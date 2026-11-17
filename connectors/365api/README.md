@@ -9,3 +9,5 @@ The checked-in [runnable model catalog Flow](go/examples/list-models/) uses `Con
 Provider contract: [official developer documentation](https://www.hby365.studio/developers). Real provider authorization is unverified without a customer-controlled Key.
 
 The [Python package](python/README.md) implements `listModels` with a runnable Dex Flow and Go-recorded provider conformance scenarios. Import it as `dex_connectors._365api`; the leading underscore makes the numeric directory name a valid Python module.
+
+The [TypeScript package and runnable Flow](typescript/README.md) replay the Go-recorded provider contract and exercise the Flow against a real local Dex Server.
