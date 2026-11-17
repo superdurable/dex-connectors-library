@@ -18,6 +18,11 @@ import (
 // Mock is a scripted constantcontact connection. Script each operation through its accessor.
 type Mock struct {
 	connection        constantcontact.Connection
+	getSegment        *connectormock.Query[constantcontact.GetSegmentInput, constantcontact.SegmentMetadata]
+	listSegments      *connectormock.Query[constantcontact.ListSegmentsInput, constantcontact.SegmentsPage]
+	createSegment     *connectormock.Mutation[constantcontact.CreateSegmentInput, constantcontact.SegmentMetadata]
+	updateSegment     *connectormock.Mutation[constantcontact.UpdateSegmentInput, constantcontact.SegmentMetadata]
+	deleteSegment     *connectormock.Mutation[constantcontact.DeleteSegmentInput, constantcontact.DeleteSegmentOutput]
 	getActivity       *connectormock.Query[constantcontact.GetActivityInput, constantcontact.ActivityMetadata]
 	listActivities    *connectormock.Query[constantcontact.ListActivitiesInput, constantcontact.ActivitiesPage]
 	createContact     *connectormock.Mutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata]
@@ -37,6 +42,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getSegment:        connectormock.NewQuery[constantcontact.GetSegmentInput, constantcontact.SegmentMetadata](t, constantcontact.GetSegmentDefinition),
+		listSegments:      connectormock.NewQuery[constantcontact.ListSegmentsInput, constantcontact.SegmentsPage](t, constantcontact.ListSegmentsDefinition),
+		createSegment:     connectormock.NewMutation[constantcontact.CreateSegmentInput, constantcontact.SegmentMetadata](t, constantcontact.CreateSegmentDefinition),
+		updateSegment:     connectormock.NewMutation[constantcontact.UpdateSegmentInput, constantcontact.SegmentMetadata](t, constantcontact.UpdateSegmentDefinition),
+		deleteSegment:     connectormock.NewMutation[constantcontact.DeleteSegmentInput, constantcontact.DeleteSegmentOutput](t, constantcontact.DeleteSegmentDefinition),
 		getActivity:       connectormock.NewQuery[constantcontact.GetActivityInput, constantcontact.ActivityMetadata](t, constantcontact.GetActivityDefinition),
 		listActivities:    connectormock.NewQuery[constantcontact.ListActivitiesInput, constantcontact.ActivitiesPage](t, constantcontact.ListActivitiesDefinition),
 		createContact:     connectormock.NewMutation[constantcontact.CreateContactInput, constantcontact.ContactMetadata](t, constantcontact.CreateContactDefinition),
@@ -50,6 +60,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateContactList: connectormock.NewMutation[constantcontact.UpdateContactListInput, constantcontact.ContactListMetadata](t, constantcontact.UpdateContactListDefinition),
 		deleteContactList: connectormock.NewMutation[constantcontact.DeleteContactListInput, constantcontact.DeleteContactListOutput](t, constantcontact.DeleteContactListDefinition),
 	}
+	mock.getSegment.Default(GetSegmentDefault())
+	mock.listSegments.Default(ListSegmentsDefault())
+	mock.createSegment.Default(CreateSegmentDefault())
+	mock.updateSegment.Default(UpdateSegmentDefault())
+	mock.deleteSegment.Default(DeleteSegmentDefault())
 	mock.getActivity.Default(GetActivityDefault())
 	mock.listActivities.Default(ListActivitiesDefault())
 	mock.createContact.Default(CreateContactDefault())
@@ -72,6 +87,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() constantcontact.Connection { return mock.connection }
+
+// GetSegment returns the getSegment script.
+func (mock *Mock) GetSegment() *connectormock.Query[constantcontact.GetSegmentInput, constantcontact.SegmentMetadata] {
+	return mock.getSegment
+}
+
+// ListSegments returns the listSegments script.
+func (mock *Mock) ListSegments() *connectormock.Query[constantcontact.ListSegmentsInput, constantcontact.SegmentsPage] {
+	return mock.listSegments
+}
+
+// CreateSegment returns the createSegment script.
+func (mock *Mock) CreateSegment() *connectormock.Mutation[constantcontact.CreateSegmentInput, constantcontact.SegmentMetadata] {
+	return mock.createSegment
+}
+
+// UpdateSegment returns the updateSegment script.
+func (mock *Mock) UpdateSegment() *connectormock.Mutation[constantcontact.UpdateSegmentInput, constantcontact.SegmentMetadata] {
+	return mock.updateSegment
+}
+
+// DeleteSegment returns the deleteSegment script.
+func (mock *Mock) DeleteSegment() *connectormock.Mutation[constantcontact.DeleteSegmentInput, constantcontact.DeleteSegmentOutput] {
+	return mock.deleteSegment
+}
 
 // GetActivity returns the getActivity script.
 func (mock *Mock) GetActivity() *connectormock.Query[constantcontact.GetActivityInput, constantcontact.ActivityMetadata] {
@@ -135,6 +175,21 @@ func (mock *Mock) DeleteContactList() *connectormock.Mutation[constantcontact.De
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetSegment() sdkgo.Query[constantcontact.GetSegmentInput, constantcontact.SegmentMetadata] {
+	return operations.mock.getSegment
+}
+func (operations mockOperations) ListSegments() sdkgo.Query[constantcontact.ListSegmentsInput, constantcontact.SegmentsPage] {
+	return operations.mock.listSegments
+}
+func (operations mockOperations) CreateSegment() sdkgo.Mutation[constantcontact.CreateSegmentInput, constantcontact.SegmentMetadata] {
+	return operations.mock.createSegment
+}
+func (operations mockOperations) UpdateSegment() sdkgo.Mutation[constantcontact.UpdateSegmentInput, constantcontact.SegmentMetadata] {
+	return operations.mock.updateSegment
+}
+func (operations mockOperations) DeleteSegment() sdkgo.Mutation[constantcontact.DeleteSegmentInput, constantcontact.DeleteSegmentOutput] {
+	return operations.mock.deleteSegment
+}
 func (operations mockOperations) GetActivity() sdkgo.Query[constantcontact.GetActivityInput, constantcontact.ActivityMetadata] {
 	return operations.mock.getActivity
 }
@@ -170,6 +225,201 @@ func (operations mockOperations) UpdateContactList() sdkgo.Mutation[constantcont
 }
 func (operations mockOperations) DeleteContactList() sdkgo.Mutation[constantcontact.DeleteContactListInput, constantcontact.DeleteContactListOutput] {
 	return operations.mock.deleteContactList
+}
+
+// GetSegmentFound selects the found branch: Constant Contact returned the segment.
+func GetSegmentFound(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.GetSegmentBranchFound, value, failure)
+}
+
+// GetSegmentNotFound selects the notFound branch: The segment does not exist.
+func GetSegmentNotFound(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.GetSegmentBranchNotFound, value, failure)
+}
+
+// GetSegmentProviderRejected selects the providerRejected branch: Constant Contact rejected the lookup.
+func GetSegmentProviderRejected(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.GetSegmentBranchProviderRejected, value, failure)
+}
+
+// GetSegmentInvalidResponse selects the invalidResponse branch: Constant Contact returned malformed segment JSON.
+func GetSegmentInvalidResponse(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.GetSegmentBranchInvalidResponse, value, failure)
+}
+
+// GetSegmentDefect selects the defect branch: Input or credentials are invalid.
+func GetSegmentDefect(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.GetSegmentBranchDefect, value, failure)
+}
+
+// GetSegmentRetry asks Dex to retry the getSegment Step, after the delay when it is positive.
+func GetSegmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Retry[constantcontact.SegmentMetadata](failure, after)
+}
+
+// GetSegmentFoundDefault is the manifest mock foundDefault: A sample segment is returned.
+func GetSegmentFoundDefault() connectormock.Case[constantcontact.SegmentMetadata] {
+	value := connectormock.MustDecodeOutput[constantcontact.SegmentMetadata](`{"segmentId":30,"name":"Recent readers","segmentCriteria":"{\"version\":\"1.0.0\",\"criteria\":{\"type\":\"and\",\"group\":[]}}"}`)
+	return connectormock.Branch(constantcontact.GetSegmentBranchFound, value, nil)
+}
+
+// GetSegmentDefault is the manifest default, foundDefault, which New installs.
+func GetSegmentDefault() connectormock.Case[constantcontact.SegmentMetadata] {
+	return GetSegmentFoundDefault()
+}
+
+// ListSegmentsListed selects the listed branch: Constant Contact returned a segment page.
+func ListSegmentsListed(value constantcontact.SegmentsPage, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentsPage] {
+	return connectormock.Branch(constantcontact.ListSegmentsBranchListed, value, failure)
+}
+
+// ListSegmentsProviderRejected selects the providerRejected branch: Constant Contact rejected the lookup.
+func ListSegmentsProviderRejected(value constantcontact.SegmentsPage, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentsPage] {
+	return connectormock.Branch(constantcontact.ListSegmentsBranchProviderRejected, value, failure)
+}
+
+// ListSegmentsInvalidResponse selects the invalidResponse branch: Constant Contact returned malformed segment JSON.
+func ListSegmentsInvalidResponse(value constantcontact.SegmentsPage, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentsPage] {
+	return connectormock.Branch(constantcontact.ListSegmentsBranchInvalidResponse, value, failure)
+}
+
+// ListSegmentsDefect selects the defect branch: Input or credentials are invalid.
+func ListSegmentsDefect(value constantcontact.SegmentsPage, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentsPage] {
+	return connectormock.Branch(constantcontact.ListSegmentsBranchDefect, value, failure)
+}
+
+// ListSegmentsRetry asks Dex to retry the listSegments Step, after the delay when it is positive.
+func ListSegmentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[constantcontact.SegmentsPage] {
+	return connectormock.Retry[constantcontact.SegmentsPage](failure, after)
+}
+
+// ListSegmentsListedDefault is the manifest mock listedDefault: One sample segment is returned.
+func ListSegmentsListedDefault() connectormock.Case[constantcontact.SegmentsPage] {
+	value := connectormock.MustDecodeOutput[constantcontact.SegmentsPage](`{"segments":[{"segmentId":30,"name":"Recent readers"}]}`)
+	return connectormock.Branch(constantcontact.ListSegmentsBranchListed, value, nil)
+}
+
+// ListSegmentsDefault is the manifest default, listedDefault, which New installs.
+func ListSegmentsDefault() connectormock.Case[constantcontact.SegmentsPage] {
+	return ListSegmentsListedDefault()
+}
+
+// CreateSegmentCreated selects the created branch: Constant Contact created the segment.
+func CreateSegmentCreated(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.CreateSegmentBranchCreated, value, failure)
+}
+
+// CreateSegmentUncertain returns an uncertain createSegment outcome.
+func CreateSegmentUncertain(value constantcontact.SegmentMetadata, failure sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSegmentAlreadyExists selects the alreadyExists branch: A segment with this name exists.
+func CreateSegmentAlreadyExists(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.CreateSegmentBranchAlreadyExists, value, failure)
+}
+
+// CreateSegmentProviderRejected selects the providerRejected branch: Constant Contact rejected creation.
+func CreateSegmentProviderRejected(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.CreateSegmentBranchProviderRejected, value, failure)
+}
+
+// CreateSegmentDefect selects the defect branch: Input or credentials are invalid.
+func CreateSegmentDefect(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.CreateSegmentBranchDefect, value, failure)
+}
+
+// CreateSegmentRetry asks Dex to retry the createSegment Step, after the delay when it is positive.
+func CreateSegmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Retry[constantcontact.SegmentMetadata](failure, after)
+}
+
+// CreateSegmentCreatedDefault is the manifest mock createdDefault: A sample segment was created.
+func CreateSegmentCreatedDefault() connectormock.Case[constantcontact.SegmentMetadata] {
+	value := connectormock.MustDecodeOutput[constantcontact.SegmentMetadata](`{"segmentId":30,"name":"Recent readers","segmentCriteria":"{\"version\":\"1.0.0\",\"criteria\":{\"type\":\"and\",\"group\":[]}}"}`)
+	return connectormock.Branch(constantcontact.CreateSegmentBranchCreated, value, nil)
+}
+
+// CreateSegmentDefault is the manifest default, createdDefault, which New installs.
+func CreateSegmentDefault() connectormock.Case[constantcontact.SegmentMetadata] {
+	return CreateSegmentCreatedDefault()
+}
+
+// UpdateSegmentUpdated selects the updated branch: Constant Contact updated the segment.
+func UpdateSegmentUpdated(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.UpdateSegmentBranchUpdated, value, failure)
+}
+
+// UpdateSegmentNotFound selects the notFound branch: The segment does not exist.
+func UpdateSegmentNotFound(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.UpdateSegmentBranchNotFound, value, failure)
+}
+
+// UpdateSegmentProviderRejected selects the providerRejected branch: Constant Contact rejected the update.
+func UpdateSegmentProviderRejected(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.UpdateSegmentBranchProviderRejected, value, failure)
+}
+
+// UpdateSegmentInvalidResponse selects the invalidResponse branch: Constant Contact returned malformed segment JSON.
+func UpdateSegmentInvalidResponse(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.UpdateSegmentBranchInvalidResponse, value, failure)
+}
+
+// UpdateSegmentDefect selects the defect branch: Input or credentials are invalid.
+func UpdateSegmentDefect(value constantcontact.SegmentMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Branch(constantcontact.UpdateSegmentBranchDefect, value, failure)
+}
+
+// UpdateSegmentRetry asks Dex to retry the updateSegment Step, after the delay when it is positive.
+func UpdateSegmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[constantcontact.SegmentMetadata] {
+	return connectormock.Retry[constantcontact.SegmentMetadata](failure, after)
+}
+
+// UpdateSegmentUpdatedDefault is the manifest mock updatedDefault: A sample segment was updated.
+func UpdateSegmentUpdatedDefault() connectormock.Case[constantcontact.SegmentMetadata] {
+	value := connectormock.MustDecodeOutput[constantcontact.SegmentMetadata](`{"segmentId":30,"name":"Recent readers","segmentCriteria":"{\"version\":\"1.0.0\",\"criteria\":{\"type\":\"and\",\"group\":[]}}"}`)
+	return connectormock.Branch(constantcontact.UpdateSegmentBranchUpdated, value, nil)
+}
+
+// UpdateSegmentDefault is the manifest default, updatedDefault, which New installs.
+func UpdateSegmentDefault() connectormock.Case[constantcontact.SegmentMetadata] {
+	return UpdateSegmentUpdatedDefault()
+}
+
+// DeleteSegmentDeleted selects the deleted branch: Constant Contact deleted the segment.
+func DeleteSegmentDeleted(value constantcontact.DeleteSegmentOutput, failure *sdkgo.Failure) connectormock.Case[constantcontact.DeleteSegmentOutput] {
+	return connectormock.Branch(constantcontact.DeleteSegmentBranchDeleted, value, failure)
+}
+
+// DeleteSegmentNotFound selects the notFound branch: The segment does not exist.
+func DeleteSegmentNotFound(value constantcontact.DeleteSegmentOutput, failure *sdkgo.Failure) connectormock.Case[constantcontact.DeleteSegmentOutput] {
+	return connectormock.Branch(constantcontact.DeleteSegmentBranchNotFound, value, failure)
+}
+
+// DeleteSegmentProviderRejected selects the providerRejected branch: Constant Contact rejected deletion.
+func DeleteSegmentProviderRejected(value constantcontact.DeleteSegmentOutput, failure *sdkgo.Failure) connectormock.Case[constantcontact.DeleteSegmentOutput] {
+	return connectormock.Branch(constantcontact.DeleteSegmentBranchProviderRejected, value, failure)
+}
+
+// DeleteSegmentDefect selects the defect branch: Input or credentials are invalid.
+func DeleteSegmentDefect(value constantcontact.DeleteSegmentOutput, failure *sdkgo.Failure) connectormock.Case[constantcontact.DeleteSegmentOutput] {
+	return connectormock.Branch(constantcontact.DeleteSegmentBranchDefect, value, failure)
+}
+
+// DeleteSegmentRetry asks Dex to retry the deleteSegment Step, after the delay when it is positive.
+func DeleteSegmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[constantcontact.DeleteSegmentOutput] {
+	return connectormock.Retry[constantcontact.DeleteSegmentOutput](failure, after)
+}
+
+// DeleteSegmentDeletedDefault is the manifest mock deletedDefault: A sample segment was deleted.
+func DeleteSegmentDeletedDefault() connectormock.Case[constantcontact.DeleteSegmentOutput] {
+	value := connectormock.MustDecodeOutput[constantcontact.DeleteSegmentOutput](`{"segmentId":30}`)
+	return connectormock.Branch(constantcontact.DeleteSegmentBranchDeleted, value, nil)
+}
+
+// DeleteSegmentDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSegmentDefault() connectormock.Case[constantcontact.DeleteSegmentOutput] {
+	return DeleteSegmentDeletedDefault()
 }
 
 // GetActivityFound selects the found branch: Constant Contact returned the activity.
@@ -252,6 +502,11 @@ func ListActivitiesDefault() connectormock.Case[constantcontact.ActivitiesPage] 
 // CreateContactCreated selects the created branch: Constant Contact created the contact.
 func CreateContactCreated(value constantcontact.ContactMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ContactMetadata] {
 	return connectormock.Branch(constantcontact.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value constantcontact.ContactMetadata, failure sdkgo.Failure) connectormock.Case[constantcontact.ContactMetadata] {
+	return connectormock.Uncertain(value, failure)
 }
 
 // CreateContactAlreadyExists selects the alreadyExists branch: A contact with this email exists.
@@ -525,6 +780,11 @@ func ListContactListsDefault() connectormock.Case[constantcontact.ContactListsPa
 // CreateContactListCreated selects the created branch: Constant Contact created the list.
 func CreateContactListCreated(value constantcontact.ContactListMetadata, failure *sdkgo.Failure) connectormock.Case[constantcontact.ContactListMetadata] {
 	return connectormock.Branch(constantcontact.CreateContactListBranchCreated, value, failure)
+}
+
+// CreateContactListUncertain returns an uncertain createContactList outcome.
+func CreateContactListUncertain(value constantcontact.ContactListMetadata, failure sdkgo.Failure) connectormock.Case[constantcontact.ContactListMetadata] {
+	return connectormock.Uncertain(value, failure)
 }
 
 // CreateContactListAlreadyExists selects the alreadyExists branch: A list with this name exists.

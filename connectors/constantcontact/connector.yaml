@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: constantcontact
   displayName: Constant Contact
-  description: Manage contacts and lists, and inspect bulk activity status through the Constant Contact V3 API.
+  description: Manage contacts, lists, and segments, and inspect bulk activity status through the Constant Contact V3 API.
   company: Constant Contact
   categories: [marketing]
   version: v0.2.0
@@ -74,6 +74,7 @@ spec:
         - To find a contact ID, open Constant Contact > Contacts, select a contact, and use the contact ID from its V3 API resource or an exported V3 contacts list. It is a non-secret UUID. Blank contact IDs are invalid.
         - To find a list ID, open Constant Contact > Contacts > Lists, select a list, and use its list_id from the V3 contact-lists API. It is a non-secret UUID. Blank list IDs are invalid; a blank contact page cursor starts a new search.
         - To inspect an asynchronous job, use the non-secret activity_id UUID returned by a V3 bulk activity response, such as deleteContactList, or find it through GET /activities in the API tester at https://developer.constantcontact.com/api_reference/index.html. Blank activity IDs are invalid; statuses expire after ten days.
+        - To find a segment ID, open Constant Contact > Contacts > Segments, select a segment, and use the positive numeric segment_id from the V3 segments API at https://developer.constantcontact.com/api_guide/segments/segments-get-all. Blank IDs are invalid. Segment criteria is a JSON object encoded as a single string; derive it from the provider's segment-criteria examples and do not include contact secrets.
     oauth2:
       authorizationEndpoint: https://authz.constantcontact.com/oauth2/default/v1/authorize
       tokenEndpoint: https://authz.constantcontact.com/oauth2/default/v1/token
@@ -93,6 +94,109 @@ spec:
         requiredScopes: [contact_data]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getSegment
+      goName: GetSegment
+      inputType: GetSegmentInput
+      outputType: SegmentMetadata
+      kind: query
+      description: Read a segment and its complete selection criteria.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Constant Contact returned the segment.}
+        - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed segment JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample segment is returned.
+          output: {segmentId: 30, name: Recent readers, segmentCriteria: '{"version":"1.0.0","criteria":{"type":"and","group":[]}}'}
+    - name: listSegments
+      goName: ListSegments
+      inputType: ListSegmentsInput
+      outputType: SegmentsPage
+      kind: query
+      description: Read a bounded page of segments.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Constant Contact returned a segment page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed segment JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample segment is returned.
+          output: {segments: [{segmentId: 30, name: Recent readers}]}
+    - name: createSegment
+      goName: CreateSegment
+      inputType: CreateSegmentInput
+      outputType: SegmentMetadata
+      kind: mutation
+      description: Create a uniquely named segment with complete selection criteria.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Constant Contact created the segment.}
+        - {id: uncertain, goName: Uncertain, description: An earlier segment creation could not be confirmed after the send cap., optional: true}
+        - {id: alreadyExists, goName: AlreadyExists, description: A segment with this name exists., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample segment was created.
+          output: {segmentId: 30, name: Recent readers, segmentCriteria: '{"version":"1.0.0","criteria":{"type":"and","group":[]}}'}
+    - name: updateSegment
+      goName: UpdateSegment
+      inputType: UpdateSegmentInput
+      outputType: SegmentMetadata
+      kind: mutation
+      description: Replace one segment's name and complete criteria.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Constant Contact updated the segment.}
+        - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed segment JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample segment was updated.
+          output: {segmentId: 30, name: Recent readers, segmentCriteria: '{"version":"1.0.0","criteria":{"type":"and","group":[]}}'}
+    - name: deleteSegment
+      goName: DeleteSegment
+      inputType: DeleteSegmentInput
+      outputType: DeleteSegmentOutput
+      kind: mutation
+      description: Remove one segment from the active collection.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Constant Contact deleted the segment.}
+        - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample segment was deleted.
+          output: {segmentId: 30}
     - name: getActivity
       goName: GetActivity
       inputType: GetActivityInput
@@ -145,6 +249,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Constant Contact created the contact.}
+        - {id: uncertain, goName: Uncertain, description: An earlier contact creation could not be confirmed after the send cap., optional: true}
         - {id: alreadyExists, goName: AlreadyExists, description: A contact with this email exists., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the creation., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
@@ -292,6 +397,7 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Constant Contact created the list.}
+        - {id: uncertain, goName: Uncertain, description: An earlier list creation could not be confirmed after the send cap., optional: true}
         - {id: alreadyExists, goName: AlreadyExists, description: A list with this name exists., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the request., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}

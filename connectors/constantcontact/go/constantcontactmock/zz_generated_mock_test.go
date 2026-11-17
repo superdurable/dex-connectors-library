@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getSegment/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.SegmentMetadata](`{"segmentId":30,"name":"Recent readers","segmentCriteria":"{\"version\":\"1.0.0\",\"criteria\":{\"type\":\"and\",\"group\":[]}}"}`)
+			return err
+		}},
+		{name: "listSegments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.SegmentsPage](`{"segments":[{"segmentId":30,"name":"Recent readers"}]}`)
+			return err
+		}},
+		{name: "createSegment/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.SegmentMetadata](`{"segmentId":30,"name":"Recent readers","segmentCriteria":"{\"version\":\"1.0.0\",\"criteria\":{\"type\":\"and\",\"group\":[]}}"}`)
+			return err
+		}},
+		{name: "updateSegment/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.SegmentMetadata](`{"segmentId":30,"name":"Recent readers","segmentCriteria":"{\"version\":\"1.0.0\",\"criteria\":{\"type\":\"and\",\"group\":[]}}"}`)
+			return err
+		}},
+		{name: "deleteSegment/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.DeleteSegmentOutput](`{"segmentId":30}`)
+			return err
+		}},
 		{name: "getActivity/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[constantcontact.ActivityMetadata](`{"activityId":"3d72da26-2115-11ea-9216-fa163e6b01c0","state":"completed","percentDone":100}`)
 			return err
@@ -74,6 +94,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetSegment().Definition().Operation.OperationID != "getSegment" {
+		t.Errorf("getSegment mock has another definition")
+	}
+	if mock.ListSegments().Definition().Operation.OperationID != "listSegments" {
+		t.Errorf("listSegments mock has another definition")
+	}
+	if mock.CreateSegment().Definition().Operation.OperationID != "createSegment" {
+		t.Errorf("createSegment mock has another definition")
+	}
+	if mock.UpdateSegment().Definition().Operation.OperationID != "updateSegment" {
+		t.Errorf("updateSegment mock has another definition")
+	}
+	if mock.DeleteSegment().Definition().Operation.OperationID != "deleteSegment" {
+		t.Errorf("deleteSegment mock has another definition")
+	}
 	if mock.GetActivity().Definition().Operation.OperationID != "getActivity" {
 		t.Errorf("getActivity mock has another definition")
 	}

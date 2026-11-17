@@ -1,6 +1,6 @@
 # Constant Contact contact inspection Flow
 
-This runnable example registers `ConstantContactContactInspection` for `getContact`, `ContactListsFlow` for `listContactLists`, `ConstantContactContactCreation` for `createContact`, `ConstantContactContactUpdate` for `updateContact`, and `ActivitiesFlow` for `listActivities`, using the static `constantcontact` connection. Each happy-path result is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. OAuth credentials never enter Flow state.
+This runnable example registers `ConstantContactContactInspection` for `getContact`, `ContactListsFlow` for `listContactLists`, `ConstantContactContactCreation` for `createContact`, `ConstantContactContactUpdate` for `updateContact`, `ActivitiesFlow` for `listActivities`, and `SegmentsFlow` for `listSegments`, using the static `constantcontact` connection. Each happy-path result is saved in an Attribute and shown through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected. OAuth credentials never enter Flow state.
 
 ## Strict FDG 2.0 generation
 
@@ -12,6 +12,7 @@ dexcli visualize ./examples/contact-inspection/flow/contact_lists.go --schema-ve
 dexcli visualize ./examples/contact-inspection/flow/create_contact.go --schema-version 2.0 --lint app --json --out /tmp/constantcontact-create-fdg
 dexcli visualize ./examples/contact-inspection/flow/update_contact.go --schema-version 2.0 --lint app --json --out /tmp/constantcontact-update-fdg
 dexcli visualize ./examples/contact-inspection/flow/activities.go --schema-version 2.0 --lint app --json --out /tmp/constantcontact-activities-fdg
+dexcli visualize ./examples/contact-inspection/flow/segments.go --schema-version 2.0 --lint app --json --out /tmp/constantcontact-segments-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -35,5 +36,7 @@ Start `ConstantContactContactCreation` with a unique Flow ID and input `{"emailA
 Start `ConstantContactContactUpdate` with a unique Flow ID and input `{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","updateSource":"Account","firstName":"Avery"}`. `updateSource` must identify `Account` or `Contact`; omit any unchanged field. The mock-backed real-Dex test exercises this Flow.
 
 Start `ActivitiesFlow` with a unique Flow ID and input `{"maxItems":20}` to inspect recent bulk jobs, including asynchronous list deletions. A blank limit uses 1000; activity statuses expire after ten days. The mock-backed real-Dex test exercises this Flow.
+
+Start `SegmentsFlow` with a unique Flow ID and input `{"limit":20,"sortBy":"name"}` to inspect a segment page. Use the returned `nextCursor` in the next request when present. The mock-backed real-Dex test exercises this Flow.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`.
