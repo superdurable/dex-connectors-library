@@ -7,7 +7,8 @@ The Worker registers `WiseTransferInspection` and `WiseProfileInspection` throug
 From `connectors/wise/go`, run:
 
 ```bash
-dexcli visualize ./examples/transfer-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/wise-transfer-inspection-fdg
+dexcli visualize ./examples/transfer-inspection/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/wise-transfer-inspection-fdg
+dexcli visualize ./examples/transfer-inspection/flow/profile_workflow.go --schema-version 2.0 --lint app --json --out /tmp/wise-profile-inspection-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

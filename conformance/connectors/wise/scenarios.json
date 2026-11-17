@@ -2283,6 +2283,1233 @@
       },
       "name": "cancelTransfer-transport",
       "operation": "cancelTransfer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000501",
+      "exchanges": [
+        {
+          "body": "[{\"id\":301,\"currency\":\"EUR\",\"type\":\"STANDARD\",\"amount\":{\"value\":12.5}}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances",
+          "query": {
+            "types": [
+              "STANDARD"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "balances": [
+            {
+              "availableAmount": 12.5,
+              "currency": "EUR",
+              "id": "301",
+              "type": "STANDARD"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101",
+        "types": "STANDARD"
+      },
+      "name": "listBalances-success",
+      "operation": "listBalances"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000502",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances",
+          "query": {
+            "types": [
+              "STANDARD"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "balances": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101",
+        "types": "STANDARD"
+      },
+      "name": "listBalances-providerRejected",
+      "operation": "listBalances"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances",
+          "query": {
+            "types": [
+              "STANDARD"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balances": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101",
+        "types": "STANDARD"
+      },
+      "name": "listBalances-invalidResponse",
+      "operation": "listBalances"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000504",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "balances": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "bad",
+        "types": "STANDARD"
+      },
+      "name": "listBalances-defect",
+      "operation": "listBalances"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000505",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances",
+          "query": {
+            "types": [
+              "STANDARD"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101",
+        "types": "STANDARD"
+      },
+      "name": "listBalances-retry429",
+      "operation": "listBalances"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000506",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances",
+          "query": {
+            "types": [
+              "STANDARD"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101",
+        "types": "STANDARD"
+      },
+      "name": "listBalances-retry500",
+      "operation": "listBalances"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000507",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profiles/101/balances",
+          "query": {
+            "types": [
+              "STANDARD"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101",
+        "types": "STANDARD"
+      },
+      "name": "listBalances-transport",
+      "operation": "listBalances"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000508",
+      "exchanges": [
+        {
+          "body": "[\"EUR\",\"GBP\",\"USD\"]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/payin-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "currencies": [
+            "EUR",
+            "GBP",
+            "USD"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listPayinCurrencies-success",
+      "operation": "listPayinCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000509",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/payin-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currencies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listPayinCurrencies-providerRejected",
+      "operation": "listPayinCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000510",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/payin-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currencies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listPayinCurrencies-invalidResponse",
+      "operation": "listPayinCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000511",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currencies": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "bad"
+      },
+      "name": "listPayinCurrencies-defect",
+      "operation": "listPayinCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000512",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/payin-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listPayinCurrencies-retry429",
+      "operation": "listPayinCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000513",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/payin-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listPayinCurrencies-retry500",
+      "operation": "listPayinCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000514",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/payin-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listPayinCurrencies-transport",
+      "operation": "listPayinCurrencies"
+    },
+    {
+      "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"11144c35-9fe8-4c32-b7fd-d05c2a7734bf\",\"sourceCurrency\":\"GBP\",\"targetCurrency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "11144c35-9fe8-4c32-b7fd-d05c2a7734bf",
+          "sourceCurrency": "GBP",
+          "targetCurrency": "USD"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "input": {
+        "amount": "100.25",
+        "amountSide": "source",
+        "profileId": "101",
+        "sourceCurrency": "GBP",
+        "targetCurrency": "USD"
+      },
+      "name": "createQuote-created",
+      "operation": "createQuote"
+    },
+    {
+      "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "sourceCurrency": "",
+          "targetCurrency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "input": {
+        "amount": "100.25",
+        "amountSide": "source",
+        "profileId": "101",
+        "sourceCurrency": "GBP",
+        "targetCurrency": "USD"
+      },
+      "name": "createQuote-providerRejected",
+      "operation": "createQuote"
+    },
+    {
+      "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "sourceCurrency": "",
+          "targetCurrency": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "input": {
+        "amount": "100.25",
+        "amountSide": "source",
+        "profileId": "bad",
+        "sourceCurrency": "GBP",
+        "targetCurrency": "USD"
+      },
+      "name": "createQuote-defect",
+      "operation": "createQuote"
+    },
+    {
+      "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "input": {
+        "amount": "100.25",
+        "amountSide": "source",
+        "profileId": "101",
+        "sourceCurrency": "GBP",
+        "targetCurrency": "USD"
+      },
+      "name": "createQuote-rateLimit429",
+      "operation": "createQuote"
+    },
+    {
+      "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "input": {
+        "amount": "100.25",
+        "amountSide": "source",
+        "profileId": "101",
+        "sourceCurrency": "GBP",
+        "targetCurrency": "USD"
+      },
+      "name": "createQuote-serviceUnavailable503",
+      "operation": "createQuote"
+    },
+    {
+      "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "input": {
+        "amount": "100.25",
+        "amountSide": "source",
+        "profileId": "101",
+        "sourceCurrency": "GBP",
+        "targetCurrency": "USD"
+      },
+      "name": "createQuote-server500",
+      "operation": "createQuote"
+    },
+    {
+      "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "input": {
+        "amount": "100.25",
+        "amountSide": "source",
+        "profileId": "101",
+        "sourceCurrency": "GBP",
+        "targetCurrency": "USD"
+      },
+      "name": "createQuote-transport",
+      "operation": "createQuote"
+    },
+    {
+      "attempts": 3,
+      "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/profiles/101/quotes",
+          "requestBody": {
+            "sourceAmount": 100.25,
+            "sourceCurrency": "GBP",
+            "targetCurrency": "USD"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "sourceCurrency": "",
+          "targetCurrency": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+      "input": {
+        "amount": "100.25",
+        "amountSide": "source",
+        "profileId": "101",
+        "sourceCurrency": "GBP",
+        "targetCurrency": "USD"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "7ff78a93-ef05-5e2e-b755-bced109d962a",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createQuote-uncertain",
+      "operation": "createQuote"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000701",
+      "exchanges": [
+        {
+          "body": "[\"EUR\",\"GBP\",\"USD\"]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/available-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "currencies": [
+            "EUR",
+            "GBP",
+            "USD"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listAvailableBalanceCurrencies-success",
+      "operation": "listAvailableBalanceCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000702",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/available-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currencies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listAvailableBalanceCurrencies-providerRejected",
+      "operation": "listAvailableBalanceCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000703",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/available-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currencies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listAvailableBalanceCurrencies-invalidResponse",
+      "operation": "listAvailableBalanceCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000704",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currencies": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "bad"
+      },
+      "name": "listAvailableBalanceCurrencies-defect",
+      "operation": "listAvailableBalanceCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000705",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/available-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listAvailableBalanceCurrencies-retry429",
+      "operation": "listAvailableBalanceCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000706",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SECRET SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/available-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listAvailableBalanceCurrencies-retry500",
+      "operation": "listAvailableBalanceCurrencies"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000707",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/borderless-accounts-configuration/profiles/101/available-currencies",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wise-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "profileId": "101"
+      },
+      "name": "listAvailableBalanceCurrencies-transport",
+      "operation": "listAvailableBalanceCurrencies"
     }
   ],
   "schemaVersion": 1

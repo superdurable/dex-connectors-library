@@ -1,6 +1,6 @@
 # Wise Platform connector
 
-The Go, Python, and TypeScript `getTransfer` Query reads a Wise transfer's numeric ID, status, and source currency. Go also provides `listProfiles`, `getProfile`, `listRecipients`, `getExchangeRates`, `getQuote`, `createTransfer`, and `cancelTransfer`. Profile and recipient Results contain only IDs and selected metadata; transfer Results omit recipient, customer, and payment details.
+The Go, Python, and TypeScript `getTransfer` Query reads a Wise transfer's numeric ID, status, and source currency. Go also provides `listProfiles`, `getProfile`, `listBalances`, `listAvailableBalanceCurrencies`, `listPayinCurrencies`, `listRecipients`, `getExchangeRates`, `createQuote`, `getQuote`, `createTransfer`, and `cancelTransfer`. Profile and recipient Results contain only IDs and selected metadata; transfer Results omit recipient, customer, and payment details.
 
 ## Connect
 
@@ -10,11 +10,13 @@ Leave `baseUrl` blank for Production at `https://api.wise.com/2026Q4`; use `http
 
 ## Go operations
 
-`listProfiles` and `getProfile` return profile IDs and types. `listRecipients` returns recipient IDs, currencies, and active flags without bank details. `getExchangeRates` reads a current ISO 4217 pair, and `getQuote` reads an authenticated quote by profile ID and UUID. All reads are safe to retry.
+`listProfiles` and `getProfile` return profile IDs and types. `listBalances` returns IDs, currencies, types, and available amounts for selected balance types. `listAvailableBalanceCurrencies` returns currencies a profile may hold; `listPayinCurrencies` returns the subset that supports bank account details. `listRecipients` returns recipient IDs, currencies, and active flags without bank details. `getExchangeRates` reads a current ISO 4217 pair, and `getQuote` reads an authenticated quote by profile ID and UUID. All reads are safe to retry.
+
+`createQuote` takes a profile ID, currency pair, one positive decimal amount, and `amountSide` (`source` or `target`). Wise does not document a deduplication key for this endpoint. The connector permits at most three possible sends using a Dex single-dispatch fence, then selects `uncertain` if the quote cannot be identified. The fence requires synchronous Execute durability. Only the returned quote ID and currencies enter the Result.
 
 `createTransfer` creates an unfunded transfer from an authenticated quote and recipient ID. The connector derives `customerTransactionId` from the stable Dex Call ID; Wise documents that repeating the same identifier prevents duplicate transfers. Optional `reference` and `transferPurpose` values must come from Wise's transfer requirements for the chosen corridor. `cancelTransfer` requests cancellation of an unfunded transfer and confirms a `cancelled` status after a conflict. Both mutations are safe to repeat for the same logical request. Funding is a separate Wise action.
 
-See [Wise profiles](https://docs.wise.com/guides/developer/auth-and-security/personal-api-token), [recipient listing](https://docs.wise.com/guides/product/send-money/recipients/list-create-recipient), [rates](https://docs.wise.com/api-reference/rate/rateget), [quotes](https://docs.wise.com/api-reference/quote/quoteget), [transfer creation](https://docs.wise.com/guides/product/send-money/transfers/standard-api-transfers), and [cancellation](https://docs.wise.com/api-reference/transfer/transfercancel).
+See [Wise profiles](https://docs.wise.com/guides/developer/auth-and-security/personal-api-token), [balance accounts](https://docs.wise.com/guides/product/accounts/balance-accounts), [available currencies](https://docs.wise.com/api-reference/multi-currency-account/mcaavailablecurrenciesget), [payin currencies](https://docs.wise.com/api-reference/multi-currency-account/mcapayincurrenciesget), [recipient listing](https://docs.wise.com/guides/product/send-money/recipients/list-create-recipient), [rates](https://docs.wise.com/api-reference/rate/rateget), [quote creation](https://docs.wise.com/guides/product/send-money/quotes/authenticated-quote), [quote retrieval](https://docs.wise.com/api-reference/quote/quoteget), [transfer creation](https://docs.wise.com/guides/product/send-money/transfers/standard-api-transfers), and [cancellation](https://docs.wise.com/api-reference/transfer/transfercancel).
 
 ## Examples and verification
 

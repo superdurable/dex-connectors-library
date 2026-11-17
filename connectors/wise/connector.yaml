@@ -96,6 +96,66 @@ spec:
           default: true
           description: One business profile.
           output: {id: "101", type: business}
+    - name: listBalances
+      goName: ListBalances
+      inputType: ListBalancesInput
+      outputType: BalancesOutput
+      kind: query
+      description: List balance IDs, currencies, types, and available amounts.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise listed balance accounts.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultListBalances
+          branch: listed
+          default: true
+          description: One EUR standard balance.
+          output: {balances: [{id: "301", currency: EUR, type: STANDARD, availableAmount: 12.5}]}
+    - name: listAvailableBalanceCurrencies
+      goName: ListAvailableBalanceCurrencies
+      inputType: ListPayinCurrenciesInput
+      outputType: PayinCurrenciesOutput
+      kind: query
+      description: List currencies available for Wise balance accounts.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise listed available balance currencies.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultListAvailableBalanceCurrencies
+          branch: listed
+          default: true
+          description: Three available balance currencies.
+          output: {currencies: [EUR, GBP, USD]}
+    - name: listPayinCurrencies
+      goName: ListPayinCurrencies
+      inputType: ListPayinCurrenciesInput
+      outputType: PayinCurrenciesOutput
+      kind: query
+      description: List balance currencies with bank account details support.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Wise listed payin currencies.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultListPayinCurrencies
+          branch: listed
+          default: true
+          description: Three supported balance currencies.
+          output: {currencies: [EUR, GBP, USD]}
     - name: listRecipients
       goName: ListRecipients
       inputType: ListRecipientsInput
@@ -136,6 +196,26 @@ spec:
           default: true
           description: One EUR to USD exchange rate.
           output: {rates: [{source: EUR, target: USD, rate: 1.1, time: "2026-11-17T00:00:00Z"}]}
+    - name: createQuote
+      goName: CreateQuote
+      inputType: CreateQuoteInput
+      outputType: QuoteSummary
+      kind: mutation
+      description: Create a profile quote for one currency pair and amount.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, dispatchFence: true, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Wise created the quote.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise rejected the quote request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A quote may have been created but cannot be identified., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: defaultCreateQuote
+          branch: created
+          default: true
+          description: One authenticated quote.
+          output: {id: "11144c35-9fe8-4c32-b7fd-d05c2a7734bf", sourceCurrency: GBP, targetCurrency: USD}
     - name: getQuote
       goName: GetQuote
       inputType: GetQuoteInput

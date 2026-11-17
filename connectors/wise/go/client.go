@@ -6,6 +6,7 @@ package wise
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -72,6 +73,10 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 }
 
 func (client *Client) send(call sdkgo.Call, method, path string, requestBody []byte) providerResponse {
+	return client.sendWithContext(call, call.Context, method, path, requestBody)
+}
+
+func (client *Client) sendWithContext(call sdkgo.Call, requestContext context.Context, method, path string, requestBody []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -80,7 +85,7 @@ func (client *Client) send(call sdkgo.Call, method, path string, requestBody []b
 	if !providerhttp.IsHeaderSafeCredential(apiToken) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(requestBody))
+	request, err := http.NewRequestWithContext(requestContext, method, client.baseURL+path, bytes.NewReader(requestBody))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
