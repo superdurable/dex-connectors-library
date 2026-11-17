@@ -6222,6 +6222,2621 @@
         "sendCount": 3,
         "state": "claimed"
       }
+    },
+    {
+      "callId": "b07-ad-listAds-success",
+      "exchanges": [
+        {
+          "body": "{\"Ads\":[{\"Id\":\"55\",\"Status\":\"Paused\",\"FinalUrls\":[\"https://example.com\"]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByAdGroupId",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "ads": [
+            {
+              "finalUrl": "https://example.com",
+              "id": "55",
+              "status": "Paused"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33"
+      },
+      "name": "listAds-success",
+      "operation": "listAds"
+    },
+    {
+      "callId": "b07-ad-listAds-rejected",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByAdGroupId",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "ads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33"
+      },
+      "name": "listAds-rejected",
+      "operation": "listAds"
+    },
+    {
+      "callId": "b07-ad-listAds-invalid-response",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByAdGroupId",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "ads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33"
+      },
+      "name": "listAds-invalid-response",
+      "operation": "listAds"
+    },
+    {
+      "callId": "b07-ad-listAds-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "ads": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "INVALID",
+        "adGroupId": "33"
+      },
+      "name": "listAds-defect",
+      "operation": "listAds"
+    },
+    {
+      "callId": "b07-ad-listAds-429",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByAdGroupId",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33"
+      },
+      "name": "listAds-429",
+      "operation": "listAds"
+    },
+    {
+      "callId": "b07-ad-listAds-500",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByAdGroupId",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33"
+      },
+      "name": "listAds-500",
+      "operation": "listAds"
+    },
+    {
+      "callId": "b07-ad-listAds-503",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByAdGroupId",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33"
+      },
+      "name": "listAds-503",
+      "operation": "listAds"
+    },
+    {
+      "callId": "b07-ad-listAds-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByAdGroupId",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33"
+      },
+      "name": "listAds-transport",
+      "operation": "listAds"
+    },
+    {
+      "callId": "b07-ad-getAd-success",
+      "exchanges": [
+        {
+          "body": "{\"Ads\":[{\"Id\":\"55\",\"Status\":\"Paused\",\"FinalUrls\":[\"https://example.com\"]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByIds",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ],
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "finalUrl": "https://example.com",
+          "id": "55",
+          "status": "Paused"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-success",
+      "operation": "getAd"
+    },
+    {
+      "callId": "b07-ad-getAd-rejected",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByIds",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ],
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "finalUrl": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-rejected",
+      "operation": "getAd"
+    },
+    {
+      "callId": "b07-ad-getAd-invalid-response",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByIds",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ],
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "finalUrl": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-invalid-response",
+      "operation": "getAd"
+    },
+    {
+      "callId": "b07-ad-getAd-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "finalUrl": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "INVALID",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-defect",
+      "operation": "getAd"
+    },
+    {
+      "callId": "b07-ad-getAd-429",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByIds",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ],
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-429",
+      "operation": "getAd"
+    },
+    {
+      "callId": "b07-ad-getAd-500",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByIds",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ],
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-500",
+      "operation": "getAd"
+    },
+    {
+      "callId": "b07-ad-getAd-503",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByIds",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ],
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-503",
+      "operation": "getAd"
+    },
+    {
+      "callId": "b07-ad-getAd-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByIds",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ],
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-transport",
+      "operation": "getAd"
+    },
+    {
+      "callId": "b07-ad-getAd-not-found",
+      "exchanges": [
+        {
+          "body": "{\"Ads\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads/QueryByIds",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ],
+            "AdTypes": [
+              "ResponsiveSearch"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "finalUrl": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "getAd-not-found",
+      "operation": "getAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [
+        {
+          "body": "{\"AdIds\":[\"55\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Descriptions": [
+                  {
+                    "Asset": {
+                      "Text": "One description",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two description",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "FinalUrls": [
+                  "https://example.com"
+                ],
+                "Headlines": [
+                  {
+                    "Asset": {
+                      "Text": "One headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Three headline",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+          "providerId": "55",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "adId": "55"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-success",
+      "operation": "createResponsiveSearchAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Descriptions": [
+                  {
+                    "Asset": {
+                      "Text": "One description",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two description",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "FinalUrls": [
+                  "https://example.com"
+                ],
+                "Headlines": [
+                  {
+                    "Asset": {
+                      "Text": "One headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Three headline",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-rejected",
+      "operation": "createResponsiveSearchAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [
+        {
+          "body": "{\"AdIds\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Descriptions": [
+                  {
+                    "Asset": {
+                      "Text": "One description",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two description",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "FinalUrls": [
+                  "https://example.com"
+                ],
+                "Headlines": [
+                  {
+                    "Asset": {
+                      "Text": "One headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Three headline",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-invalid-response",
+      "operation": "createResponsiveSearchAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "INVALID",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-defect",
+      "operation": "createResponsiveSearchAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Descriptions": [
+                  {
+                    "Asset": {
+                      "Text": "One description",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two description",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "FinalUrls": [
+                  "https://example.com"
+                ],
+                "Headlines": [
+                  {
+                    "Asset": {
+                      "Text": "One headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Three headline",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-429",
+      "operation": "createResponsiveSearchAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Descriptions": [
+                  {
+                    "Asset": {
+                      "Text": "One description",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two description",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "FinalUrls": [
+                  "https://example.com"
+                ],
+                "Headlines": [
+                  {
+                    "Asset": {
+                      "Text": "One headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Three headline",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-500",
+      "operation": "createResponsiveSearchAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Descriptions": [
+                  {
+                    "Asset": {
+                      "Text": "One description",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two description",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "FinalUrls": [
+                  "https://example.com"
+                ],
+                "Headlines": [
+                  {
+                    "Asset": {
+                      "Text": "One headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Three headline",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-503",
+      "operation": "createResponsiveSearchAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Descriptions": [
+                  {
+                    "Asset": {
+                      "Text": "One description",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two description",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "FinalUrls": [
+                  "https://example.com"
+                ],
+                "Headlines": [
+                  {
+                    "Asset": {
+                      "Text": "One headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Two headline",
+                      "Type": "TextAsset"
+                    }
+                  },
+                  {
+                    "Asset": {
+                      "Text": "Three headline",
+                      "Type": "TextAsset"
+                    }
+                  }
+                ],
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-transport",
+      "operation": "createResponsiveSearchAd"
+    },
+    {
+      "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "descriptions": [
+          "One description",
+          "Two description"
+        ],
+        "finalUrl": "https://example.com",
+        "headlines": [
+          "One headline",
+          "Two headline",
+          "Three headline"
+        ]
+      },
+      "name": "createResponsiveSearchAd-uncertain",
+      "operation": "createResponsiveSearchAd",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "2dd1fa3e-817f-5457-98ce-5e94f737fa38",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Id": "55",
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "adId": "55"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55",
+        "status": "Paused"
+      },
+      "name": "updateAd-success",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Id": "55",
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55",
+        "status": "Paused"
+      },
+      "name": "updateAd-rejected",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Id": "55",
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55",
+        "status": "Paused"
+      },
+      "name": "updateAd-invalid-response",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "input": {
+        "accountId": "INVALID",
+        "adGroupId": "33",
+        "adId": "55",
+        "status": "Paused"
+      },
+      "name": "updateAd-defect",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Id": "55",
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55",
+        "status": "Paused"
+      },
+      "name": "updateAd-429",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Id": "55",
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55",
+        "status": "Paused"
+      },
+      "name": "updateAd-500",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Id": "55",
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55",
+        "status": "Paused"
+      },
+      "name": "updateAd-503",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "Ads": [
+              {
+                "Id": "55",
+                "Status": "Paused",
+                "Type": "ResponsiveSearch"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a5c202d-623a-5c79-bf5e-e1a68543c026",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55",
+        "status": "Paused"
+      },
+      "name": "updateAd-transport",
+      "operation": "updateAd"
+    },
+    {
+      "callId": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "adId": "55"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "deleteAd-success",
+      "operation": "deleteAd"
+    },
+    {
+      "callId": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "deleteAd-rejected",
+      "operation": "deleteAd"
+    },
+    {
+      "callId": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "deleteAd-invalid-response",
+      "operation": "deleteAd"
+    },
+    {
+      "callId": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "input": {
+        "accountId": "INVALID",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "deleteAd-defect",
+      "operation": "deleteAd"
+    },
+    {
+      "callId": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "deleteAd-429",
+      "operation": "deleteAd"
+    },
+    {
+      "callId": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "deleteAd-500",
+      "operation": "deleteAd"
+    },
+    {
+      "callId": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "deleteAd-503",
+      "operation": "deleteAd"
+    },
+    {
+      "callId": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/CampaignManagement/v13/Ads",
+          "requestBody": {
+            "AdGroupId": "33",
+            "AdIds": [
+              "55"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-microsoft-advertising-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Customeraccountid": [
+              "12345"
+            ],
+            "Customerid": [
+              "73456"
+            ],
+            "Developertoken": [
+              "test-developer-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b42db904-5fe8-540a-b1c4-63a41af89587",
+      "input": {
+        "accountId": "12345",
+        "adGroupId": "33",
+        "adId": "55"
+      },
+      "name": "deleteAd-transport",
+      "operation": "deleteAd"
     }
   ],
   "schemaVersion": 1

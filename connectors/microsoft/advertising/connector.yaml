@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: microsoft-advertising
   displayName: Microsoft Advertising
-  description: Read and manage campaigns, ad groups, and keywords in a Microsoft Advertising account through the v13 REST API.
+  description: Read and manage campaigns, ad groups, keywords, and responsive search ads in a Microsoft Advertising account through the v13 REST API.
   company: Microsoft
   categories: [marketing]
   version: v0.2.0
@@ -101,6 +101,86 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, interaction_required, consent_required]
   operations:
+    - name: listAds
+      goName: ListAds
+      inputType: ListAdsInput
+      outputType: AdsPage
+      kind: query
+      description: List responsive search ads in one ad group.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Microsoft Advertising returned the ads.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The ad response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: The account or ad group ID is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One paused ad is listed., output: {ads: [{id: '55', status: Paused, finalUrl: 'https://example.com'}]}}
+    - name: getAd
+      goName: GetAd
+      inputType: GetAdInput
+      outputType: AdSummary
+      kind: query
+      description: Read one responsive search ad by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Microsoft Advertising returned the ad.}
+        - {id: notFound, goName: NotFound, description: No ad has the requested ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The ad response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, ad group, or ad ID is invalid.", optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One paused ad is found., output: {id: '55', status: Paused, finalUrl: 'https://example.com'}}
+    - name: createResponsiveSearchAd
+      goName: CreateResponsiveSearchAd
+      inputType: CreateResponsiveSearchAdInput
+      outputType: AdMutationResult
+      kind: mutation
+      description: Create one paused responsive search ad.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Microsoft Advertising created the ad.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the ad., optional: true}
+        - {id: defect, goName: Defect, description: "The account, ad group, URL, or copy is invalid.", optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One paused ad was created., output: {adId: '55'}}
+    - name: updateAd
+      goName: UpdateAd
+      inputType: UpdateAdInput
+      outputType: AdMutationResult
+      kind: mutation
+      description: Replace an ad's serving status.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Microsoft Advertising updated the ad.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The update response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, ad group, ad, or status is invalid.", optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One ad was updated., output: {adId: '55'}}
+    - name: deleteAd
+      goName: DeleteAd
+      inputType: DeleteAdInput
+      outputType: AdMutationResult
+      kind: mutation
+      description: Delete one ad by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Microsoft Advertising deleted the ad.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising rejected the delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The delete response was invalid., optional: true}
+        - {id: defect, goName: Defect, description: "The account, ad group, or ad ID is invalid.", optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One ad was deleted., output: {adId: '55'}}
     - name: listKeywords
       goName: ListKeywords
       inputType: ListKeywordsInput
