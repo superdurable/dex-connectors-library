@@ -64,6 +64,36 @@ type SearchContactsOutput struct {
 	Count int `json:"count"`
 }
 
+// ListContactsInput bounds the recent sample returned by SendGrid.
+type ListContactsInput struct {
+	// Limit is 1 through 50; zero returns the provider's full sample.
+	Limit int `json:"limit,omitempty"`
+}
+
+// ListContactsOperation reads SendGrid's recent contact sample.
+type ListContactsOperation struct{ client *Client }
+
+// Definition returns the generated listContacts contract.
+func (ListContactsOperation) Definition() sdkgo.QueryDefinition { return ListContactsDefinition }
+
+// ListContacts binds the operation to this client.
+func (client *Client) ListContacts() ListContactsOperation { return ListContactsOperation{client} }
+
+// Invoke reads the unfiltered recent contact sample.
+func (operation ListContactsOperation) Invoke(call sdkgo.Call, input ListContactsInput) sdkgo.QueryAttempt[SearchContactsOutput] {
+	branches := queryBranches{found: ListContactsBranchListed, rejected: ListContactsBranchProviderRejected, invalid: ListContactsBranchInvalidResponse, defect: ListContactsBranchDefect}
+	if input.Limit < 0 || input.Limit > 50 {
+		return queryBranch("listContacts", branches.defect, SearchContactsOutput{}, sdkgo.FailureValidation, "limit must be 1 through 50 or zero")
+	}
+	return invokeJSONQuery(call, operation.client, "listContacts", branches, http.MethodGet, "/v3/marketing/contacts", nil, nil, func(body []byte) (SearchContactsOutput, error) {
+		output, err := decodeContactSearch(body)
+		if err == nil && input.Limit > 0 && len(output.Contacts) > input.Limit {
+			output.Contacts = output.Contacts[:input.Limit]
+		}
+		return output, err
+	})
+}
+
 // SearchContactsOperation searches marketing contacts.
 type SearchContactsOperation struct{ client *Client }
 

@@ -44,6 +44,7 @@ type Operations interface {
 	ListTemplates() sdkgo.Query[ListTemplatesInput, TemplatesOutput]
 	GetContact() sdkgo.Query[ContactIDInput, Contact]
 	SearchContacts() sdkgo.Query[SearchContactsInput, SearchContactsOutput]
+	ListContacts() sdkgo.Query[ListContactsInput, SearchContactsOutput]
 	UpsertContact() sdkgo.Mutation[UpsertContactInput, ContactJobOutput]
 	DeleteContact() sdkgo.Mutation[ContactIDInput, ContactJobOutput]
 	GetList() sdkgo.Query[ListIDInput, MarketingList]
@@ -67,6 +68,9 @@ func (operations clientOperations) GetContact() sdkgo.Query[ContactIDInput, Cont
 }
 func (operations clientOperations) SearchContacts() sdkgo.Query[SearchContactsInput, SearchContactsOutput] {
 	return operations.client.SearchContacts()
+}
+func (operations clientOperations) ListContacts() sdkgo.Query[ListContactsInput, SearchContactsOutput] {
+	return operations.client.ListContacts()
 }
 func (operations clientOperations) UpsertContact() sdkgo.Mutation[UpsertContactInput, ContactJobOutput] {
 	return operations.client.UpsertContact()
@@ -512,6 +516,77 @@ func NewSearchContactsStep[IN any](config SearchContactsStepConfig[IN]) sdkgo.Qu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SearchContactsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContactsBranchListed sdkgo.BranchID = "listed"
+const ListContactsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContacts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactsBranchListed, Description: "SendGrid returned the recent contact sample."},
+		{ID: ListContactsBranchProviderRejected, Description: "SendGrid denied the read.", Optional: true},
+		{ID: ListContactsBranchInvalidResponse, Description: "SendGrid returned invalid contact JSON.", Optional: true},
+		{ID: ListContactsBranchDefect, Description: "Connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactsResult = sdkgo.QueryResult[SearchContactsOutput]
+
+type ListContactsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=sendgrid"`
+	operationID                    struct{}                                                `connector:"operationId=listContacts"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactsInput                              `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactsResult]                        `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContactsResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactsResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactsResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SearchContactsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListContactsStep[IN any](config ListContactsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactsInput, SearchContactsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactsInput, SearchContactsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContacts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactsBranchDefect))
 			}
 			return branches
 		}(),

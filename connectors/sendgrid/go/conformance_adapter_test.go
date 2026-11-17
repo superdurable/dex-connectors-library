@@ -25,6 +25,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listTemplates":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTemplates(), testConnection),
 		"getContact":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetContact(), testConnection),
 		"searchContacts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.SearchContacts(), testConnection),
+		"listContacts":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListContacts(), testConnection),
 		"upsertContact":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertContact(), testConnection, scenario.CallID),
 		"deleteContact":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContact(), testConnection, scenario.CallID),
 		"getList":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetList(), testConnection),

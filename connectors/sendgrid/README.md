@@ -14,6 +14,7 @@ Read SendGrid global statistics and transactional templates, and manage marketin
 | `listTemplates` | Query | https://www.twilio.com/docs/sendgrid/api-reference/transactional-templates/retrieve-paged-transactional-templates |
 | `getContact` | Query | https://www.twilio.com/docs/sendgrid/api-reference/contacts/get-a-contact-by-id |
 | `searchContacts` | Query | https://www.twilio.com/docs/sendgrid/api-reference/contacts/search-contacts |
+| `listContacts` | Query | https://www.twilio.com/docs/sendgrid/api-reference/contacts/get-sample-contacts |
 | `upsertContact` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/contacts/add-or-update-a-contact |
 | `deleteContact` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/contacts/delete-contacts |
 | `getList` | Query | https://www.twilio.com/docs/sendgrid/api-reference/lists/get-a-list-by-id |
@@ -24,6 +25,8 @@ Read SendGrid global statistics and transactional templates, and manage marketin
 | `sendMail` | Mutation, limited | https://www.twilio.com/docs/sendgrid/api-reference/mail-send/mail-send |
 
 The examples use `sendgrid.NewGetStatsStep` and `sendgrid.NewListTemplatesStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `listTemplates` always sends `page_size`: zero in `PageSize` selects 100, and explicit values must be 1–200. Pass `NextPageToken` from one result as the next call's `PageToken`; blank starts at page one. SendGrid's exact `_metadata.count` meaning remains unverified.
+
+`listContacts` reads SendGrid's recent contact sample without an SGQL filter. The endpoint returns at most 50 contacts and no longer supports pagination; `Limit` optionally truncates that sample. `searchContacts` remains the SGQL path and is likewise capped at 50 by SendGrid.
 
 The Python package is [`dex-connector-sendgrid`](python/README.md), imported as
 `dex_connectors.sendgrid`.

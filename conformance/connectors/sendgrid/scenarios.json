@@ -3897,6 +3897,295 @@
       },
       "name": "sendMail-uncertain",
       "operation": "sendMail"
+    },
+    {
+      "callId": "sendgrid-listContacts-success",
+      "exchanges": [
+        {
+          "body": "{\"result\":[{\"id\":\"c-123\",\"email\":\"priya@example.com\",\"first_name\":\"Priya\",\"last_name\":\"Rao\"}],\"contact_count\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/contacts",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "email": "priya@example.com",
+              "firstName": "Priya",
+              "id": "c-123",
+              "lastName": "Rao"
+            }
+          ],
+          "count": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "listContacts-success",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "sendgrid-listContacts-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"PRIVATE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/contacts",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contacts": [],
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "listContacts-rejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "sendgrid-listContacts-invalid",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/contacts",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contacts": [],
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "listContacts-invalid",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "sendgrid-listContacts-429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/contacts",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "listContacts-429",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "sendgrid-listContacts-503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/contacts",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "listContacts-503",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "sendgrid-listContacts-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/contacts",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "listContacts-transport",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "sendgrid-listContacts-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contacts": [],
+          "count": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 51
+      },
+      "name": "listContacts-defect",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "sendgrid-listContacts-limit",
+      "exchanges": [
+        {
+          "body": "{\"result\":[{\"id\":\"c-123\",\"email\":\"priya@example.com\",\"first_name\":\"Priya\",\"last_name\":\"Rao\"},{\"id\":\"c-124\",\"email\":\"sam@example.com\"}],\"contact_count\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/contacts",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "email": "priya@example.com",
+              "firstName": "Priya",
+              "id": "c-123",
+              "lastName": "Rao"
+            }
+          ],
+          "count": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1
+      },
+      "name": "listContacts-limit",
+      "operation": "listContacts"
     }
   ],
   "schemaVersion": 1

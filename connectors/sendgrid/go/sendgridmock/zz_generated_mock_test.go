@@ -32,6 +32,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sendgrid.SearchContactsOutput](`{"contacts":[{"id":"c-123","email":"priya@example.com"}],"count":1}`)
 			return err
 		}},
+		{name: "listContacts/recentContacts/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.SearchContactsOutput](`{"contacts":[{"id":"c-123","email":"priya@example.com"}],"count":1}`)
+			return err
+		}},
 		{name: "upsertContact/contactQueued/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sendgrid.ContactJobOutput](`{"jobId":"job-123"}`)
 			return err
@@ -93,6 +97,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SearchContacts().Definition().Operation.OperationID != "searchContacts" {
 		t.Errorf("searchContacts mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
 	}
 	if mock.UpsertContact().Definition().Operation.OperationID != "upsertContact" {
 		t.Errorf("upsertContact mock has another definition")

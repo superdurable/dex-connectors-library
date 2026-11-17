@@ -130,6 +130,21 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       mocks:
         - {name: contactsFound, branch: found, description: One marketing contact matched., default: true, output: {contacts: [{id: c-123, email: priya@example.com}], count: 1}}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: SearchContactsOutput
+      kind: query
+      description: Read up to 50 recent marketing contacts, optionally limiting the returned sample; SendGrid no longer paginates this endpoint.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: SendGrid returned the recent contact sample.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned invalid contact JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: recentContacts, branch: listed, description: SendGrid returned recent marketing contacts., default: true, output: {contacts: [{id: c-123, email: priya@example.com}], count: 1}}
     - name: upsertContact
       goName: UpsertContact
       inputType: UpsertContactInput
