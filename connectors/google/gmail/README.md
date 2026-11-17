@@ -1,10 +1,10 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.27.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.27.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
-## TypeScript (v0.4.0)
+## TypeScript (v0.4.1)
 
 Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client examples, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`, and from 0.3.0 the `messageReceived` and `replyReceived` Triggers at parity with Go: one ordered poller per connection, durable project inboxes, and roots delivered before replies. The [thread reply example](typescript/examples/thread-reply/README.md) mirrors the Go `thread-reply` example. Its manifest-derived npm marker lets Dex CLI render the examples as strict TypeScript FDG 2.0 graphs.
 
@@ -167,7 +167,9 @@ uses that header for Sent Mail read-back:
   earlier attempt that may have sent. At that cap, a miss returns Retry without
   another POST, and the Flow fails when the retry budget runs out; the
   operations have no `uncertain` branch. A definite 4xx on a send with no
-  earlier possible send selects `providerRejected` and is never resent. After an
+  earlier possible send selects `providerRejected` and is never resent; it
+  first records `canResend`, so Dex Agents report a failure, not an unknown
+  outcome. After an
   earlier possible send, a definite 4xx on the resend, or a reply source read
   that is rejected or unusable, returns Retry instead, because the earlier send
   may still be delivered; the claim stays, so later attempts read back and the

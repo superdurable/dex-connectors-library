@@ -624,9 +624,47 @@ func TestGmailRejectedResendKeepsTheEarlierSendUnknown(t *testing.T) {
 func TestGmailRejectedFirstSendIsProviderRejected(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{answerSend: writeGmailSendStatus(http.StatusBadRequest)})
-		result := runGmailSendAttempt(singledispatchtest.NewContext("gmail-fence-test", t.Name()), newGmailClient(t, fake.URL), isReply)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		result := runGmailSendAttempt(stepContext, newGmailClient(t, fake.URL), isReply)
 		require.NoError(t, result.err)
 		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), result.branch)
+		// canResend proves the refused POST sent nothing, so agent hosts report failure.
+		stepContext.AdvanceAttempt()
+		var marker singledispatch.Marker
+		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
+		require.NoError(t, err)
+		require.True(t, hasMarker)
+		require.Equal(t, singledispatch.StateCanResend, marker.State)
+		require.Equal(t, int32(1), marker.Attempt)
+	})
+}
+
+// TestGmailRejectedSendAfterRateLimitRecordsCanResend treats a refused POST after a proven unsent one as clean.
+func TestGmailRejectedSendAfterRateLimitRecordsCanResend(t *testing.T) {
+	forSendAndReply(t, func(t *testing.T, isReply bool) {
+		fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
+			if sendNumber == 1 {
+				response.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+			response.WriteHeader(http.StatusBadRequest)
+		}})
+		client := newGmailClient(t, fake.URL)
+		stepContext := singledispatchtest.NewContext("gmail-fence-test", t.Name())
+		first := runGmailSendAttempt(stepContext, client, isReply)
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, first.err, &retry)
+		stepContext.AdvanceAttempt()
+		second := runGmailSendAttempt(stepContext, client, isReply)
+		require.NoError(t, second.err)
+		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchProviderRejected, gmail.ReplyToMessageBranchProviderRejected), second.branch)
+		stepContext.AdvanceAttempt()
+		var marker singledispatch.Marker
+		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
+		require.NoError(t, err)
+		require.True(t, hasMarker)
+		require.Equal(t, singledispatch.StateCanResend, marker.State)
+		require.Equal(t, int32(2), marker.Attempt)
 	})
 }
 

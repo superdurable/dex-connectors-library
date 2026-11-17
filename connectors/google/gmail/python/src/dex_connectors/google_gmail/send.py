@@ -460,6 +460,30 @@ class SendService:
             return _retry(outcome, kind, f"{message}; an earlier send may still be delivered")
         return _branch(execution, outcome, branch, kind, message, receipt)
 
+    async def _reject_refused_send(
+        self,
+        execution: SendExecution,
+        outcome: _SendOutcome,
+        kind: FailureKind,
+        message: str,
+        receipt: Receipt,
+    ) -> MutationAttempt[SendMessageOutput]:
+        """Classify a definite Gmail refusal of this attempt's POST.
+
+        With no earlier possible send, canResend proves nothing was sent, so
+        agent hosts report failure instead of an unknown outcome.
+        """
+        if execution.fence is not None and (
+            await execution.fence.decide()
+        ).prior_send_upper_bound == 0:
+            try:
+                await execution.fence.record_can_resend()
+            except Exception:  # noqa: BLE001
+                pass  # A failed checkpoint leaves the claim, so the outcome stays unknown.
+        return await self._reject_unless_earlier_send_is_unconfirmed(
+            execution, outcome, "providerRejected", kind, message, receipt
+        )
+
     async def _record_not_sent(self, execution: SendExecution) -> None:
         if execution.fence is not None and (
             await execution.fence.decide()
@@ -627,10 +651,9 @@ class SendService:
                     found = None
                 if found:
                     return await self._sent(execution, budget, credential, outcome, message, found, receipt)
-            return await self._reject_unless_earlier_send_is_unconfirmed(
+            return await self._reject_refused_send(
                 execution,
                 outcome,
-                "providerRejected",
                 _status_kind(status),
                 outcome.rejection_message,
                 receipt,

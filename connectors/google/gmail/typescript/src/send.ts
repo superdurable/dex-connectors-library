@@ -273,7 +273,7 @@ export class GmailSender {
           if (found) return this.#sentMessage(call, budget, credentials, operation, message, found, receipt);
         } catch { /* A conclusive current refusal still selects its branch. */ }
       }
-      return rejectUnlessEarlierSendIsUnconfirmed(fence, operation.providerRejectedBranch, receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
+      return rejectRefusedSend(fence, operation.providerRejectedBranch, receipt, failure(operation.operationId, statusFailureKind(status), operation.rejectionMessage));
     }
     if (!sentResponse) {
       const lookup = await this.#pollSentMessage(call, budget, credentials, message);
@@ -379,6 +379,15 @@ function unavailableCredentials(fence: Fence, operation: 'sendMessage' | 'replyT
 function rejectUnlessEarlierSendIsUnconfirmed(fence: Fence, branch: string, receipt: ReceiptDraft, rejection: Failure): MutationAttempt<SendMessageOutput> {
   if ((fence.decide().priorSendUpperBound ?? 0) > 0) return newMutationRetry({ ...rejection, message: `${rejection.message}; an earlier send may still be delivered` });
   return newMutationBranch(branch, emptySend(), receipt, rejection);
+}
+
+/**
+ * Classify a definite Gmail refusal of this attempt's POST. With no earlier possible send, canResend
+ * proves nothing was sent, so agent hosts report failure instead of an unknown outcome.
+ */
+async function rejectRefusedSend(fence: Fence, branch: string, receipt: ReceiptDraft, rejection: Failure): Promise<MutationAttempt<SendMessageOutput>> {
+  if ((fence.decide().priorSendUpperBound ?? 0) === 0) await recordSafeResend(fence);
+  return rejectUnlessEarlierSendIsUnconfirmed(fence, branch, receipt, rejection);
 }
 
 function classifySourceFailure(fence: Fence, status: number, headers: Record<string, string | string[] | undefined>, receipt: ReceiptDraft): MutationAttempt<SendMessageOutput> {

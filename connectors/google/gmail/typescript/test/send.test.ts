@@ -310,10 +310,33 @@ describe('Gmail send and reply classification', () => {
       .toMatchObject({ kind: 'branch', branch: 'defect' });
   });
 
-  it('keeps a definite rejection of a first send as providerRejected', async () => {
-    const operation = sender(async request => request.method === 'GET' ? response(200, { messages: [] }) : response(400, {}));
-    expect(await operation.sendMessage(operationCall('sendMessage'), sendInput, new Date(Date.now() + 30_000)))
+  it('keeps a definite rejection of a first send as providerRejected and proves nothing was sent', async () => {
+    const operation = sender(async request => {
+      if (request.url.includes('/source-1?')) return response(200, { id: 'source-1', threadId: 'thread-1', internalDate: '1767312000000', payload: { headers: [{ name: 'From', value: 'ada@example.com' }, { name: 'Message-ID', value: '<source-1@example.com>' }] } });
+      return request.method === 'GET' ? response(200, { messages: [] }) : response(400, {});
+    });
+    const sendCheckpoint: { value?: unknown } = {};
+    expect(await operation.sendMessage(operationCall('sendMessage', 1, sendCheckpoint), sendInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    expect(sendCheckpoint.value).toMatchObject({ state: 'canResend', attempt: 1 });
+    const replyCheckpoint: { value?: unknown } = {};
+    expect(await operation.replyToMessage(operationCall('replyToMessage', 1, replyCheckpoint), replyInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    expect(replyCheckpoint.value).toMatchObject({ state: 'canResend', attempt: 1 });
+  });
+
+  it('records canResend for a rejected send after an earlier proven unsent attempt', async () => {
+    const checkpoint: { value?: unknown } = { value: { callId: '01234567-89ab-5cde-8f01-23456789abcd', attempt: 1, state: 'canResend', sendCount: 0 } };
+    let posts = 0;
+    const operation = sender(async request => {
+      if (request.method === 'GET') return response(200, { messages: [] });
+      posts++;
+      return response(400, {});
+    });
+    expect(await operation.sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+    expect(posts).toBe(1);
+    expect(checkpoint.value).toMatchObject({ state: 'canResend', attempt: 2 });
   });
 
   it('keeps an earlier reply unknown when its source message is gone, but rejects a first reply', async () => {

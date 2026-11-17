@@ -420,7 +420,7 @@ func (client *Client) sendAndConfirm(
 				return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 			}
 		}
-		return rejectUnlessEarlierSendIsUnconfirmed(decision, operation.providerRejectedBranch,
+		return rejectRefusedSend(fence, decision, operation.providerRejectedBranch,
 			gmailOperationFailure(operation.operationID, statusFailureKind(response.StatusCode), operation.rejectionMessage), receipt)
 	}
 	content, err := readAndCloseGmailResponse(response, client.maxResponseBytes)
@@ -490,6 +490,17 @@ func rejectUnlessEarlierSendIsUnconfirmed(
 		return sdkgo.NewMutationRetry[SendMessageOutput](failure, 0)
 	}
 	return sdkgo.NewMutationBranch(branch, emptySendMessageOutput(), &failure, receipt)
+}
+
+// rejectRefusedSend classifies a definite Gmail refusal of this attempt's POST. With no earlier
+// possible send, canResend proves nothing was sent, so agent hosts report failure, not unknown.
+func rejectRefusedSend(
+	fence *singledispatch.Fence, decision singledispatch.Decision, branch sdkgo.BranchID, failure sdkgo.Failure, receipt sdkgo.Receipt,
+) sdkgo.MutationAttempt[SendMessageOutput] {
+	if decision.MaximumPriorSends == 0 {
+		_ = fence.RecordCanResend() // A failed checkpoint leaves the claim, so the outcome stays unknown.
+	}
+	return rejectUnlessEarlierSendIsUnconfirmed(decision, branch, failure, receipt)
 }
 
 func (client *Client) sentAfterDispatch(

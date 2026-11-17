@@ -2,13 +2,13 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.4.0 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
+Version 0.4.1 includes `getMessage`, `sendMessage`, and `replyToMessage`, and
 the `messageReceived` and `replyReceived` Triggers at parity with Go. From
 0.4.0 a send or reply whose outcome is unknown may be sent up to three times.
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.4.0`. The package requires
+After release, install `dex-connector-google-gmail==0.4.1`. The package requires
 `dex-connectors-sdk>=0.12.0,<1` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
@@ -149,7 +149,9 @@ miss returns Retry without another POST, and the Flow fails when its retry
 budget is exhausted. A saved Gmail message ID and a definite 4xx are never
 resent. A definite 4xx, or a rejected or unusable reply source read, selects its
 branch only when no earlier send is possible; otherwise it returns Retry,
-because the earlier send may still be delivered. A 503 is treated like any other 5xx. A definite 429 refusal, or a
+because the earlier send may still be delivered. A definite 4xx on the POST
+with no earlier possible send first records `canResend`, so Dex Agents report a
+failure rather than an unknown outcome. A 503 is treated like any other 5xx. A definite 429 refusal, or a
 transport failure proven to precede dispatch, permits a later send. The
 manifest limits sends and replies to seven attempts within five minutes;
 `max_sends_override` on the generated Step factory changes one Step's cap.

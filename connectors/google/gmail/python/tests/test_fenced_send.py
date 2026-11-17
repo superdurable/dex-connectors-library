@@ -310,12 +310,31 @@ async def test_rejected_resend_keeps_the_earlier_send_unknown(operation_id: str)
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
 async def test_rejected_first_send_is_provider_rejected(operation_id: str) -> None:
-    """A definite 4xx with no earlier send stays providerRejected."""
+    """A definite 4xx with no earlier send stays providerRejected and proves nothing was sent."""
+    context = HeartbeatContext()
     attempt, _ = await _invoke(
-        _call(HeartbeatContext(), operation_id=operation_id),
+        _call(context, operation_id=operation_id),
         httpx.MockTransport(_gmail(httpx.Response(200, json={"messages": []}), httpx.Response(400))),
     )
     assert attempt.branch == "providerRejected"
+    assert context.heartbeats[-1].state == State.CAN_RESEND
+    assert context.heartbeats[-1].attempt == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation_id", ["sendMessage", "replyToMessage"])
+async def test_rejected_send_after_can_resend_records_can_resend(operation_id: str) -> None:
+    """A 4xx after a proven unsent earlier attempt is still a clean rejection."""
+    context = HeartbeatContext(2)
+    call = _call(context, operation_id=operation_id)
+    context.previous = Marker(call.id, 1, State.CAN_RESEND, send_count=0)
+    attempt, requests = await _invoke(call, httpx.MockTransport(_gmail(
+        httpx.Response(200, json={"messages": []}), httpx.Response(400),
+    )))
+    assert attempt.branch == "providerRejected"
+    assert _methods(requests).count("POST") == 1
+    assert context.heartbeats[-1].state == State.CAN_RESEND
+    assert context.heartbeats[-1].attempt == 2
 
 
 def _missing_source(request: httpx.Request) -> httpx.Response:
