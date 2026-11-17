@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{contactinspection.NewFlow(connection), contactinspection.NewContactsSearchFlow(connection), contactinspection.NewContactCreationFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{contactinspection.NewFlow(connection), contactinspection.NewContactsSearchFlow(connection), contactinspection.NewContactCreationFlow(connection), contactinspection.NewAccountsSearchFlow(connection), contactinspection.NewAccountCreationFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Creatio contact inspection Flow: %w", err)
 	}

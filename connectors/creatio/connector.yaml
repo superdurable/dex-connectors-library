@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: creatio
   displayName: Creatio
-  description: Read and manage contacts in a Creatio OData 4 instance.
+  description: Read and manage contacts and accounts in a Creatio OData 4 instance.
   company: Creatio
   categories: [crm-sales]
   version: v0.2.0
@@ -67,7 +67,7 @@ spec:
     guide:
       startURL: https://academy.creatio.com/guides/no-code-customization/8.2/base-integrations/oauth-2-0/set-up-the-oauth-2-0-authorization-instruction
       steps:
-        - In your Creatio instance, open System Designer > OAuth 2.0 integrated applications > New. Create a dedicated technical user and grant it read, create, update, and delete permission on Contact, then copy Client Id and Client secret into Dex Web. Client secret is secret; no user consent screen or redirect URI is needed.
+        - In your Creatio instance, open System Designer > OAuth 2.0 integrated applications > New. Create a dedicated technical user and grant it read, create, update, and delete permission on Contact and Account, then copy Client Id and Client secret into Dex Web. Client secret is secret; no user consent screen or redirect URI is needed.
         - Open System Designer > System settings > Authorization server Url for OAuth 2.0 integrations (OAuth20IdentityServerUrl). Append /connect/token to that HTTPS URL and enter it as tokenEndpoint. Copy your signed-in Creatio application origin as baseUrl; neither URL is secret.
         - Leave access_token, timeout, and maxResponseBytes blank. Dex mints a token with client_credentials and renews it before expiry. Find a contact's UUID in your instance's Contacts page or OData response and pass it as contactId in Flow input.
     clientCredentials:
@@ -82,6 +82,107 @@ spec:
         - {credential: access_token, source: access_token}
       terminalErrorCodes: [invalid_client, unauthorized_client]
   operations:
+    - name: getAccount
+      goName: GetAccount
+      inputType: GetAccountInput
+      outputType: AccountSummary
+      kind: query
+      description: Read one account's UUID and name through OData 4.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Creatio returned the selected account.}
+        - {id: notFound, goName: NotFound, description: Creatio returned no accessible account for this UUID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Creatio returned malformed or oversized OData JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample account is returned.
+          output: {id: 59f2ffca-b4ae-4545-82e6-58830db5077b, name: Example Company}
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: AccountsPage
+      kind: query
+      description: Read one bounded page of account IDs and names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Creatio returned an account page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio rejected the account list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Creatio returned invalid or oversized OData JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample account is listed.
+          output: {accounts: [{id: 59f2ffca-b4ae-4545-82e6-58830db5077b, name: Example Company}]}
+    - name: createAccount
+      goName: CreateAccount
+      inputType: CreateAccountInput
+      outputType: AccountSummary
+      kind: mutation
+      description: Create one account with a bounded send count.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Creatio created the account.}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample account is created.
+          output: {id: 59f2ffca-b4ae-4545-82e6-58830db5077b, name: Example Company}
+    - name: updateAccount
+      goName: UpdateAccount
+      inputType: UpdateAccountInput
+      outputType: AccountWriteOutput
+      kind: mutation
+      description: Patch selected Account fields while preserving other fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Creatio updated the account.}
+        - {id: notFound, goName: NotFound, description: No accessible account has this UUID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample account is updated.
+          output: {id: 59f2ffca-b4ae-4545-82e6-58830db5077b}
+    - name: deleteAccount
+      goName: DeleteAccount
+      inputType: DeleteAccountInput
+      outputType: AccountWriteOutput
+      kind: mutation
+      description: Permanently delete one Account by UUID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Creatio deleted the account.}
+        - {id: notFound, goName: NotFound, description: No accessible account has this UUID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample account is deleted.
+          output: {id: 59f2ffca-b4ae-4545-82e6-58830db5077b}
     - name: getContact
       goName: GetContact
       inputType: GetContactInput

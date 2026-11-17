@@ -18,6 +18,11 @@ import (
 // Mock is a scripted creatio connection. Script each operation through its accessor.
 type Mock struct {
 	connection    creatio.Connection
+	getAccount    *connectormock.Query[creatio.GetAccountInput, creatio.AccountSummary]
+	listAccounts  *connectormock.Query[creatio.ListAccountsInput, creatio.AccountsPage]
+	createAccount *connectormock.Mutation[creatio.CreateAccountInput, creatio.AccountSummary]
+	updateAccount *connectormock.Mutation[creatio.UpdateAccountInput, creatio.AccountWriteOutput]
+	deleteAccount *connectormock.Mutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput]
 	getContact    *connectormock.Query[creatio.GetContactInput, creatio.ContactSummary]
 	listContacts  *connectormock.Query[creatio.ListContactsInput, creatio.ContactsPage]
 	createContact *connectormock.Mutation[creatio.CreateContactInput, creatio.ContactSummary]
@@ -30,12 +35,22 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getAccount:    connectormock.NewQuery[creatio.GetAccountInput, creatio.AccountSummary](t, creatio.GetAccountDefinition),
+		listAccounts:  connectormock.NewQuery[creatio.ListAccountsInput, creatio.AccountsPage](t, creatio.ListAccountsDefinition),
+		createAccount: connectormock.NewMutation[creatio.CreateAccountInput, creatio.AccountSummary](t, creatio.CreateAccountDefinition),
+		updateAccount: connectormock.NewMutation[creatio.UpdateAccountInput, creatio.AccountWriteOutput](t, creatio.UpdateAccountDefinition),
+		deleteAccount: connectormock.NewMutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput](t, creatio.DeleteAccountDefinition),
 		getContact:    connectormock.NewQuery[creatio.GetContactInput, creatio.ContactSummary](t, creatio.GetContactDefinition),
 		listContacts:  connectormock.NewQuery[creatio.ListContactsInput, creatio.ContactsPage](t, creatio.ListContactsDefinition),
 		createContact: connectormock.NewMutation[creatio.CreateContactInput, creatio.ContactSummary](t, creatio.CreateContactDefinition),
 		updateContact: connectormock.NewMutation[creatio.UpdateContactInput, creatio.ContactWriteOutput](t, creatio.UpdateContactDefinition),
 		deleteContact: connectormock.NewMutation[creatio.DeleteContactInput, creatio.ContactWriteOutput](t, creatio.DeleteContactDefinition),
 	}
+	mock.getAccount.Default(GetAccountDefault())
+	mock.listAccounts.Default(ListAccountsDefault())
+	mock.createAccount.Default(CreateAccountDefault())
+	mock.updateAccount.Default(UpdateAccountDefault())
+	mock.deleteAccount.Default(DeleteAccountDefault())
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.createContact.Default(CreateContactDefault())
@@ -51,6 +66,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() creatio.Connection { return mock.connection }
+
+// GetAccount returns the getAccount script.
+func (mock *Mock) GetAccount() *connectormock.Query[creatio.GetAccountInput, creatio.AccountSummary] {
+	return mock.getAccount
+}
+
+// ListAccounts returns the listAccounts script.
+func (mock *Mock) ListAccounts() *connectormock.Query[creatio.ListAccountsInput, creatio.AccountsPage] {
+	return mock.listAccounts
+}
+
+// CreateAccount returns the createAccount script.
+func (mock *Mock) CreateAccount() *connectormock.Mutation[creatio.CreateAccountInput, creatio.AccountSummary] {
+	return mock.createAccount
+}
+
+// UpdateAccount returns the updateAccount script.
+func (mock *Mock) UpdateAccount() *connectormock.Mutation[creatio.UpdateAccountInput, creatio.AccountWriteOutput] {
+	return mock.updateAccount
+}
+
+// DeleteAccount returns the deleteAccount script.
+func (mock *Mock) DeleteAccount() *connectormock.Mutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput] {
+	return mock.deleteAccount
+}
 
 // GetContact returns the getContact script.
 func (mock *Mock) GetContact() *connectormock.Query[creatio.GetContactInput, creatio.ContactSummary] {
@@ -79,6 +119,21 @@ func (mock *Mock) DeleteContact() *connectormock.Mutation[creatio.DeleteContactI
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetAccount() sdkgo.Query[creatio.GetAccountInput, creatio.AccountSummary] {
+	return operations.mock.getAccount
+}
+func (operations mockOperations) ListAccounts() sdkgo.Query[creatio.ListAccountsInput, creatio.AccountsPage] {
+	return operations.mock.listAccounts
+}
+func (operations mockOperations) CreateAccount() sdkgo.Mutation[creatio.CreateAccountInput, creatio.AccountSummary] {
+	return operations.mock.createAccount
+}
+func (operations mockOperations) UpdateAccount() sdkgo.Mutation[creatio.UpdateAccountInput, creatio.AccountWriteOutput] {
+	return operations.mock.updateAccount
+}
+func (operations mockOperations) DeleteAccount() sdkgo.Mutation[creatio.DeleteAccountInput, creatio.AccountWriteOutput] {
+	return operations.mock.deleteAccount
+}
 func (operations mockOperations) GetContact() sdkgo.Query[creatio.GetContactInput, creatio.ContactSummary] {
 	return operations.mock.getContact
 }
@@ -93,6 +148,189 @@ func (operations mockOperations) UpdateContact() sdkgo.Mutation[creatio.UpdateCo
 }
 func (operations mockOperations) DeleteContact() sdkgo.Mutation[creatio.DeleteContactInput, creatio.ContactWriteOutput] {
 	return operations.mock.deleteContact
+}
+
+// GetAccountFound selects the found branch: Creatio returned the selected account.
+func GetAccountFound(value creatio.AccountSummary, failure *sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Branch(creatio.GetAccountBranchFound, value, failure)
+}
+
+// GetAccountNotFound selects the notFound branch: Creatio returned no accessible account for this UUID.
+func GetAccountNotFound(value creatio.AccountSummary, failure *sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Branch(creatio.GetAccountBranchNotFound, value, failure)
+}
+
+// GetAccountProviderRejected selects the providerRejected branch: Creatio conclusively rejected the lookup.
+func GetAccountProviderRejected(value creatio.AccountSummary, failure *sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Branch(creatio.GetAccountBranchProviderRejected, value, failure)
+}
+
+// GetAccountInvalidResponse selects the invalidResponse branch: Creatio returned malformed or oversized OData JSON.
+func GetAccountInvalidResponse(value creatio.AccountSummary, failure *sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Branch(creatio.GetAccountBranchInvalidResponse, value, failure)
+}
+
+// GetAccountDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetAccountDefect(value creatio.AccountSummary, failure *sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Branch(creatio.GetAccountBranchDefect, value, failure)
+}
+
+// GetAccountRetry asks Dex to retry the getAccount Step, after the delay when it is positive.
+func GetAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Retry[creatio.AccountSummary](failure, after)
+}
+
+// GetAccountFoundDefault is the manifest mock foundDefault: A sample account is returned.
+func GetAccountFoundDefault() connectormock.Case[creatio.AccountSummary] {
+	value := connectormock.MustDecodeOutput[creatio.AccountSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}`)
+	return connectormock.Branch(creatio.GetAccountBranchFound, value, nil)
+}
+
+// GetAccountDefault is the manifest default, foundDefault, which New installs.
+func GetAccountDefault() connectormock.Case[creatio.AccountSummary] { return GetAccountFoundDefault() }
+
+// ListAccountsListed selects the listed branch: Creatio returned an account page.
+func ListAccountsListed(value creatio.AccountsPage, failure *sdkgo.Failure) connectormock.Case[creatio.AccountsPage] {
+	return connectormock.Branch(creatio.ListAccountsBranchListed, value, failure)
+}
+
+// ListAccountsProviderRejected selects the providerRejected branch: Creatio rejected the account list.
+func ListAccountsProviderRejected(value creatio.AccountsPage, failure *sdkgo.Failure) connectormock.Case[creatio.AccountsPage] {
+	return connectormock.Branch(creatio.ListAccountsBranchProviderRejected, value, failure)
+}
+
+// ListAccountsInvalidResponse selects the invalidResponse branch: Creatio returned invalid or oversized OData JSON.
+func ListAccountsInvalidResponse(value creatio.AccountsPage, failure *sdkgo.Failure) connectormock.Case[creatio.AccountsPage] {
+	return connectormock.Branch(creatio.ListAccountsBranchInvalidResponse, value, failure)
+}
+
+// ListAccountsDefect selects the defect branch: Input or connection credentials are invalid.
+func ListAccountsDefect(value creatio.AccountsPage, failure *sdkgo.Failure) connectormock.Case[creatio.AccountsPage] {
+	return connectormock.Branch(creatio.ListAccountsBranchDefect, value, failure)
+}
+
+// ListAccountsRetry asks Dex to retry the listAccounts Step, after the delay when it is positive.
+func ListAccountsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.AccountsPage] {
+	return connectormock.Retry[creatio.AccountsPage](failure, after)
+}
+
+// ListAccountsListedDefault is the manifest mock listedDefault: One sample account is listed.
+func ListAccountsListedDefault() connectormock.Case[creatio.AccountsPage] {
+	value := connectormock.MustDecodeOutput[creatio.AccountsPage](`{"accounts":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}]}`)
+	return connectormock.Branch(creatio.ListAccountsBranchListed, value, nil)
+}
+
+// ListAccountsDefault is the manifest default, listedDefault, which New installs.
+func ListAccountsDefault() connectormock.Case[creatio.AccountsPage] {
+	return ListAccountsListedDefault()
+}
+
+// CreateAccountCreated selects the created branch: Creatio created the account.
+func CreateAccountCreated(value creatio.AccountSummary, failure *sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Branch(creatio.CreateAccountBranchCreated, value, failure)
+}
+
+// CreateAccountProviderRejected selects the providerRejected branch: Creatio rejected creation.
+func CreateAccountProviderRejected(value creatio.AccountSummary, failure *sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Branch(creatio.CreateAccountBranchProviderRejected, value, failure)
+}
+
+// CreateAccountUncertain returns an uncertain createAccount outcome.
+func CreateAccountUncertain(value creatio.AccountSummary, failure sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateAccountDefect selects the defect branch: Input or connection credentials are invalid.
+func CreateAccountDefect(value creatio.AccountSummary, failure *sdkgo.Failure) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Branch(creatio.CreateAccountBranchDefect, value, failure)
+}
+
+// CreateAccountRetry asks Dex to retry the createAccount Step, after the delay when it is positive.
+func CreateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.AccountSummary] {
+	return connectormock.Retry[creatio.AccountSummary](failure, after)
+}
+
+// CreateAccountCreatedDefault is the manifest mock createdDefault: One sample account is created.
+func CreateAccountCreatedDefault() connectormock.Case[creatio.AccountSummary] {
+	value := connectormock.MustDecodeOutput[creatio.AccountSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}`)
+	return connectormock.Branch(creatio.CreateAccountBranchCreated, value, nil)
+}
+
+// CreateAccountDefault is the manifest default, createdDefault, which New installs.
+func CreateAccountDefault() connectormock.Case[creatio.AccountSummary] {
+	return CreateAccountCreatedDefault()
+}
+
+// UpdateAccountUpdated selects the updated branch: Creatio updated the account.
+func UpdateAccountUpdated(value creatio.AccountWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Branch(creatio.UpdateAccountBranchUpdated, value, failure)
+}
+
+// UpdateAccountNotFound selects the notFound branch: No accessible account has this UUID.
+func UpdateAccountNotFound(value creatio.AccountWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Branch(creatio.UpdateAccountBranchNotFound, value, failure)
+}
+
+// UpdateAccountProviderRejected selects the providerRejected branch: Creatio rejected the update.
+func UpdateAccountProviderRejected(value creatio.AccountWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Branch(creatio.UpdateAccountBranchProviderRejected, value, failure)
+}
+
+// UpdateAccountDefect selects the defect branch: Input or connection credentials are invalid.
+func UpdateAccountDefect(value creatio.AccountWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Branch(creatio.UpdateAccountBranchDefect, value, failure)
+}
+
+// UpdateAccountRetry asks Dex to retry the updateAccount Step, after the delay when it is positive.
+func UpdateAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Retry[creatio.AccountWriteOutput](failure, after)
+}
+
+// UpdateAccountUpdatedDefault is the manifest mock updatedDefault: One sample account is updated.
+func UpdateAccountUpdatedDefault() connectormock.Case[creatio.AccountWriteOutput] {
+	value := connectormock.MustDecodeOutput[creatio.AccountWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+	return connectormock.Branch(creatio.UpdateAccountBranchUpdated, value, nil)
+}
+
+// UpdateAccountDefault is the manifest default, updatedDefault, which New installs.
+func UpdateAccountDefault() connectormock.Case[creatio.AccountWriteOutput] {
+	return UpdateAccountUpdatedDefault()
+}
+
+// DeleteAccountDeleted selects the deleted branch: Creatio deleted the account.
+func DeleteAccountDeleted(value creatio.AccountWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Branch(creatio.DeleteAccountBranchDeleted, value, failure)
+}
+
+// DeleteAccountNotFound selects the notFound branch: No accessible account has this UUID.
+func DeleteAccountNotFound(value creatio.AccountWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Branch(creatio.DeleteAccountBranchNotFound, value, failure)
+}
+
+// DeleteAccountProviderRejected selects the providerRejected branch: Creatio rejected the deletion.
+func DeleteAccountProviderRejected(value creatio.AccountWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Branch(creatio.DeleteAccountBranchProviderRejected, value, failure)
+}
+
+// DeleteAccountDefect selects the defect branch: Input or connection credentials are invalid.
+func DeleteAccountDefect(value creatio.AccountWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Branch(creatio.DeleteAccountBranchDefect, value, failure)
+}
+
+// DeleteAccountRetry asks Dex to retry the deleteAccount Step, after the delay when it is positive.
+func DeleteAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.AccountWriteOutput] {
+	return connectormock.Retry[creatio.AccountWriteOutput](failure, after)
+}
+
+// DeleteAccountDeletedDefault is the manifest mock deletedDefault: One sample account is deleted.
+func DeleteAccountDeletedDefault() connectormock.Case[creatio.AccountWriteOutput] {
+	value := connectormock.MustDecodeOutput[creatio.AccountWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+	return connectormock.Branch(creatio.DeleteAccountBranchDeleted, value, nil)
+}
+
+// DeleteAccountDefault is the manifest default, deletedDefault, which New installs.
+func DeleteAccountDefault() connectormock.Case[creatio.AccountWriteOutput] {
+	return DeleteAccountDeletedDefault()
 }
 
 // GetContactFound selects the found branch: Creatio returned the selected contact.

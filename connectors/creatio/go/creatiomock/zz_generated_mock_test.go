@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getAccount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}`)
+			return err
+		}},
+		{name: "listAccounts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountsPage](`{"accounts":[{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}]}`)
+			return err
+		}},
+		{name: "createAccount/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountSummary](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b","name":"Example Company"}`)
+			return err
+		}},
+		{name: "updateAccount/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
+		{name: "deleteAccount/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.AccountWriteOutput](`{"id":"59f2ffca-b4ae-4545-82e6-58830db5077b"}`)
+			return err
+		}},
 		{name: "getContact/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[creatio.ContactSummary](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}`)
 			return err
@@ -46,6 +66,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetAccount().Definition().Operation.OperationID != "getAccount" {
+		t.Errorf("getAccount mock has another definition")
+	}
+	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
+		t.Errorf("listAccounts mock has another definition")
+	}
+	if mock.CreateAccount().Definition().Operation.OperationID != "createAccount" {
+		t.Errorf("createAccount mock has another definition")
+	}
+	if mock.UpdateAccount().Definition().Operation.OperationID != "updateAccount" {
+		t.Errorf("updateAccount mock has another definition")
+	}
+	if mock.DeleteAccount().Definition().Operation.OperationID != "deleteAccount" {
+		t.Errorf("deleteAccount mock has another definition")
+	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
 	}
