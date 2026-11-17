@@ -46,6 +46,9 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateFolder() sdkgo.Mutation[CreateBoxFolderInput, CreatedBoxItem]
+	CopyFile() sdkgo.Mutation[CopyBoxFileInput, CreatedBoxItem]
+	CopyFolder() sdkgo.Mutation[CopyBoxFolderInput, CreatedBoxItem]
 	UpdateFile() sdkgo.Mutation[UpdateBoxFileInput, UpdatedBoxItem]
 	UpdateFolder() sdkgo.Mutation[UpdateBoxFolderInput, UpdatedBoxItem]
 	DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile]
@@ -61,6 +64,15 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateFolder() sdkgo.Mutation[CreateBoxFolderInput, CreatedBoxItem] {
+	return operations.client.CreateFolder()
+}
+func (operations clientOperations) CopyFile() sdkgo.Mutation[CopyBoxFileInput, CreatedBoxItem] {
+	return operations.client.CopyFile()
+}
+func (operations clientOperations) CopyFolder() sdkgo.Mutation[CopyBoxFolderInput, CreatedBoxItem] {
+	return operations.client.CopyFolder()
+}
 func (operations clientOperations) UpdateFile() sdkgo.Mutation[UpdateBoxFileInput, UpdatedBoxItem] {
 	return operations.client.UpdateFile()
 }
@@ -319,6 +331,234 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+const CreateFolderBranchCreated sdkgo.BranchID = "created"
+const CreateFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateFolderBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateFolderBranchCreated, Description: "Box created or confirmed the folder."},
+		{ID: CreateFolderBranchProviderRejected, Description: "Box definitively rejected creation.", Optional: true},
+		{ID: CreateFolderBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateFolderBranchUncertain, Description: "The send cap was reached without confirming creation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateFolderResult = sdkgo.MutationResult[CreatedBoxItem]
+
+type CreateFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=box"`
+	operationID                       struct{}                                             `connector:"operationId=createFolder"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateBoxFolderInput                        `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateFolderResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateFolderResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateFolderResult]                     `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateFolderResult]                     `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedBoxItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateFolderStep[IN any](config CreateFolderStepConfig[IN]) sdkgo.MutationStep[IN, CreateBoxFolderInput, CreatedBoxItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("box connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateBoxFolderInput, CreatedBoxItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateFolderResult] {
+			branches := make([]sdkgo.BranchTarget[CreateFolderResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateFolderBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateFolderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateFolderBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateFolderBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CopyFileBranchCopied sdkgo.BranchID = "copied"
+const CopyFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CopyFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CopyFileBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CopyFileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "copyFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CopyFileBranchCopied, Description: "Box copied or confirmed the file."},
+		{ID: CopyFileBranchProviderRejected, Description: "Box definitively rejected copying.", Optional: true},
+		{ID: CopyFileBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CopyFileBranchUncertain, Description: "The send cap was reached without confirming the copy.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CopyFileResult = sdkgo.MutationResult[CreatedBoxItem]
+
+type CopyFileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=box"`
+	operationID                       struct{}                                             `connector:"operationId=copyFile"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CopyBoxFileInput                            `connector:"mapToOperationInput"`
+	Copied                            sdkgo.Target[CopyFileResult]                         `connector:"branch=copied"`
+	ProviderRejected                  sdkgo.Target[CopyFileResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CopyFileResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CopyFileResult]                         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedBoxItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCopyFileStep[IN any](config CopyFileStepConfig[IN]) sdkgo.MutationStep[IN, CopyBoxFileInput, CreatedBoxItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("box connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CopyBoxFileInput, CreatedBoxItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CopyFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CopyFileResult] {
+			branches := make([]sdkgo.BranchTarget[CopyFileResult], 0, 4)
+			if config.Copied.HasStep() {
+				branches = append(branches, config.Copied.BranchTarget(CopyFileBranchCopied))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CopyFileBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CopyFileBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CopyFileBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CopyFolderBranchCopied sdkgo.BranchID = "copied"
+const CopyFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CopyFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CopyFolderBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CopyFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "copyFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CopyFolderBranchCopied, Description: "Box copied or confirmed the folder."},
+		{ID: CopyFolderBranchProviderRejected, Description: "Box definitively rejected copying.", Optional: true},
+		{ID: CopyFolderBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CopyFolderBranchUncertain, Description: "The send cap was reached without confirming the copy.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CopyFolderResult = sdkgo.MutationResult[CreatedBoxItem]
+
+type CopyFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=box"`
+	operationID                       struct{}                                             `connector:"operationId=copyFolder"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CopyBoxFolderInput                          `connector:"mapToOperationInput"`
+	Copied                            sdkgo.Target[CopyFolderResult]                       `connector:"branch=copied"`
+	ProviderRejected                  sdkgo.Target[CopyFolderResult]                       `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CopyFolderResult]                       `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CopyFolderResult]                       `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedBoxItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCopyFolderStep[IN any](config CopyFolderStepConfig[IN]) sdkgo.MutationStep[IN, CopyBoxFolderInput, CreatedBoxItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("box connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CopyBoxFolderInput, CreatedBoxItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CopyFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CopyFolderResult] {
+			branches := make([]sdkgo.BranchTarget[CopyFolderResult], 0, 4)
+			if config.Copied.HasStep() {
+				branches = append(branches, config.Copied.BranchTarget(CopyFolderBranchCopied))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CopyFolderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CopyFolderBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CopyFolderBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const UpdateFileBranchUpdated sdkgo.BranchID = "updated"
 const UpdateFileBranchNotFound sdkgo.BranchID = "notFound"
 const UpdateFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -339,6 +579,7 @@ var UpdateFileDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateFileResult = sdkgo.MutationResult[UpdatedBoxItem]
@@ -416,6 +657,7 @@ var UpdateFolderDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateFolderResult = sdkgo.MutationResult[UpdatedBoxItem]
@@ -576,6 +818,8 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UploadFileResult = sdkgo.MutationResult[UploadedFile]
@@ -596,6 +840,8 @@ type UploadFileStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UploadFileResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UploadedFile]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationStep[IN, UploadFileInput, UploadedFile] {
@@ -630,6 +876,7 @@ func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -1026,6 +1273,7 @@ var DeleteFileDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteFileResult = sdkgo.MutationResult[DeletedBoxItem]
@@ -1103,6 +1351,7 @@ var DeleteFolderDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteFolderResult = sdkgo.MutationResult[DeletedBoxItem]

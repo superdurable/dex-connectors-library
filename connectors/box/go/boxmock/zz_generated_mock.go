@@ -18,6 +18,9 @@ import (
 // Mock is a scripted box connection. Script each operation through its accessor.
 type Mock struct {
 	connection      box.Connection
+	createFolder    *connectormock.Mutation[box.CreateBoxFolderInput, box.CreatedBoxItem]
+	copyFile        *connectormock.Mutation[box.CopyBoxFileInput, box.CreatedBoxItem]
+	copyFolder      *connectormock.Mutation[box.CopyBoxFolderInput, box.CreatedBoxItem]
 	updateFile      *connectormock.Mutation[box.UpdateBoxFileInput, box.UpdatedBoxItem]
 	updateFolder    *connectormock.Mutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem]
 	downloadFile    *connectormock.Query[box.DownloadFileInput, box.DownloadedFile]
@@ -36,6 +39,9 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createFolder:    connectormock.NewMutation[box.CreateBoxFolderInput, box.CreatedBoxItem](t, box.CreateFolderDefinition),
+		copyFile:        connectormock.NewMutation[box.CopyBoxFileInput, box.CreatedBoxItem](t, box.CopyFileDefinition),
+		copyFolder:      connectormock.NewMutation[box.CopyBoxFolderInput, box.CreatedBoxItem](t, box.CopyFolderDefinition),
 		updateFile:      connectormock.NewMutation[box.UpdateBoxFileInput, box.UpdatedBoxItem](t, box.UpdateFileDefinition),
 		updateFolder:    connectormock.NewMutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem](t, box.UpdateFolderDefinition),
 		downloadFile:    connectormock.NewQuery[box.DownloadFileInput, box.DownloadedFile](t, box.DownloadFileDefinition),
@@ -48,6 +54,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteFile:      connectormock.NewMutation[box.DeleteFileInput, box.DeletedBoxItem](t, box.DeleteFileDefinition),
 		deleteFolder:    connectormock.NewMutation[box.DeleteFolderInput, box.DeletedBoxItem](t, box.DeleteFolderDefinition),
 	}
+	mock.createFolder.Default(CreateFolderDefault())
+	mock.copyFile.Default(CopyFileDefault())
+	mock.copyFolder.Default(CopyFolderDefault())
 	mock.updateFile.Default(UpdateFileDefault())
 	mock.updateFolder.Default(UpdateFolderDefault())
 	mock.downloadFile.Default(DownloadFileDefault())
@@ -69,6 +78,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() box.Connection { return mock.connection }
+
+// CreateFolder returns the createFolder script.
+func (mock *Mock) CreateFolder() *connectormock.Mutation[box.CreateBoxFolderInput, box.CreatedBoxItem] {
+	return mock.createFolder
+}
+
+// CopyFile returns the copyFile script.
+func (mock *Mock) CopyFile() *connectormock.Mutation[box.CopyBoxFileInput, box.CreatedBoxItem] {
+	return mock.copyFile
+}
+
+// CopyFolder returns the copyFolder script.
+func (mock *Mock) CopyFolder() *connectormock.Mutation[box.CopyBoxFolderInput, box.CreatedBoxItem] {
+	return mock.copyFolder
+}
 
 // UpdateFile returns the updateFile script.
 func (mock *Mock) UpdateFile() *connectormock.Mutation[box.UpdateBoxFileInput, box.UpdatedBoxItem] {
@@ -125,6 +149,15 @@ func (mock *Mock) DeleteFolder() *connectormock.Mutation[box.DeleteFolderInput, 
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateFolder() sdkgo.Mutation[box.CreateBoxFolderInput, box.CreatedBoxItem] {
+	return operations.mock.createFolder
+}
+func (operations mockOperations) CopyFile() sdkgo.Mutation[box.CopyBoxFileInput, box.CreatedBoxItem] {
+	return operations.mock.copyFile
+}
+func (operations mockOperations) CopyFolder() sdkgo.Mutation[box.CopyBoxFolderInput, box.CreatedBoxItem] {
+	return operations.mock.copyFolder
+}
 func (operations mockOperations) UpdateFile() sdkgo.Mutation[box.UpdateBoxFileInput, box.UpdatedBoxItem] {
 	return operations.mock.updateFile
 }
@@ -158,6 +191,110 @@ func (operations mockOperations) DeleteFile() sdkgo.Mutation[box.DeleteFileInput
 func (operations mockOperations) DeleteFolder() sdkgo.Mutation[box.DeleteFolderInput, box.DeletedBoxItem] {
 	return operations.mock.deleteFolder
 }
+
+// CreateFolderCreated selects the created branch: Box created or confirmed the folder.
+func CreateFolderCreated(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CreateFolderBranchCreated, value, failure)
+}
+
+// CreateFolderProviderRejected selects the providerRejected branch: Box definitively rejected creation.
+func CreateFolderProviderRejected(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CreateFolderBranchProviderRejected, value, failure)
+}
+
+// CreateFolderDefect selects the defect branch: Local input or credentials are invalid.
+func CreateFolderDefect(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CreateFolderBranchDefect, value, failure)
+}
+
+// CreateFolderUncertain returns an uncertain createFolder outcome.
+func CreateFolderUncertain(value box.CreatedBoxItem, failure sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateFolderRetry asks Dex to retry the createFolder Step, after the delay when it is positive.
+func CreateFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Retry[box.CreatedBoxItem](failure, after)
+}
+
+// CreateFolderCreateFolderDefault is the manifest mock createFolderDefault: One folder was created.
+func CreateFolderCreateFolderDefault() connectormock.Case[box.CreatedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.CreatedBoxItem](`{"id":"54321","type":"folder","name":"New folder","parentId":"0"}`)
+	return connectormock.Branch(box.CreateFolderBranchCreated, value, nil)
+}
+
+// CreateFolderDefault is the manifest default, createFolderDefault, which New installs.
+func CreateFolderDefault() connectormock.Case[box.CreatedBoxItem] {
+	return CreateFolderCreateFolderDefault()
+}
+
+// CopyFileCopied selects the copied branch: Box copied or confirmed the file.
+func CopyFileCopied(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CopyFileBranchCopied, value, failure)
+}
+
+// CopyFileProviderRejected selects the providerRejected branch: Box definitively rejected copying.
+func CopyFileProviderRejected(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CopyFileBranchProviderRejected, value, failure)
+}
+
+// CopyFileDefect selects the defect branch: Local input or credentials are invalid.
+func CopyFileDefect(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CopyFileBranchDefect, value, failure)
+}
+
+// CopyFileUncertain returns an uncertain copyFile outcome.
+func CopyFileUncertain(value box.CreatedBoxItem, failure sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CopyFileRetry asks Dex to retry the copyFile Step, after the delay when it is positive.
+func CopyFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Retry[box.CreatedBoxItem](failure, after)
+}
+
+// CopyFileCopyFileDefault is the manifest mock copyFileDefault: One file was copied.
+func CopyFileCopyFileDefault() connectormock.Case[box.CreatedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.CreatedBoxItem](`{"id":"67890","type":"file","name":"Copy.txt","parentId":"0"}`)
+	return connectormock.Branch(box.CopyFileBranchCopied, value, nil)
+}
+
+// CopyFileDefault is the manifest default, copyFileDefault, which New installs.
+func CopyFileDefault() connectormock.Case[box.CreatedBoxItem] { return CopyFileCopyFileDefault() }
+
+// CopyFolderCopied selects the copied branch: Box copied or confirmed the folder.
+func CopyFolderCopied(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CopyFolderBranchCopied, value, failure)
+}
+
+// CopyFolderProviderRejected selects the providerRejected branch: Box definitively rejected copying.
+func CopyFolderProviderRejected(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CopyFolderBranchProviderRejected, value, failure)
+}
+
+// CopyFolderDefect selects the defect branch: Local input or credentials are invalid.
+func CopyFolderDefect(value box.CreatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Branch(box.CopyFolderBranchDefect, value, failure)
+}
+
+// CopyFolderUncertain returns an uncertain copyFolder outcome.
+func CopyFolderUncertain(value box.CreatedBoxItem, failure sdkgo.Failure) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CopyFolderRetry asks Dex to retry the copyFolder Step, after the delay when it is positive.
+func CopyFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.CreatedBoxItem] {
+	return connectormock.Retry[box.CreatedBoxItem](failure, after)
+}
+
+// CopyFolderCopyFolderDefault is the manifest mock copyFolderDefault: One folder was copied.
+func CopyFolderCopyFolderDefault() connectormock.Case[box.CreatedBoxItem] {
+	value := connectormock.MustDecodeOutput[box.CreatedBoxItem](`{"id":"67891","type":"folder","name":"Copy folder","parentId":"0"}`)
+	return connectormock.Branch(box.CopyFolderBranchCopied, value, nil)
+}
+
+// CopyFolderDefault is the manifest default, copyFolderDefault, which New installs.
+func CopyFolderDefault() connectormock.Case[box.CreatedBoxItem] { return CopyFolderCopyFolderDefault() }
 
 // UpdateFileUpdated selects the updated branch: Box updated the file.
 func UpdateFileUpdated(value box.UpdatedBoxItem, failure *sdkgo.Failure) connectormock.Case[box.UpdatedBoxItem] {

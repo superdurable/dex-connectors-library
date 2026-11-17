@@ -4855,6 +4855,1535 @@
       },
       "name": "updateFolder-defect",
       "operation": "updateFolder"
+    },
+    {
+      "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"54321\",\"type\":\"folder\",\"name\":\"Reports\",\"parent\":{\"id\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "54321",
+          "name": "Reports",
+          "parentId": "0",
+          "type": "folder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "input": {
+        "name": "Reports",
+        "parentId": "0"
+      },
+      "name": "createFolder-success",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "input": {
+        "name": "Reports",
+        "parentId": "0"
+      },
+      "name": "createFolder-providerRejected",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "input": {
+        "name": "Reports",
+        "parentId": "0"
+      },
+      "name": "createFolder-429",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "input": {
+        "name": "Reports",
+        "parentId": "0"
+      },
+      "name": "createFolder-5xx",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "input": {
+        "name": "Reports",
+        "parentId": "0"
+      },
+      "name": "createFolder-transport",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "input": {
+        "name": "",
+        "parentId": "0"
+      },
+      "name": "createFolder-defect",
+      "operation": "createFolder"
+    },
+    {
+      "attempts": 3,
+      "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"entries\":[],\"limit\":1000,\"offset\":0,\"total_count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"entries\":[],\"limit\":1000,\"offset\":0,\"total_count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders",
+          "requestBody": {
+            "name": "Reports",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "603ba8ac-880e-576c-a566-0acb86afa69d",
+      "input": {
+        "name": "Reports",
+        "parentId": "0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "603ba8ac-880e-576c-a566-0acb86afa69d",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createFolder-uncertain",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"67890\",\"type\":\"file\",\"name\":\"Report Copy.txt\",\"parent\":{\"id\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/copy",
+          "requestBody": {
+            "name": "Report Copy.txt",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "copied",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "67890",
+          "name": "Report Copy.txt",
+          "parentId": "0",
+          "type": "file"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "input": {
+        "fileId": "12345",
+        "name": "Report Copy.txt",
+        "parentId": "0"
+      },
+      "name": "copyFile-success",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/copy",
+          "requestBody": {
+            "name": "Report Copy.txt",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "input": {
+        "fileId": "12345",
+        "name": "Report Copy.txt",
+        "parentId": "0"
+      },
+      "name": "copyFile-providerRejected",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/copy",
+          "requestBody": {
+            "name": "Report Copy.txt",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "input": {
+        "fileId": "12345",
+        "name": "Report Copy.txt",
+        "parentId": "0"
+      },
+      "name": "copyFile-429",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/copy",
+          "requestBody": {
+            "name": "Report Copy.txt",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "input": {
+        "fileId": "12345",
+        "name": "Report Copy.txt",
+        "parentId": "0"
+      },
+      "name": "copyFile-5xx",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/copy",
+          "requestBody": {
+            "name": "Report Copy.txt",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "input": {
+        "fileId": "12345",
+        "name": "Report Copy.txt",
+        "parentId": "0"
+      },
+      "name": "copyFile-transport",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "input": {
+        "fileId": "12345",
+        "name": "",
+        "parentId": "0"
+      },
+      "name": "copyFile-defect",
+      "operation": "copyFile"
+    },
+    {
+      "attempts": 3,
+      "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/copy",
+          "requestBody": {
+            "name": "Report Copy.txt",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"entries\":[],\"limit\":1000,\"offset\":0,\"total_count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/copy",
+          "requestBody": {
+            "name": "Report Copy.txt",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"entries\":[],\"limit\":1000,\"offset\":0,\"total_count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/copy",
+          "requestBody": {
+            "name": "Report Copy.txt",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "de901d9a-a88b-5099-af29-64abee30f26b",
+      "input": {
+        "fileId": "12345",
+        "name": "Report Copy.txt",
+        "parentId": "0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "de901d9a-a88b-5099-af29-64abee30f26b",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "copyFile-uncertain",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"98765\",\"type\":\"folder\",\"name\":\"Reports Copy\",\"parent\":{\"id\":\"0\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/54321/copy",
+          "requestBody": {
+            "name": "Reports Copy",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "copied",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "98765",
+          "name": "Reports Copy",
+          "parentId": "0",
+          "type": "folder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "input": {
+        "folderId": "54321",
+        "name": "Reports Copy",
+        "parentId": "0"
+      },
+      "name": "copyFolder-success",
+      "operation": "copyFolder"
+    },
+    {
+      "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/54321/copy",
+          "requestBody": {
+            "name": "Reports Copy",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "input": {
+        "folderId": "54321",
+        "name": "Reports Copy",
+        "parentId": "0"
+      },
+      "name": "copyFolder-providerRejected",
+      "operation": "copyFolder"
+    },
+    {
+      "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/54321/copy",
+          "requestBody": {
+            "name": "Reports Copy",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "input": {
+        "folderId": "54321",
+        "name": "Reports Copy",
+        "parentId": "0"
+      },
+      "name": "copyFolder-429",
+      "operation": "copyFolder"
+    },
+    {
+      "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/54321/copy",
+          "requestBody": {
+            "name": "Reports Copy",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "input": {
+        "folderId": "54321",
+        "name": "Reports Copy",
+        "parentId": "0"
+      },
+      "name": "copyFolder-5xx",
+      "operation": "copyFolder"
+    },
+    {
+      "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/54321/copy",
+          "requestBody": {
+            "name": "Reports Copy",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "input": {
+        "folderId": "54321",
+        "name": "Reports Copy",
+        "parentId": "0"
+      },
+      "name": "copyFolder-transport",
+      "operation": "copyFolder"
+    },
+    {
+      "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "input": {
+        "folderId": "54321",
+        "name": "",
+        "parentId": "0"
+      },
+      "name": "copyFolder-defect",
+      "operation": "copyFolder"
+    },
+    {
+      "attempts": 3,
+      "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/54321/copy",
+          "requestBody": {
+            "name": "Reports Copy",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"entries\":[],\"limit\":1000,\"offset\":0,\"total_count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/54321/copy",
+          "requestBody": {
+            "name": "Reports Copy",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"entries\":[],\"limit\":1000,\"offset\":0,\"total_count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/folders/54321/copy",
+          "requestBody": {
+            "name": "Reports Copy",
+            "parent": {
+              "id": "0"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": "",
+          "parentId": "",
+          "type": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+      "input": {
+        "folderId": "54321",
+        "name": "Reports Copy",
+        "parentId": "0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "d5b7a034-b3e6-5cb7-a4ca-1f9675949c28",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "copyFolder-uncertain",
+      "operation": "copyFolder"
     }
   ],
   "schemaVersion": 1

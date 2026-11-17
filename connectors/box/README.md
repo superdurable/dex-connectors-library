@@ -19,6 +19,12 @@ for root. Shared link access is `open`, `company`, or `collaborators`; Box
 enterprise policy may restrict these choices. The result includes the current
 name, parent ID, and shared link URL when Box returns them.
 
+Go `createFolder`, `copyFile`, and `copyFolder` use the `limited` repeat tier
+with a cap of three possible sends. They require a destination parent ID and
+an explicit name. After an unknown result, they list the destination folder
+by name before resending; an unconfirmed result at the cap selects `uncertain`.
+Box does not expose a provider idempotency key for these POST requests.
+
 The Box Web URL after `/files/` or `/folders/` supplies the item ID; `0` is
 the root folder and can be listed but cannot be deleted. Search requires text;
 `limit` is at most 200 for search and 1000 for folder contents, while `offset`
@@ -32,6 +38,8 @@ The download Query follows only a signed HTTPS `*.boxcloud.com` redirect, withou
 The [Go-recorded conformance scenarios](../../conformance/connectors/box/scenarios.json) define the provider request and retry behavior replayed by Python and TypeScript.
 The [`file-update` Go Flow](go/examples/file-update/README.md) exercises
 rename, move, and shared link creation against a mock through a real Dex Worker.
+The [`folder-create` Go Flow](go/examples/folder-create/README.md) exercises
+bounded folder creation through a real Dex Worker.
 
 Provider references: [file metadata](https://developer.box.com/reference/get-files-id/),
 [folder items](https://developer.box.com/reference/get-folders-id-items/),

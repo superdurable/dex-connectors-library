@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createFolder/createFolderDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.CreatedBoxItem](`{"id":"54321","type":"folder","name":"New folder","parentId":"0"}`)
+			return err
+		}},
+		{name: "copyFile/copyFileDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.CreatedBoxItem](`{"id":"67890","type":"file","name":"Copy.txt","parentId":"0"}`)
+			return err
+		}},
+		{name: "copyFolder/copyFolderDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.CreatedBoxItem](`{"id":"67891","type":"folder","name":"Copy folder","parentId":"0"}`)
+			return err
+		}},
 		{name: "updateFile/updateFileDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"12345","type":"file","name":"renamed.txt","parentId":"0","sharedLinkUrl":"https://app.box.com/s/example"}`)
 			return err
@@ -64,6 +76,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateFolder().Definition().Operation.OperationID != "createFolder" {
+		t.Errorf("createFolder mock has another definition")
+	}
+	if mock.CopyFile().Definition().Operation.OperationID != "copyFile" {
+		t.Errorf("copyFile mock has another definition")
+	}
+	if mock.CopyFolder().Definition().Operation.OperationID != "copyFolder" {
+		t.Errorf("copyFolder mock has another definition")
+	}
 	if mock.UpdateFile().Definition().Operation.OperationID != "updateFile" {
 		t.Errorf("updateFile mock has another definition")
 	}
