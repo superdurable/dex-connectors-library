@@ -24,6 +24,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[shopify.OrderPage](`{"orders":[{"id":101,"name":"#101","financial_status":"paid","total_price":"29.00","currency":"USD"}]}`)
 			return err
 		}},
+		{name: "countOrders/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[shopify.OrderCount](`{"count":1}`); return err }},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +40,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListOrders().Definition().Operation.OperationID != "listOrders" {
 		t.Errorf("listOrders mock has another definition")
+	}
+	if mock.CountOrders().Definition().Operation.OperationID != "countOrders" {
+		t.Errorf("countOrders mock has another definition")
 	}
 }

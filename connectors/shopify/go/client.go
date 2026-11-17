@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package shopify provides read-only Shopify Query operations for Dex Flows.
+// Package shopify provides read-only Shopify order Query operations for Dex Flows.
 package shopify
 
 import (
@@ -75,6 +75,44 @@ type GetOrderInput struct {
 type ListOrdersInput struct {
 	// Limit bounds one page from 1 through 250; zero uses Shopify default.
 	Limit int `json:"limit,omitempty"`
+	// PageInfo is the opaque cursor returned by a previous listOrders page.
+	PageInfo string `json:"pageInfo,omitempty"`
+	// Status filters open, closed, cancelled, or any orders; blank means any.
+	Status string `json:"status,omitempty"`
+	// FinancialStatus filters by Shopify's order financial status; blank omits the filter.
+	FinancialStatus string `json:"financialStatus,omitempty"`
+	// FulfillmentStatus filters by Shopify's order fulfillment status; blank omits the filter.
+	FulfillmentStatus string `json:"fulfillmentStatus,omitempty"`
+	// CreatedAtMin filters orders created on or after an RFC3339 timestamp.
+	CreatedAtMin string `json:"createdAtMin,omitempty"`
+	// CreatedAtMax filters orders created on or before an RFC3339 timestamp.
+	CreatedAtMax string `json:"createdAtMax,omitempty"`
+	// UpdatedAtMin filters orders updated on or after an RFC3339 timestamp.
+	UpdatedAtMin string `json:"updatedAtMin,omitempty"`
+	// UpdatedAtMax filters orders updated on or before an RFC3339 timestamp.
+	UpdatedAtMax string `json:"updatedAtMax,omitempty"`
+	// ProcessedAtMin filters orders processed on or after an RFC3339 timestamp.
+	ProcessedAtMin string `json:"processedAtMin,omitempty"`
+	// ProcessedAtMax filters orders processed on or before an RFC3339 timestamp.
+	ProcessedAtMax string `json:"processedAtMax,omitempty"`
+	// SinceID selects orders after a numeric Shopify order ID.
+	SinceID int64 `json:"sinceId,omitempty"`
+	// IDs selects a comma-separated list of numeric Shopify order IDs.
+	IDs string `json:"ids,omitempty"`
+	// AttributionAppID filters orders attributed to this numeric app ID or "current".
+	AttributionAppID string `json:"attributionAppId,omitempty"`
+}
+
+// CountOrdersInput selects the order status to count.
+type CountOrdersInput struct {
+	// Status filters open, closed, cancelled, or any orders; blank means any.
+	Status string `json:"status,omitempty"`
+}
+
+// OrderCount is Shopify's count of matching orders.
+type OrderCount struct {
+	// Count is the non-negative number of matching orders.
+	Count int64 `json:"count"`
 }
 
 // Order is a minimal Shopify order summary; protected customer data is omitted.
@@ -95,6 +133,8 @@ type Order struct {
 type OrderPage struct {
 	// Orders contains the returned orders, possibly none.
 	Orders []Order `json:"orders"`
+	// NextPageInfo is the opaque cursor for the next page; blank means no next page.
+	NextPageInfo string `json:"nextPageInfo,omitempty"`
 }
 
 // GetOrderOperation executes the getOrder read.
@@ -116,7 +156,7 @@ func (operation GetOrderOperation) Invoke(call sdkgo.Call, input GetOrderInput) 
 	return executeRead(operation.client, call, "getOrder", path, query, GetOrderBranchFound, GetOrderBranchNotFound, GetOrderBranchProviderRejected, GetOrderBranchInvalidResponse, GetOrderBranchDefect, decodeGetOrderResponse)
 }
 
-func decodeGetOrderResponse(body []byte) (Order, error) {
+func decodeGetOrderResponse(body []byte, _ http.Header) (Order, error) {
 	var response struct {
 		Order Order `json:"order"`
 	}
@@ -139,10 +179,33 @@ func (ListOrdersOperation) Definition() sdkgo.QueryDefinition { return ListOrder
 // Invoke reads the provider resource and classifies the response.
 func (operation ListOrdersOperation) Invoke(call sdkgo.Call, input ListOrdersInput) sdkgo.QueryAttempt[OrderPage] {
 	query := url.Values{}
-	query.Set("status", "any")
 	path := "/orders.json"
 	if input.Limit < 0 || input.Limit > 250 {
 		return failedAttempt[OrderPage]("listOrders", ListOrdersBranchDefect, sdkgo.FailureValidation, "limit must be 1 through 250, or zero for provider default")
+	}
+	if input.PageInfo != "" {
+		if len(input.PageInfo) > 2048 || strings.ContainsAny(input.PageInfo, " \r\n") || input.Status != "" || input.FinancialStatus != "" || input.FulfillmentStatus != "" || input.CreatedAtMin != "" || input.CreatedAtMax != "" || input.UpdatedAtMin != "" || input.UpdatedAtMax != "" || input.ProcessedAtMin != "" || input.ProcessedAtMax != "" || input.SinceID != 0 || input.IDs != "" || input.AttributionAppID != "" {
+			return failedAttempt[OrderPage]("listOrders", ListOrdersBranchDefect, sdkgo.FailureValidation, "pageInfo cannot be combined with filters and must be a bounded opaque cursor")
+		}
+		query.Set("page_info", input.PageInfo)
+	} else {
+		if !isValidOrderStatus(input.Status) || !isValidFinancialStatus(input.FinancialStatus) || !isValidFulfillmentStatus(input.FulfillmentStatus) || !isValidOrderTimestamps(input) || input.SinceID < 0 || !isValidOrderIDs(input.IDs) || !isValidAttributionAppID(input.AttributionAppID) {
+			return failedAttempt[OrderPage]("listOrders", ListOrdersBranchDefect, sdkgo.FailureValidation, "order filters are invalid")
+		}
+		query.Set("status", orderStatusOrAny(input.Status))
+		setOptionalOrderFilter(query, "financial_status", input.FinancialStatus)
+		setOptionalOrderFilter(query, "fulfillment_status", input.FulfillmentStatus)
+		setOptionalOrderFilter(query, "created_at_min", input.CreatedAtMin)
+		setOptionalOrderFilter(query, "created_at_max", input.CreatedAtMax)
+		setOptionalOrderFilter(query, "updated_at_min", input.UpdatedAtMin)
+		setOptionalOrderFilter(query, "updated_at_max", input.UpdatedAtMax)
+		setOptionalOrderFilter(query, "processed_at_min", input.ProcessedAtMin)
+		setOptionalOrderFilter(query, "processed_at_max", input.ProcessedAtMax)
+		setOptionalOrderFilter(query, "ids", input.IDs)
+		setOptionalOrderFilter(query, "attribution_app_id", input.AttributionAppID)
+		if input.SinceID > 0 {
+			query.Set("since_id", strconv.FormatInt(input.SinceID, 10))
+		}
 	}
 	if input.Limit > 0 {
 		query.Set("limit", strconv.Itoa(input.Limit))
@@ -150,7 +213,7 @@ func (operation ListOrdersOperation) Invoke(call sdkgo.Call, input ListOrdersInp
 	return executeRead(operation.client, call, "listOrders", path, query, ListOrdersBranchListed, ListOrdersBranchNotFound, ListOrdersBranchProviderRejected, ListOrdersBranchInvalidResponse, ListOrdersBranchDefect, decodeListOrdersResponse)
 }
 
-func decodeListOrdersResponse(body []byte) (OrderPage, error) {
+func decodeListOrdersResponse(body []byte, headers http.Header) (OrderPage, error) {
 	var response OrderPage
 	err := json.Unmarshal(body, &response)
 	if err != nil {
@@ -159,7 +222,126 @@ func decodeListOrdersResponse(body []byte) (OrderPage, error) {
 	if response.Orders == nil {
 		return OrderPage{}, fmt.Errorf("missing orders")
 	}
+	response.NextPageInfo = nextPageInfo(headers.Get("Link"))
 	return response, nil
+}
+
+// CountOrdersOperation executes the countOrders read.
+type CountOrdersOperation struct{ client *Client }
+
+// CountOrders returns the countOrders Query bound to this client.
+func (client *Client) CountOrders() CountOrdersOperation { return CountOrdersOperation{client: client} }
+
+// Definition returns the manifest-generated countOrders contract.
+func (CountOrdersOperation) Definition() sdkgo.QueryDefinition { return CountOrdersDefinition }
+
+// Invoke counts orders with an optional status filter.
+func (operation CountOrdersOperation) Invoke(call sdkgo.Call, input CountOrdersInput) sdkgo.QueryAttempt[OrderCount] {
+	if !isValidOrderStatus(input.Status) {
+		return failedAttempt[OrderCount]("countOrders", CountOrdersBranchDefect, sdkgo.FailureValidation, "status must be open, closed, cancelled, or any")
+	}
+	query := url.Values{"status": {orderStatusOrAny(input.Status)}}
+	return executeRead(operation.client, call, "countOrders", "/orders/count.json", query, CountOrdersBranchCounted, CountOrdersBranchNotFound, CountOrdersBranchProviderRejected, CountOrdersBranchInvalidResponse, CountOrdersBranchDefect, decodeCountOrdersResponse)
+}
+
+func decodeCountOrdersResponse(body []byte, _ http.Header) (OrderCount, error) {
+	var response struct {
+		Count *int64 `json:"count"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil || response.Count == nil || *response.Count < 0 {
+		return OrderCount{}, fmt.Errorf("missing or invalid count")
+	}
+	return OrderCount{Count: *response.Count}, nil
+}
+
+func isValidOrderStatus(value string) bool {
+	switch value {
+	case "", "any", "open", "closed", "cancelled":
+		return true
+	}
+	return false
+}
+
+func orderStatusOrAny(value string) string {
+	if value == "" {
+		return "any"
+	}
+	return value
+}
+
+func isValidFinancialStatus(value string) bool {
+	switch value {
+	case "", "any", "authorized", "pending", "paid", "partially_paid", "refunded", "voided", "partially_refunded", "unpaid":
+		return true
+	}
+	return false
+}
+
+func isValidFulfillmentStatus(value string) bool {
+	switch value {
+	case "", "any", "shipped", "partial", "unshipped", "unfulfilled":
+		return true
+	}
+	return false
+}
+
+func isValidOrderTimestamps(input ListOrdersInput) bool {
+	for _, value := range []string{input.CreatedAtMin, input.CreatedAtMax, input.UpdatedAtMin, input.UpdatedAtMax, input.ProcessedAtMin, input.ProcessedAtMax} {
+		if value != "" {
+			if _, err := time.Parse(time.RFC3339, value); err != nil {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func isValidOrderIDs(value string) bool {
+	if value == "" {
+		return true
+	}
+	ids := strings.Split(value, ",")
+	if len(ids) > 250 {
+		return false
+	}
+	for _, id := range ids {
+		parsed, err := strconv.ParseInt(id, 10, 64)
+		if err != nil || parsed <= 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func isValidAttributionAppID(value string) bool {
+	if value == "" || value == "current" {
+		return true
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	return err == nil && parsed > 0
+}
+
+func setOptionalOrderFilter(query url.Values, name, value string) {
+	if value != "" {
+		query.Set(name, value)
+	}
+}
+
+func nextPageInfo(linkHeader string) string {
+	for _, link := range strings.Split(linkHeader, ",") {
+		if !strings.Contains(link, `rel="next"`) {
+			continue
+		}
+		start, end := strings.Index(link, "<"), strings.Index(link, ">")
+		if start < 0 || end <= start {
+			continue
+		}
+		parsed, err := url.Parse(link[start+1 : end])
+		if err == nil {
+			return parsed.Query().Get("page_info")
+		}
+	}
+	return ""
 }
 
 type authResult struct {
@@ -178,7 +360,7 @@ func (client *Client) authorize(call sdkgo.Call, operation string, request *http
 	return authResult{}
 }
 
-func executeRead[T any](client *Client, call sdkgo.Call, operation, path string, query url.Values, successBranch, notFoundBranch, rejectedBranch, invalidBranch, defectBranch sdkgo.BranchID, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {
+func executeRead[T any](client *Client, call sdkgo.Call, operation, path string, query url.Values, successBranch, notFoundBranch, rejectedBranch, invalidBranch, defectBranch sdkgo.BranchID, decode func([]byte, http.Header) (T, error)) sdkgo.QueryAttempt[T] {
 	endpoint := client.baseURL + path
 	if len(query) > 0 {
 		endpoint += "?" + query.Encode()
@@ -221,7 +403,7 @@ func executeRead[T any](client *Client, call sdkgo.Call, operation, path string,
 	if err != nil {
 		return sdkgo.NewQueryRetry[T](*failureFor(operation, sdkgo.FailureAvailability, "provider response was interrupted"), 0)
 	}
-	value, err := decode(body)
+	value, err := decode(body, response.Header)
 	if err != nil {
 		return failedAttempt[T](operation, invalidBranch, sdkgo.FailureProtocol, "provider returned invalid JSON")
 	}

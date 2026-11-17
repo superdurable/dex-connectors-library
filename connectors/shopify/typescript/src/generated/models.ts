@@ -67,11 +67,39 @@ export interface Order {
 export interface ListOrdersInput {
   /** Limit bounds one page from 1 through 250; zero uses Shopify default. */
   "limit"?: number | undefined;
+  /** PageInfo is the opaque cursor returned by a previous listOrders page. */
+  "pageInfo"?: string | undefined;
+  /** Status filters open, closed, cancelled, or any orders; blank means any. */
+  "status"?: string | undefined;
+  /** FinancialStatus filters by Shopify's order financial status; blank omits the filter. */
+  "financialStatus"?: string | undefined;
+  /** FulfillmentStatus filters by Shopify's order fulfillment status; blank omits the filter. */
+  "fulfillmentStatus"?: string | undefined;
+  /** CreatedAtMin filters orders created on or after an RFC3339 timestamp. */
+  "createdAtMin"?: string | undefined;
+  /** CreatedAtMax filters orders created on or before an RFC3339 timestamp. */
+  "createdAtMax"?: string | undefined;
+  /** UpdatedAtMin filters orders updated on or after an RFC3339 timestamp. */
+  "updatedAtMin"?: string | undefined;
+  /** UpdatedAtMax filters orders updated on or before an RFC3339 timestamp. */
+  "updatedAtMax"?: string | undefined;
+  /** ProcessedAtMin filters orders processed on or after an RFC3339 timestamp. */
+  "processedAtMin"?: string | undefined;
+  /** ProcessedAtMax filters orders processed on or before an RFC3339 timestamp. */
+  "processedAtMax"?: string | undefined;
+  /** SinceID selects orders after a numeric Shopify order ID. */
+  "sinceId"?: number | undefined;
+  /** IDs selects a comma-separated list of numeric Shopify order IDs. */
+  "ids"?: string | undefined;
+  /** AttributionAppID filters orders attributed to this numeric app ID or "current". */
+  "attributionAppId"?: string | undefined;
 }
 /** OrderPage contains one Shopify order page. */
 export interface OrderPage {
   /** Orders contains the returned orders, possibly none. */
   "orders": Array<Order> | null;
+  /** NextPageInfo is the opaque cursor for the next page; blank means no next page. */
+  "nextPageInfo"?: string | undefined;
 }
 
 /** Runtime validator for GetOrderInput. */
@@ -91,9 +119,23 @@ export const OrderSchema = z.strictObject({
 /** Runtime validator for ListOrdersInput. */
 export const ListOrdersInputSchema = z.strictObject({
   "limit": z.number().int().optional(),
+  "pageInfo": z.string().optional(),
+  "status": z.string().optional(),
+  "financialStatus": z.string().optional(),
+  "fulfillmentStatus": z.string().optional(),
+  "createdAtMin": z.string().optional(),
+  "createdAtMax": z.string().optional(),
+  "updatedAtMin": z.string().optional(),
+  "updatedAtMax": z.string().optional(),
+  "processedAtMin": z.string().optional(),
+  "processedAtMax": z.string().optional(),
+  "sinceId": z.number().int().optional(),
+  "ids": z.string().optional(),
+  "attributionAppId": z.string().optional(),
 }) satisfies z.ZodType<ListOrdersInput>;
 
 /** Runtime validator for OrderPage. */
 export const OrderPageSchema = z.strictObject({
   "orders": z.array(OrderSchema).nullable(),
+  "nextPageInfo": z.string().optional(),
 }) satisfies z.ZodType<OrderPage>;

@@ -24,7 +24,8 @@ import (
 func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	mock := shopifymock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	countFlow := NewCountFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, countFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -68,4 +69,18 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, shopify.GetOrderInput{OrderID: 101}, calls[0].Input)
 	require.Equal(t, shopify.GetOrderBranchFound, calls[0].Branch)
+	countFlowID := "shopify-order-count-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, countFlow, countFlowID, CountRequest{Status: "closed"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	countResult, err := client.WaitForFlow(ctx, countFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, countResult.Status, countResult.ErrorMessage)
+	var countOutcome CountOutcome
+	require.NoError(t, countResult.DecodeSingleOutput(&countOutcome))
+	require.EqualValues(t, 1, countOutcome.Count)
+	countCalls := mock.CountOrders().Calls()
+	require.Len(t, countCalls, 1)
+	require.Equal(t, countFlowID, countCalls[0].FlowID)
+	require.Equal(t, shopify.CountOrdersInput{Status: "closed"}, countCalls[0].Input)
+	require.Equal(t, shopify.CountOrdersBranchCounted, countCalls[0].Branch)
 }

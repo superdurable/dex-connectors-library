@@ -41,6 +41,7 @@ type Connection struct {
 type Operations interface {
 	GetOrder() sdkgo.Query[GetOrderInput, Order]
 	ListOrders() sdkgo.Query[ListOrdersInput, OrderPage]
+	CountOrders() sdkgo.Query[CountOrdersInput, OrderCount]
 }
 
 type clientOperations struct{ client *Client }
@@ -50,6 +51,9 @@ func (operations clientOperations) GetOrder() sdkgo.Query[GetOrderInput, Order] 
 }
 func (operations clientOperations) ListOrders() sdkgo.Query[ListOrdersInput, OrderPage] {
 	return operations.client.ListOrders()
+}
+func (operations clientOperations) CountOrders() sdkgo.Query[CountOrdersInput, OrderCount] {
+	return operations.client.CountOrders()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -328,6 +332,83 @@ func NewListOrdersStep[IN any](config ListOrdersStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListOrdersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CountOrdersBranchCounted sdkgo.BranchID = "counted"
+const CountOrdersBranchNotFound sdkgo.BranchID = "notFound"
+const CountOrdersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CountOrdersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CountOrdersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CountOrdersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "countOrders"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CountOrdersBranchCounted, Description: "Count matching Shopify orders."},
+		{ID: CountOrdersBranchNotFound, Description: "The requested resource was not found.", Optional: true},
+		{ID: CountOrdersBranchProviderRejected, Description: "The provider conclusively rejected the request.", Optional: true},
+		{ID: CountOrdersBranchInvalidResponse, Description: "The provider returned malformed or oversized JSON.", Optional: true},
+		{ID: CountOrdersBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CountOrdersResult = sdkgo.QueryResult[OrderCount]
+
+type CountOrdersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=shopify"`
+	operationID                    struct{}                                      `connector:"operationId=countOrders"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) CountOrdersInput                     `connector:"mapToOperationInput"`
+	Counted                        sdkgo.Target[CountOrdersResult]               `connector:"branch=counted"`
+	NotFound                       sdkgo.Target[CountOrdersResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[CountOrdersResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[CountOrdersResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[CountOrdersResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[OrderCount]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewCountOrdersStep[IN any](config CountOrdersStepConfig[IN]) sdkgo.QueryStep[IN, CountOrdersInput, OrderCount] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shopify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, CountOrdersInput, OrderCount]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CountOrders(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CountOrdersResult] {
+			branches := make([]sdkgo.BranchTarget[CountOrdersResult], 0, 5)
+			if config.Counted.HasStep() {
+				branches = append(branches, config.Counted.BranchTarget(CountOrdersBranchCounted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CountOrdersBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CountOrdersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CountOrdersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CountOrdersBranchDefect))
 			}
 			return branches
 		}(),

@@ -100,6 +100,7 @@ func TestListOrdersReadsAndClassifiesProviderStatus(t *testing.T) {
 			require.NoError(t, err)
 			return
 		}
+		w.Header().Set("Link", `<https://test-shop.myshopify.com/admin/api/2026-10/orders.json?page_info=next-page&limit=10>; rel="next"`)
 		_, err := fmt.Fprint(w, "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}")
 		require.NoError(t, err)
 	}))
@@ -110,9 +111,57 @@ func TestListOrdersReadsAndClassifiesProviderStatus(t *testing.T) {
 	require.Equal(t, ListOrdersBranchListed, result.Branch)
 	require.Nil(t, result.Failure)
 	require.Len(t, result.Value.Orders, 1)
+	require.Equal(t, "next-page", result.Value.NextPageInfo)
 	status = http.StatusNotFound
 	rejected, err := sdkgo.RunQuery(queryContext{}, client.ListOrders(), testConnection, ListOrdersInput{Limit: 10})
 	require.NoError(t, err)
 	require.Equal(t, ListOrdersBranchNotFound, rejected.Branch)
 	require.NotContains(t, rejected.Failure.Message, "SENTINEL")
+}
+
+func TestListOrdersFiltersAndCursor(t *testing.T) {
+	queries := make(chan url.Values, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		queries <- request.URL.Query()
+		_, err := fmt.Fprint(w, `{"orders":[]}`)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	_, err := sdkgo.RunQuery(queryContext{}, client.ListOrders(), testConnection, ListOrdersInput{Limit: 2, Status: "closed", FinancialStatus: "paid", CreatedAtMin: "2026-01-01T00:00:00Z"})
+	require.NoError(t, err)
+	filtered := <-queries
+	require.Equal(t, "closed", filtered.Get("status"))
+	require.Equal(t, "paid", filtered.Get("financial_status"))
+	require.Equal(t, "2026-01-01T00:00:00Z", filtered.Get("created_at_min"))
+	_, err = sdkgo.RunQuery(queryContext{}, client.ListOrders(), testConnection, ListOrdersInput{Limit: 2, PageInfo: "opaque-cursor"})
+	require.NoError(t, err)
+	cursor := <-queries
+	require.Equal(t, "opaque-cursor", cursor.Get("page_info"))
+	require.Empty(t, cursor.Get("status"))
+	invalid, err := sdkgo.RunQuery(queryContext{}, client.ListOrders(), testConnection, ListOrdersInput{PageInfo: "opaque-cursor", Status: "closed"})
+	require.NoError(t, err)
+	require.Equal(t, ListOrdersBranchDefect, invalid.Branch)
+}
+
+func TestCountOrdersReadsAndClassifiesProviderStatus(t *testing.T) {
+	status := http.StatusOK
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		require.Equal(t, "/admin/api/2026-10/orders/count.json", request.URL.Path)
+		require.Equal(t, "closed", request.URL.Query().Get("status"))
+		require.Equal(t, "test-token", request.Header.Get("X-Shopify-Access-Token"))
+		w.WriteHeader(status)
+		_, err := fmt.Fprint(w, `{"count":2}`)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	counted, err := sdkgo.RunQuery(queryContext{}, client.CountOrders(), testConnection, CountOrdersInput{Status: "closed"})
+	require.NoError(t, err)
+	require.Equal(t, CountOrdersBranchCounted, counted.Branch)
+	require.EqualValues(t, 2, counted.Value.Count)
+	status = http.StatusForbidden
+	rejected, err := sdkgo.RunQuery(queryContext{}, client.CountOrders(), testConnection, CountOrdersInput{Status: "closed"})
+	require.NoError(t, err)
+	require.Equal(t, CountOrdersBranchProviderRejected, rejected.Branch)
 }

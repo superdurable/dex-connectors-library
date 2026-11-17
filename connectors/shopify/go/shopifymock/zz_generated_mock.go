@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted shopify connection. Script each operation through its accessor.
 type Mock struct {
-	connection shopify.Connection
-	getOrder   *connectormock.Query[shopify.GetOrderInput, shopify.Order]
-	listOrders *connectormock.Query[shopify.ListOrdersInput, shopify.OrderPage]
+	connection  shopify.Connection
+	getOrder    *connectormock.Query[shopify.GetOrderInput, shopify.Order]
+	listOrders  *connectormock.Query[shopify.ListOrdersInput, shopify.OrderPage]
+	countOrders *connectormock.Query[shopify.CountOrdersInput, shopify.OrderCount]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getOrder:   connectormock.NewQuery[shopify.GetOrderInput, shopify.Order](t, shopify.GetOrderDefinition),
-		listOrders: connectormock.NewQuery[shopify.ListOrdersInput, shopify.OrderPage](t, shopify.ListOrdersDefinition),
+		getOrder:    connectormock.NewQuery[shopify.GetOrderInput, shopify.Order](t, shopify.GetOrderDefinition),
+		listOrders:  connectormock.NewQuery[shopify.ListOrdersInput, shopify.OrderPage](t, shopify.ListOrdersDefinition),
+		countOrders: connectormock.NewQuery[shopify.CountOrdersInput, shopify.OrderCount](t, shopify.CountOrdersDefinition),
 	}
 	mock.getOrder.Default(GetOrderDefault())
 	mock.listOrders.Default(ListOrdersDefault())
+	mock.countOrders.Default(CountOrdersDefault())
 	connection, err := shopify.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "shopify", Name: connectionName})
 	if err != nil {
 		t.Fatalf("shopify mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) ListOrders() *connectormock.Query[shopify.ListOrdersInput, sho
 	return mock.listOrders
 }
 
+// CountOrders returns the countOrders script.
+func (mock *Mock) CountOrders() *connectormock.Query[shopify.CountOrdersInput, shopify.OrderCount] {
+	return mock.countOrders
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetOrder() sdkgo.Query[shopify.GetOrderInput, shopify.Order] {
@@ -60,6 +68,9 @@ func (operations mockOperations) GetOrder() sdkgo.Query[shopify.GetOrderInput, s
 }
 func (operations mockOperations) ListOrders() sdkgo.Query[shopify.ListOrdersInput, shopify.OrderPage] {
 	return operations.mock.listOrders
+}
+func (operations mockOperations) CountOrders() sdkgo.Query[shopify.CountOrdersInput, shopify.OrderCount] {
+	return operations.mock.countOrders
 }
 
 // GetOrderFound selects the found branch: Read one Shopify order.
@@ -139,3 +150,42 @@ func ListOrdersDefaultAnswer() connectormock.Case[shopify.OrderPage] {
 
 // ListOrdersDefault is the manifest default, defaultAnswer, which New installs.
 func ListOrdersDefault() connectormock.Case[shopify.OrderPage] { return ListOrdersDefaultAnswer() }
+
+// CountOrdersCounted selects the counted branch: Count matching Shopify orders.
+func CountOrdersCounted(value shopify.OrderCount, failure *sdkgo.Failure) connectormock.Case[shopify.OrderCount] {
+	return connectormock.Branch(shopify.CountOrdersBranchCounted, value, failure)
+}
+
+// CountOrdersNotFound selects the notFound branch: The requested resource was not found.
+func CountOrdersNotFound(value shopify.OrderCount, failure *sdkgo.Failure) connectormock.Case[shopify.OrderCount] {
+	return connectormock.Branch(shopify.CountOrdersBranchNotFound, value, failure)
+}
+
+// CountOrdersProviderRejected selects the providerRejected branch: The provider conclusively rejected the request.
+func CountOrdersProviderRejected(value shopify.OrderCount, failure *sdkgo.Failure) connectormock.Case[shopify.OrderCount] {
+	return connectormock.Branch(shopify.CountOrdersBranchProviderRejected, value, failure)
+}
+
+// CountOrdersInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func CountOrdersInvalidResponse(value shopify.OrderCount, failure *sdkgo.Failure) connectormock.Case[shopify.OrderCount] {
+	return connectormock.Branch(shopify.CountOrdersBranchInvalidResponse, value, failure)
+}
+
+// CountOrdersDefect selects the defect branch: Local input or connection credentials are invalid.
+func CountOrdersDefect(value shopify.OrderCount, failure *sdkgo.Failure) connectormock.Case[shopify.OrderCount] {
+	return connectormock.Branch(shopify.CountOrdersBranchDefect, value, failure)
+}
+
+// CountOrdersRetry asks Dex to retry the countOrders Step, after the delay when it is positive.
+func CountOrdersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.OrderCount] {
+	return connectormock.Retry[shopify.OrderCount](failure, after)
+}
+
+// CountOrdersDefaultAnswer is the manifest mock defaultAnswer: A realistic countOrders response for a Meridian account.
+func CountOrdersDefaultAnswer() connectormock.Case[shopify.OrderCount] {
+	value := connectormock.MustDecodeOutput[shopify.OrderCount](`{"count":1}`)
+	return connectormock.Branch(shopify.CountOrdersBranchCounted, value, nil)
+}
+
+// CountOrdersDefault is the manifest default, defaultAnswer, which New installs.
+func CountOrdersDefault() connectormock.Case[shopify.OrderCount] { return CountOrdersDefaultAnswer() }

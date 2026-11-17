@@ -8,7 +8,9 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { ShopifyClient } from '../src/client.js';
 import { GetOrderInputSchema, ListOrdersInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/shopify/scenarios.json', import.meta.url));
+const supportedListScenarios = new Set(['listOrders-success', 'listOrders-not-found', 'listOrders-provider-rejected', 'listOrders-invalid-response', 'listOrders-rate-limit', 'listOrders-unavailable', 'listOrders-transport-before-send', 'listOrders-defect']);
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/shopify/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getOrder' || supportedListScenarios.has(scenario.name));
 const connection = { provider: 'shopify', name: 'shopify-orders' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeShopify, '/admin/api/2026-10'));

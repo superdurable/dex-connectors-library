@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: shopify
   displayName: Shopify
-  description: "Read Shopify resources through typed Dex Query Steps."
+  description: "Read and count Shopify orders through typed Dex Query Steps."
   company: Shopify
   categories: [ecommerce]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: shopify
   languages:
@@ -92,6 +92,7 @@ spec:
         - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       execution:
+        repeatOnUnknown: safe
         executeMethodTimeout: 30s
         durability: async
       mocks:
@@ -100,3 +101,27 @@ spec:
           description: "A realistic read-only listOrders response for a Meridian account."
           default: true
           output: {"orders":[{"id":101,"name":"#101","financial_status":"paid","total_price":"29.00","currency":"USD"}]}
+    - name: countOrders
+      goName: CountOrders
+      inputType: CountOrdersInput
+      outputType: OrderCount
+      kind: query
+      description: "Count Shopify orders with an optional status filter."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: counted, goName: Counted, description: "Count matching Shopify orders."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        repeatOnUnknown: safe
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: counted
+          description: "A realistic countOrders response for a Meridian account."
+          default: true
+          output: {"count": 1}

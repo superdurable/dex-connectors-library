@@ -624,6 +624,572 @@
       },
       "name": "listOrders-defect",
       "operation": "listOrders"
+    },
+    {
+      "callId": "shopify-countOrders-success",
+      "exchanges": [
+        {
+          "body": "{\"count\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "counted",
+        "failureKind": "",
+        "output": {
+          "count": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-success",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-not-found",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-not-found",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-provider-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-provider-rejected",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-invalid-response",
+      "exchanges": [
+        {
+          "body": "{\"wrong\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-invalid-response",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-rate-limit",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-rate-limit",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-unavailable",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-unavailable",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-transport-before-send",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders/count.json",
+          "query": {
+            "status": [
+              "closed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "closed"
+      },
+      "name": "countOrders-transport-before-send",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-countOrders-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "status": "invalid"
+      },
+      "name": "countOrders-defect",
+      "operation": "countOrders"
+    },
+    {
+      "callId": "shopify-listOrders-filtered",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders.json",
+          "query": {
+            "attribution_app_id": [
+              "current"
+            ],
+            "created_at_max": [
+              "2026-02-01T00:00:00Z"
+            ],
+            "created_at_min": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "financial_status": [
+              "paid"
+            ],
+            "fulfillment_status": [
+              "unfulfilled"
+            ],
+            "limit": [
+              "2"
+            ],
+            "processed_at_max": [
+              "2026-02-01T00:00:00Z"
+            ],
+            "processed_at_min": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "status": [
+              "closed"
+            ],
+            "updated_at_max": [
+              "2026-02-01T00:00:00Z"
+            ],
+            "updated_at_min": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "currency": "USD",
+              "financial_status": "paid",
+              "id": 101,
+              "name": "#101",
+              "total_price": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "attributionAppId": "current",
+        "createdAtMax": "2026-02-01T00:00:00Z",
+        "createdAtMin": "2026-01-01T00:00:00Z",
+        "financialStatus": "paid",
+        "fulfillmentStatus": "unfulfilled",
+        "limit": 2,
+        "processedAtMax": "2026-02-01T00:00:00Z",
+        "processedAtMin": "2026-01-01T00:00:00Z",
+        "status": "closed",
+        "updatedAtMax": "2026-02-01T00:00:00Z",
+        "updatedAtMin": "2026-01-01T00:00:00Z"
+      },
+      "name": "listOrders-filtered",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "shopify-listOrders-since-id",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders.json",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "since_id": [
+              "100"
+            ],
+            "status": [
+              "any"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "currency": "USD",
+              "financial_status": "paid",
+              "id": 101,
+              "name": "#101",
+              "total_price": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "sinceId": 100
+      },
+      "name": "listOrders-since-id",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "shopify-listOrders-ids",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders.json",
+          "query": {
+            "ids": [
+              "101,102"
+            ],
+            "limit": [
+              "2"
+            ],
+            "status": [
+              "any"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "currency": "USD",
+              "financial_status": "paid",
+              "id": 101,
+              "name": "#101",
+              "total_price": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ids": "101,102",
+        "limit": 2
+      },
+      "name": "listOrders-ids",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "shopify-listOrders-cursor",
+      "exchanges": [
+        {
+          "body": "{\"orders\":[{\"id\":101,\"name\":\"#101\",\"financial_status\":\"paid\",\"total_price\":\"29.00\",\"currency\":\"USD\"}]}",
+          "headers": {
+            "Link": "\u003chttps://test-shop.myshopify.com/admin/api/2026-10/orders.json?page_info=cursor-2\u0026limit=2\u003e; rel=\"next\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/orders.json",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "page_info": [
+              "cursor-1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Shopify-Access-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageInfo": "cursor-2",
+          "orders": [
+            {
+              "currency": "USD",
+              "financial_status": "paid",
+              "id": 101,
+              "name": "#101",
+              "total_price": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "pageInfo": "cursor-1"
+      },
+      "name": "listOrders-cursor",
+      "operation": "listOrders"
     }
   ],
   "schemaVersion": 1
