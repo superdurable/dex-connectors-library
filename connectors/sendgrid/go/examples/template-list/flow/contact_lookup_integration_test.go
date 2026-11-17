@@ -21,11 +21,12 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestContactAndListLookupUsesMockWithRealDex(t *testing.T) {
+func TestContactListAndMailUseMockWithRealDex(t *testing.T) {
 	mock := sendgridmock.New(t, ConnectionName)
 	flow := NewContactFlow(mock.Connection())
 	listFlow := NewMarketingListFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, listFlow})
+	mailFlow := NewMailFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, listFlow, mailFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -70,4 +71,17 @@ func TestContactAndListLookupUsesMockWithRealDex(t *testing.T) {
 	require.Len(t, listPage.Lists, 1)
 	require.Equal(t, "Customers", listPage.Lists[0].Name)
 	require.Len(t, mock.ListLists().Calls(), 1)
+	mailInput := sendgrid.SendMailInput{From: "sender@example.com", To: []string{"priya@example.com"}, Subject: "Example notice", Text: "Hello from the mock-backed example"}
+	mailFlowID := "sendgrid-mail-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, mailFlow, mailFlowID, mailInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	mailResult, err := client.WaitForFlow(ctx, mailFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, mailResult.Status, mailResult.ErrorMessage)
+	var mailOutput sendgrid.SendMailOutput
+	require.NoError(t, mailResult.DecodeSingleOutput(&mailOutput))
+	require.True(t, mailOutput.Accepted)
+	mailCalls := mock.SendMail().Calls()
+	require.Len(t, mailCalls, 1)
+	require.Equal(t, mailInput, mailCalls[0].Input)
 }

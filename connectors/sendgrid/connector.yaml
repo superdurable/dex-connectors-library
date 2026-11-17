@@ -52,7 +52,7 @@ spec:
       startURL: https://app.sendgrid.com/settings/api_keys
       steps:
         - Open https://app.sendgrid.com/settings/api_keys and sign in or create an account.
-        - Navigate to SendGrid > Settings > API Keys > Create API Key; create or select a key with permission for the listed statistics, template, and marketing contact operations, and copy its provider-issued string.
+        - Navigate to SendGrid > Settings > API Keys > Create API Key; create or select a key with permission for the listed statistics, template, marketing, and mail send operations, and copy its provider-issued string.
         - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
     - name: getStats
@@ -246,3 +246,18 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
       mocks:
         - {name: createdList, branch: created, description: SendGrid created a static list., default: true, output: {id: list-123, name: Customers, contactCount: 0}}
+    - name: sendMail
+      goName: SendMail
+      inputType: SendMailInput
+      outputType: SendMailOutput
+      kind: mutation
+      description: Send one transactional email without binary attachments, bounding ambiguous resends.
+      idempotency: required
+      branches:
+        - {id: accepted, goName: Accepted, description: SendGrid accepted the email for delivery.}
+        - {id: providerRejected, goName: ProviderRejected, description: "SendGrid rejected the sender, recipients, content, or authorization.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: An email may have been accepted but the outcome cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local mail input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      mocks:
+        - {name: acceptedMail, branch: accepted, description: SendGrid accepted one message for delivery., default: true, output: {accepted: true}}

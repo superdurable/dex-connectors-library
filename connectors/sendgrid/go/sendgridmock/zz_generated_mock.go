@@ -29,6 +29,7 @@ type Mock struct {
 	updateList     *connectormock.Mutation[sendgrid.UpdateListInput, sendgrid.MarketingList]
 	deleteList     *connectormock.Mutation[sendgrid.ListIDInput, sendgrid.DeletedListOutput]
 	createList     *connectormock.Mutation[sendgrid.CreateListInput, sendgrid.MarketingList]
+	sendMail       *connectormock.Mutation[sendgrid.SendMailInput, sendgrid.SendMailOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -47,6 +48,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateList:     connectormock.NewMutation[sendgrid.UpdateListInput, sendgrid.MarketingList](t, sendgrid.UpdateListDefinition),
 		deleteList:     connectormock.NewMutation[sendgrid.ListIDInput, sendgrid.DeletedListOutput](t, sendgrid.DeleteListDefinition),
 		createList:     connectormock.NewMutation[sendgrid.CreateListInput, sendgrid.MarketingList](t, sendgrid.CreateListDefinition),
+		sendMail:       connectormock.NewMutation[sendgrid.SendMailInput, sendgrid.SendMailOutput](t, sendgrid.SendMailDefinition),
 	}
 	mock.getStats.Default(GetStatsDefault())
 	mock.listTemplates.Default(ListTemplatesDefault())
@@ -59,6 +61,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateList.Default(UpdateListDefault())
 	mock.deleteList.Default(DeleteListDefault())
 	mock.createList.Default(CreateListDefault())
+	mock.sendMail.Default(SendMailDefault())
 	connection, err := sendgrid.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "sendgrid", Name: connectionName})
 	if err != nil {
 		t.Fatalf("sendgrid mock connection: %v", err)
@@ -125,6 +128,11 @@ func (mock *Mock) CreateList() *connectormock.Mutation[sendgrid.CreateListInput,
 	return mock.createList
 }
 
+// SendMail returns the sendMail script.
+func (mock *Mock) SendMail() *connectormock.Mutation[sendgrid.SendMailInput, sendgrid.SendMailOutput] {
+	return mock.sendMail
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetStats() sdkgo.Query[sendgrid.GetStatsInput, sendgrid.StatsOutput] {
@@ -159,6 +167,9 @@ func (operations mockOperations) DeleteList() sdkgo.Mutation[sendgrid.ListIDInpu
 }
 func (operations mockOperations) CreateList() sdkgo.Mutation[sendgrid.CreateListInput, sendgrid.MarketingList] {
 	return operations.mock.createList
+}
+func (operations mockOperations) SendMail() sdkgo.Mutation[sendgrid.SendMailInput, sendgrid.SendMailOutput] {
+	return operations.mock.sendMail
 }
 
 // GetStatsFound selects the found branch: SendGrid returned the requested result.
@@ -569,3 +580,37 @@ func CreateListCreatedList() connectormock.Case[sendgrid.MarketingList] {
 
 // CreateListDefault is the manifest default, createdList, which New installs.
 func CreateListDefault() connectormock.Case[sendgrid.MarketingList] { return CreateListCreatedList() }
+
+// SendMailAccepted selects the accepted branch: SendGrid accepted the email for delivery.
+func SendMailAccepted(value sendgrid.SendMailOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Branch(sendgrid.SendMailBranchAccepted, value, failure)
+}
+
+// SendMailProviderRejected selects the providerRejected branch: SendGrid rejected the sender, recipients, content, or authorization.
+func SendMailProviderRejected(value sendgrid.SendMailOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Branch(sendgrid.SendMailBranchProviderRejected, value, failure)
+}
+
+// SendMailUncertain returns an uncertain sendMail outcome.
+func SendMailUncertain(value sendgrid.SendMailOutput, failure sdkgo.Failure) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendMailDefect selects the defect branch: Local mail input or connection is invalid.
+func SendMailDefect(value sendgrid.SendMailOutput, failure *sdkgo.Failure) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Branch(sendgrid.SendMailBranchDefect, value, failure)
+}
+
+// SendMailRetry asks Dex to retry the sendMail Step, after the delay when it is positive.
+func SendMailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sendgrid.SendMailOutput] {
+	return connectormock.Retry[sendgrid.SendMailOutput](failure, after)
+}
+
+// SendMailAcceptedMail is the manifest mock acceptedMail: SendGrid accepted one message for delivery.
+func SendMailAcceptedMail() connectormock.Case[sendgrid.SendMailOutput] {
+	value := connectormock.MustDecodeOutput[sendgrid.SendMailOutput](`{"accepted":true}`)
+	return connectormock.Branch(sendgrid.SendMailBranchAccepted, value, nil)
+}
+
+// SendMailDefault is the manifest default, acceptedMail, which New installs.
+func SendMailDefault() connectormock.Case[sendgrid.SendMailOutput] { return SendMailAcceptedMail() }

@@ -68,6 +68,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sendgrid.MarketingList](`{"id":"list-123","name":"Customers","contactCount":0}`)
 			return err
 		}},
+		{name: "sendMail/acceptedMail/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.SendMailOutput](`{"accepted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -110,5 +114,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.CreateList().Definition().Operation.OperationID != "createList" {
 		t.Errorf("createList mock has another definition")
+	}
+	if mock.SendMail().Definition().Operation.OperationID != "sendMail" {
+		t.Errorf("sendMail mock has another definition")
 	}
 }

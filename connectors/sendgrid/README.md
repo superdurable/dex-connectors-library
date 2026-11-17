@@ -21,6 +21,7 @@ Read SendGrid global statistics and transactional templates, and manage marketin
 | `updateList` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/lists/update-list |
 | `deleteList` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/lists/delete-a-list |
 | `createList` | Mutation, limited | https://www.twilio.com/docs/sendgrid/api-reference/lists/create-list |
+| `sendMail` | Mutation, limited | https://www.twilio.com/docs/sendgrid/api-reference/mail-send/mail-send |
 
 The examples use `sendgrid.NewGetStatsStep` and `sendgrid.NewListTemplatesStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `listTemplates` always sends `page_size`: zero in `PageSize` selects 100, and explicit values must be 1–200. Pass `NextPageToken` from one result as the next call's `PageToken`; blank starts at page one. SendGrid's exact `_metadata.count` meaning remains unverified.
 
@@ -56,4 +57,4 @@ Both example Flow integration tests start real Dex Flows through the mock connec
 
 ## Unverified live behavior
 
-A real account key, regional base URL choice, contact write permissions, and Dex Web connection form have not been verified. The queued contact operations return a job ID; acceptance does not prove that asynchronous processing completed.
+A real account key, regional base URL choice, contact write and mail send permissions, and Dex Web connection form have not been verified. The queued contact operations return a job ID; acceptance does not prove that asynchronous processing completed. `sendMail` accepts plain text or HTML and excludes binary attachments. Set `From` to an address verified under SendGrid > Settings > Sender Authentication, and use provider-issued email addresses in `To`, `CC`, and `BCC`. A blank `Text` is allowed when `HTML` is set, and vice versa. Unknown send outcomes may cause up to three possible sends before `uncertain`.

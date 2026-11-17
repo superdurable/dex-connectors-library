@@ -3222,6 +3222,681 @@
       },
       "name": "createList-uncertain",
       "operation": "createList"
+    },
+    {
+      "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/mail/send",
+          "requestBody": {
+            "content": [
+              {
+                "type": "text/plain",
+                "value": "Hello Priya"
+              },
+              {
+                "type": "text/html",
+                "value": "\u003cp\u003eHello Priya\u003c/p\u003e"
+              }
+            ],
+            "from": {
+              "email": "sender@example.com"
+            },
+            "personalizations": [
+              {
+                "bcc": [
+                  {
+                    "email": "audit@example.com"
+                  }
+                ],
+                "cc": [
+                  {
+                    "email": "copy@example.com"
+                  }
+                ],
+                "to": [
+                  {
+                    "email": "priya@example.com"
+                  }
+                ]
+              }
+            ],
+            "subject": "Account update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "input": {
+        "bcc": [
+          "audit@example.com"
+        ],
+        "cc": [
+          "copy@example.com"
+        ],
+        "from": "sender@example.com",
+        "html": "\u003cp\u003eHello Priya\u003c/p\u003e",
+        "subject": "Account update",
+        "text": "Hello Priya",
+        "to": [
+          "priya@example.com"
+        ]
+      },
+      "name": "sendMail-accepted",
+      "operation": "sendMail"
+    },
+    {
+      "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"PRIVATE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/mail/send",
+          "requestBody": {
+            "content": [
+              {
+                "type": "text/plain",
+                "value": "Hello Priya"
+              },
+              {
+                "type": "text/html",
+                "value": "\u003cp\u003eHello Priya\u003c/p\u003e"
+              }
+            ],
+            "from": {
+              "email": "sender@example.com"
+            },
+            "personalizations": [
+              {
+                "bcc": [
+                  {
+                    "email": "audit@example.com"
+                  }
+                ],
+                "cc": [
+                  {
+                    "email": "copy@example.com"
+                  }
+                ],
+                "to": [
+                  {
+                    "email": "priya@example.com"
+                  }
+                ]
+              }
+            ],
+            "subject": "Account update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "input": {
+        "bcc": [
+          "audit@example.com"
+        ],
+        "cc": [
+          "copy@example.com"
+        ],
+        "from": "sender@example.com",
+        "html": "\u003cp\u003eHello Priya\u003c/p\u003e",
+        "subject": "Account update",
+        "text": "Hello Priya",
+        "to": [
+          "priya@example.com"
+        ]
+      },
+      "name": "sendMail-rejected",
+      "operation": "sendMail"
+    },
+    {
+      "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "input": {
+        "bcc": [
+          "audit@example.com"
+        ],
+        "cc": [
+          "copy@example.com"
+        ],
+        "from": "invalid",
+        "html": "\u003cp\u003eHello Priya\u003c/p\u003e",
+        "subject": "Account update",
+        "text": "Hello Priya",
+        "to": [
+          "priya@example.com"
+        ]
+      },
+      "name": "sendMail-defect",
+      "operation": "sendMail"
+    },
+    {
+      "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/mail/send",
+          "requestBody": {
+            "content": [
+              {
+                "type": "text/plain",
+                "value": "Hello Priya"
+              },
+              {
+                "type": "text/html",
+                "value": "\u003cp\u003eHello Priya\u003c/p\u003e"
+              }
+            ],
+            "from": {
+              "email": "sender@example.com"
+            },
+            "personalizations": [
+              {
+                "bcc": [
+                  {
+                    "email": "audit@example.com"
+                  }
+                ],
+                "cc": [
+                  {
+                    "email": "copy@example.com"
+                  }
+                ],
+                "to": [
+                  {
+                    "email": "priya@example.com"
+                  }
+                ]
+              }
+            ],
+            "subject": "Account update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "input": {
+        "bcc": [
+          "audit@example.com"
+        ],
+        "cc": [
+          "copy@example.com"
+        ],
+        "from": "sender@example.com",
+        "html": "\u003cp\u003eHello Priya\u003c/p\u003e",
+        "subject": "Account update",
+        "text": "Hello Priya",
+        "to": [
+          "priya@example.com"
+        ]
+      },
+      "name": "sendMail-429",
+      "operation": "sendMail"
+    },
+    {
+      "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/mail/send",
+          "requestBody": {
+            "content": [
+              {
+                "type": "text/plain",
+                "value": "Hello Priya"
+              },
+              {
+                "type": "text/html",
+                "value": "\u003cp\u003eHello Priya\u003c/p\u003e"
+              }
+            ],
+            "from": {
+              "email": "sender@example.com"
+            },
+            "personalizations": [
+              {
+                "bcc": [
+                  {
+                    "email": "audit@example.com"
+                  }
+                ],
+                "cc": [
+                  {
+                    "email": "copy@example.com"
+                  }
+                ],
+                "to": [
+                  {
+                    "email": "priya@example.com"
+                  }
+                ]
+              }
+            ],
+            "subject": "Account update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "input": {
+        "bcc": [
+          "audit@example.com"
+        ],
+        "cc": [
+          "copy@example.com"
+        ],
+        "from": "sender@example.com",
+        "html": "\u003cp\u003eHello Priya\u003c/p\u003e",
+        "subject": "Account update",
+        "text": "Hello Priya",
+        "to": [
+          "priya@example.com"
+        ]
+      },
+      "name": "sendMail-503",
+      "operation": "sendMail"
+    },
+    {
+      "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/mail/send",
+          "requestBody": {
+            "content": [
+              {
+                "type": "text/plain",
+                "value": "Hello Priya"
+              },
+              {
+                "type": "text/html",
+                "value": "\u003cp\u003eHello Priya\u003c/p\u003e"
+              }
+            ],
+            "from": {
+              "email": "sender@example.com"
+            },
+            "personalizations": [
+              {
+                "bcc": [
+                  {
+                    "email": "audit@example.com"
+                  }
+                ],
+                "cc": [
+                  {
+                    "email": "copy@example.com"
+                  }
+                ],
+                "to": [
+                  {
+                    "email": "priya@example.com"
+                  }
+                ]
+              }
+            ],
+            "subject": "Account update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "input": {
+        "bcc": [
+          "audit@example.com"
+        ],
+        "cc": [
+          "copy@example.com"
+        ],
+        "from": "sender@example.com",
+        "html": "\u003cp\u003eHello Priya\u003c/p\u003e",
+        "subject": "Account update",
+        "text": "Hello Priya",
+        "to": [
+          "priya@example.com"
+        ]
+      },
+      "name": "sendMail-500",
+      "operation": "sendMail"
+    },
+    {
+      "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/mail/send",
+          "requestBody": {
+            "content": [
+              {
+                "type": "text/plain",
+                "value": "Hello Priya"
+              },
+              {
+                "type": "text/html",
+                "value": "\u003cp\u003eHello Priya\u003c/p\u003e"
+              }
+            ],
+            "from": {
+              "email": "sender@example.com"
+            },
+            "personalizations": [
+              {
+                "bcc": [
+                  {
+                    "email": "audit@example.com"
+                  }
+                ],
+                "cc": [
+                  {
+                    "email": "copy@example.com"
+                  }
+                ],
+                "to": [
+                  {
+                    "email": "priya@example.com"
+                  }
+                ]
+              }
+            ],
+            "subject": "Account update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "input": {
+        "bcc": [
+          "audit@example.com"
+        ],
+        "cc": [
+          "copy@example.com"
+        ],
+        "from": "sender@example.com",
+        "html": "\u003cp\u003eHello Priya\u003c/p\u003e",
+        "subject": "Account update",
+        "text": "Hello Priya",
+        "to": [
+          "priya@example.com"
+        ]
+      },
+      "name": "sendMail-transport",
+      "operation": "sendMail"
+    },
+    {
+      "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/mail/send",
+          "requestBody": {
+            "content": [
+              {
+                "type": "text/plain",
+                "value": "Hello Priya"
+              },
+              {
+                "type": "text/html",
+                "value": "\u003cp\u003eHello Priya\u003c/p\u003e"
+              }
+            ],
+            "from": {
+              "email": "sender@example.com"
+            },
+            "personalizations": [
+              {
+                "bcc": [
+                  {
+                    "email": "audit@example.com"
+                  }
+                ],
+                "cc": [
+                  {
+                    "email": "copy@example.com"
+                  }
+                ],
+                "to": [
+                  {
+                    "email": "priya@example.com"
+                  }
+                ]
+              }
+            ],
+            "subject": "Account update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e0803b74-1e41-564b-9585-be0fbaa2966d",
+      "input": {
+        "bcc": [
+          "audit@example.com"
+        ],
+        "cc": [
+          "copy@example.com"
+        ],
+        "from": "sender@example.com",
+        "html": "\u003cp\u003eHello Priya\u003c/p\u003e",
+        "subject": "Account update",
+        "text": "Hello Priya",
+        "to": [
+          "priya@example.com"
+        ]
+      },
+      "name": "sendMail-uncertain",
+      "operation": "sendMail"
     }
   ],
   "schemaVersion": 1

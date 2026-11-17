@@ -32,5 +32,6 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"updateList":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateList(), testConnection, scenario.CallID),
 		"deleteList":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteList(), testConnection, scenario.CallID),
 		"createList":     newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateList(), testConnection, scenario.CallID),
+		"sendMail":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.SendMail(), testConnection, scenario.CallID),
 	}}
 }

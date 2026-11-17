@@ -51,6 +51,7 @@ type Operations interface {
 	UpdateList() sdkgo.Mutation[UpdateListInput, MarketingList]
 	DeleteList() sdkgo.Mutation[ListIDInput, DeletedListOutput]
 	CreateList() sdkgo.Mutation[CreateListInput, MarketingList]
+	SendMail() sdkgo.Mutation[SendMailInput, SendMailOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -87,6 +88,9 @@ func (operations clientOperations) DeleteList() sdkgo.Mutation[ListIDInput, Dele
 }
 func (operations clientOperations) CreateList() sdkgo.Mutation[CreateListInput, MarketingList] {
 	return operations.client.CreateList()
+}
+func (operations clientOperations) SendMail() sdkgo.Mutation[SendMailInput, SendMailOutput] {
+	return operations.client.SendMail()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1031,6 +1035,82 @@ func NewCreateListStep[IN any](config CreateListStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CreateListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendMailBranchAccepted sdkgo.BranchID = "accepted"
+const SendMailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendMailBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendMailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendMailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendMailBranchAccepted, Description: "SendGrid accepted the email for delivery."},
+		{ID: SendMailBranchProviderRejected, Description: "SendGrid rejected the sender, recipients, content, or authorization.", Optional: true},
+		{ID: SendMailBranchUncertain, Description: "An email may have been accepted but the outcome cannot be confirmed.", Optional: true},
+		{ID: SendMailBranchDefect, Description: "Local mail input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendMailResult = sdkgo.MutationResult[SendMailOutput]
+
+type SendMailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=sendgrid"`
+	operationID                       struct{}                                             `connector:"operationId=sendMail"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendMailInput                               `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[SendMailResult]                         `connector:"branch=accepted"`
+	ProviderRejected                  sdkgo.Target[SendMailResult]                         `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendMailResult]                         `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendMailResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SendMailOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendMailStep[IN any](config SendMailStepConfig[IN]) sdkgo.MutationStep[IN, SendMailInput, SendMailOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("sendgrid connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMailInput, SendMailOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendMail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendMailResult] {
+			branches := make([]sdkgo.BranchTarget[SendMailResult], 0, 4)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(SendMailBranchAccepted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendMailBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendMailBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendMailBranchDefect))
 			}
 			return branches
 		}(),
