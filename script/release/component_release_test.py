@@ -82,6 +82,21 @@ class OfflineDependencyReleaseLookup(release.DependencyReleaseLookup):
 
 
 class ComponentReleaseTest(unittest.TestCase):
+    def test_numeric_connector_directory_uses_importable_python_package(self) -> None:
+        package = self.repository / "connectors/365api/python"
+        self.assertEqual(
+            release.language_connector_manifest_path(package, "python"),
+            package / "src/dex_connectors/_365api/dex-connector.json",
+        )
+        manifest = json.dumps({
+            "releaseTag": "connectors/365api/go/v0.1.0",
+            "package": {"ecosystem": "pypi", "name": "dex-connector-365api", "version": "0.1.0"},
+        }).encode()
+        self.assertEqual(
+            release.verify_packaged_connector_manifest(manifest, "python", "dex-connector-365api", "0.1.0"),
+            "_365api",
+        )
+
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)

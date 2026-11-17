@@ -690,7 +690,13 @@ def verify_packaged_connector_manifest(contents: bytes, language: str, package: 
         if isinstance(release_tag, str) else None
     if match is None:
         raise ValueError("dex-connector.json releaseTag must name a stable Go connector release")
-    return re.sub(r"[/\-]", "_", match.group(1))
+    return python_connector_import_package(match.group(1))
+
+
+def python_connector_import_package(connector_directory: str) -> str:
+    """Derive the import name from a connector path, including numeric slugs."""
+    import_package = re.sub(r"[/\-]", "_", connector_directory)
+    return f"_{import_package}" if import_package[0].isdigit() else import_package
 
 
 def python_distribution_filename(package: str) -> str:
@@ -1012,7 +1018,7 @@ def language_connector_manifest_path(path: Path, language: str) -> Path:
     if not connector_directory:
         raise ValueError(f"language connector package is outside connectors/: {path}")
     if language == "python":
-        import_package = re.sub(r"[/\-]", "_", connector_directory)
+        import_package = python_connector_import_package(connector_directory)
         return path / "src" / "dex_connectors" / import_package / "dex-connector.json"
     if language == "typescript":
         return path / "dex-connector.json"
