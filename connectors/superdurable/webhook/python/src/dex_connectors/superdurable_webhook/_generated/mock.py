@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import SendEventInput, SendEventOutput
+from ..models import RequestReceivedTriggerConfiguration, SendEventInput, SendEventOutput, WebhookRequestEvent
 from .definitions import CONNECTOR_ID, DEFECT, DELIVERED, REJECTED, SEND_EVENT_DEFINITION
 
 def send_event_delivered(value: SendEventOutput, failure: Failure | None = None) -> Case[SendEventOutput]:
