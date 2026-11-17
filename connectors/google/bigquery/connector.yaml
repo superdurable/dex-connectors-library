@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: google-bigquery
   displayName: Google BigQuery
-  description: Discover accessible datasets in one Google Cloud project.
+  description: Read BigQuery dataset and table metadata, table rows, and bounded query results.
   company: Google
   categories: [databases-storage, analytics]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: google-bigquery
   languages:
@@ -90,6 +90,109 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: getDataset
+      goName: GetDataset
+      inputType: GetDatasetInput
+      outputType: Dataset
+      kind: query
+      description: Read one dataset identity and display name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: BigQuery returned the dataset.}
+        - {id: notFound, goName: NotFound, description: The dataset was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: BigQuery rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BigQuery returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Dataset identity or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: An example dataset was found., output: {id: reporting, projectId: sample-project, friendlyName: Reporting}}
+    - name: listTables
+      goName: ListTables
+      inputType: ListTablesInput
+      outputType: TablesPage
+      kind: query
+      description: List one bounded page of tables in a dataset.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: BigQuery returned the table page.}
+        - {id: notFound, goName: NotFound, description: The dataset was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: BigQuery rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BigQuery returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Dataset or page input is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One table was listed., output: {tables: [{id: daily, datasetId: reporting, projectId: sample-project, type: TABLE}]}}
+    - name: getTable
+      goName: GetTable
+      inputType: GetTableInput
+      outputType: Table
+      kind: query
+      description: Read one table's identity, type, and schema field names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: BigQuery returned the table.}
+        - {id: notFound, goName: NotFound, description: The table was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: BigQuery rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BigQuery returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Table identity or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: An example table was found., output: {id: daily, datasetId: reporting, projectId: sample-project, type: TABLE, fields: [{name: country, type: STRING}]}}
+    - name: listTableRows
+      goName: ListTableRows
+      inputType: ListTableRowsInput
+      outputType: TableRowsPage
+      kind: query
+      description: List a bounded page of table rows.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: BigQuery returned table rows.}
+        - {id: notFound, goName: NotFound, description: The table was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: BigQuery rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BigQuery returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Table or page input is invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One row was returned., output: {rows: [{cells: [{value: US}]}]}}
+    - name: runReadQuery
+      goName: RunReadQuery
+      inputType: RunReadQueryInput
+      outputType: QueryResultsPage
+      kind: query
+      description: Run one bounded SELECT query and return results or a pending job ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: completed, goName: Completed, description: BigQuery returned completed query results.}
+        - {id: pending, goName: Pending, description: BigQuery created a job still running., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: BigQuery rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BigQuery returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Query input or credentials are invalid., optional: true}
+      mocks:
+        - {name: completedDefault, branch: completed, default: true, description: An example query completed., output: {jobId: sample-job, rows: [{cells: [{value: US}]}]}}
+    - name: getQueryResults
+      goName: GetQueryResults
+      inputType: GetQueryResultsInput
+      outputType: QueryResultsPage
+      kind: query
+      description: Read a page of results from an existing query job.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: completed, goName: Completed, description: BigQuery returned query results.}
+        - {id: pending, goName: Pending, description: The query job is still running., optional: true}
+        - {id: notFound, goName: NotFound, description: The query job was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: BigQuery rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BigQuery returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Job or page input is invalid., optional: true}
+      mocks:
+        - {name: completedDefault, branch: completed, default: true, description: An example result page was returned., output: {jobId: sample-job, rows: [{cells: [{value: US}]}]}}
     - name: listDatasets
       goName: ListDatasets
       inputType: ListDatasetsInput
@@ -98,7 +201,7 @@ spec:
       description: List one page of accessible dataset IDs and display names in a Google Cloud project.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: BigQuery returned the selected dataset page.}
         - {id: providerRejected, goName: ProviderRejected, description: BigQuery conclusively rejected the read., optional: true}

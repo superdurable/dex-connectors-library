@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{datasets.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{datasets.NewFlow(connection), datasets.NewTablesFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Google BigQuery list Flow: %w", err)
 	}

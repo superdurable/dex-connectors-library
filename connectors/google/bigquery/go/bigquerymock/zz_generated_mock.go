@@ -17,8 +17,14 @@ import (
 
 // Mock is a scripted google-bigquery connection. Script each operation through its accessor.
 type Mock struct {
-	connection   bigquery.Connection
-	listDatasets *connectormock.Query[bigquery.ListDatasetsInput, bigquery.DatasetsPage]
+	connection      bigquery.Connection
+	getDataset      *connectormock.Query[bigquery.GetDatasetInput, bigquery.Dataset]
+	listTables      *connectormock.Query[bigquery.ListTablesInput, bigquery.TablesPage]
+	getTable        *connectormock.Query[bigquery.GetTableInput, bigquery.Table]
+	listTableRows   *connectormock.Query[bigquery.ListTableRowsInput, bigquery.TableRowsPage]
+	runReadQuery    *connectormock.Query[bigquery.RunReadQueryInput, bigquery.QueryResultsPage]
+	getQueryResults *connectormock.Query[bigquery.GetQueryResultsInput, bigquery.QueryResultsPage]
+	listDatasets    *connectormock.Query[bigquery.ListDatasetsInput, bigquery.DatasetsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +32,20 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listDatasets: connectormock.NewQuery[bigquery.ListDatasetsInput, bigquery.DatasetsPage](t, bigquery.ListDatasetsDefinition),
+		getDataset:      connectormock.NewQuery[bigquery.GetDatasetInput, bigquery.Dataset](t, bigquery.GetDatasetDefinition),
+		listTables:      connectormock.NewQuery[bigquery.ListTablesInput, bigquery.TablesPage](t, bigquery.ListTablesDefinition),
+		getTable:        connectormock.NewQuery[bigquery.GetTableInput, bigquery.Table](t, bigquery.GetTableDefinition),
+		listTableRows:   connectormock.NewQuery[bigquery.ListTableRowsInput, bigquery.TableRowsPage](t, bigquery.ListTableRowsDefinition),
+		runReadQuery:    connectormock.NewQuery[bigquery.RunReadQueryInput, bigquery.QueryResultsPage](t, bigquery.RunReadQueryDefinition),
+		getQueryResults: connectormock.NewQuery[bigquery.GetQueryResultsInput, bigquery.QueryResultsPage](t, bigquery.GetQueryResultsDefinition),
+		listDatasets:    connectormock.NewQuery[bigquery.ListDatasetsInput, bigquery.DatasetsPage](t, bigquery.ListDatasetsDefinition),
 	}
+	mock.getDataset.Default(GetDatasetDefault())
+	mock.listTables.Default(ListTablesDefault())
+	mock.getTable.Default(GetTableDefault())
+	mock.listTableRows.Default(ListTableRowsDefault())
+	mock.runReadQuery.Default(RunReadQueryDefault())
+	mock.getQueryResults.Default(GetQueryResultsDefault())
 	mock.listDatasets.Default(ListDatasetsDefault())
 	connection, err := bigquery.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-bigquery", Name: connectionName})
 	if err != nil {
@@ -40,6 +58,36 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() bigquery.Connection { return mock.connection }
 
+// GetDataset returns the getDataset script.
+func (mock *Mock) GetDataset() *connectormock.Query[bigquery.GetDatasetInput, bigquery.Dataset] {
+	return mock.getDataset
+}
+
+// ListTables returns the listTables script.
+func (mock *Mock) ListTables() *connectormock.Query[bigquery.ListTablesInput, bigquery.TablesPage] {
+	return mock.listTables
+}
+
+// GetTable returns the getTable script.
+func (mock *Mock) GetTable() *connectormock.Query[bigquery.GetTableInput, bigquery.Table] {
+	return mock.getTable
+}
+
+// ListTableRows returns the listTableRows script.
+func (mock *Mock) ListTableRows() *connectormock.Query[bigquery.ListTableRowsInput, bigquery.TableRowsPage] {
+	return mock.listTableRows
+}
+
+// RunReadQuery returns the runReadQuery script.
+func (mock *Mock) RunReadQuery() *connectormock.Query[bigquery.RunReadQueryInput, bigquery.QueryResultsPage] {
+	return mock.runReadQuery
+}
+
+// GetQueryResults returns the getQueryResults script.
+func (mock *Mock) GetQueryResults() *connectormock.Query[bigquery.GetQueryResultsInput, bigquery.QueryResultsPage] {
+	return mock.getQueryResults
+}
+
 // ListDatasets returns the listDatasets script.
 func (mock *Mock) ListDatasets() *connectormock.Query[bigquery.ListDatasetsInput, bigquery.DatasetsPage] {
 	return mock.listDatasets
@@ -47,8 +95,271 @@ func (mock *Mock) ListDatasets() *connectormock.Query[bigquery.ListDatasetsInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetDataset() sdkgo.Query[bigquery.GetDatasetInput, bigquery.Dataset] {
+	return operations.mock.getDataset
+}
+func (operations mockOperations) ListTables() sdkgo.Query[bigquery.ListTablesInput, bigquery.TablesPage] {
+	return operations.mock.listTables
+}
+func (operations mockOperations) GetTable() sdkgo.Query[bigquery.GetTableInput, bigquery.Table] {
+	return operations.mock.getTable
+}
+func (operations mockOperations) ListTableRows() sdkgo.Query[bigquery.ListTableRowsInput, bigquery.TableRowsPage] {
+	return operations.mock.listTableRows
+}
+func (operations mockOperations) RunReadQuery() sdkgo.Query[bigquery.RunReadQueryInput, bigquery.QueryResultsPage] {
+	return operations.mock.runReadQuery
+}
+func (operations mockOperations) GetQueryResults() sdkgo.Query[bigquery.GetQueryResultsInput, bigquery.QueryResultsPage] {
+	return operations.mock.getQueryResults
+}
 func (operations mockOperations) ListDatasets() sdkgo.Query[bigquery.ListDatasetsInput, bigquery.DatasetsPage] {
 	return operations.mock.listDatasets
+}
+
+// GetDatasetFound selects the found branch: BigQuery returned the dataset.
+func GetDatasetFound(value bigquery.Dataset, failure *sdkgo.Failure) connectormock.Case[bigquery.Dataset] {
+	return connectormock.Branch(bigquery.GetDatasetBranchFound, value, failure)
+}
+
+// GetDatasetNotFound selects the notFound branch: The dataset was not found.
+func GetDatasetNotFound(value bigquery.Dataset, failure *sdkgo.Failure) connectormock.Case[bigquery.Dataset] {
+	return connectormock.Branch(bigquery.GetDatasetBranchNotFound, value, failure)
+}
+
+// GetDatasetProviderRejected selects the providerRejected branch: BigQuery rejected the read.
+func GetDatasetProviderRejected(value bigquery.Dataset, failure *sdkgo.Failure) connectormock.Case[bigquery.Dataset] {
+	return connectormock.Branch(bigquery.GetDatasetBranchProviderRejected, value, failure)
+}
+
+// GetDatasetInvalidResponse selects the invalidResponse branch: BigQuery returned malformed or oversized JSON.
+func GetDatasetInvalidResponse(value bigquery.Dataset, failure *sdkgo.Failure) connectormock.Case[bigquery.Dataset] {
+	return connectormock.Branch(bigquery.GetDatasetBranchInvalidResponse, value, failure)
+}
+
+// GetDatasetDefect selects the defect branch: Dataset identity or credentials are invalid.
+func GetDatasetDefect(value bigquery.Dataset, failure *sdkgo.Failure) connectormock.Case[bigquery.Dataset] {
+	return connectormock.Branch(bigquery.GetDatasetBranchDefect, value, failure)
+}
+
+// GetDatasetRetry asks Dex to retry the getDataset Step, after the delay when it is positive.
+func GetDatasetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bigquery.Dataset] {
+	return connectormock.Retry[bigquery.Dataset](failure, after)
+}
+
+// GetDatasetFoundDefault is the manifest mock foundDefault: An example dataset was found.
+func GetDatasetFoundDefault() connectormock.Case[bigquery.Dataset] {
+	value := connectormock.MustDecodeOutput[bigquery.Dataset](`{"id":"reporting","projectId":"sample-project","friendlyName":"Reporting"}`)
+	return connectormock.Branch(bigquery.GetDatasetBranchFound, value, nil)
+}
+
+// GetDatasetDefault is the manifest default, foundDefault, which New installs.
+func GetDatasetDefault() connectormock.Case[bigquery.Dataset] { return GetDatasetFoundDefault() }
+
+// ListTablesListed selects the listed branch: BigQuery returned the table page.
+func ListTablesListed(value bigquery.TablesPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TablesPage] {
+	return connectormock.Branch(bigquery.ListTablesBranchListed, value, failure)
+}
+
+// ListTablesNotFound selects the notFound branch: The dataset was not found.
+func ListTablesNotFound(value bigquery.TablesPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TablesPage] {
+	return connectormock.Branch(bigquery.ListTablesBranchNotFound, value, failure)
+}
+
+// ListTablesProviderRejected selects the providerRejected branch: BigQuery rejected the read.
+func ListTablesProviderRejected(value bigquery.TablesPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TablesPage] {
+	return connectormock.Branch(bigquery.ListTablesBranchProviderRejected, value, failure)
+}
+
+// ListTablesInvalidResponse selects the invalidResponse branch: BigQuery returned malformed or oversized JSON.
+func ListTablesInvalidResponse(value bigquery.TablesPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TablesPage] {
+	return connectormock.Branch(bigquery.ListTablesBranchInvalidResponse, value, failure)
+}
+
+// ListTablesDefect selects the defect branch: Dataset or page input is invalid.
+func ListTablesDefect(value bigquery.TablesPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TablesPage] {
+	return connectormock.Branch(bigquery.ListTablesBranchDefect, value, failure)
+}
+
+// ListTablesRetry asks Dex to retry the listTables Step, after the delay when it is positive.
+func ListTablesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bigquery.TablesPage] {
+	return connectormock.Retry[bigquery.TablesPage](failure, after)
+}
+
+// ListTablesListedDefault is the manifest mock listedDefault: One table was listed.
+func ListTablesListedDefault() connectormock.Case[bigquery.TablesPage] {
+	value := connectormock.MustDecodeOutput[bigquery.TablesPage](`{"tables":[{"id":"daily","datasetId":"reporting","projectId":"sample-project","type":"TABLE"}]}`)
+	return connectormock.Branch(bigquery.ListTablesBranchListed, value, nil)
+}
+
+// ListTablesDefault is the manifest default, listedDefault, which New installs.
+func ListTablesDefault() connectormock.Case[bigquery.TablesPage] { return ListTablesListedDefault() }
+
+// GetTableFound selects the found branch: BigQuery returned the table.
+func GetTableFound(value bigquery.Table, failure *sdkgo.Failure) connectormock.Case[bigquery.Table] {
+	return connectormock.Branch(bigquery.GetTableBranchFound, value, failure)
+}
+
+// GetTableNotFound selects the notFound branch: The table was not found.
+func GetTableNotFound(value bigquery.Table, failure *sdkgo.Failure) connectormock.Case[bigquery.Table] {
+	return connectormock.Branch(bigquery.GetTableBranchNotFound, value, failure)
+}
+
+// GetTableProviderRejected selects the providerRejected branch: BigQuery rejected the read.
+func GetTableProviderRejected(value bigquery.Table, failure *sdkgo.Failure) connectormock.Case[bigquery.Table] {
+	return connectormock.Branch(bigquery.GetTableBranchProviderRejected, value, failure)
+}
+
+// GetTableInvalidResponse selects the invalidResponse branch: BigQuery returned malformed or oversized JSON.
+func GetTableInvalidResponse(value bigquery.Table, failure *sdkgo.Failure) connectormock.Case[bigquery.Table] {
+	return connectormock.Branch(bigquery.GetTableBranchInvalidResponse, value, failure)
+}
+
+// GetTableDefect selects the defect branch: Table identity or credentials are invalid.
+func GetTableDefect(value bigquery.Table, failure *sdkgo.Failure) connectormock.Case[bigquery.Table] {
+	return connectormock.Branch(bigquery.GetTableBranchDefect, value, failure)
+}
+
+// GetTableRetry asks Dex to retry the getTable Step, after the delay when it is positive.
+func GetTableRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bigquery.Table] {
+	return connectormock.Retry[bigquery.Table](failure, after)
+}
+
+// GetTableFoundDefault is the manifest mock foundDefault: An example table was found.
+func GetTableFoundDefault() connectormock.Case[bigquery.Table] {
+	value := connectormock.MustDecodeOutput[bigquery.Table](`{"id":"daily","datasetId":"reporting","projectId":"sample-project","type":"TABLE","fields":[{"name":"country","type":"STRING"}]}`)
+	return connectormock.Branch(bigquery.GetTableBranchFound, value, nil)
+}
+
+// GetTableDefault is the manifest default, foundDefault, which New installs.
+func GetTableDefault() connectormock.Case[bigquery.Table] { return GetTableFoundDefault() }
+
+// ListTableRowsListed selects the listed branch: BigQuery returned table rows.
+func ListTableRowsListed(value bigquery.TableRowsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TableRowsPage] {
+	return connectormock.Branch(bigquery.ListTableRowsBranchListed, value, failure)
+}
+
+// ListTableRowsNotFound selects the notFound branch: The table was not found.
+func ListTableRowsNotFound(value bigquery.TableRowsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TableRowsPage] {
+	return connectormock.Branch(bigquery.ListTableRowsBranchNotFound, value, failure)
+}
+
+// ListTableRowsProviderRejected selects the providerRejected branch: BigQuery rejected the read.
+func ListTableRowsProviderRejected(value bigquery.TableRowsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TableRowsPage] {
+	return connectormock.Branch(bigquery.ListTableRowsBranchProviderRejected, value, failure)
+}
+
+// ListTableRowsInvalidResponse selects the invalidResponse branch: BigQuery returned malformed or oversized JSON.
+func ListTableRowsInvalidResponse(value bigquery.TableRowsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TableRowsPage] {
+	return connectormock.Branch(bigquery.ListTableRowsBranchInvalidResponse, value, failure)
+}
+
+// ListTableRowsDefect selects the defect branch: Table or page input is invalid.
+func ListTableRowsDefect(value bigquery.TableRowsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.TableRowsPage] {
+	return connectormock.Branch(bigquery.ListTableRowsBranchDefect, value, failure)
+}
+
+// ListTableRowsRetry asks Dex to retry the listTableRows Step, after the delay when it is positive.
+func ListTableRowsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bigquery.TableRowsPage] {
+	return connectormock.Retry[bigquery.TableRowsPage](failure, after)
+}
+
+// ListTableRowsListedDefault is the manifest mock listedDefault: One row was returned.
+func ListTableRowsListedDefault() connectormock.Case[bigquery.TableRowsPage] {
+	value := connectormock.MustDecodeOutput[bigquery.TableRowsPage](`{"rows":[{"cells":[{"value":"US"}]}]}`)
+	return connectormock.Branch(bigquery.ListTableRowsBranchListed, value, nil)
+}
+
+// ListTableRowsDefault is the manifest default, listedDefault, which New installs.
+func ListTableRowsDefault() connectormock.Case[bigquery.TableRowsPage] {
+	return ListTableRowsListedDefault()
+}
+
+// RunReadQueryCompleted selects the completed branch: BigQuery returned completed query results.
+func RunReadQueryCompleted(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.RunReadQueryBranchCompleted, value, failure)
+}
+
+// RunReadQueryPending selects the pending branch: BigQuery created a job still running.
+func RunReadQueryPending(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.RunReadQueryBranchPending, value, failure)
+}
+
+// RunReadQueryProviderRejected selects the providerRejected branch: BigQuery rejected the query.
+func RunReadQueryProviderRejected(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.RunReadQueryBranchProviderRejected, value, failure)
+}
+
+// RunReadQueryInvalidResponse selects the invalidResponse branch: BigQuery returned malformed or oversized JSON.
+func RunReadQueryInvalidResponse(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.RunReadQueryBranchInvalidResponse, value, failure)
+}
+
+// RunReadQueryDefect selects the defect branch: Query input or credentials are invalid.
+func RunReadQueryDefect(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.RunReadQueryBranchDefect, value, failure)
+}
+
+// RunReadQueryRetry asks Dex to retry the runReadQuery Step, after the delay when it is positive.
+func RunReadQueryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Retry[bigquery.QueryResultsPage](failure, after)
+}
+
+// RunReadQueryCompletedDefault is the manifest mock completedDefault: An example query completed.
+func RunReadQueryCompletedDefault() connectormock.Case[bigquery.QueryResultsPage] {
+	value := connectormock.MustDecodeOutput[bigquery.QueryResultsPage](`{"jobId":"sample-job","rows":[{"cells":[{"value":"US"}]}]}`)
+	return connectormock.Branch(bigquery.RunReadQueryBranchCompleted, value, nil)
+}
+
+// RunReadQueryDefault is the manifest default, completedDefault, which New installs.
+func RunReadQueryDefault() connectormock.Case[bigquery.QueryResultsPage] {
+	return RunReadQueryCompletedDefault()
+}
+
+// GetQueryResultsCompleted selects the completed branch: BigQuery returned query results.
+func GetQueryResultsCompleted(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.GetQueryResultsBranchCompleted, value, failure)
+}
+
+// GetQueryResultsPending selects the pending branch: The query job is still running.
+func GetQueryResultsPending(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.GetQueryResultsBranchPending, value, failure)
+}
+
+// GetQueryResultsNotFound selects the notFound branch: The query job was not found.
+func GetQueryResultsNotFound(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.GetQueryResultsBranchNotFound, value, failure)
+}
+
+// GetQueryResultsProviderRejected selects the providerRejected branch: BigQuery rejected the read.
+func GetQueryResultsProviderRejected(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.GetQueryResultsBranchProviderRejected, value, failure)
+}
+
+// GetQueryResultsInvalidResponse selects the invalidResponse branch: BigQuery returned malformed or oversized JSON.
+func GetQueryResultsInvalidResponse(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.GetQueryResultsBranchInvalidResponse, value, failure)
+}
+
+// GetQueryResultsDefect selects the defect branch: Job or page input is invalid.
+func GetQueryResultsDefect(value bigquery.QueryResultsPage, failure *sdkgo.Failure) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Branch(bigquery.GetQueryResultsBranchDefect, value, failure)
+}
+
+// GetQueryResultsRetry asks Dex to retry the getQueryResults Step, after the delay when it is positive.
+func GetQueryResultsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[bigquery.QueryResultsPage] {
+	return connectormock.Retry[bigquery.QueryResultsPage](failure, after)
+}
+
+// GetQueryResultsCompletedDefault is the manifest mock completedDefault: An example result page was returned.
+func GetQueryResultsCompletedDefault() connectormock.Case[bigquery.QueryResultsPage] {
+	value := connectormock.MustDecodeOutput[bigquery.QueryResultsPage](`{"jobId":"sample-job","rows":[{"cells":[{"value":"US"}]}]}`)
+	return connectormock.Branch(bigquery.GetQueryResultsBranchCompleted, value, nil)
+}
+
+// GetQueryResultsDefault is the manifest default, completedDefault, which New installs.
+func GetQueryResultsDefault() connectormock.Case[bigquery.QueryResultsPage] {
+	return GetQueryResultsCompletedDefault()
 }
 
 // ListDatasetsListed selects the listed branch: BigQuery returned the selected dataset page.

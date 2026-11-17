@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getDataset/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bigquery.Dataset](`{"id":"reporting","projectId":"sample-project","friendlyName":"Reporting"}`)
+			return err
+		}},
+		{name: "listTables/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bigquery.TablesPage](`{"tables":[{"id":"daily","datasetId":"reporting","projectId":"sample-project","type":"TABLE"}]}`)
+			return err
+		}},
+		{name: "getTable/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bigquery.Table](`{"id":"daily","datasetId":"reporting","projectId":"sample-project","type":"TABLE","fields":[{"name":"country","type":"STRING"}]}`)
+			return err
+		}},
+		{name: "listTableRows/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bigquery.TableRowsPage](`{"rows":[{"cells":[{"value":"US"}]}]}`)
+			return err
+		}},
+		{name: "runReadQuery/completedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bigquery.QueryResultsPage](`{"jobId":"sample-job","rows":[{"cells":[{"value":"US"}]}]}`)
+			return err
+		}},
+		{name: "getQueryResults/completedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[bigquery.QueryResultsPage](`{"jobId":"sample-job","rows":[{"cells":[{"value":"US"}]}]}`)
+			return err
+		}},
 		{name: "listDatasets/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[bigquery.DatasetsPage](`{"datasets":[{"id":"sample_dataset","projectId":"sample-project","friendlyName":"Sample Dataset"}],"nextPageToken":""}`)
 			return err
@@ -30,6 +54,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetDataset().Definition().Operation.OperationID != "getDataset" {
+		t.Errorf("getDataset mock has another definition")
+	}
+	if mock.ListTables().Definition().Operation.OperationID != "listTables" {
+		t.Errorf("listTables mock has another definition")
+	}
+	if mock.GetTable().Definition().Operation.OperationID != "getTable" {
+		t.Errorf("getTable mock has another definition")
+	}
+	if mock.ListTableRows().Definition().Operation.OperationID != "listTableRows" {
+		t.Errorf("listTableRows mock has another definition")
+	}
+	if mock.RunReadQuery().Definition().Operation.OperationID != "runReadQuery" {
+		t.Errorf("runReadQuery mock has another definition")
+	}
+	if mock.GetQueryResults().Definition().Operation.OperationID != "getQueryResults" {
+		t.Errorf("getQueryResults mock has another definition")
+	}
 	if mock.ListDatasets().Definition().Operation.OperationID != "listDatasets" {
 		t.Errorf("listDatasets mock has another definition")
 	}
