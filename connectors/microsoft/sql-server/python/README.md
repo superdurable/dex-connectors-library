@@ -57,8 +57,10 @@ unsafe`: it records a single-dispatch claim in the sync Step heartbeat before CO
 selects `uncertain` when COMMIT bytes may have reached the server, and selects `uncertain`
 without connecting on a later attempt after such a COMMIT or a lost Worker. A COMMIT that
 sent no bytes, or a proven rollback such as a deadlock victim, returns Retry; an unreadable
-checkpoint returns Retry without connecting. The generated `new_connection_with_operations`
-now takes `execute_non_idempotent` before `reference`.
+checkpoint returns Retry without connecting. `new_connection_with_operations` keeps its
+`(query, execute, reference)` order and accepts the new operation as the keyword-only
+`execute_non_idempotent`; a connection built without it raises `ValueError` when an
+`executeNonIdempotent` Step is constructed.
 `rowsAffected` sums all SQL Server DONE counts, including trigger statements. If the server
 supplies no count, `maxRowsAffected` fails `invalidResponse` before COMMIT. Receipts include
 the session process ID and server version; server errors add number, state, and severity.
