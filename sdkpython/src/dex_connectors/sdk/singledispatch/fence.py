@@ -11,7 +11,7 @@ from typing import Any, TypeVar
 import dex
 
 from ..types import Call
-from .checkpoint import step_checkpoint_for
+from .checkpoint import _step_checkpoint_for
 from .markers import (
     MINIMUM_MAX_SENDS,
     Decision,
@@ -85,7 +85,7 @@ class Fence:
         self._call = call
         self._max_sends = max_sends
         self._context: dex.AsyncContext = context
-        self._checkpoint = step_checkpoint_for(context)
+        self._checkpoint = _step_checkpoint_for(context)
         self.write_deadline = started_at + budget * write_window_fraction
         self._minimum_request_time = budget / 10
         self._heartbeat_interval = timedelta(seconds=5)

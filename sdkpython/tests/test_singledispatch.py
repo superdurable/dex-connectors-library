@@ -22,7 +22,8 @@ from dex_connectors.sdk.singledispatch import (
     State,
     decide_dispatch,
 )
-from dex_connectors.sdk.singledispatch.markers import checkpoint_heartbeat, markers_from_heartbeat
+from dex_connectors.sdk.singledispatch.markers import _checkpoint_heartbeat as checkpoint_heartbeat
+from dex_connectors.sdk.singledispatch.markers import _markers_from_heartbeat as markers_from_heartbeat
 
 CALL_ID =CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf")
 MARKER_CODEC = dex.CodecRegistry().resolve(Marker)

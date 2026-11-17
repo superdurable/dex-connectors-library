@@ -8,8 +8,7 @@ from enum import IntEnum, StrEnum
 
 from ..types import CallID
 
-CHECKPOINT_MARKERS_FIELD = "singleDispatchMarkers"
-"""Heartbeat field mapping each Call ID of a Step attempt to its marker."""
+_CHECKPOINT_MARKERS_FIELD = "singleDispatchMarkers"
 
 MINIMUM_MAX_SENDS = 1
 """Smallest send cap; one send disables bounded resend."""
@@ -150,7 +149,7 @@ def decide_dispatch(
     if not _is_plain_int(attempt) or attempt < 1:
         raise ValueError("single dispatch requires a positive attempt")
     validate_max_sends(max_sends)
-    marker = markers_from_heartbeat(previous_heartbeat).get(str(call_id))
+    marker = _markers_from_heartbeat(previous_heartbeat).get(str(call_id))
     if marker is None:
         if attempt == 1:
             return Decision(DecisionKind.SEND_ALLOWED)
@@ -176,16 +175,11 @@ def validate_max_sends(max_sends: int) -> None:
         raise ValueError("single-dispatch max sends must be an integer within 1..10")
 
 
-def markers_from_heartbeat(heartbeat: object) -> dict[str, Marker]:
-    """Read the checkpoint map, keyed by Call ID, dropping every unreadable entry.
-
-    An entry is dropped when it is not a valid marker or its key differs from
-    its `callId`. Any value other than the map format yields no entries. The
-    format is internal to the connector SDKs and may change.
-    """
+def _markers_from_heartbeat(heartbeat: object) -> dict[str, Marker]:
+    # Drops unreadable or mis-keyed entries; any non-map value, legacy markers included, yields none.
     if not isinstance(heartbeat, dict):
         return {}
-    entries = heartbeat.get(CHECKPOINT_MARKERS_FIELD)
+    entries = heartbeat.get(_CHECKPOINT_MARKERS_FIELD)
     if not isinstance(entries, dict):
         return {}
     markers: dict[str, Marker] = {}
@@ -199,10 +193,10 @@ def markers_from_heartbeat(heartbeat: object) -> dict[str, Marker]:
     return markers
 
 
-def checkpoint_heartbeat(markers: Mapping[str, Marker]) -> dict[str, object]:
-    """Encode the checkpoint map with Call IDs in sorted order, as Go does."""
+def _checkpoint_heartbeat(markers: Mapping[str, Marker]) -> dict[str, object]:
+    # Call IDs are sorted, as Go encodes map keys.
     return {
-        CHECKPOINT_MARKERS_FIELD: {
+        _CHECKPOINT_MARKERS_FIELD: {
             call_id: markers[call_id].to_wire() for call_id in sorted(markers)
         }
     }
