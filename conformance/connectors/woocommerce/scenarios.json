@@ -957,6 +957,1169 @@
       },
       "name": "getOrder-rate-limited",
       "operation": "getOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [
+        {
+          "body": "{\"id\":102,\"status\":\"pending\",\"total\":\"29.00\",\"currency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wc/v3/orders",
+          "requestBody": {
+            "customer_id": 5,
+            "line_items": [
+              {
+                "product_id": 8,
+                "quantity": 2
+              }
+            ],
+            "status": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+          "providerId": "102",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currency": "USD",
+          "id": 102,
+          "status": "pending",
+          "total": "29.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [
+          {
+            "product_id": 8,
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      },
+      "name": "createOrder-success",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wc/v3/orders",
+          "requestBody": {
+            "customer_id": 5,
+            "line_items": [
+              {
+                "product_id": 8,
+                "quantity": 2
+              }
+            ],
+            "status": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [
+          {
+            "product_id": 8,
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      },
+      "name": "createOrder-rejected",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wc/v3/orders",
+          "requestBody": {
+            "customer_id": 5,
+            "line_items": [
+              {
+                "product_id": 8,
+                "quantity": 2
+              }
+            ],
+            "status": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [
+          {
+            "product_id": 8,
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      },
+      "name": "createOrder-invalid",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wc/v3/orders",
+          "requestBody": {
+            "customer_id": 5,
+            "line_items": [
+              {
+                "product_id": 8,
+                "quantity": 2
+              }
+            ],
+            "status": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [
+          {
+            "product_id": 8,
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      },
+      "name": "createOrder-rate-limit",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wc/v3/orders",
+          "requestBody": {
+            "customer_id": 5,
+            "line_items": [
+              {
+                "product_id": 8,
+                "quantity": 2
+              }
+            ],
+            "status": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [
+          {
+            "product_id": 8,
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      },
+      "name": "createOrder-server-error",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wc/v3/orders",
+          "requestBody": {
+            "customer_id": 5,
+            "line_items": [
+              {
+                "product_id": 8,
+                "quantity": 2
+              }
+            ],
+            "status": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [
+          {
+            "product_id": 8,
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      },
+      "name": "createOrder-service-unavailable",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wc/v3/orders",
+          "requestBody": {
+            "customer_id": 5,
+            "line_items": [
+              {
+                "product_id": 8,
+                "quantity": 2
+              }
+            ],
+            "status": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [
+          {
+            "product_id": 8,
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      },
+      "name": "createOrder-transport",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [],
+        "status": "pending"
+      },
+      "name": "createOrder-defect",
+      "operation": "createOrder"
+    },
+    {
+      "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "be888041-bab6-5857-a14e-ebfed0edf52c",
+      "input": {
+        "customerId": 5,
+        "lineItems": [
+          {
+            "product_id": 8,
+            "quantity": 2
+          }
+        ],
+        "status": "pending"
+      },
+      "name": "createOrder-uncertain",
+      "operation": "createOrder",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "be888041-bab6-5857-a14e-ebfed0edf52c",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "exchanges": [
+        {
+          "body": "{\"id\":101,\"status\":\"completed\",\"total\":\"29.00\",\"currency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestBody": {
+            "status": "completed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "currency": "USD",
+          "id": 101,
+          "status": "completed",
+          "total": "29.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "input": {
+        "orderId": 101,
+        "status": "completed"
+      },
+      "name": "updateOrder-success",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestBody": {
+            "status": "completed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "input": {
+        "orderId": 101,
+        "status": "completed"
+      },
+      "name": "updateOrder-rejected",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestBody": {
+            "status": "completed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "input": {
+        "orderId": 101,
+        "status": "completed"
+      },
+      "name": "updateOrder-invalid",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestBody": {
+            "status": "completed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "input": {
+        "orderId": 101,
+        "status": "completed"
+      },
+      "name": "updateOrder-rate-limit",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestBody": {
+            "status": "completed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "input": {
+        "orderId": 101,
+        "status": "completed"
+      },
+      "name": "updateOrder-server-error",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestBody": {
+            "status": "completed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "input": {
+        "orderId": 101,
+        "status": "completed"
+      },
+      "name": "updateOrder-service-unavailable",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestBody": {
+            "status": "completed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "input": {
+        "orderId": 101,
+        "status": "completed"
+      },
+      "name": "updateOrder-transport",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7900be08-bebc-52fb-b091-54f2d319c2a9",
+      "input": {
+        "orderId": 0,
+        "status": "completed"
+      },
+      "name": "updateOrder-defect",
+      "operation": "updateOrder"
+    },
+    {
+      "callId": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "exchanges": [
+        {
+          "body": "{\"id\":101,\"status\":\"completed\",\"total\":\"29.00\",\"currency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wc/v3/orders/101",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "currency": "USD",
+          "id": 101,
+          "status": "completed",
+          "total": "29.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-success",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wc/v3/orders/101",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-rejected",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wc/v3/orders/101",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-invalid",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wc/v3/orders/101",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-rate-limit",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wc/v3/orders/101",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-server-error",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wc/v3/orders/101",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-service-unavailable",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/wp-json/wc/v3/orders/101",
+          "query": {
+            "force": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "input": {
+        "orderId": 101
+      },
+      "name": "deleteOrder-transport",
+      "operation": "deleteOrder"
+    },
+    {
+      "callId": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e751f016-6bc7-5db4-a953-5427eaabd829",
+      "input": {
+        "orderId": 0
+      },
+      "name": "deleteOrder-defect",
+      "operation": "deleteOrder"
     }
   ],
   "schemaVersion": 1

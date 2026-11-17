@@ -1,10 +1,10 @@
 # WooCommerce connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/woocommerce/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/woocommerce/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/woocommerce`.
 
-Read-only Dex Query Steps for WooCommerce. The module is `github.com/superdurable/dex-connectors-library/connectors/woocommerce/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
+Dex Query and Mutation Steps for WooCommerce orders. The module is `github.com/superdurable/dex-connectors-library/connectors/woocommerce/go`. See the [runnable resource-read and order-update Flows](go/examples/resource-read/README.md).
 
 The Python package is [`dex-connector-woocommerce`](python/README.md), imported as
 `dex_connectors.woocommerce`.
@@ -17,12 +17,15 @@ The TypeScript package is [`@superdurable/connector-woocommerce`](typescript/REA
 | --- | --- | --- | --- |
 | `ListOrders` | `ListOrdersInput` | `OrderPage` | `listed` |
 | `GetOrder` | `GetOrderInput` | `Order` | `found` |
+| `CreateOrder` | `CreateOrderInput` | `Order` | `created` |
+| `UpdateOrder` | `UpdateOrderInput` | `Order` | `updated` |
+| `DeleteOrder` | `DeleteOrderInput` | `Order` | `deleted` |
 
-Each operation has optional `notFound`, `providerRejected`, `invalidResponse`, and `defect` branches. Unwired optional branches fail the Flow. All reads use async Execute durability and the default one-hour retry budget.
+Each operation has optional error branches. Unwired optional branches fail the Flow. Reads use safe retries. `CreateOrder` uses a three-send cap and an optional `uncertain` branch when the outcome cannot be confirmed; `UpdateOrder` and `DeleteOrder` use safe retries because they replace one status or delete one stable ID.
 
 ## Authentication and configuration
 
-Follow the authorization guide in `connector.yaml` from [https://woocommerce.com/document/woocommerce-rest-api/](https://woocommerce.com/document/woocommerce-rest-api/). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. Enter the required HTTPS `storeUrl` from WordPress Settings > General, including any site path; the connector appends `/wp-json/wc/v3`. `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
+Follow the authorization guide in `connector.yaml` from [https://woocommerce.com/document/woocommerce-rest-api/](https://woocommerce.com/document/woocommerce-rest-api/). Select Read/Write permission when creating a key for mutations. The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. Enter the required HTTPS `storeUrl` from WordPress Settings > General, including any site path; the connector appends `/wp-json/wc/v3`. `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
 
 If the store returns HTTP 401 despite valid keys, check whether the web server forwards the `Authorization` header to WordPress. This connector does not put credentials in URL parameters.
 
@@ -37,7 +40,7 @@ If the store returns HTTP 401 despite valid keys, check whether the web server f
 | Malformed or oversized JSON | `invalidResponse` |
 | Invalid local input or unavailable credentials | `defect` |
 
-Provider error text is never copied into a Failure. Responses are bounded and redirects are not followed. The APIs are read-only, so there is no `uncertain` branch.
+Provider error text is never copied into a Failure. Responses are bounded and redirects are not followed. A create with an unknown outcome may be resent within its cap; a saved order ID is read back before any resend.
 
 ## Mocks
 

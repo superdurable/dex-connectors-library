@@ -17,9 +17,12 @@ import (
 
 // Mock is a scripted woocommerce connection. Script each operation through its accessor.
 type Mock struct {
-	connection woocommerce.Connection
-	listOrders *connectormock.Query[woocommerce.ListOrdersInput, woocommerce.OrderPage]
-	getOrder   *connectormock.Query[woocommerce.GetOrderInput, woocommerce.Order]
+	connection  woocommerce.Connection
+	listOrders  *connectormock.Query[woocommerce.ListOrdersInput, woocommerce.OrderPage]
+	getOrder    *connectormock.Query[woocommerce.GetOrderInput, woocommerce.Order]
+	createOrder *connectormock.Mutation[woocommerce.CreateOrderInput, woocommerce.Order]
+	updateOrder *connectormock.Mutation[woocommerce.UpdateOrderInput, woocommerce.Order]
+	deleteOrder *connectormock.Mutation[woocommerce.DeleteOrderInput, woocommerce.Order]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listOrders: connectormock.NewQuery[woocommerce.ListOrdersInput, woocommerce.OrderPage](t, woocommerce.ListOrdersDefinition),
-		getOrder:   connectormock.NewQuery[woocommerce.GetOrderInput, woocommerce.Order](t, woocommerce.GetOrderDefinition),
+		listOrders:  connectormock.NewQuery[woocommerce.ListOrdersInput, woocommerce.OrderPage](t, woocommerce.ListOrdersDefinition),
+		getOrder:    connectormock.NewQuery[woocommerce.GetOrderInput, woocommerce.Order](t, woocommerce.GetOrderDefinition),
+		createOrder: connectormock.NewMutation[woocommerce.CreateOrderInput, woocommerce.Order](t, woocommerce.CreateOrderDefinition),
+		updateOrder: connectormock.NewMutation[woocommerce.UpdateOrderInput, woocommerce.Order](t, woocommerce.UpdateOrderDefinition),
+		deleteOrder: connectormock.NewMutation[woocommerce.DeleteOrderInput, woocommerce.Order](t, woocommerce.DeleteOrderDefinition),
 	}
 	mock.listOrders.Default(ListOrdersDefault())
 	mock.getOrder.Default(GetOrderDefault())
+	mock.createOrder.Default(CreateOrderDefault())
+	mock.updateOrder.Default(UpdateOrderDefault())
+	mock.deleteOrder.Default(DeleteOrderDefault())
 	connection, err := woocommerce.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "woocommerce", Name: connectionName})
 	if err != nil {
 		t.Fatalf("woocommerce mock connection: %v", err)
@@ -53,6 +62,21 @@ func (mock *Mock) GetOrder() *connectormock.Query[woocommerce.GetOrderInput, woo
 	return mock.getOrder
 }
 
+// CreateOrder returns the createOrder script.
+func (mock *Mock) CreateOrder() *connectormock.Mutation[woocommerce.CreateOrderInput, woocommerce.Order] {
+	return mock.createOrder
+}
+
+// UpdateOrder returns the updateOrder script.
+func (mock *Mock) UpdateOrder() *connectormock.Mutation[woocommerce.UpdateOrderInput, woocommerce.Order] {
+	return mock.updateOrder
+}
+
+// DeleteOrder returns the deleteOrder script.
+func (mock *Mock) DeleteOrder() *connectormock.Mutation[woocommerce.DeleteOrderInput, woocommerce.Order] {
+	return mock.deleteOrder
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOrders() sdkgo.Query[woocommerce.ListOrdersInput, woocommerce.OrderPage] {
@@ -60,6 +84,15 @@ func (operations mockOperations) ListOrders() sdkgo.Query[woocommerce.ListOrders
 }
 func (operations mockOperations) GetOrder() sdkgo.Query[woocommerce.GetOrderInput, woocommerce.Order] {
 	return operations.mock.getOrder
+}
+func (operations mockOperations) CreateOrder() sdkgo.Mutation[woocommerce.CreateOrderInput, woocommerce.Order] {
+	return operations.mock.createOrder
+}
+func (operations mockOperations) UpdateOrder() sdkgo.Mutation[woocommerce.UpdateOrderInput, woocommerce.Order] {
+	return operations.mock.updateOrder
+}
+func (operations mockOperations) DeleteOrder() sdkgo.Mutation[woocommerce.DeleteOrderInput, woocommerce.Order] {
+	return operations.mock.deleteOrder
 }
 
 // ListOrdersListed selects the listed branch: List one page of WooCommerce orders.
@@ -139,3 +172,120 @@ func GetOrderDefaultAnswer() connectormock.Case[woocommerce.Order] {
 
 // GetOrderDefault is the manifest default, defaultAnswer, which New installs.
 func GetOrderDefault() connectormock.Case[woocommerce.Order] { return GetOrderDefaultAnswer() }
+
+// CreateOrderCreated selects the created branch: The order was created.
+func CreateOrderCreated(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.CreateOrderBranchCreated, value, failure)
+}
+
+// CreateOrderProviderRejected selects the providerRejected branch: The provider conclusively rejected the order.
+func CreateOrderProviderRejected(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.CreateOrderBranchProviderRejected, value, failure)
+}
+
+// CreateOrderInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func CreateOrderInvalidResponse(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.CreateOrderBranchInvalidResponse, value, failure)
+}
+
+// CreateOrderUncertain returns an uncertain createOrder outcome.
+func CreateOrderUncertain(value woocommerce.Order, failure sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateOrderDefect(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.CreateOrderBranchDefect, value, failure)
+}
+
+// CreateOrderRetry asks Dex to retry the createOrder Step, after the delay when it is positive.
+func CreateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[woocommerce.Order] {
+	return connectormock.Retry[woocommerce.Order](failure, after)
+}
+
+// CreateOrderDefaultAnswer is the manifest mock defaultAnswer: A newly created sample order.
+func CreateOrderDefaultAnswer() connectormock.Case[woocommerce.Order] {
+	value := connectormock.MustDecodeOutput[woocommerce.Order](`{"id":102,"status":"pending","total":"29.00","currency":"USD"}`)
+	return connectormock.Branch(woocommerce.CreateOrderBranchCreated, value, nil)
+}
+
+// CreateOrderDefault is the manifest default, defaultAnswer, which New installs.
+func CreateOrderDefault() connectormock.Case[woocommerce.Order] { return CreateOrderDefaultAnswer() }
+
+// UpdateOrderUpdated selects the updated branch: The order status was updated.
+func UpdateOrderUpdated(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.UpdateOrderBranchUpdated, value, failure)
+}
+
+// UpdateOrderNotFound selects the notFound branch: The order was not found.
+func UpdateOrderNotFound(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.UpdateOrderBranchNotFound, value, failure)
+}
+
+// UpdateOrderProviderRejected selects the providerRejected branch: The provider conclusively rejected the update.
+func UpdateOrderProviderRejected(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.UpdateOrderBranchProviderRejected, value, failure)
+}
+
+// UpdateOrderInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func UpdateOrderInvalidResponse(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.UpdateOrderBranchInvalidResponse, value, failure)
+}
+
+// UpdateOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateOrderDefect(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.UpdateOrderBranchDefect, value, failure)
+}
+
+// UpdateOrderRetry asks Dex to retry the updateOrder Step, after the delay when it is positive.
+func UpdateOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[woocommerce.Order] {
+	return connectormock.Retry[woocommerce.Order](failure, after)
+}
+
+// UpdateOrderDefaultAnswer is the manifest mock defaultAnswer: An updated sample order.
+func UpdateOrderDefaultAnswer() connectormock.Case[woocommerce.Order] {
+	value := connectormock.MustDecodeOutput[woocommerce.Order](`{"id":101,"status":"completed","total":"29.00","currency":"USD"}`)
+	return connectormock.Branch(woocommerce.UpdateOrderBranchUpdated, value, nil)
+}
+
+// UpdateOrderDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateOrderDefault() connectormock.Case[woocommerce.Order] { return UpdateOrderDefaultAnswer() }
+
+// DeleteOrderDeleted selects the deleted branch: The order was deleted.
+func DeleteOrderDeleted(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.DeleteOrderBranchDeleted, value, failure)
+}
+
+// DeleteOrderNotFound selects the notFound branch: The order was not found.
+func DeleteOrderNotFound(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.DeleteOrderBranchNotFound, value, failure)
+}
+
+// DeleteOrderProviderRejected selects the providerRejected branch: The provider conclusively rejected the delete.
+func DeleteOrderProviderRejected(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.DeleteOrderBranchProviderRejected, value, failure)
+}
+
+// DeleteOrderInvalidResponse selects the invalidResponse branch: The provider returned malformed or oversized JSON.
+func DeleteOrderInvalidResponse(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.DeleteOrderBranchInvalidResponse, value, failure)
+}
+
+// DeleteOrderDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteOrderDefect(value woocommerce.Order, failure *sdkgo.Failure) connectormock.Case[woocommerce.Order] {
+	return connectormock.Branch(woocommerce.DeleteOrderBranchDefect, value, failure)
+}
+
+// DeleteOrderRetry asks Dex to retry the deleteOrder Step, after the delay when it is positive.
+func DeleteOrderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[woocommerce.Order] {
+	return connectormock.Retry[woocommerce.Order](failure, after)
+}
+
+// DeleteOrderDefaultAnswer is the manifest mock defaultAnswer: A deleted sample order.
+func DeleteOrderDefaultAnswer() connectormock.Case[woocommerce.Order] {
+	value := connectormock.MustDecodeOutput[woocommerce.Order](`{"id":101,"status":"completed","total":"29.00","currency":"USD"}`)
+	return connectormock.Branch(woocommerce.DeleteOrderBranchDeleted, value, nil)
+}
+
+// DeleteOrderDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteOrderDefault() connectormock.Case[woocommerce.Order] { return DeleteOrderDefaultAnswer() }

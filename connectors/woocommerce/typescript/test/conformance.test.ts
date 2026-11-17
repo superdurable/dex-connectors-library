@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { WooCommerceClient } from '../src/client.js';
 import { GetOrderInputSchema, ListOrdersInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/woocommerce/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/woocommerce/scenarios.json', import.meta.url))
+  .filter(scenario => ['listOrders', 'getOrder'].includes(scenario.operation));
 const connection = { provider: 'woocommerce', name: 'woocommerce' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeWooCommerce, '/shop'));
