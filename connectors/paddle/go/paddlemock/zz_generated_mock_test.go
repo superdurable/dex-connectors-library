@@ -76,6 +76,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[paddle.PaddleProduct](`{"id":"pro_01htz88xpr0mm7b3ta2pjkr7w2","name":"Sample Product","taxCategory":"standard","status":"archived"}`)
 			return err
 		}},
+		{name: "listPrices/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PricePage](`{"items":[{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"active","billingInterval":"month","billingFrequency":1}],"hasMore":false,"nextCursor":""}`)
+			return err
+		}},
+		{name: "getPrice/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"active","billingInterval":"month","billingFrequency":1}`)
+			return err
+		}},
+		{name: "createPrice/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"active","billingInterval":"month","billingFrequency":1}`)
+			return err
+		}},
+		{name: "updatePrice/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"active","billingInterval":"month","billingFrequency":1}`)
+			return err
+		}},
+		{name: "archivePrice/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[paddle.PaddlePrice](`{"id":"pri_01hv0vax6rv18t4tamj848ne4d","productId":"pro_01htz88xpr0mm7b3ta2pjkr7w2","description":"Monthly price","amount":"500","currencyCode":"USD","status":"archived","billingInterval":"month","billingFrequency":1}`)
+			return err
+		}},
 		{name: "getTransaction/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[paddle.TransactionStatus](`{"id":"txn_01hv8wptq8987qeep44cyrewp9","status":"completed","currencyCode":"USD"}`)
 			return err
@@ -134,6 +154,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ArchiveProduct().Definition().Operation.OperationID != "archiveProduct" {
 		t.Errorf("archiveProduct mock has another definition")
+	}
+	if mock.ListPrices().Definition().Operation.OperationID != "listPrices" {
+		t.Errorf("listPrices mock has another definition")
+	}
+	if mock.GetPrice().Definition().Operation.OperationID != "getPrice" {
+		t.Errorf("getPrice mock has another definition")
+	}
+	if mock.CreatePrice().Definition().Operation.OperationID != "createPrice" {
+		t.Errorf("createPrice mock has another definition")
+	}
+	if mock.UpdatePrice().Definition().Operation.OperationID != "updatePrice" {
+		t.Errorf("updatePrice mock has another definition")
+	}
+	if mock.ArchivePrice().Definition().Operation.OperationID != "archivePrice" {
+		t.Errorf("archivePrice mock has another definition")
 	}
 	if mock.GetTransaction().Definition().Operation.OperationID != "getTransaction" {
 		t.Errorf("getTransaction mock has another definition")

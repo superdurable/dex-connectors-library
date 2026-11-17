@@ -44,5 +44,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createProduct":   newConformanceMutationInvocation(t, scenario.Input, context, client.CreateProduct(), reference, scenario.CallID),
 		"updateProduct":   newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateProduct(), reference, scenario.CallID),
 		"archiveProduct":  newConformanceMutationInvocation(t, scenario.Input, context, client.ArchiveProduct(), reference, scenario.CallID),
+		"listPrices":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListPrices(), reference),
+		"getPrice":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetPrice(), reference),
+		"createPrice":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePrice(), reference, scenario.CallID),
+		"updatePrice":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdatePrice(), reference, scenario.CallID),
+		"archivePrice":    newConformanceMutationInvocation(t, scenario.Input, context, client.ArchivePrice(), reference, scenario.CallID),
 	}}
 }

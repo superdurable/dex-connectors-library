@@ -1,6 +1,6 @@
 # Paddle transaction inspection Flow
 
-This runnable Go example registers `PaddleTransactionInspection`, `PaddleCustomerListing`, `PaddleDiscountListing`, and `PaddleProductListing` through the static `paddle` connection. Each Flow persists its typed result in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Go example registers `PaddleTransactionInspection`, `PaddleCustomerListing`, `PaddleDiscountListing`, `PaddleProductListing`, and `PaddlePriceListing` through the static `paddle` connection. Each Flow persists its typed result in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -22,6 +22,6 @@ With the project's `DEX_PROJECT_*` environment set, run from `connectors/paddle/
 GOWORK=off go run ./examples/transaction-inspection
 ```
 
-Start `PaddleTransactionInspection` with a unique Flow ID and input `{"transactionId":"txn_01hv8wptq8987qeep44cyrewp9"}`. Replace the sample with a transaction ID returned by Paddle. Start `PaddleCustomerListing`, `PaddleDiscountListing`, or `PaddleProductListing` with `{"perPage":50}`; `perPage` is 1–200 and `after` is the prior page's `nextCursor`. Customer listing also accepts an exact `email` filter and discount listing accepts an exact `code` filter. The Worker connects to Dex Server without an inbound listener.
+Start `PaddleTransactionInspection` with a unique Flow ID and input `{"transactionId":"txn_01hv8wptq8987qeep44cyrewp9"}`. Replace the sample with a transaction ID returned by Paddle. Start `PaddleCustomerListing`, `PaddleDiscountListing`, `PaddleProductListing`, or `PaddlePriceListing` with `{"perPage":50}`; `perPage` is 1–200 and `after` is the prior page's `nextCursor`. Customer listing also accepts an exact `email` filter, discount listing accepts an exact `code` filter, and price listing accepts a `pro_` `productId` filter. The Worker connects to Dex Server without an inbound listener.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Paddle authorization and retrieval remain unverified.

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: paddle
   displayName: Paddle
-  description: Read transactions and manage customers, discounts, and products through the Paddle Billing API.
+  description: Read transactions and manage customers, discounts, products, and prices through the Paddle Billing API.
   company: Paddle
   categories: [finance-payments]
   version: v0.2.0
@@ -48,12 +48,12 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read plus customer.read/write, discount.read/write, and product.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
+        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read plus customer.read/write, discount.read/write, product.read/write, and price.read/write for Go management operations; copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown. Blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
     guide:
       startURL: https://sandbox-vendors.paddle.com
       steps:
-        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read and, for Go management operations, customer.read, customer.write, discount.read, discount.write, product.read, and product.write; set an expiry and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
-        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find non-secret txn_, ctm_, dsc_, and pro_ IDs on the Paddle Transactions, Customers, Catalog > Discounts, and Catalog > Products pages or in API responses. Use a unique customer email for createCustomer, a unique alphanumeric code and percentage for createDiscount, and a product name plus enabled tax category for createProduct; blank required values are invalid.
+        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read and, for Go management operations, customer.read, customer.write, discount.read, discount.write, product.read, product.write, price.read, and price.write; set an expiry and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
+        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find non-secret txn_, ctm_, dsc_, pro_, and pri_ IDs on the Paddle Transactions, Customers, Catalog > Discounts, Catalog > Products, and product Prices pages or in API responses. Use a unique customer email for createCustomer, a unique alphanumeric code and percentage for createDiscount, a product name plus enabled tax category for createProduct, and a product ID plus private description and minor-unit amount for createPrice; blank required values are invalid.
   operations:
     - name: listCustomers
       goName: ListCustomers
@@ -361,6 +361,108 @@ spec:
           default: true
           description: A sample product is returned.
           output: {id: pro_01htz88xpr0mm7b3ta2pjkr7w2, name: Sample Product, taxCategory: standard, status: archived}
+    - name: listPrices
+      goName: ListPrices
+      inputType: ListPricesInput
+      outputType: PricePage
+      kind: query
+      description: List Paddle prices for a product.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Paddle returned the listPrices.}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample price is returned.
+          output: {items: [{id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: active, billingInterval: month, billingFrequency: 1}], hasMore: false, nextCursor: ''}
+    - name: getPrice
+      goName: GetPrice
+      inputType: PriceIDInput
+      outputType: PaddlePrice
+      kind: query
+      description: Read a Paddle price.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the getPrice.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample price is returned.
+          output: {id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: active, billingInterval: month, billingFrequency: 1}
+    - name: createPrice
+      goName: CreatePrice
+      inputType: CreatePriceInput
+      outputType: PaddlePrice
+      kind: mutation
+      description: Create a product price.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Paddle returned the createPrice.}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample price is returned.
+          output: {id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: active, billingInterval: month, billingFrequency: 1}
+    - name: updatePrice
+      goName: UpdatePrice
+      inputType: UpdatePriceInput
+      outputType: PaddlePrice
+      kind: mutation
+      description: Replace a price description and unit amount.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Paddle returned the updatePrice.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample price is returned.
+          output: {id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: active, billingInterval: month, billingFrequency: 1}
+    - name: archivePrice
+      goName: ArchivePrice
+      inputType: PriceIDInput
+      outputType: PaddlePrice
+      kind: mutation
+      description: Archive a Paddle price.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Paddle returned the archivePrice.}
+        - {id: notFound, goName: NotFound, description: notFound outcome., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: providerRejected outcome., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: invalidResponse outcome., optional: true}
+        - {id: defect, goName: Defect, description: defect outcome., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: archived
+          default: true
+          description: A sample price is returned.
+          output: {id: pri_01hv0vax6rv18t4tamj848ne4d, productId: pro_01htz88xpr0mm7b3ta2pjkr7w2, description: Monthly price, amount: '500', currencyCode: USD, status: archived, billingInterval: month, billingFrequency: 1}
     - name: getTransaction
       goName: GetTransaction
       inputType: GetTransactionInput

@@ -6289,6 +6289,1997 @@
       },
       "name": "archiveProduct-defect",
       "operation": "archiveProduct"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000301",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"pri_01hv0vax6rv18t4tamj848ne4d\",\"product_id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"description\":\"Monthly price\",\"unit_price\":{\"amount\":\"500\",\"currency_code\":\"USD\"},\"billing_cycle\":{\"interval\":\"month\",\"frequency\":1},\"status\":\"active\"}],\"meta\":{\"pagination\":{\"has_more\":false,\"next\":\"\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices",
+          "query": {
+            "after": [
+              "pri_01hv0vax6rv18t4tamj848ne4d"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "product_id": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "items": [
+            {
+              "amount": "500",
+              "billingFrequency": 1,
+              "billingInterval": "month",
+              "currencyCode": "USD",
+              "description": "Monthly price",
+              "id": "pri_01hv0vax6rv18t4tamj848ne4d",
+              "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+              "status": "active"
+            }
+          ],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "perPage": 2,
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "listPrices-listed",
+      "operation": "listPrices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000302",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices",
+          "query": {
+            "after": [
+              "pri_01hv0vax6rv18t4tamj848ne4d"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "product_id": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "perPage": 2,
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "listPrices-provider-rejected",
+      "operation": "listPrices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000303",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices",
+          "query": {
+            "after": [
+              "pri_01hv0vax6rv18t4tamj848ne4d"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "product_id": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "perPage": 2,
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "listPrices-invalid-response",
+      "operation": "listPrices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000304",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices",
+          "query": {
+            "after": [
+              "pri_01hv0vax6rv18t4tamj848ne4d"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "product_id": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "perPage": 2,
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "listPrices-rate-limit",
+      "operation": "listPrices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000305",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices",
+          "query": {
+            "after": [
+              "pri_01hv0vax6rv18t4tamj848ne4d"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "product_id": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "perPage": 2,
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "listPrices-service-unavailable",
+      "operation": "listPrices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices",
+          "query": {
+            "after": [
+              "pri_01hv0vax6rv18t4tamj848ne4d"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "product_id": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "perPage": 2,
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "listPrices-server-error",
+      "operation": "listPrices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000307",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices",
+          "query": {
+            "after": [
+              "pri_01hv0vax6rv18t4tamj848ne4d"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "product_id": [
+              "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "perPage": 2,
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "listPrices-transport",
+      "operation": "listPrices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000308",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "items": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "pri_01hv0vax6rv18t4tamj848ne4d",
+        "perPage": 0,
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "listPrices-defect",
+      "operation": "listPrices"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000309",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"pri_01hv0vax6rv18t4tamj848ne4d\",\"product_id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"description\":\"Monthly price\",\"unit_price\":{\"amount\":\"500\",\"currency_code\":\"USD\"},\"billing_cycle\":{\"interval\":\"month\",\"frequency\":1},\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount": "500",
+          "billingFrequency": 1,
+          "billingInterval": "month",
+          "currencyCode": "USD",
+          "description": "Monthly price",
+          "id": "pri_01hv0vax6rv18t4tamj848ne4d",
+          "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "getPrice-found",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000310",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "getPrice-not-found",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000311",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "getPrice-provider-rejected",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000312",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "getPrice-invalid-response",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000313",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "getPrice-rate-limit",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000314",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "getPrice-service-unavailable",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000315",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "getPrice-server-error",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000316",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "getPrice-transport",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000317",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "priceId": "bad"
+      },
+      "name": "getPrice-defect",
+      "operation": "getPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"pri_01hv0vax6rv18t4tamj848ne4d\",\"product_id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"description\":\"Monthly price\",\"unit_price\":{\"amount\":\"500\",\"currency_code\":\"USD\"},\"billing_cycle\":{\"interval\":\"month\",\"frequency\":1},\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+          "providerId": "pri_01hv0vax6rv18t4tamj848ne4d",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "amount": "500",
+          "billingFrequency": 1,
+          "billingInterval": "month",
+          "currencyCode": "USD",
+          "description": "Monthly price",
+          "id": "pri_01hv0vax6rv18t4tamj848ne4d",
+          "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-created",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-provider-rejected",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-rate-limit",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-service-unavailable",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-server-error",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/prices",
+          "requestBody": {
+            "billing_cycle": {
+              "frequency": 1,
+              "interval": "month"
+            },
+            "description": "Monthly price",
+            "product_id": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "500",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-transport",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1268de32-9ccf-50ac-8dd4-c7db1deb4531",
+      "input": {
+        "amount": "0",
+        "billingCycle": {
+          "frequency": 1,
+          "interval": "month"
+        },
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2"
+      },
+      "name": "createPrice-defect",
+      "operation": "createPrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"pri_01hv0vax6rv18t4tamj848ne4d\",\"product_id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"description\":\"Monthly price\",\"unit_price\":{\"amount\":\"500\",\"currency_code\":\"USD\"},\"billing_cycle\":{\"interval\":\"month\",\"frequency\":1},\"status\":\"active\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "amount": "500",
+          "billingFrequency": 1,
+          "billingInterval": "month",
+          "currencyCode": "USD",
+          "description": "Monthly price",
+          "id": "pri_01hv0vax6rv18t4tamj848ne4d",
+          "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-updated",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-not-found",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-provider-rejected",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-invalid-response",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-rate-limit",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-service-unavailable",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-server-error",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "description": "Monthly price",
+            "unit_price": {
+              "amount": "500",
+              "currency_code": "USD"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "updatePrice-transport",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "b309e7ca-978f-58db-912e-0b7225306154",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b309e7ca-978f-58db-912e-0b7225306154",
+      "input": {
+        "amount": "500",
+        "currencyCode": "USD",
+        "description": "Monthly price",
+        "priceId": "bad"
+      },
+      "name": "updatePrice-defect",
+      "operation": "updatePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"pri_01hv0vax6rv18t4tamj848ne4d\",\"product_id\":\"pro_01htz88xpr0mm7b3ta2pjkr7w2\",\"description\":\"Monthly price\",\"unit_price\":{\"amount\":\"500\",\"currency_code\":\"USD\"},\"billing_cycle\":{\"interval\":\"month\",\"frequency\":1},\"status\":\"archived\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "archived",
+        "failureKind": "",
+        "output": {
+          "amount": "500",
+          "billingFrequency": 1,
+          "billingInterval": "month",
+          "currencyCode": "USD",
+          "description": "Monthly price",
+          "id": "pri_01hv0vax6rv18t4tamj848ne4d",
+          "productId": "pro_01htz88xpr0mm7b3ta2pjkr7w2",
+          "status": "archived"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-archived",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-not-found",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-provider-rejected",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-invalid-response",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-rate-limit",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-service-unavailable",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-server-error",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/prices/pri_01hv0vax6rv18t4tamj848ne4d",
+          "requestBody": {
+            "status": "archived"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-paddle-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "pri_01hv0vax6rv18t4tamj848ne4d"
+      },
+      "name": "archivePrice-transport",
+      "operation": "archivePrice"
+    },
+    {
+      "callId": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": "",
+          "billingFrequency": 0,
+          "billingInterval": "",
+          "currencyCode": "",
+          "description": "",
+          "id": "",
+          "productId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f9bee6ea-da9d-523f-920e-92bdb52d92b6",
+      "input": {
+        "priceId": "bad"
+      },
+      "name": "archivePrice-defect",
+      "operation": "archivePrice"
     }
   ],
   "schemaVersion": 1
