@@ -391,7 +391,7 @@ spec:
       description: Add an existing subscriber to a sequence with bounded sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: added, goName: Added, description: Kit added or found the sequence membership.}
         - {id: notFound, goName: NotFound, description: Kit did not find the sequence or subscriber., optional: true}

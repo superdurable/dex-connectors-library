@@ -186,7 +186,7 @@ spec:
       description: Create a Keap company with a bounded resend budget.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Keap created the company.}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the create request., optional: true}
@@ -290,7 +290,7 @@ spec:
       description: Add a note to a Keap contact with bounded sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Keap created the note.}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the note., optional: true}
@@ -456,7 +456,7 @@ spec:
       description: Create an order with one product and bounded sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Keap created the order.}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the order., optional: true}
@@ -559,7 +559,7 @@ spec:
       description: Create a Keap product with bounded sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Keap created the product.}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the product., optional: true}
@@ -641,7 +641,7 @@ spec:
       description: Record an email that was already sent outside Keap.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Keap stored the sent-email record.}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the record., optional: true}
@@ -661,7 +661,7 @@ spec:
       description: Send one email to one Keap contact with bounded sends.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: Keap accepted the email send.}
         - {id: providerRejected, goName: ProviderRejected, description: Keap rejected the send., optional: true}

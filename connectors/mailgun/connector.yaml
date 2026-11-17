@@ -107,7 +107,7 @@ spec:
       description: Queue one text or HTML email through a verified Mailgun sending domain.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: Mailgun confirmed the queued message.}
         - {id: providerRejected, goName: ProviderRejected, description: Mailgun conclusively rejected the message., optional: true}
