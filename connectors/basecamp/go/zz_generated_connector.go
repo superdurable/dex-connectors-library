@@ -51,6 +51,12 @@ type Operations interface {
 	TrashProject() sdkgo.Mutation[GetProjectInput, ProjectActionResult]
 	ListProjects() sdkgo.Query[ListProjectsInput, ProjectsPage]
 	GetProject() sdkgo.Query[GetProjectInput, Project]
+	ListTodoLists() sdkgo.Query[ListTodoListsInput, TodoListsPage]
+	GetTodoList() sdkgo.Query[GetTodoListInput, TodoList]
+	CreateTodoList() sdkgo.Mutation[CreateTodoListInput, TodoList]
+	UpdateTodoList() sdkgo.Mutation[UpdateTodoListInput, TodoList]
+	RepositionTodoList() sdkgo.Mutation[RepositionTodoListInput, TodoListActionResult]
+	TrashTodoList() sdkgo.Mutation[GetTodoListInput, TodoListActionResult]
 	CreateTodo() sdkgo.Mutation[CreateTodoInput, Todo]
 	UpdateTodo() sdkgo.Mutation[UpdateTodoInput, Todo]
 	CompleteTodo() sdkgo.Mutation[GetTodoInput, TodoActionResult]
@@ -84,6 +90,24 @@ func (operations clientOperations) ListProjects() sdkgo.Query[ListProjectsInput,
 }
 func (operations clientOperations) GetProject() sdkgo.Query[GetProjectInput, Project] {
 	return operations.client.GetProject()
+}
+func (operations clientOperations) ListTodoLists() sdkgo.Query[ListTodoListsInput, TodoListsPage] {
+	return operations.client.ListTodoLists()
+}
+func (operations clientOperations) GetTodoList() sdkgo.Query[GetTodoListInput, TodoList] {
+	return operations.client.GetTodoList()
+}
+func (operations clientOperations) CreateTodoList() sdkgo.Mutation[CreateTodoListInput, TodoList] {
+	return operations.client.CreateTodoList()
+}
+func (operations clientOperations) UpdateTodoList() sdkgo.Mutation[UpdateTodoListInput, TodoList] {
+	return operations.client.UpdateTodoList()
+}
+func (operations clientOperations) RepositionTodoList() sdkgo.Mutation[RepositionTodoListInput, TodoListActionResult] {
+	return operations.client.RepositionTodoList()
+}
+func (operations clientOperations) TrashTodoList() sdkgo.Mutation[GetTodoListInput, TodoListActionResult] {
+	return operations.client.TrashTodoList()
 }
 func (operations clientOperations) CreateTodo() sdkgo.Mutation[CreateTodoInput, Todo] {
 	return operations.client.CreateTodo()
@@ -833,6 +857,452 @@ func NewGetProjectStep[IN any](config GetProjectStepConfig[IN]) sdkgo.QueryStep[
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetProjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTodoListsBranchListed sdkgo.BranchID = "listed"
+const ListTodoListsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTodoListsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTodoListsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTodoListsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTodoLists"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTodoListsBranchListed, Description: "Basecamp returned the requested result."},
+		{ID: ListTodoListsBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: ListTodoListsBranchInvalidResponse, Description: "Basecamp returned invalid to-do list JSON.", Optional: true},
+		{ID: ListTodoListsBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTodoListsResult = sdkgo.QueryResult[TodoListsPage]
+
+type ListTodoListsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=basecamp"`
+	operationID                    struct{}                                         `connector:"operationId=listTodoLists"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTodoListsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTodoListsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTodoListsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTodoListsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTodoListsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TodoListsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListTodoListsStep[IN any](config ListTodoListsStepConfig[IN]) sdkgo.QueryStep[IN, ListTodoListsInput, TodoListsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTodoListsInput, TodoListsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTodoLists(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTodoListsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTodoListsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTodoListsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTodoListsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTodoListsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTodoListsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTodoListBranchFound sdkgo.BranchID = "found"
+const GetTodoListBranchNotFound sdkgo.BranchID = "notFound"
+const GetTodoListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTodoListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTodoListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTodoListDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTodoList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTodoListBranchFound, Description: "Basecamp returned the requested result."},
+		{ID: GetTodoListBranchNotFound, Description: "The to-do list does not exist.", Optional: true},
+		{ID: GetTodoListBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: GetTodoListBranchInvalidResponse, Description: "Basecamp returned invalid to-do list JSON.", Optional: true},
+		{ID: GetTodoListBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTodoListResult = sdkgo.QueryResult[TodoList]
+
+type GetTodoListStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=basecamp"`
+	operationID                    struct{}                                    `connector:"operationId=getTodoList"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetTodoListInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTodoListResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetTodoListResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetTodoListResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTodoListResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTodoListResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TodoList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetTodoListStep[IN any](config GetTodoListStepConfig[IN]) sdkgo.QueryStep[IN, GetTodoListInput, TodoList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetTodoListInput, TodoList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTodoList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTodoListResult] {
+			branches := make([]sdkgo.BranchTarget[GetTodoListResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTodoListBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetTodoListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTodoListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTodoListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTodoListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateTodoListBranchCreated sdkgo.BranchID = "created"
+const CreateTodoListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateTodoListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateTodoListBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateTodoListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createTodoList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateTodoListBranchCreated, Description: "Basecamp returned the requested result."},
+		{ID: CreateTodoListBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: CreateTodoListBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: CreateTodoListBranchUncertain, Description: "Creation cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateTodoListResult = sdkgo.MutationResult[TodoList]
+
+type CreateTodoListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                       `connector:"operationId=createTodoList"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateTodoListInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateTodoListResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateTodoListResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateTodoListResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateTodoListResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TodoList]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateTodoListStep[IN any](config CreateTodoListStepConfig[IN]) sdkgo.MutationStep[IN, CreateTodoListInput, TodoList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateTodoListInput, TodoList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateTodoList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateTodoListResult] {
+			branches := make([]sdkgo.BranchTarget[CreateTodoListResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateTodoListBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateTodoListBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateTodoListBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateTodoListBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateTodoListBranchUpdated sdkgo.BranchID = "updated"
+const UpdateTodoListBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateTodoListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateTodoListBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateTodoListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateTodoListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTodoList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateTodoListBranchUpdated, Description: "Basecamp returned the requested result."},
+		{ID: UpdateTodoListBranchNotFound, Description: "The to-do list does not exist.", Optional: true},
+		{ID: UpdateTodoListBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: UpdateTodoListBranchInvalidResponse, Description: "Basecamp returned invalid to-do list JSON.", Optional: true},
+		{ID: UpdateTodoListBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateTodoListResult = sdkgo.MutationResult[TodoList]
+
+type UpdateTodoListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                       `connector:"operationId=updateTodoList"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateTodoListInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateTodoListResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateTodoListResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateTodoListResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateTodoListResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateTodoListResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TodoList]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateTodoListStep[IN any](config UpdateTodoListStepConfig[IN]) sdkgo.MutationStep[IN, UpdateTodoListInput, TodoList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateTodoListInput, TodoList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateTodoList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateTodoListResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateTodoListResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateTodoListBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateTodoListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTodoListBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateTodoListBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateTodoListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RepositionTodoListBranchRepositioned sdkgo.BranchID = "repositioned"
+const RepositionTodoListBranchNotFound sdkgo.BranchID = "notFound"
+const RepositionTodoListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RepositionTodoListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RepositionTodoListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "repositionTodoList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RepositionTodoListBranchRepositioned, Description: "Basecamp returned the requested result."},
+		{ID: RepositionTodoListBranchNotFound, Description: "The to-do list does not exist.", Optional: true},
+		{ID: RepositionTodoListBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: RepositionTodoListBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RepositionTodoListResult = sdkgo.MutationResult[TodoListActionResult]
+
+type RepositionTodoListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                                   `connector:"operationId=repositionTodoList"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) RepositionTodoListInput                           `connector:"mapToOperationInput"`
+	Repositioned                      sdkgo.Target[RepositionTodoListResult]                     `connector:"branch=repositioned"`
+	NotFound                          sdkgo.Target[RepositionTodoListResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[RepositionTodoListResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RepositionTodoListResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TodoListActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewRepositionTodoListStep[IN any](config RepositionTodoListStepConfig[IN]) sdkgo.MutationStep[IN, RepositionTodoListInput, TodoListActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RepositionTodoListInput, TodoListActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RepositionTodoList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RepositionTodoListResult] {
+			branches := make([]sdkgo.BranchTarget[RepositionTodoListResult], 0, 4)
+			if config.Repositioned.HasStep() {
+				branches = append(branches, config.Repositioned.BranchTarget(RepositionTodoListBranchRepositioned))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RepositionTodoListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RepositionTodoListBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RepositionTodoListBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const TrashTodoListBranchTrashed sdkgo.BranchID = "trashed"
+const TrashTodoListBranchNotFound sdkgo.BranchID = "notFound"
+const TrashTodoListBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TrashTodoListBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var TrashTodoListDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "trashTodoList"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TrashTodoListBranchTrashed, Description: "Basecamp returned the requested result."},
+		{ID: TrashTodoListBranchNotFound, Description: "The to-do list does not exist.", Optional: true},
+		{ID: TrashTodoListBranchProviderRejected, Description: "Basecamp rejected the request.", Optional: true},
+		{ID: TrashTodoListBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type TrashTodoListResult = sdkgo.MutationResult[TodoListActionResult]
+
+type TrashTodoListStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=basecamp"`
+	operationID                       struct{}                                                   `connector:"operationId=trashTodoList"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetTodoListInput                                  `connector:"mapToOperationInput"`
+	Trashed                           sdkgo.Target[TrashTodoListResult]                          `connector:"branch=trashed"`
+	NotFound                          sdkgo.Target[TrashTodoListResult]                          `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[TrashTodoListResult]                          `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TrashTodoListResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TodoListActionResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewTrashTodoListStep[IN any](config TrashTodoListStepConfig[IN]) sdkgo.MutationStep[IN, GetTodoListInput, TodoListActionResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("basecamp connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetTodoListInput, TodoListActionResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TrashTodoList(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TrashTodoListResult] {
+			branches := make([]sdkgo.BranchTarget[TrashTodoListResult], 0, 4)
+			if config.Trashed.HasStep() {
+				branches = append(branches, config.Trashed.BranchTarget(TrashTodoListBranchTrashed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(TrashTodoListBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TrashTodoListBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TrashTodoListBranchDefect))
 			}
 			return branches
 		}(),

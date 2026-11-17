@@ -78,6 +78,7 @@ spec:
         - Leave baseUrl, apiBaseUrl, timeout, and maxResponseBytes blank for their displayed defaults. First list accounts, then use an account ID for projects and to-dos.
         - For project changes, open https://3.basecamp.com > your account > Projects. Use the numeric account ID from listAccounts and project ID from a project's URL or listProjects. Supply a non-blank project name; description is non-secret text and blank clears it on update. Archive, restore, and trash use the selected project ID. Trashing may permanently delete a project on plans without an archive/trash period.
         - For to-dos, open https://3.basecamp.com > your account > project > To-dos > to-do list. Use the numeric account ID from listAccounts and the to-do list or to-do ID in the selected page URL or API result. A non-blank content title is required; description is rich text, dates are YYYY-MM-DD, and person IDs come from People. Blank optional dates or description clear them on replacement; empty assignee and subscriber lists clear them. Basecamp PUT replaces all editable fields, so supply the full current state from getTodo when updating. Completion and trash actions use the to-do ID; reposition requires a positive position and optional same-project parent ID.
+        - For to-do lists, open https://3.basecamp.com > your account > project > To-dos. Use the numeric to-do set ID from getProject's dock or the Basecamp API, and the selected list ID from its URL or listTodoLists. Name is non-blank; description is non-secret rich text and blank clears it on update. Position is one-based among incomplete lists. Trashing uses the list's recording ID.
     oauth2:
       authorizationEndpoint: https://launchpad.37signals.com/authorization/new
       tokenEndpoint: https://launchpad.37signals.com/authorization/token
@@ -217,6 +218,128 @@ spec:
           default: true
           description: One project exists.
           output: {id: '123', name: Example Project}
+    - name: listTodoLists
+      goName: ListTodoLists
+      inputType: ListTodoListsInput
+      outputType: TodoListsPage
+      kind: query
+      description: List active to-do lists in a to-do set.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid to-do list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Basecamp returned the requested result.
+          output: {todoLists: [{id: '456', name: Example List}]}
+    - name: getTodoList
+      goName: GetTodoList
+      inputType: GetTodoListInput
+      outputType: TodoList
+      kind: query
+      description: Read one to-do list.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The to-do list does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid to-do list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '456', name: Example List}
+    - name: createTodoList
+      goName: CreateTodoList
+      inputType: CreateTodoListInput
+      outputType: TodoList
+      kind: mutation
+      description: Create a to-do list in a to-do set.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Basecamp returned the requested result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '456', name: Example List}
+    - name: updateTodoList
+      goName: UpdateTodoList
+      inputType: UpdateTodoListInput
+      outputType: TodoList
+      kind: mutation
+      description: Replace a to-do list's name and description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The to-do list does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned invalid to-do list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Basecamp returned the requested result.
+          output: {id: '456', name: Example List}
+    - name: repositionTodoList
+      goName: RepositionTodoList
+      inputType: RepositionTodoListInput
+      outputType: TodoListActionResult
+      kind: mutation
+      description: Set a to-do list's absolute position.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: repositioned, goName: Repositioned, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The to-do list does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: repositionedDefault
+          branch: repositioned
+          default: true
+          description: Basecamp returned the requested result.
+          output: {todoListId: '456', status: repositioned}
+    - name: trashTodoList
+      goName: TrashTodoList
+      inputType: GetTodoListInput
+      outputType: TodoListActionResult
+      kind: mutation
+      description: Trash a to-do list recording.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: trashed, goName: Trashed, description: Basecamp returned the requested result.}
+        - {id: notFound, goName: NotFound, description: The to-do list does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: trashedDefault
+          branch: trashed
+          default: true
+          description: Basecamp returned the requested result.
+          output: {todoListId: '456', status: trashed}
     - name: createTodo
       goName: CreateTodo
       inputType: CreateTodoInput

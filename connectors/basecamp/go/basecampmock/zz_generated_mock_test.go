@@ -44,6 +44,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[basecamp.Project](`{"id":"123","name":"Example Project"}`)
 			return err
 		}},
+		{name: "listTodoLists/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoListsPage](`{"todoLists":[{"id":"456","name":"Example List"}]}`)
+			return err
+		}},
+		{name: "getTodoList/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoList](`{"id":"456","name":"Example List"}`)
+			return err
+		}},
+		{name: "createTodoList/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoList](`{"id":"456","name":"Example List"}`)
+			return err
+		}},
+		{name: "updateTodoList/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoList](`{"id":"456","name":"Example List"}`)
+			return err
+		}},
+		{name: "repositionTodoList/repositionedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoListActionResult](`{"todoListId":"456","status":"repositioned"}`)
+			return err
+		}},
+		{name: "trashTodoList/trashedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[basecamp.TodoListActionResult](`{"todoListId":"456","status":"trashed"}`)
+			return err
+		}},
 		{name: "createTodo/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[basecamp.Todo](`{"id":"321","content":"Example task","completed":false}`)
 			return err
@@ -110,6 +134,24 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetProject().Definition().Operation.OperationID != "getProject" {
 		t.Errorf("getProject mock has another definition")
+	}
+	if mock.ListTodoLists().Definition().Operation.OperationID != "listTodoLists" {
+		t.Errorf("listTodoLists mock has another definition")
+	}
+	if mock.GetTodoList().Definition().Operation.OperationID != "getTodoList" {
+		t.Errorf("getTodoList mock has another definition")
+	}
+	if mock.CreateTodoList().Definition().Operation.OperationID != "createTodoList" {
+		t.Errorf("createTodoList mock has another definition")
+	}
+	if mock.UpdateTodoList().Definition().Operation.OperationID != "updateTodoList" {
+		t.Errorf("updateTodoList mock has another definition")
+	}
+	if mock.RepositionTodoList().Definition().Operation.OperationID != "repositionTodoList" {
+		t.Errorf("repositionTodoList mock has another definition")
+	}
+	if mock.TrashTodoList().Definition().Operation.OperationID != "trashTodoList" {
+		t.Errorf("trashTodoList mock has another definition")
 	}
 	if mock.CreateTodo().Definition().Operation.OperationID != "createTodo" {
 		t.Errorf("createTodo mock has another definition")

@@ -16,3 +16,7 @@ The worker also registers `BasecampProjectCreate`. Start it with a `CreateProjec
 # To-do creation
 
 The worker registers `BasecampTodoCreate`. Start it with a `CreateTodoInput` containing the account and to-do list IDs, a non-blank title, and optional description, dates, assignees, and subscribers. `CallCreateTodo` uses a bounded send count and completes with the created to-do. Run `dexcli visualize go/examples/accounts/flow/todo_create.go --schema-version 2.0 --lint app --json --out /tmp/basecamp-todo-create-fdg --open=false` from the connector directory, then run `GOWORK=off go test -tags=integration ./examples/accounts/flow -run '^TestTodoCreateUsesDefaultMockWithRealDex$'` with `DEX_FLOW_SERVICE_ADDRESS` pointed to local Dex.
+
+# To-do list creation
+
+The worker registers `BasecampTodoListCreate`. Start it with a `CreateTodoListInput` containing the account ID, to-do set ID from the project dock, non-blank list name, and optional rich text description. `CallCreateTodoList` uses a bounded send count and completes with the created list. Run `dexcli visualize go/examples/accounts/flow/todo_list_create.go --schema-version 2.0 --lint app --json --out /tmp/basecamp-todo-list-create-fdg --open=false` from the connector directory, then run `GOWORK=off go test -tags=integration ./examples/accounts/flow -run '^TestTodoListCreateUsesDefaultMockWithRealDex$'` with `DEX_FLOW_SERVICE_ADDRESS` pointed to local Dex.

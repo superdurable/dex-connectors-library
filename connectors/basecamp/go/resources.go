@@ -22,6 +22,8 @@ type Project struct {
 	ID string `json:"id"`
 	// Name is the current project name.
 	Name string `json:"name"`
+	// TodoSetID identifies the project's to-do set from its dock, when present.
+	TodoSetID string `json:"todoSetId,omitempty"`
 }
 
 // ProjectsPage contains one provider page of active projects.
@@ -237,11 +239,22 @@ func decodeProject(body []byte, expectedID string) (Project, error) {
 	var record struct {
 		ID   int64  `json:"id"`
 		Name string `json:"name"`
+		Dock []struct {
+			ID   int64  `json:"id"`
+			Name string `json:"name"`
+		} `json:"dock"`
 	}
 	if err := json.Unmarshal(body, &record); err != nil || record.ID <= 0 || (expectedID != "" && strconv.FormatInt(record.ID, 10) != expectedID) || record.Name == "" {
 		return Project{}, fmt.Errorf("project is invalid")
 	}
-	return Project{ID: strconv.FormatInt(record.ID, 10), Name: record.Name}, nil
+	project := Project{ID: strconv.FormatInt(record.ID, 10), Name: record.Name}
+	for _, dockItem := range record.Dock {
+		if dockItem.Name == "todoset" && dockItem.ID > 0 {
+			project.TodoSetID = strconv.FormatInt(dockItem.ID, 10)
+			break
+		}
+	}
+	return project, nil
 }
 
 func decodeTodos(body []byte) (TodosPage, error) {
