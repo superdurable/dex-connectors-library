@@ -15,10 +15,10 @@ spec:
       operations: [sendEvent]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-superdurable-webhook'
       operations: [sendEvent]
-      triggers: []
+      triggers: [requestReceived]
   codegen:
     go:
       package: webhook

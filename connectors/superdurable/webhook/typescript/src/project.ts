@@ -4,12 +4,12 @@
 import { SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
-import { WebhookClient } from './client.js';
+import { WebhookClient, type WebhookClientOptions } from './client.js';
 import { newProjectConnection as newGeneratedProjectConnection } from './generated/connection.js';
 import { ConfigSchema, type Config, type Credentials } from './generated/models.js';
 
 /** Resolve a static named webhook connection from a Dex project. */
-export function newProjectConnection(project: LoadedProject, connectionName: string) {
+export function newProjectConnection(project: LoadedProject, connectionName: string, options: WebhookClientOptions = {}) {
   return newGeneratedProjectConnection(project, connectionName, (loadedProject, name) => {
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'webhook' && entry.connectionName === name);
     if (!selected) throw new TypeError('webhook project connection is not configured');
@@ -22,6 +22,6 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
         return { signingSecret: new SecretString(decoded.signing_secret) };
       },
     };
-    return new WebhookClient(config, credentials);
+    return new WebhookClient(config, credentials, options);
   });
 }

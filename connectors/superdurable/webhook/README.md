@@ -28,6 +28,15 @@ static `webhook-forwarding` connection, signs one JSON event, and verifies a
 retry through a real Dex Worker and Client. The existing Go package continues
 to provide `requestReceived`.
 
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements `sendEvent` and
+`requestReceived` v0.2.0. Its [request intake Flow](typescript/examples/request-intake/README.md)
+verifies inbound requests, records events in a durable project inbox before
+acknowledgment, and replays them after a restart. The example persists only
+nonsecret event metadata. The [send-event Flow](typescript/examples/send-event/README.md)
+demonstrates signed outbound delivery.
+
 ## Architecture
 
 The connection's client keeps one `webhooktrigger.Endpoint` per connection.

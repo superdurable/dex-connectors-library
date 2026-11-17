@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { createHmac } from 'node:crypto';
-import { SecretString, newMutationBranch, newMutationRetry, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { SecretString, defaultTriggerLogger, newMutationBranch, newMutationRetry, type TriggerLogger, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
 import { AddressRefusal, BodyTooLargeError, parseRetryAfter, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { inboundSettings, type InboundSettings } from './request.js';
 import { ConnectorID, SendEventDefinition } from './generated/definitions.js';
 import type { Config, Credentials, SendEventInput, SendEventOutput } from './generated/models.js';
 
@@ -14,6 +15,7 @@ export type WebhookRequestSender = (request: ProviderRequest) => Promise<Provide
 export interface WebhookClientOptions {
   /** Replace the provider transport. */ send?: WebhookRequestSender;
   /** Replace the timestamp and receipt clock. */ now?: () => Date;
+  /** Secret-safe Trigger delivery records. */ logger?: TriggerLogger;
 }
 
 /** Signed webhook delivery client for one connection. */
@@ -23,16 +25,20 @@ export class WebhookClient {
   readonly credentials: CredentialProvider<Credentials>;
   readonly send: WebhookRequestSender;
   readonly now: () => Date;
+  /** Validated incoming webhook settings. */ readonly inboundSettings: InboundSettings;
+  /** Trigger record destination. */ readonly triggerLogger: TriggerLogger;
 
   /** Validate immutable settings and bind a credential source. */
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: WebhookClientOptions = {}) {
     if (!credentials) throw new TypeError('webhook credential provider is required');
     this.deliveryUrl = validateDeliveryUrl(config.deliveryUrl ?? '');
+    this.inboundSettings = inboundSettings(config);
     this.maxBodyBytes = config.maxBodyBytes || 1_048_576;
     if (!Number.isSafeInteger(this.maxBodyBytes) || this.maxBodyBytes <= 0) throw new TypeError('webhook maxBodyBytes must be positive');
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
   }
 
   /** Bind the outgoing event mutation. */

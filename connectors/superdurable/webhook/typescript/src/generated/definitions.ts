@@ -30,6 +30,8 @@ export const SendEventDefinition: MutationDefinition = {
     { id: "defect", description: "The connection has no valid deliveryUrl or signing secret, or the payload is not one JSON value within maxBodyBytes.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for sendEvent. */
 export const SendEventMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
