@@ -88,7 +88,7 @@ func (SendRequestOperation) IdempotencyKey(callID sdkgo.CallID, _ SendRequestInp
 // renewed. A 2xx selects completed, and a redirect, a definite refusal (400, 401, 403, 404, 411, 413, 414,
 // 415, or 422), or an authorization the server will no longer renew selects rejected. Every other
 // outcome, including a lost connection, a 5xx, and any other status, returns Retry, so the request is
-// sent again, except a POST without idempotencyKeyHeader whose answer was lost, which selects uncertain.
+// sent again. The declared uncertain branch is kept for compatibility and never selected.
 func (operation SendRequestOperation) Invoke(call sdkgo.Call, input SendRequestInput) sdkgo.MutationAttempt[SendRequestOutput] {
 	client := operation.client
 	operationName := SendRequestDefinition.Operation.OperationID
@@ -256,10 +256,6 @@ func (operation SendRequestOperation) attemptFor(call sdkgo.Call, request planne
 	case answer.err != nil && !answer.isDispatched:
 		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureAvailability,
 			"the API could not be reached; no request was sent"), 0)
-	case answer.err != nil && request.isUndeduplicatedPost():
-		// Kept narrowly so the declared uncertain branch stays reachable; see the README.
-		return sdkgo.NewMutationUncertain(output, operationFailure(operationName, sdkgo.FailureTransport,
-			"the POST was sent without an idempotency header but the API did not answer completely"), receipt)
 	case answer.err != nil:
 		return sdkgo.NewMutationRetry[SendRequestOutput](operationFailure(operationName, sdkgo.FailureTransport,
 			"the request was sent but the API did not answer completely"), 0)

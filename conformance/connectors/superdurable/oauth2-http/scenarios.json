@@ -376,15 +376,12 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
-        "output": {
-          "statusCode": 0
-        },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
       "input": {

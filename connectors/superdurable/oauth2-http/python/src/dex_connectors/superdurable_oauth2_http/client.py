@@ -447,8 +447,7 @@ class SendRequestOperation:
         """Send the request, refreshing after one HTTP 401 when possible.
 
         A 2xx selects completed; a redirect or a definite refusal selects rejected. Every other
-        outcome returns Retry, except that a POST without idempotency_key_header whose answer was
-        lost selects uncertain.
+        outcome returns Retry; the declared uncertain branch is never selected.
         """
         try:
             request = _plan_request(
@@ -500,18 +499,6 @@ class SendRequestOperation:
                         FailureKind.AVAILABILITY,
                         "the API could not be reached; no request was sent",
                     )
-                )
-            if request.method == "POST" and not request.idempotency_key_header:
-                # Kept narrowly so the declared uncertain branch stays reachable; see the README.
-                return MutationAttempt.uncertain(
-                    output,
-                    _failure(
-                        _SEND_REQUEST,
-                        FailureKind.TRANSPORT,
-                        "the POST was sent without an idempotency header "
-                        "but the API did not answer completely",
-                    ),
-                    receipt,
                 )
             return MutationAttempt.retry(
                 _failure(
