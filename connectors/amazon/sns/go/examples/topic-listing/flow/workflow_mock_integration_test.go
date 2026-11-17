@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/sns/go"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/sns/go/snsmock"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -24,7 +25,11 @@ import (
 func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := snsmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	publishFlow := NewPublishFlow(mock.Connection())
+	subscriptionFlow := NewSubscriptionListingFlow(mock.Connection())
+	topicAttributesFlow := NewTopicAttributesFlow(mock.Connection())
+	notificationFlow := NewNotificationFlow()
+	registry, err := dex.NewRegistry([]dex.Flow{flow, publishFlow, subscriptionFlow, topicAttributesFlow, notificationFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +61,52 @@ func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "arn:aws:sns:us-east-1:123456789012:example-topic", output.TopicARNs[0])
 	require.Len(t, mock.ListTopics().Calls(), 1)
+	publishID := "sns-message-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, publishFlow, publishID, sns.PublishMessageInput{TopicARN: "arn:aws:sns:us-east-1:123456789012:example-topic", Message: "Report ready", Subject: "Operations"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	publishResult, err := client.WaitForFlow(ctx, publishID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, publishResult.Status, publishResult.ErrorMessage)
+	var published sns.PublishedMessage
+	require.NoError(t, publishResult.DecodeSingleOutput(&published))
+	require.Equal(t, "example-message-id", published.MessageID)
+	require.Len(t, mock.PublishMessage().Calls(), 1)
+	subscriptionID := "sns-subscription-listing-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, subscriptionFlow, subscriptionID, sns.ListSubscriptionsByTopicInput{
+		TopicARN: "arn:aws:sns:us-east-1:123456789012:example-topic",
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	subscriptionResult, err := client.WaitForFlow(ctx, subscriptionID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, subscriptionResult.Status, subscriptionResult.ErrorMessage)
+	var subscriptions sns.SubscriptionPage
+	require.NoError(t, subscriptionResult.DecodeSingleOutput(&subscriptions))
+	require.Len(t, subscriptions.Subscriptions, 1)
+	require.Len(t, mock.ListSubscriptionsByTopic().Calls(), 1)
+	attributesID := "sns-topic-attributes-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, topicAttributesFlow, attributesID, sns.TopicARNInput{TopicARN: "arn:aws:sns:us-east-1:123456789012:example-topic"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	attributesResult, err := client.WaitForFlow(ctx, attributesID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, attributesResult.Status, attributesResult.ErrorMessage)
+	var attributes sns.TopicAttributes
+	require.NoError(t, attributesResult.DecodeSingleOutput(&attributes))
+	require.Equal(t, "Operations", attributes.Attributes["DisplayName"])
+	require.Len(t, mock.GetTopicAttributes().Calls(), 1)
+	notificationEvent := sdkgo.TriggerEvent[sns.SNSNotification]{
+		ID: "11111111-1111-4111-8111-111111111111", OccurredAt: time.Now().UTC(),
+		Payload: sns.SNSNotification{
+			MessageID: "11111111-1111-4111-8111-111111111111",
+			TopicARN:  "arn:aws:sns:us-east-1:123456789012:example-topic",
+			Message:   "Report ready", PublishedAt: time.Now().UTC(),
+		},
+	}
+	target := sdkgo.NewDexFlowTriggerTarget(client, notificationFlow, AcceptEveryNotification, ResolveNotificationFlowID, MapNotificationToFlowInput)
+	require.NoError(t, sdkgo.DeliverTrigger(ctx, target, notificationEvent))
+	notificationResult, err := client.WaitForFlow(ctx, ResolveNotificationFlowID(notificationEvent), dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, notificationResult.Status, notificationResult.ErrorMessage)
+	var recorded sns.SNSNotification
+	require.NoError(t, notificationResult.DecodeSingleOutput(&recorded))
+	require.Equal(t, notificationEvent.Payload.MessageID, recorded.MessageID)
 }

@@ -557,6 +557,5251 @@
       },
       "name": "getLead-transportFailure",
       "operation": "getLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318581,\"firstName\":\"Sample\",\"lastName\":\"Lead\"}],\"nextPageToken\":\"page-3\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "leads": [
+            {
+              "firstName": "Sample",
+              "id": 318581,
+              "lastName": "Lead"
+            }
+          ],
+          "nextPageToken": "page-3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-success",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "leads": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-providerRejected",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "leads": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-invalidResponse",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "leads": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "bad"
+      },
+      "name": "findLeadsByEmail-defect",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-rateLimit",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-unavailable",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/leads.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ],
+            "filterType": [
+              "email"
+            ],
+            "filterValues": [
+              "sample@example.com"
+            ],
+            "nextPageToken": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "nextPageToken": "page-2"
+      },
+      "name": "findLeadsByEmail-transportFailure",
+      "operation": "findLeadsByEmail"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318581,\"status\":\"updated\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 318581,
+          "status": "updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-success",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-notFound",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-providerRejected",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-invalidResponse",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "leadId": 0
+      },
+      "name": "updateLead-defect",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-rateLimit",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-unavailable",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "updateOnly",
+            "input": [
+              {
+                "firstName": "Sample",
+                "id": 318581,
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "id"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91a83c1f-5968-56e7-882f-508b64e06547",
+      "input": {
+        "firstName": "Sample",
+        "lastName": "Lead",
+        "leadId": 318581
+      },
+      "name": "updateLead-transportFailure",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318582,\"status\":\"created\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample",
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "providerId": "318582",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 318582,
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample",
+        "lastName": "Lead"
+      },
+      "name": "createLead-success",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1005\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-already-exists",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-provider-rejected",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-uncertain-response",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "invalid"
+      },
+      "name": "createLead-defect",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-retry-429",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-retry-503",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-retry-500",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-transport-before-send",
+      "operation": "createLead"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318581,\"status\":\"updated\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample",
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "synced",
+        "failureKind": "",
+        "output": {
+          "id": 318581,
+          "status": "updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample",
+        "lastName": "Lead"
+      },
+      "name": "upsertLeadByEmail-success",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1007\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-provider-rejected",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-invalid-response",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "invalid",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-defect",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-retry-429",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-retry-503",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-retry-500",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-transport-before-send",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"nextPageToken\":\"CURSOR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "CURSOR"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-found",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-providerRejected",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-invalidResponse",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "bad"
+      },
+      "name": "getActivityPagingToken-defect",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-rateLimit",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-unavailable",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/pagingtoken.json",
+          "query": {
+            "sinceDatetime": [
+              "2026-01-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sinceDatetime": "2026-01-01T00:00:00Z"
+      },
+      "name": "getActivityPagingToken-transportFailure",
+      "operation": "getActivityPagingToken"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":2,\"name\":\"Fill Out Form\",\"attributes\":[{\"name\":\"Secret\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "types": [
+            {
+              "id": 2,
+              "name": "Fill Out Form"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-found",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "types": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-providerRejected",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "types": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-invalidResponse",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-rateLimit",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-unavailable",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities/types.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listActivityTypes-transportFailure",
+      "operation": "listActivityTypes"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"nextPageToken\":\"NEXT\",\"moreResult\":false,\"result\":[{\"id\":42,\"leadId\":318581,\"activityTypeId\":2,\"activityDate\":\"2026-01-01T00:00:00Z\",\"attributes\":[{\"value\":\"secret\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "activities": [
+            {
+              "activityDate": "2026-01-01T00:00:00Z",
+              "activityTypeId": 2,
+              "leadId": 318581,
+              "marketoGUID": "42"
+            }
+          ],
+          "moreResult": false,
+          "nextPageToken": "NEXT"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-found",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "activities": [],
+          "moreResult": false,
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-providerRejected",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "activities": [],
+          "moreResult": false,
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-invalidResponse",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "activities": [],
+          "moreResult": false,
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-defect",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-rateLimit",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-unavailable",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/activities.json",
+          "query": {
+            "activityTypeIds": [
+              "2"
+            ],
+            "nextPageToken": [
+              "CURSOR"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "activityTypeIds": [
+          2
+        ],
+        "nextPageToken": "CURSOR"
+      },
+      "name": "listActivities-transportFailure",
+      "operation": "listActivities"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":3433,\"company\":\"Sample Company\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "company": "Sample Company",
+          "id": 3433
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-found",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "company": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-notFound",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "company": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-providerRejected",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "company": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-invalidResponse",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "company": "",
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": ""
+      },
+      "name": "getCompanyByExternalID-defect",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-rateLimit",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-unavailable",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies.json",
+          "query": {
+            "fields": [
+              "id,company"
+            ],
+            "filterType": [
+              "externalCompanyId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "getCompanyByExternalID-transportFailure",
+      "operation": "getCompanyByExternalID"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":3433,\"status\":\"created\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "providerId": "3433",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 3433,
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-created",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1005\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-alreadyExists",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-providerRejected",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-uncertain",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": ""
+      },
+      "name": "createCompany-defect",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-rateLimit",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-unavailable",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e35b0b39-cb6f-5b09-a63d-59b9c29b7008",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "createCompany-transportFailure",
+      "operation": "createCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":3433,\"status\":\"updated\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "synced",
+        "failureKind": "",
+        "output": {
+          "id": 3433,
+          "status": "updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-synced",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-providerRejected",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-invalidResponse",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": ""
+      },
+      "name": "upsertCompany-defect",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-rateLimit",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-unavailable",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "company": "Sample Company",
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42e27fcf-e865-588f-b1ef-061d03235cef",
+      "input": {
+        "company": "Sample Company",
+        "externalCompanyId": "source-123"
+      },
+      "name": "upsertCompany-transportFailure",
+      "operation": "upsertCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":3433,\"status\":\"deleted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-deleted",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1013\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-alreadyAbsent",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-providerRejected",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-invalidResponse",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": ""
+      },
+      "name": "deleteCompany-defect",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-rateLimit",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-unavailable",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/companies/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalCompanyId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1992e44f-f0f9-5d52-98f4-0ebbb94dcded",
+      "input": {
+        "externalCompanyId": "source-123"
+      },
+      "name": "deleteCompany-transportFailure",
+      "operation": "deleteCompany"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"marketoGUID\":\"dff23271-f996-47d7-984f-f2676861b5fa\",\"name\":\"Sample Opportunity\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "marketoGUID": "dff23271-f996-47d7-984f-f2676861b5fa",
+          "name": "Sample Opportunity"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-found",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "marketoGUID": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-notFound",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "marketoGUID": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-providerRejected",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "marketoGUID": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-invalidResponse",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "marketoGUID": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": ""
+      },
+      "name": "getOpportunityByExternalID-defect",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-rateLimit",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-unavailable",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/opportunities.json",
+          "query": {
+            "fields": [
+              "marketoGUID,name"
+            ],
+            "filterType": [
+              "externalOpportunityId"
+            ],
+            "filterValues": [
+              "source-123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "getOpportunityByExternalID-transportFailure",
+      "operation": "getOpportunityByExternalID"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"marketoGUID\":\"dff23271-f996-47d7-984f-f2676861b5fa\",\"status\":\"created\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "providerId": "dff23271-f996-47d7-984f-f2676861b5fa",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "marketoGUID": "dff23271-f996-47d7-984f-f2676861b5fa",
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-created",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1005\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-alreadyExists",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-providerRejected",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-uncertain",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-defect",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-rateLimit",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-unavailable",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOnly",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3e33052-7a4f-55c8-b8b4-50af30ec799a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-transportFailure",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"marketoGUID\":\"dff23271-f996-47d7-984f-f2676861b5fa\",\"status\":\"updated\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "synced",
+        "failureKind": "",
+        "output": {
+          "marketoGUID": "dff23271-f996-47d7-984f-f2676861b5fa",
+          "status": "updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-synced",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-providerRejected",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-invalidResponse",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "marketoGUID": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-defect",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-rateLimit",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-unavailable",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "dedupeBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123",
+                "name": "Sample Opportunity"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "abba5d3f-6072-5dd5-bd5f-225b5a85ca0a",
+      "input": {
+        "externalOpportunityId": "source-123",
+        "name": "Sample Opportunity"
+      },
+      "name": "upsertOpportunity-transportFailure",
+      "operation": "upsertOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"marketoGUID\":\"dff23271-f996-47d7-984f-f2676861b5fa\",\"status\":\"deleted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-deleted",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1013\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-alreadyAbsent",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-providerRejected",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-invalidResponse",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": ""
+      },
+      "name": "deleteOpportunity-defect",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-rateLimit",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-unavailable",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/opportunities/delete.json",
+          "requestBody": {
+            "deleteBy": "dedupeFields",
+            "input": [
+              {
+                "externalOpportunityId": "source-123"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f533e80f-f97b-5431-952c-9bbcbef908d1",
+      "input": {
+        "externalOpportunityId": "source-123"
+      },
+      "name": "deleteOpportunity-transportFailure",
+      "operation": "deleteOpportunity"
     }
   ],
   "schemaVersion": 1

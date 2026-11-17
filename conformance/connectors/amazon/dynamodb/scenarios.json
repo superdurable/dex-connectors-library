@@ -563,6 +563,1582 @@
       },
       "name": "getItem-transportFailure",
       "operation": "getItem"
+    },
+    {
+      "callId": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Item": {
+              "count": {
+                "N": "3"
+              },
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=0a3a1a3302c0eedf00cac94f09523b7077afe8ee64486bf678b00228fde75a47"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.PutItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "written",
+        "failureKind": "",
+        "output": {
+          "applied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "input": {
+        "item": {
+          "count": {
+            "N": "3"
+          },
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "putItem-success",
+      "operation": "putItem"
+    },
+    {
+      "callId": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Item": {
+              "count": {
+                "N": "3"
+              },
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=0a3a1a3302c0eedf00cac94f09523b7077afe8ee64486bf678b00228fde75a47"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.PutItem"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "input": {
+        "item": {
+          "count": {
+            "N": "3"
+          },
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "putItem-providerRejected",
+      "operation": "putItem"
+    },
+    {
+      "callId": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Item": {
+              "count": {
+                "N": "3"
+              },
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=0a3a1a3302c0eedf00cac94f09523b7077afe8ee64486bf678b00228fde75a47"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.PutItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "input": {
+        "item": {
+          "count": {
+            "N": "3"
+          },
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "putItem-invalidResponse",
+      "operation": "putItem"
+    },
+    {
+      "callId": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "input": {
+        "item": {},
+        "tableName": "Examples"
+      },
+      "name": "putItem-defect",
+      "operation": "putItem"
+    },
+    {
+      "callId": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Item": {
+              "count": {
+                "N": "3"
+              },
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=0a3a1a3302c0eedf00cac94f09523b7077afe8ee64486bf678b00228fde75a47"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.PutItem"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "input": {
+        "item": {
+          "count": {
+            "N": "3"
+          },
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "putItem-429",
+      "operation": "putItem"
+    },
+    {
+      "callId": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Item": {
+              "count": {
+                "N": "3"
+              },
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=0a3a1a3302c0eedf00cac94f09523b7077afe8ee64486bf678b00228fde75a47"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.PutItem"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "input": {
+        "item": {
+          "count": {
+            "N": "3"
+          },
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "putItem-503",
+      "operation": "putItem"
+    },
+    {
+      "callId": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Item": {
+              "count": {
+                "N": "3"
+              },
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=0a3a1a3302c0eedf00cac94f09523b7077afe8ee64486bf678b00228fde75a47"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.PutItem"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab8ce1c6-d38c-5366-8edc-a717dd5fd0eb",
+      "input": {
+        "item": {
+          "count": {
+            "N": "3"
+          },
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "putItem-transport",
+      "operation": "putItem"
+    },
+    {
+      "callId": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExpressionAttributeNames": {
+              "#a0": "count"
+            },
+            "ExpressionAttributeValues": {
+              ":v0": {
+                "N": "4"
+              }
+            },
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples",
+            "UpdateExpression": "SET #a0 = :v0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=405593805ce4e46c099f3b1427049f22b7b3cf872841ab89cfbd2c8ca763c4d3"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.UpdateItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "applied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "input": {
+        "attributes": {
+          "count": {
+            "N": "4"
+          }
+        },
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "updateItem-success",
+      "operation": "updateItem"
+    },
+    {
+      "callId": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExpressionAttributeNames": {
+              "#a0": "count"
+            },
+            "ExpressionAttributeValues": {
+              ":v0": {
+                "N": "4"
+              }
+            },
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples",
+            "UpdateExpression": "SET #a0 = :v0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=405593805ce4e46c099f3b1427049f22b7b3cf872841ab89cfbd2c8ca763c4d3"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.UpdateItem"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "input": {
+        "attributes": {
+          "count": {
+            "N": "4"
+          }
+        },
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "updateItem-providerRejected",
+      "operation": "updateItem"
+    },
+    {
+      "callId": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExpressionAttributeNames": {
+              "#a0": "count"
+            },
+            "ExpressionAttributeValues": {
+              ":v0": {
+                "N": "4"
+              }
+            },
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples",
+            "UpdateExpression": "SET #a0 = :v0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=405593805ce4e46c099f3b1427049f22b7b3cf872841ab89cfbd2c8ca763c4d3"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.UpdateItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "input": {
+        "attributes": {
+          "count": {
+            "N": "4"
+          }
+        },
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "updateItem-invalidResponse",
+      "operation": "updateItem"
+    },
+    {
+      "callId": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "input": {
+        "attributes": {
+          "pk": {
+            "S": "other"
+          }
+        },
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "updateItem-defect",
+      "operation": "updateItem"
+    },
+    {
+      "callId": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExpressionAttributeNames": {
+              "#a0": "count"
+            },
+            "ExpressionAttributeValues": {
+              ":v0": {
+                "N": "4"
+              }
+            },
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples",
+            "UpdateExpression": "SET #a0 = :v0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=405593805ce4e46c099f3b1427049f22b7b3cf872841ab89cfbd2c8ca763c4d3"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.UpdateItem"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "input": {
+        "attributes": {
+          "count": {
+            "N": "4"
+          }
+        },
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "updateItem-429",
+      "operation": "updateItem"
+    },
+    {
+      "callId": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExpressionAttributeNames": {
+              "#a0": "count"
+            },
+            "ExpressionAttributeValues": {
+              ":v0": {
+                "N": "4"
+              }
+            },
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples",
+            "UpdateExpression": "SET #a0 = :v0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=405593805ce4e46c099f3b1427049f22b7b3cf872841ab89cfbd2c8ca763c4d3"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.UpdateItem"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "input": {
+        "attributes": {
+          "count": {
+            "N": "4"
+          }
+        },
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "updateItem-503",
+      "operation": "updateItem"
+    },
+    {
+      "callId": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExpressionAttributeNames": {
+              "#a0": "count"
+            },
+            "ExpressionAttributeValues": {
+              ":v0": {
+                "N": "4"
+              }
+            },
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples",
+            "UpdateExpression": "SET #a0 = :v0"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=405593805ce4e46c099f3b1427049f22b7b3cf872841ab89cfbd2c8ca763c4d3"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.UpdateItem"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1577404a-5693-5dc0-b2e1-3973f05f3beb",
+      "input": {
+        "attributes": {
+          "count": {
+            "N": "4"
+          }
+        },
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "updateItem-transport",
+      "operation": "updateItem"
+    },
+    {
+      "callId": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=b8d977d654983b9625ff17b31244146bff52ba852bf83d84a2d59ac09e2deb03"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.DeleteItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "applied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "input": {
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "deleteItem-success",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=b8d977d654983b9625ff17b31244146bff52ba852bf83d84a2d59ac09e2deb03"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.DeleteItem"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "input": {
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "deleteItem-providerRejected",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=b8d977d654983b9625ff17b31244146bff52ba852bf83d84a2d59ac09e2deb03"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.DeleteItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "input": {
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "deleteItem-invalidResponse",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "applied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "input": {
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "bad/name"
+      },
+      "name": "deleteItem-defect",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=b8d977d654983b9625ff17b31244146bff52ba852bf83d84a2d59ac09e2deb03"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.DeleteItem"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "input": {
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "deleteItem-429",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=b8d977d654983b9625ff17b31244146bff52ba852bf83d84a2d59ac09e2deb03"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.DeleteItem"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "input": {
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "deleteItem-503",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=b8d977d654983b9625ff17b31244146bff52ba852bf83d84a2d59ac09e2deb03"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.DeleteItem"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6bce0b40-777f-550d-9cd7-ad2f698645f0",
+      "input": {
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "deleteItem-transport",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "00000022-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"Items\":[{\"pk\":{\"S\":\"example\"},\"count\":{\"N\":\"3\"}}],\"Count\":1,\"LastEvaluatedKey\":{\"pk\":{\"S\":\"example\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExclusiveStartKey": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "Limit": 5,
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=91167369ff393673e02b39c3c00aecc56b58543ebefd176b3dcc949da98f4e59"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.Scan"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "scanned",
+        "failureKind": "",
+        "output": {
+          "count": 1,
+          "items": [
+            {
+              "count": {
+                "N": "3"
+              },
+              "pk": {
+                "S": "example"
+              }
+            }
+          ],
+          "lastEvaluatedKey": {
+            "pk": {
+              "S": "example"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "exclusiveStartKey": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "limit": 5,
+        "tableName": "Examples"
+      },
+      "name": "scanItems-success",
+      "operation": "scanItems"
+    },
+    {
+      "callId": "00000023-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExclusiveStartKey": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "Limit": 5,
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=91167369ff393673e02b39c3c00aecc56b58543ebefd176b3dcc949da98f4e59"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.Scan"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0,
+          "items": [],
+          "lastEvaluatedKey": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "exclusiveStartKey": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "limit": 5,
+        "tableName": "Examples"
+      },
+      "name": "scanItems-providerRejected",
+      "operation": "scanItems"
+    },
+    {
+      "callId": "00000024-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExclusiveStartKey": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "Limit": 5,
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=91167369ff393673e02b39c3c00aecc56b58543ebefd176b3dcc949da98f4e59"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.Scan"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0,
+          "items": [],
+          "lastEvaluatedKey": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "exclusiveStartKey": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "limit": 5,
+        "tableName": "Examples"
+      },
+      "name": "scanItems-invalidResponse",
+      "operation": "scanItems"
+    },
+    {
+      "callId": "00000025-0000-4000-8000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0,
+          "items": [],
+          "lastEvaluatedKey": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "exclusiveStartKey": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "limit": -1,
+        "tableName": "Examples"
+      },
+      "name": "scanItems-defect",
+      "operation": "scanItems"
+    },
+    {
+      "callId": "00000026-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExclusiveStartKey": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "Limit": 5,
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=91167369ff393673e02b39c3c00aecc56b58543ebefd176b3dcc949da98f4e59"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.Scan"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "exclusiveStartKey": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "limit": 5,
+        "tableName": "Examples"
+      },
+      "name": "scanItems-429",
+      "operation": "scanItems"
+    },
+    {
+      "callId": "00000027-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExclusiveStartKey": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "Limit": 5,
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=91167369ff393673e02b39c3c00aecc56b58543ebefd176b3dcc949da98f4e59"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.Scan"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "exclusiveStartKey": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "limit": 5,
+        "tableName": "Examples"
+      },
+      "name": "scanItems-503",
+      "operation": "scanItems"
+    },
+    {
+      "callId": "00000028-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ExclusiveStartKey": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "Limit": 5,
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=91167369ff393673e02b39c3c00aecc56b58543ebefd176b3dcc949da98f4e59"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.Scan"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "exclusiveStartKey": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "limit": 5,
+        "tableName": "Examples"
+      },
+      "name": "scanItems-transport",
+      "operation": "scanItems"
     }
   ],
   "schemaVersion": 1

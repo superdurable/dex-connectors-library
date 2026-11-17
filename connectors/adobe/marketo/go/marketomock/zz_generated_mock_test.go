@@ -16,8 +16,68 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getOpportunityByExternalID/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.OpportunityProfile](`{"marketoGUID":"dff23271-f996-47d7-984f-f2676861b5fa","name":"Sample Opportunity"}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.OpportunityWriteResult](`{"marketoGUID":"dff23271-f996-47d7-984f-f2676861b5fa","status":"created"}`)
+			return err
+		}},
+		{name: "upsertOpportunity/syncedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.OpportunityWriteResult](`{"marketoGUID":"dff23271-f996-47d7-984f-f2676861b5fa","status":"updated"}`)
+			return err
+		}},
+		{name: "deleteOpportunity/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.DeletedOpportunity](`{"deleted":true}`)
+			return err
+		}},
+		{name: "getCompanyByExternalID/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.CompanyProfile](`{"id":3433,"company":"Sample Company"}`)
+			return err
+		}},
+		{name: "createCompany/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.CompanyWriteResult](`{"id":3433,"status":"created"}`)
+			return err
+		}},
+		{name: "upsertCompany/syncedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.CompanyWriteResult](`{"id":3433,"status":"updated"}`)
+			return err
+		}},
+		{name: "deleteCompany/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.DeletedCompany](`{"deleted":true}`)
+			return err
+		}},
+		{name: "getActivityPagingToken/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.ActivityPagingToken](`{"nextPageToken":"SAMPLE_ACTIVITY_CURSOR"}`)
+			return err
+		}},
+		{name: "listActivityTypes/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.ActivityTypes](`{"types":[{"id":2,"name":"Fill Out Form"}]}`)
+			return err
+		}},
+		{name: "listActivities/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.ActivityPage](`{"activities":[{"marketoGUID":"102988","leadId":318581,"activityTypeId":2,"activityDate":"2026-01-01T00:00:00Z"}],"nextPageToken":"SAMPLE_NEXT_CURSOR","moreResult":false}`)
+			return err
+		}},
+		{name: "createLead/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.CreatedLead](`{"id":318582,"status":"created"}`)
+			return err
+		}},
+		{name: "upsertLeadByEmail/syncedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.SyncedLead](`{"id":318581,"status":"updated"}`)
+			return err
+		}},
 		{name: "getLead/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[marketo.LeadProfile](`{"id":318581,"firstName":"Sample","lastName":"Lead"}`)
+			return err
+		}},
+		{name: "findLeadsByEmail/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.LeadProfilesPage](`{"leads":[{"id":318581,"firstName":"Sample","lastName":"Lead"}],"nextPageToken":""}`)
+			return err
+		}},
+		{name: "updateLead/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.UpdatedLead](`{"id":318581,"status":"updated"}`)
 			return err
 		}},
 	}
@@ -30,7 +90,52 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetOpportunityByExternalID().Definition().Operation.OperationID != "getOpportunityByExternalID" {
+		t.Errorf("getOpportunityByExternalID mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.UpsertOpportunity().Definition().Operation.OperationID != "upsertOpportunity" {
+		t.Errorf("upsertOpportunity mock has another definition")
+	}
+	if mock.DeleteOpportunity().Definition().Operation.OperationID != "deleteOpportunity" {
+		t.Errorf("deleteOpportunity mock has another definition")
+	}
+	if mock.GetCompanyByExternalID().Definition().Operation.OperationID != "getCompanyByExternalID" {
+		t.Errorf("getCompanyByExternalID mock has another definition")
+	}
+	if mock.CreateCompany().Definition().Operation.OperationID != "createCompany" {
+		t.Errorf("createCompany mock has another definition")
+	}
+	if mock.UpsertCompany().Definition().Operation.OperationID != "upsertCompany" {
+		t.Errorf("upsertCompany mock has another definition")
+	}
+	if mock.DeleteCompany().Definition().Operation.OperationID != "deleteCompany" {
+		t.Errorf("deleteCompany mock has another definition")
+	}
+	if mock.GetActivityPagingToken().Definition().Operation.OperationID != "getActivityPagingToken" {
+		t.Errorf("getActivityPagingToken mock has another definition")
+	}
+	if mock.ListActivityTypes().Definition().Operation.OperationID != "listActivityTypes" {
+		t.Errorf("listActivityTypes mock has another definition")
+	}
+	if mock.ListActivities().Definition().Operation.OperationID != "listActivities" {
+		t.Errorf("listActivities mock has another definition")
+	}
+	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
+		t.Errorf("createLead mock has another definition")
+	}
+	if mock.UpsertLeadByEmail().Definition().Operation.OperationID != "upsertLeadByEmail" {
+		t.Errorf("upsertLeadByEmail mock has another definition")
+	}
 	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
 		t.Errorf("getLead mock has another definition")
+	}
+	if mock.FindLeadsByEmail().Definition().Operation.OperationID != "findLeadsByEmail" {
+		t.Errorf("findLeadsByEmail mock has another definition")
+	}
+	if mock.UpdateLead().Definition().Operation.OperationID != "updateLead" {
+		t.Errorf("updateLead mock has another definition")
 	}
 }

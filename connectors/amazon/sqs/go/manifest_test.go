@@ -90,7 +90,7 @@ func TestAccessKeyIsTheOnlyMethodAndItsGuideCoversPermissionsAndQueueSetup(t *te
 	require.Equal(t, "https://console.aws.amazon.com/iam", auth.Guide.StartURL)
 	guide := strings.Join(auth.Guide.Steps, " ")
 	for _, text := range []string{
-		"Create user", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "kms:Decrypt",
+		"Create user", "sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "kms:Decrypt",
 		"Create access key", "Retrieve access keys", "Details panel", "Visibility timeout", "Dead-letter queue",
 		"ElasticMQ", "Deactivate", "IAM roles",
 	} {
@@ -107,7 +107,7 @@ func TestNoStudioPickerOrTriggerIsDeclared(t *testing.T) {
 	for _, operation := range manifest.Spec.Operations {
 		operations = append(operations, operation.Name)
 	}
-	require.Equal(t, []string{"receiveMessages", "deleteMessage", "changeMessageVisibility"}, operations)
+	require.Equal(t, []string{"sendMessage", "receiveMessages", "deleteMessage", "changeMessageVisibility", "listQueues", "createQueue", "getQueueURL", "getQueueAttributes", "setQueueAttribute", "deleteQueue"}, operations)
 	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err), "a connector without Studio units ships no UI bundle")
 }

@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package ses exposes Amazon SES email identity reads to Dex Flows.
+// Package ses exposes Amazon SES email identity operations and sending to Dex Flows.
 package ses
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -90,6 +91,15 @@ type providerResponse struct {
 }
 
 func (client *Client) getEmailIdentity(call sdkgo.Call, name string) providerResponse {
+	return client.request(call, http.MethodGet, "/v2/email/identities/"+url.PathEscape(name), nil)
+}
+
+// request signs one SES API v2 exchange and rejects response bytes that repeat credentials.
+func (client *Client) request(call sdkgo.Call, method string, path string, body []byte) providerResponse {
+	return client.requestWithContext(call, call.Context, method, path, body)
+}
+
+func (client *Client) requestWithContext(call sdkgo.Call, requestContext context.Context, method string, path string, body []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -100,11 +110,14 @@ func (client *Client) getEmailIdentity(call sdkgo.Call, name string) providerRes
 	if !providerhttp.IsHeaderSafeCredential(accessKey) || !providerhttp.IsHeaderSafeCredential(secretKey) || (sessionToken != "" && !providerhttp.IsHeaderSafeCredential(sessionToken)) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.endpoint+"/v2/email/identities/"+url.PathEscape(name), nil)
+	request, err := http.NewRequestWithContext(requestContext, method, client.endpoint+path, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	digest := sha256.Sum256(nil)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	digest := sha256.Sum256(body)
 	signingCredentials := aws.Credentials{AccessKeyID: accessKey, SecretAccessKey: secretKey, SessionToken: sessionToken}
 	if err := client.signer.SignHTTP(request.Context(), signingCredentials, request, hex.EncodeToString(digest[:]), "ses", client.region, client.now().UTC()); err != nil {
 		return providerResponse{err: errRequest}

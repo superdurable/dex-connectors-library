@@ -19,6 +19,10 @@ import (
 type Mock struct {
 	connection         redshift.Connection
 	getStatementResult *connectormock.Query[redshift.GetStatementResultInput, redshift.StatementResultPage]
+	executeStatement   *connectormock.Mutation[redshift.ExecuteStatementInput, redshift.StatementIdentity]
+	describeStatement  *connectormock.Query[redshift.DescribeStatementInput, redshift.StatementStatus]
+	listStatements     *connectormock.Query[redshift.ListStatementsInput, redshift.StatementPage]
+	cancelStatement    *connectormock.Mutation[redshift.CancelStatementInput, redshift.StatementCancellation]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,8 +31,16 @@ func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
 		getStatementResult: connectormock.NewQuery[redshift.GetStatementResultInput, redshift.StatementResultPage](t, redshift.GetStatementResultDefinition),
+		executeStatement:   connectormock.NewMutation[redshift.ExecuteStatementInput, redshift.StatementIdentity](t, redshift.ExecuteStatementDefinition),
+		describeStatement:  connectormock.NewQuery[redshift.DescribeStatementInput, redshift.StatementStatus](t, redshift.DescribeStatementDefinition),
+		listStatements:     connectormock.NewQuery[redshift.ListStatementsInput, redshift.StatementPage](t, redshift.ListStatementsDefinition),
+		cancelStatement:    connectormock.NewMutation[redshift.CancelStatementInput, redshift.StatementCancellation](t, redshift.CancelStatementDefinition),
 	}
 	mock.getStatementResult.Default(GetStatementResultDefault())
+	mock.executeStatement.Default(ExecuteStatementDefault())
+	mock.describeStatement.Default(DescribeStatementDefault())
+	mock.listStatements.Default(ListStatementsDefault())
+	mock.cancelStatement.Default(CancelStatementDefault())
 	connection, err := redshift.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-redshift", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-redshift mock connection: %v", err)
@@ -45,10 +57,42 @@ func (mock *Mock) GetStatementResult() *connectormock.Query[redshift.GetStatemen
 	return mock.getStatementResult
 }
 
+// ExecuteStatement returns the executeStatement script.
+func (mock *Mock) ExecuteStatement() *connectormock.Mutation[redshift.ExecuteStatementInput, redshift.StatementIdentity] {
+	return mock.executeStatement
+}
+
+// DescribeStatement returns the describeStatement script.
+func (mock *Mock) DescribeStatement() *connectormock.Query[redshift.DescribeStatementInput, redshift.StatementStatus] {
+	return mock.describeStatement
+}
+
+// ListStatements returns the listStatements script.
+func (mock *Mock) ListStatements() *connectormock.Query[redshift.ListStatementsInput, redshift.StatementPage] {
+	return mock.listStatements
+}
+
+// CancelStatement returns the cancelStatement script.
+func (mock *Mock) CancelStatement() *connectormock.Mutation[redshift.CancelStatementInput, redshift.StatementCancellation] {
+	return mock.cancelStatement
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetStatementResult() sdkgo.Query[redshift.GetStatementResultInput, redshift.StatementResultPage] {
 	return operations.mock.getStatementResult
+}
+func (operations mockOperations) ExecuteStatement() sdkgo.Mutation[redshift.ExecuteStatementInput, redshift.StatementIdentity] {
+	return operations.mock.executeStatement
+}
+func (operations mockOperations) DescribeStatement() sdkgo.Query[redshift.DescribeStatementInput, redshift.StatementStatus] {
+	return operations.mock.describeStatement
+}
+func (operations mockOperations) ListStatements() sdkgo.Query[redshift.ListStatementsInput, redshift.StatementPage] {
+	return operations.mock.listStatements
+}
+func (operations mockOperations) CancelStatement() sdkgo.Mutation[redshift.CancelStatementInput, redshift.StatementCancellation] {
+	return operations.mock.cancelStatement
 }
 
 // GetStatementResultFetched selects the fetched branch: Redshift returned the statement result page.
@@ -90,4 +134,163 @@ func GetStatementResultFetchedDefault() connectormock.Case[redshift.StatementRes
 // GetStatementResultDefault is the manifest default, fetchedDefault, which New installs.
 func GetStatementResultDefault() connectormock.Case[redshift.StatementResultPage] {
 	return GetStatementResultFetchedDefault()
+}
+
+// ExecuteStatementSubmitted selects the submitted branch: Redshift accepted the SQL statement.
+func ExecuteStatementSubmitted(value redshift.StatementIdentity, failure *sdkgo.Failure) connectormock.Case[redshift.StatementIdentity] {
+	return connectormock.Branch(redshift.ExecuteStatementBranchSubmitted, value, failure)
+}
+
+// ExecuteStatementProviderRejected selects the providerRejected branch: Redshift conclusively rejected the submission.
+func ExecuteStatementProviderRejected(value redshift.StatementIdentity, failure *sdkgo.Failure) connectormock.Case[redshift.StatementIdentity] {
+	return connectormock.Branch(redshift.ExecuteStatementBranchProviderRejected, value, failure)
+}
+
+// ExecuteStatementInvalidResponse selects the invalidResponse branch: Redshift returned malformed or oversized submission JSON.
+func ExecuteStatementInvalidResponse(value redshift.StatementIdentity, failure *sdkgo.Failure) connectormock.Case[redshift.StatementIdentity] {
+	return connectormock.Branch(redshift.ExecuteStatementBranchInvalidResponse, value, failure)
+}
+
+// ExecuteStatementDefect selects the defect branch: The workgroup or SQL input or connection settings are invalid.
+func ExecuteStatementDefect(value redshift.StatementIdentity, failure *sdkgo.Failure) connectormock.Case[redshift.StatementIdentity] {
+	return connectormock.Branch(redshift.ExecuteStatementBranchDefect, value, failure)
+}
+
+// ExecuteStatementRetry asks Dex to retry the executeStatement Step, after the delay when it is positive.
+func ExecuteStatementRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redshift.StatementIdentity] {
+	return connectormock.Retry[redshift.StatementIdentity](failure, after)
+}
+
+// ExecuteStatementSubmittedDefault is the manifest mock submittedDefault: One example statement was submitted.
+func ExecuteStatementSubmittedDefault() connectormock.Case[redshift.StatementIdentity] {
+	value := connectormock.MustDecodeOutput[redshift.StatementIdentity](`{"id":"123e4567-e89b-12d3-a456-426614174000"}`)
+	return connectormock.Branch(redshift.ExecuteStatementBranchSubmitted, value, nil)
+}
+
+// ExecuteStatementDefault is the manifest default, submittedDefault, which New installs.
+func ExecuteStatementDefault() connectormock.Case[redshift.StatementIdentity] {
+	return ExecuteStatementSubmittedDefault()
+}
+
+// DescribeStatementDescribed selects the described branch: Redshift returned the statement status.
+func DescribeStatementDescribed(value redshift.StatementStatus, failure *sdkgo.Failure) connectormock.Case[redshift.StatementStatus] {
+	return connectormock.Branch(redshift.DescribeStatementBranchDescribed, value, failure)
+}
+
+// DescribeStatementMissing selects the missing branch: Redshift does not retain the statement.
+func DescribeStatementMissing(value redshift.StatementStatus, failure *sdkgo.Failure) connectormock.Case[redshift.StatementStatus] {
+	return connectormock.Branch(redshift.DescribeStatementBranchMissing, value, failure)
+}
+
+// DescribeStatementProviderRejected selects the providerRejected branch: Redshift conclusively rejected the lookup.
+func DescribeStatementProviderRejected(value redshift.StatementStatus, failure *sdkgo.Failure) connectormock.Case[redshift.StatementStatus] {
+	return connectormock.Branch(redshift.DescribeStatementBranchProviderRejected, value, failure)
+}
+
+// DescribeStatementInvalidResponse selects the invalidResponse branch: Redshift returned malformed or oversized status JSON.
+func DescribeStatementInvalidResponse(value redshift.StatementStatus, failure *sdkgo.Failure) connectormock.Case[redshift.StatementStatus] {
+	return connectormock.Branch(redshift.DescribeStatementBranchInvalidResponse, value, failure)
+}
+
+// DescribeStatementDefect selects the defect branch: The statement ID or connection settings are invalid.
+func DescribeStatementDefect(value redshift.StatementStatus, failure *sdkgo.Failure) connectormock.Case[redshift.StatementStatus] {
+	return connectormock.Branch(redshift.DescribeStatementBranchDefect, value, failure)
+}
+
+// DescribeStatementRetry asks Dex to retry the describeStatement Step, after the delay when it is positive.
+func DescribeStatementRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redshift.StatementStatus] {
+	return connectormock.Retry[redshift.StatementStatus](failure, after)
+}
+
+// DescribeStatementDescribedDefault is the manifest mock describedDefault: The example statement finished.
+func DescribeStatementDescribedDefault() connectormock.Case[redshift.StatementStatus] {
+	value := connectormock.MustDecodeOutput[redshift.StatementStatus](`{"id":"123e4567-e89b-12d3-a456-426614174000","status":"FINISHED","hasResultSet":true}`)
+	return connectormock.Branch(redshift.DescribeStatementBranchDescribed, value, nil)
+}
+
+// DescribeStatementDefault is the manifest default, describedDefault, which New installs.
+func DescribeStatementDefault() connectormock.Case[redshift.StatementStatus] {
+	return DescribeStatementDescribedDefault()
+}
+
+// ListStatementsListed selects the listed branch: Redshift returned a statement page.
+func ListStatementsListed(value redshift.StatementPage, failure *sdkgo.Failure) connectormock.Case[redshift.StatementPage] {
+	return connectormock.Branch(redshift.ListStatementsBranchListed, value, failure)
+}
+
+// ListStatementsProviderRejected selects the providerRejected branch: Redshift conclusively rejected the list request.
+func ListStatementsProviderRejected(value redshift.StatementPage, failure *sdkgo.Failure) connectormock.Case[redshift.StatementPage] {
+	return connectormock.Branch(redshift.ListStatementsBranchProviderRejected, value, failure)
+}
+
+// ListStatementsInvalidResponse selects the invalidResponse branch: Redshift returned malformed or oversized list JSON.
+func ListStatementsInvalidResponse(value redshift.StatementPage, failure *sdkgo.Failure) connectormock.Case[redshift.StatementPage] {
+	return connectormock.Branch(redshift.ListStatementsBranchInvalidResponse, value, failure)
+}
+
+// ListStatementsDefect selects the defect branch: The page input or connection settings are invalid.
+func ListStatementsDefect(value redshift.StatementPage, failure *sdkgo.Failure) connectormock.Case[redshift.StatementPage] {
+	return connectormock.Branch(redshift.ListStatementsBranchDefect, value, failure)
+}
+
+// ListStatementsRetry asks Dex to retry the listStatements Step, after the delay when it is positive.
+func ListStatementsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redshift.StatementPage] {
+	return connectormock.Retry[redshift.StatementPage](failure, after)
+}
+
+// ListStatementsListedDefault is the manifest mock listedDefault: One example statement is listed.
+func ListStatementsListedDefault() connectormock.Case[redshift.StatementPage] {
+	value := connectormock.MustDecodeOutput[redshift.StatementPage](`{"statements":[{"id":"123e4567-e89b-12d3-a456-426614174000","status":"FINISHED","hasResultSet":false}],"nextToken":""}`)
+	return connectormock.Branch(redshift.ListStatementsBranchListed, value, nil)
+}
+
+// ListStatementsDefault is the manifest default, listedDefault, which New installs.
+func ListStatementsDefault() connectormock.Case[redshift.StatementPage] {
+	return ListStatementsListedDefault()
+}
+
+// CancelStatementCanceled selects the canceled branch: Redshift accepted the cancellation.
+func CancelStatementCanceled(value redshift.StatementCancellation, failure *sdkgo.Failure) connectormock.Case[redshift.StatementCancellation] {
+	return connectormock.Branch(redshift.CancelStatementBranchCanceled, value, failure)
+}
+
+// CancelStatementNotCanceled selects the notCanceled branch: The statement was not running or could not be canceled.
+func CancelStatementNotCanceled(value redshift.StatementCancellation, failure *sdkgo.Failure) connectormock.Case[redshift.StatementCancellation] {
+	return connectormock.Branch(redshift.CancelStatementBranchNotCanceled, value, failure)
+}
+
+// CancelStatementMissing selects the missing branch: Redshift does not retain the statement.
+func CancelStatementMissing(value redshift.StatementCancellation, failure *sdkgo.Failure) connectormock.Case[redshift.StatementCancellation] {
+	return connectormock.Branch(redshift.CancelStatementBranchMissing, value, failure)
+}
+
+// CancelStatementProviderRejected selects the providerRejected branch: Redshift conclusively rejected the cancellation.
+func CancelStatementProviderRejected(value redshift.StatementCancellation, failure *sdkgo.Failure) connectormock.Case[redshift.StatementCancellation] {
+	return connectormock.Branch(redshift.CancelStatementBranchProviderRejected, value, failure)
+}
+
+// CancelStatementInvalidResponse selects the invalidResponse branch: Redshift returned malformed or oversized cancellation JSON.
+func CancelStatementInvalidResponse(value redshift.StatementCancellation, failure *sdkgo.Failure) connectormock.Case[redshift.StatementCancellation] {
+	return connectormock.Branch(redshift.CancelStatementBranchInvalidResponse, value, failure)
+}
+
+// CancelStatementDefect selects the defect branch: The statement ID or connection settings are invalid.
+func CancelStatementDefect(value redshift.StatementCancellation, failure *sdkgo.Failure) connectormock.Case[redshift.StatementCancellation] {
+	return connectormock.Branch(redshift.CancelStatementBranchDefect, value, failure)
+}
+
+// CancelStatementRetry asks Dex to retry the cancelStatement Step, after the delay when it is positive.
+func CancelStatementRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[redshift.StatementCancellation] {
+	return connectormock.Retry[redshift.StatementCancellation](failure, after)
+}
+
+// CancelStatementCanceledDefault is the manifest mock canceledDefault: The example statement cancellation was accepted.
+func CancelStatementCanceledDefault() connectormock.Case[redshift.StatementCancellation] {
+	value := connectormock.MustDecodeOutput[redshift.StatementCancellation](`{"canceled":true}`)
+	return connectormock.Branch(redshift.CancelStatementBranchCanceled, value, nil)
+}
+
+// CancelStatementDefault is the manifest default, canceledDefault, which New installs.
+func CancelStatementDefault() connectormock.Case[redshift.StatementCancellation] {
+	return CancelStatementCanceledDefault()
 }

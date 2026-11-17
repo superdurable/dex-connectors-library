@@ -15,26 +15,41 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/alphavantage/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/alphavantage/scenarios.json")
+    if scenario["operation"] in {"getGlobalQuote", "getTimeSeriesDaily"}
+]
 CONNECTION = sdk.ConnectionRef("alphavantage", "alphavantage")
 
 
-async def invoke(scenario: dict[str, object], recorder: conformance.ExchangeRecorder,
-                 _context: conformance.HeartbeatContext) -> object:
+async def invoke(
+    scenario: dict[str, object],
+    recorder: conformance.ExchangeRecorder,
+    _context: conformance.HeartbeatContext,
+) -> object:
     """Map both public operations' shared StockInput to the recorded Call."""
     async with httpx.AsyncClient(transport=httpx.MockTransport(recorder.answer)) as http_client:
         client = alphavantage.Client(
             alphavantage.Config(base_url="http://127.0.0.1:21101"),
             conformance.static_credentials(
-                CONNECTION, alphavantage.Credentials(sdk.SecretString("test-key-123"))),
+                CONNECTION, alphavantage.Credentials(sdk.SecretString("test-key-123"))
+            ),
             http_client,
         )
         operation_name = str(scenario["operation"])
-        operation = (client.get_global_quote() if operation_name == "getGlobalQuote"
-                     else client.get_time_series_daily())
+        operation = (
+            client.get_global_quote()
+            if operation_name == "getGlobalQuote"
+            else client.get_time_series_daily()
+        )
         symbol = str(scenario["input"]["symbol"])  # type: ignore[index]
-        call = sdk.Call(sdk.CallID(str(scenario["callId"])), CONNECTION,
-                        sdk.OperationRef("alphavantage", operation_name), sdk.IdempotencyKey(""))
+        call = sdk.Call(
+            sdk.CallID(str(scenario["callId"])),
+            CONNECTION,
+            sdk.OperationRef("alphavantage", operation_name),
+            sdk.IdempotencyKey(""),
+        )
         return await operation.invoke(call, alphavantage.StockInput(symbol))
 
 

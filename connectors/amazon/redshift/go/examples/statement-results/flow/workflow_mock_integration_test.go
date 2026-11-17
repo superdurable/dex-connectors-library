@@ -24,7 +24,8 @@ import (
 func TestStatementResultsUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := redshiftmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	executeFlow := NewExecuteStatementFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, executeFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestStatementResultsUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Len(t, output.Records, 1)
 	require.Len(t, mock.GetStatementResult().Calls(), 1)
+	executeFlowID := "redshift-execute-statement-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, executeFlow, executeFlowID, redshift.ExecuteStatementInput{WorkgroupName: "example-workgroup", Database: "dev", SQL: "SELECT 1"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	executeResult, err := client.WaitForFlow(ctx, executeFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, executeResult.Status, executeResult.ErrorMessage)
+	var statement redshift.StatementIdentity
+	require.NoError(t, executeResult.DecodeSingleOutput(&statement))
+	require.Equal(t, "123e4567-e89b-12d3-a456-426614174000", statement.ID)
+	require.Len(t, mock.ExecuteStatement().Calls(), 1)
 }

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Replay S3's Go-recorded provider scenarios through Python operations."""
 
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,7 +17,17 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/amazon/s3/scenarios.json")
+PACKAGE_MANIFEST = json.loads(
+    (ROOT / "connectors/amazon/s3/python/src/dex_connectors/amazon_s3/dex-connector.json").read_text()
+)
+SUPPORTED_OPERATIONS = {
+    factory["operationId"] for factory in PACKAGE_MANIFEST["factories"] if "operationId" in factory
+}
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/amazon/s3/scenarios.json")
+    if scenario["operation"] in SUPPORTED_OPERATIONS
+]
 CONNECTION = sdk.ConnectionRef("amazon-s3", "s3-test")
 
 

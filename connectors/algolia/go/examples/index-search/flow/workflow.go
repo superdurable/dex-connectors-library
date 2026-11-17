@@ -17,11 +17,13 @@ const (
 	// FlowType is the stable Dex Flow identity.
 	FlowType = "AlgoliaIndexSearch"
 	// ConnectionName is the static Dex Web connection used by this Flow.
-	ConnectionName = "algolia"
-	searchStepType = "SearchAlgoliaIndex"
+	ConnectionName    = "algolia"
+	searchStepType    = "SearchAlgoliaIndex"
+	getObjectStepType = "GetAlgoliaObject"
 )
 
 var outcomeAttribute = dex.DefineAttribute[algolia.SearchPage]("algolia-index-search-outcome")
+var recordAttribute = dex.DefineAttribute[algolia.ObjectRecord]("algolia-record-lookup-outcome")
 
 // Request is the Dex Web Start Flow input.
 type Request struct {
@@ -29,6 +31,8 @@ type Request struct {
 	IndexName string `json:"indexName"`
 	// Query is the search phrase; blank matches all records.
 	Query string `json:"query"`
+	// ObjectID optionally selects record lookup instead of search.
+	ObjectID string `json:"objectID,omitempty"`
 }
 
 // Flow searches one Algolia index.
@@ -42,7 +46,7 @@ func NewFlow(connection algolia.Connection) *Flow { return &Flow{connection: con
 
 func (*Flow) GetFlowType() string { return FlowType }
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute, recordAttribute}}
 }
 
 func (flow *Flow) GetSteps() []dex.StepDef {
@@ -54,13 +58,25 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToSearchInput,
 			Searched:            sdkgo.GoTo(searched{}),
 		})),
+		dex.DefineStep(algolia.NewGetObjectStep(algolia.GetObjectStepConfig[Request]{
+			StepType: getObjectStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "record-lookup", GroupLabel: "Record lookup", Explanation: "Retrieve one indexed record by its stable object ID."},
+			MapToOperationInput: MapToGetObjectInput,
+			Found:               sdkgo.GoTo(found{}),
+		})),
 		dex.DefineStep(searched{}),
+		dex.DefineStep(found{}),
 	}
 }
 
 // MapToSearchInput maps the validated request to one bounded Algolia search.
 func MapToSearchInput(request Request) algolia.SearchInput {
 	return algolia.SearchInput{IndexName: request.IndexName, Query: request.Query, HitsPerPage: 10}
+}
+
+// MapToGetObjectInput maps a request to one record lookup.
+func MapToGetObjectInput(request Request) algolia.ObjectInput {
+	return algolia.ObjectInput{IndexName: request.IndexName, ObjectID: request.ObjectID}
 }
 
 // GetRPCs registers the Dex Web summary and display views.
@@ -73,22 +89,32 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 
 // GetDexSummary returns the completed provider outcome.
 // dex:field attribute-key:algolia-index-search-outcome value-type:json editable:false description:"Index search results"
+// dex:field attribute-key:algolia-record-lookup-outcome value-type:json editable:false description:"Retrieved record identity and name"
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
 	outcome, err := optionalOutcome(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"algolia-index-search-outcome": outcome}}, nil
+	record, err := optionalRecord(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"algolia-index-search-outcome": outcome, "algolia-record-lookup-outcome": record}}, nil
 }
 
 // GetDexDisplay returns the completed provider outcome.
 // dex:field attribute-key:algolia-index-search-outcome value-type:json editable:false description:"Index search results"
+// dex:field attribute-key:algolia-record-lookup-outcome value-type:json editable:false description:"Retrieved record identity and name"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
 	outcome, err := optionalOutcome(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"algolia-index-search-outcome": outcome}}, nil
+	record, err := optionalRecord(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"algolia-index-search-outcome": outcome, "algolia-record-lookup-outcome": record}}, nil
 }
 
 func optionalOutcome(ctx dex.Context) (algolia.SearchPage, error) {
@@ -98,6 +124,15 @@ func optionalOutcome(ctx dex.Context) (algolia.SearchPage, error) {
 		return algolia.SearchPage{}, nil
 	}
 	return outcome, err
+}
+
+func optionalRecord(ctx dex.Context) (algolia.ObjectRecord, error) {
+	record, err := recordAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if errors.As(err, &missing) {
+		return algolia.ObjectRecord{}, nil
+	}
+	return record, err
 }
 
 // dex:group group-id:index-search group-label:"Index search"
@@ -111,7 +146,25 @@ func (start) Execute(_ dex.Context, request Request) (*dex.StepDecision, error) 
 	if request.IndexName == "" {
 		return dex.ForceFail("indexName is required"), nil
 	}
+	request.ObjectID = strings.TrimSpace(request.ObjectID)
+	if request.ObjectID != "" {
+		return dex.GoTo(sdkgo.StepRef[Request](getObjectStepType), request), nil
+	}
 	return dex.GoTo(sdkgo.StepRef[Request](searchStepType), request), nil
+}
+
+// dex:group group-id:record-lookup group-label:"Record lookup"
+// dex:explanation text:"Complete with the retrieved record identity and name."
+type found struct {
+	dex.StepDefaultsNoWaitFor[algolia.GetObjectResult]
+}
+
+func (found) GetStepType() string { return "AlgoliaRecordFound" }
+func (found) Execute(ctx dex.Context, result algolia.GetObjectResult) (*dex.StepDecision, error) {
+	if err := recordAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(result.Value), nil
 }
 
 // dex:group group-id:index-search group-label:"Index search"

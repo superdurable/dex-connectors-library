@@ -1,6 +1,6 @@
 # Amazon SQS Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/sqs`.
 
@@ -20,9 +20,16 @@ factories:
 
 | Operation | Kind | SQS action | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- | --- |
+| `sendMessage` (Go) | Mutation | `SendMessage` | sync | `sent` | `providerRejected`, `uncertain`, `defect` |
 | `receiveMessages` | Mutation | `ReceiveMessage` | sync | `received` | `empty`, `providerRejected`, `invalidResponse`, `defect` |
 | `deleteMessage` | Mutation | `DeleteMessage` | async | `deleted` | `receiptHandleInvalid`, `providerRejected`, `defect` |
 | `changeMessageVisibility` | Mutation | `ChangeMessageVisibility` | async | `changed` | `receiptHandleInvalid`, `providerRejected`, `defect` |
+| `listQueues` (Go) | Query | `ListQueues` | async | `page` | `providerRejected`, `invalidResponse`, `defect` |
+| `createQueue` (Go) | Mutation | `CreateQueue` | async | `created` | `providerRejected`, `invalidResponse`, `defect` |
+| `getQueueURL` (Go) | Query | `GetQueueUrl` | async | `found` | `missing`, `providerRejected`, `invalidResponse`, `defect` |
+| `getQueueAttributes` (Go) | Query | `GetQueueAttributes` | async | `found` | `missing`, `providerRejected`, `invalidResponse`, `defect` |
+| `setQueueAttribute` (Go) | Mutation | `SetQueueAttributes` | async | `updated` | `providerRejected`, `defect` |
+| `deleteQueue` (Go) | Mutation | `DeleteQueue` | async | `deleted` | `providerRejected`, `defect` |
 
 A consuming Flow receives a batch, processes each message, and then
 acknowledges it with `deleteMessage`, or releases it with
@@ -31,8 +38,10 @@ acknowledges reappears on the queue when its visibility timeout ends, so a
 failed Flow leaves its message for another consumer or for the queue's
 dead-letter redrive policy. Acknowledging only after processing makes the
 consumer at-least-once: processing must tolerate a message delivered again,
-which `ReceiveCount` above 1 reveals. This release sends no messages, has no
+which `ReceiveCount` above 1 reveals. This release sends individual messages, has no
 Trigger, and has no Studio pickers; see [Not in this release](#not-in-this-release).
+
+`sendMessage` takes a full `queueUrl` from [SQS Console > Queues > selected queue](https://console.aws.amazon.com/sqs/v3/home), or blank to use `defaultQueueUrl`; a blank URL without that default is invalid. `body` is nonempty UTF-8 text up to 256 KiB, matching the default queue limit. `messageGroupId` is required for a `.fifo` queue and optional for a standard queue; blank omits it on a standard queue. The connector derives a stable FIFO `MessageDeduplicationId` from the Dex call ID. SQS deduplicates FIFO sends for five minutes; a standard queue has no deduplication, so an unknown send may produce duplicates. The connector fences dispatches and caps possible sends at three, then selects `uncertain` if no accepted message ID can be confirmed. It verifies SQS's returned body MD5 before reporting success. Grant `sqs:SendMessage` and, for a customer managed KMS key, `kms:GenerateDataKey` on the relevant resources. This Go operation has no Python or TypeScript implementation yet.
 
 ## Mocks
 
@@ -205,20 +214,29 @@ part of the Result. The connection's secret access key and session token never
 are: a response that contains either selects `invalidResponse` instead of
 entering Flow state.
 
+### Queue management in Go
+
+`listQueues` reads a page of up to 1,000 queue URLs in the connection Region; `queueNamePrefix` and `nextToken` are optional, and `maxResults` defaults to 100. `getQueueURL` finds a queue by its exact name. `getQueueAttributes` reads all available settings and approximate counts using the URL from [SQS Console > Queues](https://console.aws.amazon.com/sqs/v3/home), or the connection's default URL when blank.
+
+`createQueue` accepts a unique `queueName` of at most 80 characters, ending in `.fifo` for FIFO queues. Its optional `attributes` map supports `FifoQueue: "true"` for FIFO and numeric `VisibilityTimeout` (0–43200 seconds), `ReceiveMessageWaitTimeSeconds` (0–20 seconds), `DelaySeconds` (0–900 seconds), and `MaximumMessageSize` (1024–1048576 bytes). Blank attributes use SQS defaults. Repeating the same name and attributes returns the existing URL; a name with different existing attributes is rejected. `setQueueAttribute` changes one of the four numeric settings with an absolute decimal `attributeValue`; blank is invalid. The connector excludes retention and policy changes because they can expire messages or replace access grants. `deleteQueue` permanently removes a queue and its messages; repeat requests are accepted. AWS requires a 60-second wait before recreating the same name.
+
+Grant `sqs:ListQueues`, `sqs:CreateQueue`, `sqs:GetQueueUrl`, `sqs:GetQueueAttributes`, `sqs:SetQueueAttributes`, or `sqs:DeleteQueue` for the operations you use. [IAM Console > Users > selected user > Permissions](https://console.aws.amazon.com/iam) is where you add these actions; `ListQueues` requires a Region-level permission and does not use a queue ARN. All six operations use safe repeat semantics. Their live Amazon SQS authorization and response behavior remain unverified.
+
 ## Not in this release
 
 - **Trigger**: a queue Trigger that starts one Flow per message needs a source
   that polls, inboxes, and extends visibility while the Flow runs, and a choice
   of whether the source or the Flow acknowledges. This release lets the Flow
   own receiving and acknowledging through Steps.
-- **Sending**: `SendMessage` and batch sends.
+- **Batch sending**: `SendMessageBatch`, whose partial failures need per-entry decisions.
 - **Batch acknowledgement**: `DeleteMessageBatch` and
   `ChangeMessageVisibilityBatch`, whose partial failures need per-entry
   branches.
 - **Pickers**: Studio commands send only HTTPS `GET`, and SQS's `ListQueues`
   requires a SigV4-signed `POST`, so queue URLs are guided input or
   `defaultQueueUrl`.
-- Verifying `MD5OfMessageAttributes`, queue management, and IAM roles.
+- Verifying `MD5OfMessageAttributes` and IAM roles.
+- `PurgeQueue`: AWS may delete messages sent during the following minute, so repeating an unknown result can destroy new work. This requires the unsafe repeat tier and is deliberately omitted.
 
 ## Example
 
