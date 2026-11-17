@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-microsoft-teams",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Microsoft Teams operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -46,7 +46,7 @@
     "example:thread-replies:start": "npm run build && tsx examples/list-thread-replies/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.12.0",
     "@superdurable/dex": ">=1.28.0",
     "htmlparser2": "^10.1.0",
     "zod": "^4.1.0"

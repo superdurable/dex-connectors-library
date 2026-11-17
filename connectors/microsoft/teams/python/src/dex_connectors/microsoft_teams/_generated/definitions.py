@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -49,7 +50,7 @@ POST_CHANNEL_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found.", False),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", True),
-        BranchDefinition(UNCERTAIN, "An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -57,6 +58,8 @@ POST_CHANNEL_MESSAGE_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 POST_THREAD_REPLY_DEFINITION = MutationDefinition(
@@ -64,7 +67,7 @@ POST_THREAD_REPLY_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Teams stored the message, including one an earlier attempt of this Step execution sent and the read-back found.", False),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the message, such as an unknown or archived channel, a non-member account, or invalid HTML; nothing was posted.", True),
-        BranchDefinition(UNCERTAIN, "An attempt sent the message and neither its response nor a read-back confirms it; it is never sent again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The message may have been sent, and neither a response nor a read-back confirmed it before the send cap was reached or several matching messages were found.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -72,6 +75,8 @@ POST_THREAD_REPLY_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 POST_CHAT_MESSAGE_DEFINITION = MutationDefinition(
@@ -79,7 +84,7 @@ POST_CHAT_MESSAGE_DEFINITION = MutationDefinition(
     (
         BranchDefinition(SENT, "Teams stored the message in the chat.", False),
         BranchDefinition(PROVIDER_REJECTED, "Microsoft Graph conclusively rejected the message, such as an unknown chat, an account that left it, or invalid HTML; nothing was sent.", True),
-        BranchDefinition(UNCERTAIN, "An attempt sent the message and its response does not confirm it; the connection cannot read chats, so it is never sent again automatically.", True),
+        BranchDefinition(UNCERTAIN, "The message may have been sent, and no response confirmed it before the send cap was reached; the connection cannot read chats to check.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -87,4 +92,6 @@ POST_CHAT_MESSAGE_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
