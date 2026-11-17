@@ -20,6 +20,8 @@ The TypeScript package lives in
 names are `dex-connector-<slug>` and `@superdurable/connector-<slug>`, with
 `<slug>` formed from the connector path below `connectors/` by replacing `/`
 with `-`. The public catalog records language availability and versions.
+Python import paths replace `/` and `-` with `_`; a path beginning with a digit
+gets a leading `_`, so `connectors/365api` imports as `dex_connectors._365api`.
 Each list names exactly the operations or Triggers implemented by that language
 package; use `[]` when none are implemented. Go supports all declared operations
 and Triggers. For example, `python: {version: v0.1.0, operations: [getMessage],
