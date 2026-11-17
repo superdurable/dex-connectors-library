@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: miro
   displayName: Miro
-  description: Read a board ID and name through Miro REST API v2.
+  description: Read boards, board items, and members through Miro REST API v2.
   company: Miro
   categories: [productivity]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: miro
   languages:
@@ -56,6 +56,89 @@ spec:
         - On that app's settings page click Install app and get OAuth token, select the team, and approve the requested access. Copy the complete opaque token once into secret access_token in Dex Web. For long-lived service use, choose the app's non-expiring token option when creating it; for expiring tokens, replace the Dex secret when rotated. Revoke access by uninstalling the app or revoking its token in Miro.
         - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Open a board in Miro and copy the non-secret board ID from its URL after /board/; enter it as boardId. Blank is invalid.
   operations:
+    - name: listBoards
+      goName: ListBoards
+      inputType: ListBoardsInput
+      outputType: BoardsPage
+      kind: query
+      description: Read one page of accessible boards, optionally searching board names and descriptions.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Miro returned a page of boards.}
+        - {id: providerRejected, goName: ProviderRejected, description: Miro conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Miro returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example board is returned.
+          output: {boards: [{id: 'uXjVOD6LSME=', name: Example board}], offset: 0, total: 1}
+    - name: listBoardItems
+      goName: ListBoardItems
+      inputType: ListBoardItemsInput
+      outputType: BoardItemsPage
+      kind: query
+      description: Read one cursor-paginated page of items on a board.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Miro returned a page of board items.}
+        - {id: notFound, goName: NotFound, description: The board was absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Miro conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Miro returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample item is returned.
+          output: {items: [{id: 'item-1', type: sticky_note}], cursor: ''}
+    - name: getBoardItem
+      goName: GetBoardItem
+      inputType: GetBoardItemInput
+      outputType: BoardItemMetadata
+      kind: query
+      description: Read one board item's ID and type.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Miro returned the board item.}
+        - {id: notFound, goName: NotFound, description: The item was absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Miro conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Miro returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample item is returned.
+          output: {id: 'item-1', type: sticky_note}
+    - name: listBoardMembers
+      goName: ListBoardMembers
+      inputType: ListBoardMembersInput
+      outputType: BoardMembersPage
+      kind: query
+      description: Read one page of a board's members.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Miro returned a page of board members.}
+        - {id: notFound, goName: NotFound, description: The board was absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Miro conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Miro returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample member is returned.
+          output: {members: [{id: 'member-1', role: viewer}], offset: 0, total: 1}
     - name: getBoard
       goName: GetBoard
       inputType: GetBoardInput
@@ -64,7 +147,7 @@ spec:
       description: Read one board's ID and name without owner, members, policies, or description.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Miro returned the board.}
         - {id: notFound, goName: NotFound, description: Miro did not expose the board., optional: true}

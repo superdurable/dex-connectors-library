@@ -4,11 +4,13 @@
 package microsoftadvertising
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = ""
@@ -24,7 +26,38 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listCampaigns": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
+	context := singledispatchtest.NewContext("advertising-conformance", "campaign-operation")
+	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) {
+		var checkpoint any
+		require.NoError(t, json.Unmarshal(raw, &checkpoint))
+		require.NoError(t, context.SetPersistedCheckpoint(checkpoint))
+	})
+	currentAttempt := int32(1)
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		for currentAttempt < prior+int32(attempt) {
+			context.AdvanceAttempt()
+			currentAttempt++
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"listAds":                  newConformanceQueryInvocation(t, scenario.Input, context, client.ListAds(), reference),
+		"getAd":                    newConformanceQueryInvocation(t, scenario.Input, context, client.GetAd(), reference),
+		"createResponsiveSearchAd": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateResponsiveSearchAd(), reference, scenario.CallID),
+		"updateAd":                 newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateAd(), reference, scenario.CallID),
+		"deleteAd":                 newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteAd(), reference, scenario.CallID),
+		"listKeywords":             newConformanceQueryInvocation(t, scenario.Input, context, client.ListKeywords(), reference),
+		"getKeyword":               newConformanceQueryInvocation(t, scenario.Input, context, client.GetKeyword(), reference),
+		"createKeyword":            newConformanceMutationInvocation(t, scenario.Input, context, client.CreateKeyword(), reference, scenario.CallID),
+		"updateKeyword":            newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateKeyword(), reference, scenario.CallID),
+		"deleteKeyword":            newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteKeyword(), reference, scenario.CallID),
+		"listAdGroups":             newConformanceQueryInvocation(t, scenario.Input, context, client.ListAdGroups(), reference),
+		"getAdGroup":               newConformanceQueryInvocation(t, scenario.Input, context, client.GetAdGroup(), reference),
+		"createAdGroup":            newConformanceMutationInvocation(t, scenario.Input, context, client.CreateAdGroup(), reference, scenario.CallID),
+		"updateAdGroup":            newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateAdGroup(), reference, scenario.CallID),
+		"deleteAdGroup":            newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteAdGroup(), reference, scenario.CallID),
+		"listCampaigns":            newConformanceQueryInvocation(t, scenario.Input, context, client.ListCampaigns(), reference),
+		"getCampaign":              newConformanceQueryInvocation(t, scenario.Input, context, client.GetCampaign(), reference),
+		"createCampaign":           newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCampaign(), reference, scenario.CallID),
+		"updateCampaign":           newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCampaign(), reference, scenario.CallID),
+		"deleteCampaign":           newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteCampaign(), reference, scenario.CallID),
 	}}
 }

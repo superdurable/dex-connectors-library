@@ -339,6 +339,8 @@ func (server *Server) route(request *http.Request, body []byte) (int, http.Heade
 		}
 		header := http.Header{"Location": {server.URL + downloadPrefix + url.PathEscape(item.ID) + "?tempauth=fake-preauthenticated"}}
 		return http.StatusFound, header, nil
+	case strings.HasPrefix(rest, "/items/") && request.Method == http.MethodPatch:
+		return server.renameLocked(driveID, folderIDFromPath(rest), body)
 	case request.Method == http.MethodGet && (rest == "/root" || strings.HasPrefix(rest, "/items/")):
 		itemID := folderIDFromPath(rest)
 		if itemID == rootItemID {
@@ -352,6 +354,24 @@ func (server *Server) route(request *http.Request, body []byte) (int, http.Heade
 	default:
 		return errorPayload(http.StatusBadRequest, "invalidRequest")
 	}
+}
+
+func (server *Server) renameLocked(driveID, itemID string, body []byte) (int, http.Header, []byte) {
+	item := server.items[itemID]
+	if item == nil || item.DriveID != driveID {
+		return errorPayload(http.StatusNotFound, "itemNotFound")
+	}
+	var change struct {
+		Name string `json:"name"`
+	}
+	if json.Unmarshal(body, &change) != nil || change.Name == "" {
+		return errorPayload(http.StatusBadRequest, "invalidRequest")
+	}
+	if existing := server.childLocked(driveID, item.ParentID, change.Name); existing != nil && existing.ID != itemID {
+		return errorPayload(http.StatusConflict, "nameAlreadyExists")
+	}
+	item.Name = change.Name
+	return jsonPayload(http.StatusOK, server.resourceLocked(item))
 }
 
 func (server *Server) splitDrivePath(path string) (string, string, bool) {

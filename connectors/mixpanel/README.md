@@ -1,6 +1,6 @@
 # Mixpanel connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/mixpanel/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/mixpanel/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/mixpanel`.
 
@@ -10,6 +10,8 @@ Mixpanel event import and bounded raw export for Dex. The connector uses the pub
 | --- | --- | --- |
 | `trackEvent` | `POST /import?strict=1&project_id=...` | `imported` after one valid event is accepted |
 | `exportEvents` | `GET /api/2.0/export` with date and limit parameters | `exported` with a bounded JSONL batch |
+| `queryProfiles` | `POST /api/query/engage` with one distinct ID | `queried` with matching identities only |
+| `listSavedCohorts` | `POST /api/query/cohorts/list` | `listed` with bounded cohort ID, name, and count |
 
 `trackEvent` fixes event name, `distinct_id`, and Unix-second `time` in the operation input. It derives a UUID-shaped, 36-byte `$insert_id` from Dex's stable call ID. All four deduplication fields therefore remain identical on retries. Mixpanel applies query-time deduplication to that tuple. Raw exports can still contain duplicate ingested rows; the export operation intentionally returns raw events and does not claim deduplication. It strips arbitrary event properties from Flow output, retaining only event name, distinct ID, time, and insert ID.
 
@@ -23,6 +25,10 @@ The TypeScript package is [`@superdurable/connector-mixpanel`](typescript/README
 Sign in at [Mixpanel Organization Settings](https://mixpanel.com/settings/org/), open **Service Accounts**, and choose **Create Service Account** with Owner or Admin access to the project. Copy the generated username into the secret `service_account_username` field and the secret shown once into `service_account_secret`. Open [Project Settings > Overview](https://mixpanel.com/settings/project/) and enter its positive numeric Project ID in `projectId`; blank cannot authenticate. Both service-account fields are sent only in the Basic authorization header; the non-secret project ID is a query parameter. Leave `baseUrl`, `exportBaseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed US defaults. For EU or India residency, set both host fields to the provider's matching regional endpoints.
 
 ## Failure behavior
+
+The `queryBaseUrl` field defaults to the US Query API; select Mixpanel's documented regional host for EU or India projects.
+
+Profile and group-profile writes need a Mixpanel project token that the existing service-account connection does not collect. Those writes are deferred to a connection migration; event import remains the supported write path.
 
 | Condition | Route |
 | --- | --- |
@@ -45,5 +51,7 @@ The generated `mixpanelmock` defaults accept a Meridian signup event and return 
 - [Export authentication](https://docs.mixpanel.com/reference/raw-data-export-api-authentication) documents service-account authentication with `project_id`.
 - [Event Deduplication](https://docs.mixpanel.com/reference/event-deduplication) documents the four-field deduplication tuple and raw-export duplicate behavior.
 - [Service Accounts](https://docs.mixpanel.com/reference/service-accounts) documents creation and Basic authentication.
+- [Query Profiles](https://docs.mixpanel.com/reference/engage-query) and [List Saved Cohorts](https://docs.mixpanel.com/reference/cohorts-list) document the service-account Query API endpoints.
+- [Ingestion authentication](https://docs.mixpanel.com/reference/ingestion-api-authentication) documents project-token requirements for profile writes.
 
 Live Mixpanel service-account authorization, import, and export remain unverified. CI runs the mock-backed real-Dex test. The coordinator approved static service-account Basic credentials for this connector.

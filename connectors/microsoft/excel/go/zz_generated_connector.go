@@ -59,6 +59,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListTableColumns() sdkgo.Query[ListTableColumnsInput, ListTableColumnsOutput]
+	FindTableRow() sdkgo.Query[FindTableRowInput, FindTableRowOutput]
+	ListWorksheets() sdkgo.Query[ListWorksheetsInput, ListWorksheetsOutput]
+	ListWorkbooks() sdkgo.Query[ListWorkbooksInput, ListWorkbooksOutput]
+	CreateWorksheet() sdkgo.Mutation[CreateWorksheetInput, CreateWorksheetOutput]
 	GetTableRows() sdkgo.Query[GetTableRowsInput, GetTableRowsOutput]
 	GetValues() sdkgo.Query[GetValuesInput, GetValuesOutput]
 	UpdateValues() sdkgo.Mutation[UpdateValuesInput, UpdateValuesOutput]
@@ -67,6 +72,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListTableColumns() sdkgo.Query[ListTableColumnsInput, ListTableColumnsOutput] {
+	return operations.client.ListTableColumns()
+}
+func (operations clientOperations) FindTableRow() sdkgo.Query[FindTableRowInput, FindTableRowOutput] {
+	return operations.client.FindTableRow()
+}
+func (operations clientOperations) ListWorksheets() sdkgo.Query[ListWorksheetsInput, ListWorksheetsOutput] {
+	return operations.client.ListWorksheets()
+}
+func (operations clientOperations) ListWorkbooks() sdkgo.Query[ListWorkbooksInput, ListWorkbooksOutput] {
+	return operations.client.ListWorkbooks()
+}
+func (operations clientOperations) CreateWorksheet() sdkgo.Mutation[CreateWorksheetInput, CreateWorksheetOutput] {
+	return operations.client.CreateWorksheet()
+}
 func (operations clientOperations) GetTableRows() sdkgo.Query[GetTableRowsInput, GetTableRowsOutput] {
 	return operations.client.GetTableRows()
 }
@@ -288,6 +308,436 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+const ListTableColumnsBranchListed sdkgo.BranchID = "listed"
+const ListTableColumnsBranchNotFound sdkgo.BranchID = "notFound"
+const ListTableColumnsBranchTooLarge sdkgo.BranchID = "tooLarge"
+const ListTableColumnsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTableColumnsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTableColumnsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTableColumnsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTableColumns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTableColumnsBranchListed, Description: "The table columns were listed."},
+		{ID: ListTableColumnsBranchNotFound, Description: "The workbook or table was not found.", Optional: true},
+		{ID: ListTableColumnsBranchTooLarge, Description: "The response exceeds the configured limit.", Optional: true},
+		{ID: ListTableColumnsBranchProviderRejected, Description: "Graph rejected the column read.", Optional: true},
+		{ID: ListTableColumnsBranchInvalidResponse, Description: "Graph returned invalid table columns.", Optional: true},
+		{ID: ListTableColumnsBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTableColumnsResult = sdkgo.QueryResult[ListTableColumnsOutput]
+
+type ListTableColumnsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                  `connector:"connectorId=microsoft-excel"`
+	operationID                    struct{}                                                  `connector:"operationId=listTableColumns"`
+	StepType                       string                                                    `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                     `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                            `connector:"configurationUI"`
+	Connection                     Connection                                                `connector:"connection"`
+	ConnectionName                 string                                                    `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListTableColumnsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTableColumnsResult]                      `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListTableColumnsResult]                      `connector:"branch=notFound,optional"`
+	TooLarge                       sdkgo.Target[ListTableColumnsResult]                      `connector:"branch=tooLarge,optional"`
+	ProviderRejected               sdkgo.Target[ListTableColumnsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTableColumnsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTableColumnsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListTableColumnsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewListTableColumnsStep[IN any](config ListTableColumnsStepConfig[IN]) sdkgo.QueryStep[IN, ListTableColumnsInput, ListTableColumnsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-excel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListTableColumnsInput, ListTableColumnsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListTableColumns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTableColumnsResult] {
+			branches := make([]sdkgo.BranchTarget[ListTableColumnsResult], 0, 6)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTableColumnsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListTableColumnsBranchNotFound))
+			}
+			if config.TooLarge.HasStep() {
+				branches = append(branches, config.TooLarge.BranchTarget(ListTableColumnsBranchTooLarge))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTableColumnsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTableColumnsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTableColumnsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const FindTableRowBranchFound sdkgo.BranchID = "found"
+const FindTableRowBranchNotFound sdkgo.BranchID = "notFound"
+const FindTableRowBranchTooLarge sdkgo.BranchID = "tooLarge"
+const FindTableRowBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const FindTableRowBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const FindTableRowBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var FindTableRowDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "findTableRow"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: FindTableRowBranchFound, Description: "A matching row was found."},
+		{ID: FindTableRowBranchNotFound, Description: "The workbook, table, or row was not found.", Optional: true},
+		{ID: FindTableRowBranchTooLarge, Description: "The table exceeds the configured limit.", Optional: true},
+		{ID: FindTableRowBranchProviderRejected, Description: "Graph rejected the table read.", Optional: true},
+		{ID: FindTableRowBranchInvalidResponse, Description: "Graph returned an invalid table response.", Optional: true},
+		{ID: FindTableRowBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type FindTableRowResult = sdkgo.QueryResult[FindTableRowOutput]
+
+type FindTableRowStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=microsoft-excel"`
+	operationID                    struct{}                                              `connector:"operationId=findTableRow"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) FindTableRowInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[FindTableRowResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[FindTableRowResult]                      `connector:"branch=notFound,optional"`
+	TooLarge                       sdkgo.Target[FindTableRowResult]                      `connector:"branch=tooLarge,optional"`
+	ProviderRejected               sdkgo.Target[FindTableRowResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[FindTableRowResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[FindTableRowResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FindTableRowOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewFindTableRowStep[IN any](config FindTableRowStepConfig[IN]) sdkgo.QueryStep[IN, FindTableRowInput, FindTableRowOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-excel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, FindTableRowInput, FindTableRowOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.FindTableRow(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[FindTableRowResult] {
+			branches := make([]sdkgo.BranchTarget[FindTableRowResult], 0, 6)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(FindTableRowBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(FindTableRowBranchNotFound))
+			}
+			if config.TooLarge.HasStep() {
+				branches = append(branches, config.TooLarge.BranchTarget(FindTableRowBranchTooLarge))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(FindTableRowBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(FindTableRowBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(FindTableRowBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWorksheetsBranchListed sdkgo.BranchID = "listed"
+const ListWorksheetsBranchNotFound sdkgo.BranchID = "notFound"
+const ListWorksheetsBranchTooLarge sdkgo.BranchID = "tooLarge"
+const ListWorksheetsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWorksheetsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWorksheetsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWorksheetsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWorksheets"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWorksheetsBranchListed, Description: "The workbook worksheets were listed."},
+		{ID: ListWorksheetsBranchNotFound, Description: "The workbook was not found.", Optional: true},
+		{ID: ListWorksheetsBranchTooLarge, Description: "The response exceeds the configured limit.", Optional: true},
+		{ID: ListWorksheetsBranchProviderRejected, Description: "Graph rejected the worksheet read.", Optional: true},
+		{ID: ListWorksheetsBranchInvalidResponse, Description: "Graph returned an invalid worksheet list.", Optional: true},
+		{ID: ListWorksheetsBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWorksheetsResult = sdkgo.QueryResult[ListWorksheetsOutput]
+
+type ListWorksheetsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=microsoft-excel"`
+	operationID                    struct{}                                                `connector:"operationId=listWorksheets"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWorksheetsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListWorksheetsResult]                      `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListWorksheetsResult]                      `connector:"branch=notFound,optional"`
+	TooLarge                       sdkgo.Target[ListWorksheetsResult]                      `connector:"branch=tooLarge,optional"`
+	ProviderRejected               sdkgo.Target[ListWorksheetsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWorksheetsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWorksheetsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListWorksheetsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListWorksheetsStep[IN any](config ListWorksheetsStepConfig[IN]) sdkgo.QueryStep[IN, ListWorksheetsInput, ListWorksheetsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-excel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWorksheetsInput, ListWorksheetsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListWorksheets(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWorksheetsResult] {
+			branches := make([]sdkgo.BranchTarget[ListWorksheetsResult], 0, 6)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListWorksheetsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListWorksheetsBranchNotFound))
+			}
+			if config.TooLarge.HasStep() {
+				branches = append(branches, config.TooLarge.BranchTarget(ListWorksheetsBranchTooLarge))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWorksheetsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWorksheetsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWorksheetsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWorkbooksBranchListed sdkgo.BranchID = "listed"
+const ListWorkbooksBranchNotFound sdkgo.BranchID = "notFound"
+const ListWorkbooksBranchTooLarge sdkgo.BranchID = "tooLarge"
+const ListWorkbooksBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWorkbooksBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWorkbooksBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWorkbooksDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWorkbooks"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWorkbooksBranchListed, Description: "One page of workbooks was listed."},
+		{ID: ListWorkbooksBranchNotFound, Description: "The drive was not found.", Optional: true},
+		{ID: ListWorkbooksBranchTooLarge, Description: "The response exceeds the configured limit.", Optional: true},
+		{ID: ListWorkbooksBranchProviderRejected, Description: "Graph rejected the drive search.", Optional: true},
+		{ID: ListWorkbooksBranchInvalidResponse, Description: "Graph returned an invalid workbook page.", Optional: true},
+		{ID: ListWorkbooksBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWorkbooksResult = sdkgo.QueryResult[ListWorkbooksOutput]
+
+type ListWorkbooksStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=microsoft-excel"`
+	operationID                    struct{}                                               `connector:"operationId=listWorkbooks"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListWorkbooksInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListWorkbooksResult]                      `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListWorkbooksResult]                      `connector:"branch=notFound,optional"`
+	TooLarge                       sdkgo.Target[ListWorkbooksResult]                      `connector:"branch=tooLarge,optional"`
+	ProviderRejected               sdkgo.Target[ListWorkbooksResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWorkbooksResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWorkbooksResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListWorkbooksOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListWorkbooksStep[IN any](config ListWorkbooksStepConfig[IN]) sdkgo.QueryStep[IN, ListWorkbooksInput, ListWorkbooksOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-excel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListWorkbooksInput, ListWorkbooksOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListWorkbooks(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWorkbooksResult] {
+			branches := make([]sdkgo.BranchTarget[ListWorkbooksResult], 0, 6)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListWorkbooksBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListWorkbooksBranchNotFound))
+			}
+			if config.TooLarge.HasStep() {
+				branches = append(branches, config.TooLarge.BranchTarget(ListWorkbooksBranchTooLarge))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWorkbooksBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWorkbooksBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWorkbooksBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateWorksheetBranchCreated sdkgo.BranchID = "created"
+const CreateWorksheetBranchNameConflict sdkgo.BranchID = "nameConflict"
+const CreateWorksheetBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateWorksheetBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateWorksheetBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateWorksheetBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateWorksheetDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createWorksheet"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateWorksheetBranchCreated, Description: "The named worksheet was created or found after an earlier send."},
+		{ID: CreateWorksheetBranchNameConflict, Description: "A worksheet already held that name before the first send.", Optional: true},
+		{ID: CreateWorksheetBranchProviderRejected, Description: "Graph rejected the worksheet creation.", Optional: true},
+		{ID: CreateWorksheetBranchInvalidResponse, Description: "Graph returned an invalid worksheet.", Optional: true},
+		{ID: CreateWorksheetBranchUncertain, Description: "The capped sends were not confirmed by read-back.", Optional: true},
+		{ID: CreateWorksheetBranchDefect, Description: "The input or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateWorksheetResult = sdkgo.MutationResult[CreateWorksheetOutput]
+
+type CreateWorksheetStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=microsoft-excel"`
+	operationID                       struct{}                                                    `connector:"operationId=createWorksheet"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                              `connector:"configurationUI"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateWorksheetInput                               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateWorksheetResult]                         `connector:"branch=created"`
+	NameConflict                      sdkgo.Target[CreateWorksheetResult]                         `connector:"branch=nameConflict,optional"`
+	ProviderRejected                  sdkgo.Target[CreateWorksheetResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateWorksheetResult]                         `connector:"branch=invalidResponse,optional"`
+	Uncertain                         sdkgo.Target[CreateWorksheetResult]                         `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateWorksheetResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateWorksheetOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateWorksheetStep[IN any](config CreateWorksheetStepConfig[IN]) sdkgo.MutationStep[IN, CreateWorksheetInput, CreateWorksheetOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("microsoft-excel connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateWorksheetInput, CreateWorksheetOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateWorksheet(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateWorksheetResult] {
+			branches := make([]sdkgo.BranchTarget[CreateWorksheetResult], 0, 6)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateWorksheetBranchCreated))
+			}
+			if config.NameConflict.HasStep() {
+				branches = append(branches, config.NameConflict.BranchTarget(CreateWorksheetBranchNameConflict))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateWorksheetBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateWorksheetBranchInvalidResponse))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateWorksheetBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateWorksheetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const GetTableRowsBranchRead sdkgo.BranchID = "read"
 const GetTableRowsBranchNotFound sdkgo.BranchID = "notFound"
 const GetTableRowsBranchTooLarge sdkgo.BranchID = "tooLarge"
@@ -476,6 +926,8 @@ var UpdateValuesDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UpdateValuesResult = sdkgo.MutationResult[UpdateValuesOutput]
@@ -496,6 +948,8 @@ type UpdateValuesStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateValuesResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateValuesOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateValuesStep[IN any](config UpdateValuesStepConfig[IN]) sdkgo.MutationStep[IN, UpdateValuesInput, UpdateValuesOutput] {
@@ -528,6 +982,7 @@ func NewUpdateValuesStep[IN any](config UpdateValuesStepConfig[IN]) sdkgo.Mutati
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -555,6 +1010,8 @@ var AppendTableRowsDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 5, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type AppendTableRowsResult = sdkgo.MutationResult[AppendTableRowsOutput]
@@ -578,6 +1035,8 @@ type AppendTableRowsStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[AppendTableRowsResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AppendTableRowsOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewAppendTableRowsStep[IN any](config AppendTableRowsStepConfig[IN]) sdkgo.MutationStep[IN, AppendTableRowsInput, AppendTableRowsOutput] {
@@ -619,5 +1078,6 @@ func NewAppendTableRowsStep[IN any](config AppendTableRowsStepConfig[IN]) sdkgo.
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

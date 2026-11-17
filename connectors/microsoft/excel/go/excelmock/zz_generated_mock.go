@@ -17,11 +17,16 @@ import (
 
 // Mock is a scripted microsoft-excel connection. Script each operation through its accessor.
 type Mock struct {
-	connection      excel.Connection
-	getTableRows    *connectormock.Query[excel.GetTableRowsInput, excel.GetTableRowsOutput]
-	getValues       *connectormock.Query[excel.GetValuesInput, excel.GetValuesOutput]
-	updateValues    *connectormock.Mutation[excel.UpdateValuesInput, excel.UpdateValuesOutput]
-	appendTableRows *connectormock.Mutation[excel.AppendTableRowsInput, excel.AppendTableRowsOutput]
+	connection       excel.Connection
+	listTableColumns *connectormock.Query[excel.ListTableColumnsInput, excel.ListTableColumnsOutput]
+	findTableRow     *connectormock.Query[excel.FindTableRowInput, excel.FindTableRowOutput]
+	listWorksheets   *connectormock.Query[excel.ListWorksheetsInput, excel.ListWorksheetsOutput]
+	listWorkbooks    *connectormock.Query[excel.ListWorkbooksInput, excel.ListWorkbooksOutput]
+	createWorksheet  *connectormock.Mutation[excel.CreateWorksheetInput, excel.CreateWorksheetOutput]
+	getTableRows     *connectormock.Query[excel.GetTableRowsInput, excel.GetTableRowsOutput]
+	getValues        *connectormock.Query[excel.GetValuesInput, excel.GetValuesOutput]
+	updateValues     *connectormock.Mutation[excel.UpdateValuesInput, excel.UpdateValuesOutput]
+	appendTableRows  *connectormock.Mutation[excel.AppendTableRowsInput, excel.AppendTableRowsOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,11 +34,21 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getTableRows:    connectormock.NewQuery[excel.GetTableRowsInput, excel.GetTableRowsOutput](t, excel.GetTableRowsDefinition),
-		getValues:       connectormock.NewQuery[excel.GetValuesInput, excel.GetValuesOutput](t, excel.GetValuesDefinition),
-		updateValues:    connectormock.NewMutation[excel.UpdateValuesInput, excel.UpdateValuesOutput](t, excel.UpdateValuesDefinition),
-		appendTableRows: connectormock.NewMutation[excel.AppendTableRowsInput, excel.AppendTableRowsOutput](t, excel.AppendTableRowsDefinition),
+		listTableColumns: connectormock.NewQuery[excel.ListTableColumnsInput, excel.ListTableColumnsOutput](t, excel.ListTableColumnsDefinition),
+		findTableRow:     connectormock.NewQuery[excel.FindTableRowInput, excel.FindTableRowOutput](t, excel.FindTableRowDefinition),
+		listWorksheets:   connectormock.NewQuery[excel.ListWorksheetsInput, excel.ListWorksheetsOutput](t, excel.ListWorksheetsDefinition),
+		listWorkbooks:    connectormock.NewQuery[excel.ListWorkbooksInput, excel.ListWorkbooksOutput](t, excel.ListWorkbooksDefinition),
+		createWorksheet:  connectormock.NewMutation[excel.CreateWorksheetInput, excel.CreateWorksheetOutput](t, excel.CreateWorksheetDefinition),
+		getTableRows:     connectormock.NewQuery[excel.GetTableRowsInput, excel.GetTableRowsOutput](t, excel.GetTableRowsDefinition),
+		getValues:        connectormock.NewQuery[excel.GetValuesInput, excel.GetValuesOutput](t, excel.GetValuesDefinition),
+		updateValues:     connectormock.NewMutation[excel.UpdateValuesInput, excel.UpdateValuesOutput](t, excel.UpdateValuesDefinition),
+		appendTableRows:  connectormock.NewMutation[excel.AppendTableRowsInput, excel.AppendTableRowsOutput](t, excel.AppendTableRowsDefinition),
 	}
+	mock.listTableColumns.Default(ListTableColumnsDefault())
+	mock.findTableRow.Default(FindTableRowDefault())
+	mock.listWorksheets.Default(ListWorksheetsDefault())
+	mock.listWorkbooks.Default(ListWorkbooksDefault())
+	mock.createWorksheet.Default(CreateWorksheetDefault())
 	mock.getTableRows.Default(GetTableRowsDefault())
 	mock.getValues.Default(GetValuesDefault())
 	mock.updateValues.Default(UpdateValuesDefault())
@@ -48,6 +63,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() excel.Connection { return mock.connection }
+
+// ListTableColumns returns the listTableColumns script.
+func (mock *Mock) ListTableColumns() *connectormock.Query[excel.ListTableColumnsInput, excel.ListTableColumnsOutput] {
+	return mock.listTableColumns
+}
+
+// FindTableRow returns the findTableRow script.
+func (mock *Mock) FindTableRow() *connectormock.Query[excel.FindTableRowInput, excel.FindTableRowOutput] {
+	return mock.findTableRow
+}
+
+// ListWorksheets returns the listWorksheets script.
+func (mock *Mock) ListWorksheets() *connectormock.Query[excel.ListWorksheetsInput, excel.ListWorksheetsOutput] {
+	return mock.listWorksheets
+}
+
+// ListWorkbooks returns the listWorkbooks script.
+func (mock *Mock) ListWorkbooks() *connectormock.Query[excel.ListWorkbooksInput, excel.ListWorkbooksOutput] {
+	return mock.listWorkbooks
+}
+
+// CreateWorksheet returns the createWorksheet script.
+func (mock *Mock) CreateWorksheet() *connectormock.Mutation[excel.CreateWorksheetInput, excel.CreateWorksheetOutput] {
+	return mock.createWorksheet
+}
 
 // GetTableRows returns the getTableRows script.
 func (mock *Mock) GetTableRows() *connectormock.Query[excel.GetTableRowsInput, excel.GetTableRowsOutput] {
@@ -71,6 +111,21 @@ func (mock *Mock) AppendTableRows() *connectormock.Mutation[excel.AppendTableRow
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListTableColumns() sdkgo.Query[excel.ListTableColumnsInput, excel.ListTableColumnsOutput] {
+	return operations.mock.listTableColumns
+}
+func (operations mockOperations) FindTableRow() sdkgo.Query[excel.FindTableRowInput, excel.FindTableRowOutput] {
+	return operations.mock.findTableRow
+}
+func (operations mockOperations) ListWorksheets() sdkgo.Query[excel.ListWorksheetsInput, excel.ListWorksheetsOutput] {
+	return operations.mock.listWorksheets
+}
+func (operations mockOperations) ListWorkbooks() sdkgo.Query[excel.ListWorkbooksInput, excel.ListWorkbooksOutput] {
+	return operations.mock.listWorkbooks
+}
+func (operations mockOperations) CreateWorksheet() sdkgo.Mutation[excel.CreateWorksheetInput, excel.CreateWorksheetOutput] {
+	return operations.mock.createWorksheet
+}
 func (operations mockOperations) GetTableRows() sdkgo.Query[excel.GetTableRowsInput, excel.GetTableRowsOutput] {
 	return operations.mock.getTableRows
 }
@@ -82,6 +137,236 @@ func (operations mockOperations) UpdateValues() sdkgo.Mutation[excel.UpdateValue
 }
 func (operations mockOperations) AppendTableRows() sdkgo.Mutation[excel.AppendTableRowsInput, excel.AppendTableRowsOutput] {
 	return operations.mock.appendTableRows
+}
+
+// ListTableColumnsListed selects the listed branch: The table columns were listed.
+func ListTableColumnsListed(value excel.ListTableColumnsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListTableColumnsOutput] {
+	return connectormock.Branch(excel.ListTableColumnsBranchListed, value, failure)
+}
+
+// ListTableColumnsNotFound selects the notFound branch: The workbook or table was not found.
+func ListTableColumnsNotFound(value excel.ListTableColumnsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListTableColumnsOutput] {
+	return connectormock.Branch(excel.ListTableColumnsBranchNotFound, value, failure)
+}
+
+// ListTableColumnsTooLarge selects the tooLarge branch: The response exceeds the configured limit.
+func ListTableColumnsTooLarge(value excel.ListTableColumnsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListTableColumnsOutput] {
+	return connectormock.Branch(excel.ListTableColumnsBranchTooLarge, value, failure)
+}
+
+// ListTableColumnsProviderRejected selects the providerRejected branch: Graph rejected the column read.
+func ListTableColumnsProviderRejected(value excel.ListTableColumnsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListTableColumnsOutput] {
+	return connectormock.Branch(excel.ListTableColumnsBranchProviderRejected, value, failure)
+}
+
+// ListTableColumnsInvalidResponse selects the invalidResponse branch: Graph returned invalid table columns.
+func ListTableColumnsInvalidResponse(value excel.ListTableColumnsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListTableColumnsOutput] {
+	return connectormock.Branch(excel.ListTableColumnsBranchInvalidResponse, value, failure)
+}
+
+// ListTableColumnsDefect selects the defect branch: The input or connection is invalid.
+func ListTableColumnsDefect(value excel.ListTableColumnsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListTableColumnsOutput] {
+	return connectormock.Branch(excel.ListTableColumnsBranchDefect, value, failure)
+}
+
+// ListTableColumnsRetry asks Dex to retry the listTableColumns Step, after the delay when it is positive.
+func ListTableColumnsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[excel.ListTableColumnsOutput] {
+	return connectormock.Retry[excel.ListTableColumnsOutput](failure, after)
+}
+
+// ListTableColumnsPolicyColumns is the manifest mock policyColumns: The approval policy table has three ordered columns.
+func ListTableColumnsPolicyColumns() connectormock.Case[excel.ListTableColumnsOutput] {
+	value := connectormock.MustDecodeOutput[excel.ListTableColumnsOutput](`{"columns":[{"id":"0","index":0,"name":"Category"},{"id":"1","index":1,"name":"MaxAutoApproveUsd"},{"id":"2","index":2,"name":"Approver"}]}`)
+	return connectormock.Branch(excel.ListTableColumnsBranchListed, value, nil)
+}
+
+// ListTableColumnsDefault is the manifest default, policyColumns, which New installs.
+func ListTableColumnsDefault() connectormock.Case[excel.ListTableColumnsOutput] {
+	return ListTableColumnsPolicyColumns()
+}
+
+// FindTableRowFound selects the found branch: A matching row was found.
+func FindTableRowFound(value excel.FindTableRowOutput, failure *sdkgo.Failure) connectormock.Case[excel.FindTableRowOutput] {
+	return connectormock.Branch(excel.FindTableRowBranchFound, value, failure)
+}
+
+// FindTableRowNotFound selects the notFound branch: The workbook, table, or row was not found.
+func FindTableRowNotFound(value excel.FindTableRowOutput, failure *sdkgo.Failure) connectormock.Case[excel.FindTableRowOutput] {
+	return connectormock.Branch(excel.FindTableRowBranchNotFound, value, failure)
+}
+
+// FindTableRowTooLarge selects the tooLarge branch: The table exceeds the configured limit.
+func FindTableRowTooLarge(value excel.FindTableRowOutput, failure *sdkgo.Failure) connectormock.Case[excel.FindTableRowOutput] {
+	return connectormock.Branch(excel.FindTableRowBranchTooLarge, value, failure)
+}
+
+// FindTableRowProviderRejected selects the providerRejected branch: Graph rejected the table read.
+func FindTableRowProviderRejected(value excel.FindTableRowOutput, failure *sdkgo.Failure) connectormock.Case[excel.FindTableRowOutput] {
+	return connectormock.Branch(excel.FindTableRowBranchProviderRejected, value, failure)
+}
+
+// FindTableRowInvalidResponse selects the invalidResponse branch: Graph returned an invalid table response.
+func FindTableRowInvalidResponse(value excel.FindTableRowOutput, failure *sdkgo.Failure) connectormock.Case[excel.FindTableRowOutput] {
+	return connectormock.Branch(excel.FindTableRowBranchInvalidResponse, value, failure)
+}
+
+// FindTableRowDefect selects the defect branch: The input or connection is invalid.
+func FindTableRowDefect(value excel.FindTableRowOutput, failure *sdkgo.Failure) connectormock.Case[excel.FindTableRowOutput] {
+	return connectormock.Branch(excel.FindTableRowBranchDefect, value, failure)
+}
+
+// FindTableRowRetry asks Dex to retry the findTableRow Step, after the delay when it is positive.
+func FindTableRowRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[excel.FindTableRowOutput] {
+	return connectormock.Retry[excel.FindTableRowOutput](failure, after)
+}
+
+// FindTableRowTravelPolicy is the manifest mock travelPolicy: The travel row is found in the approval policy table.
+func FindTableRowTravelPolicy() connectormock.Case[excel.FindTableRowOutput] {
+	value := connectormock.MustDecodeOutput[excel.FindTableRowOutput](`{"row":{"index":0,"values":{"Category":"travel","MaxAutoApproveUsd":500,"Approver":"lead@contoso.com"}}}`)
+	return connectormock.Branch(excel.FindTableRowBranchFound, value, nil)
+}
+
+// FindTableRowDefault is the manifest default, travelPolicy, which New installs.
+func FindTableRowDefault() connectormock.Case[excel.FindTableRowOutput] {
+	return FindTableRowTravelPolicy()
+}
+
+// ListWorksheetsListed selects the listed branch: The workbook worksheets were listed.
+func ListWorksheetsListed(value excel.ListWorksheetsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorksheetsOutput] {
+	return connectormock.Branch(excel.ListWorksheetsBranchListed, value, failure)
+}
+
+// ListWorksheetsNotFound selects the notFound branch: The workbook was not found.
+func ListWorksheetsNotFound(value excel.ListWorksheetsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorksheetsOutput] {
+	return connectormock.Branch(excel.ListWorksheetsBranchNotFound, value, failure)
+}
+
+// ListWorksheetsTooLarge selects the tooLarge branch: The response exceeds the configured limit.
+func ListWorksheetsTooLarge(value excel.ListWorksheetsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorksheetsOutput] {
+	return connectormock.Branch(excel.ListWorksheetsBranchTooLarge, value, failure)
+}
+
+// ListWorksheetsProviderRejected selects the providerRejected branch: Graph rejected the worksheet read.
+func ListWorksheetsProviderRejected(value excel.ListWorksheetsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorksheetsOutput] {
+	return connectormock.Branch(excel.ListWorksheetsBranchProviderRejected, value, failure)
+}
+
+// ListWorksheetsInvalidResponse selects the invalidResponse branch: Graph returned an invalid worksheet list.
+func ListWorksheetsInvalidResponse(value excel.ListWorksheetsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorksheetsOutput] {
+	return connectormock.Branch(excel.ListWorksheetsBranchInvalidResponse, value, failure)
+}
+
+// ListWorksheetsDefect selects the defect branch: The input or connection is invalid.
+func ListWorksheetsDefect(value excel.ListWorksheetsOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorksheetsOutput] {
+	return connectormock.Branch(excel.ListWorksheetsBranchDefect, value, failure)
+}
+
+// ListWorksheetsRetry asks Dex to retry the listWorksheets Step, after the delay when it is positive.
+func ListWorksheetsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[excel.ListWorksheetsOutput] {
+	return connectormock.Retry[excel.ListWorksheetsOutput](failure, after)
+}
+
+// ListWorksheetsApprovalWorksheets is the manifest mock approvalWorksheets: The policy workbook has Policy and Summary worksheets.
+func ListWorksheetsApprovalWorksheets() connectormock.Case[excel.ListWorksheetsOutput] {
+	value := connectormock.MustDecodeOutput[excel.ListWorksheetsOutput](`{"worksheets":[{"id":"{FC034FA8-F8CC-4D24-9C0A-02A81B7792A0}","name":"Policy","position":0,"visibility":"Visible"},{"id":"{FC034FA8-F8CC-4D24-9C0A-02A81B7792A1}","name":"Summary","position":1,"visibility":"Visible"}]}`)
+	return connectormock.Branch(excel.ListWorksheetsBranchListed, value, nil)
+}
+
+// ListWorksheetsDefault is the manifest default, approvalWorksheets, which New installs.
+func ListWorksheetsDefault() connectormock.Case[excel.ListWorksheetsOutput] {
+	return ListWorksheetsApprovalWorksheets()
+}
+
+// ListWorkbooksListed selects the listed branch: One page of workbooks was listed.
+func ListWorkbooksListed(value excel.ListWorkbooksOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorkbooksOutput] {
+	return connectormock.Branch(excel.ListWorkbooksBranchListed, value, failure)
+}
+
+// ListWorkbooksNotFound selects the notFound branch: The drive was not found.
+func ListWorkbooksNotFound(value excel.ListWorkbooksOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorkbooksOutput] {
+	return connectormock.Branch(excel.ListWorkbooksBranchNotFound, value, failure)
+}
+
+// ListWorkbooksTooLarge selects the tooLarge branch: The response exceeds the configured limit.
+func ListWorkbooksTooLarge(value excel.ListWorkbooksOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorkbooksOutput] {
+	return connectormock.Branch(excel.ListWorkbooksBranchTooLarge, value, failure)
+}
+
+// ListWorkbooksProviderRejected selects the providerRejected branch: Graph rejected the drive search.
+func ListWorkbooksProviderRejected(value excel.ListWorkbooksOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorkbooksOutput] {
+	return connectormock.Branch(excel.ListWorkbooksBranchProviderRejected, value, failure)
+}
+
+// ListWorkbooksInvalidResponse selects the invalidResponse branch: Graph returned an invalid workbook page.
+func ListWorkbooksInvalidResponse(value excel.ListWorkbooksOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorkbooksOutput] {
+	return connectormock.Branch(excel.ListWorkbooksBranchInvalidResponse, value, failure)
+}
+
+// ListWorkbooksDefect selects the defect branch: The input or connection is invalid.
+func ListWorkbooksDefect(value excel.ListWorkbooksOutput, failure *sdkgo.Failure) connectormock.Case[excel.ListWorkbooksOutput] {
+	return connectormock.Branch(excel.ListWorkbooksBranchDefect, value, failure)
+}
+
+// ListWorkbooksRetry asks Dex to retry the listWorkbooks Step, after the delay when it is positive.
+func ListWorkbooksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[excel.ListWorkbooksOutput] {
+	return connectormock.Retry[excel.ListWorkbooksOutput](failure, after)
+}
+
+// ListWorkbooksApprovalWorkbooks is the manifest mock approvalWorkbooks: The drive contains the approval policy workbook.
+func ListWorkbooksApprovalWorkbooks() connectormock.Case[excel.ListWorkbooksOutput] {
+	value := connectormock.MustDecodeOutput[excel.ListWorkbooksOutput](`{"workbooks":[{"id":"01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K","name":"Approval.xlsx","driveId":"b!driveKey-123_abc"}]}`)
+	return connectormock.Branch(excel.ListWorkbooksBranchListed, value, nil)
+}
+
+// ListWorkbooksDefault is the manifest default, approvalWorkbooks, which New installs.
+func ListWorkbooksDefault() connectormock.Case[excel.ListWorkbooksOutput] {
+	return ListWorkbooksApprovalWorkbooks()
+}
+
+// CreateWorksheetCreated selects the created branch: The named worksheet was created or found after an earlier send.
+func CreateWorksheetCreated(value excel.CreateWorksheetOutput, failure *sdkgo.Failure) connectormock.Case[excel.CreateWorksheetOutput] {
+	return connectormock.Branch(excel.CreateWorksheetBranchCreated, value, failure)
+}
+
+// CreateWorksheetNameConflict selects the nameConflict branch: A worksheet already held that name before the first send.
+func CreateWorksheetNameConflict(value excel.CreateWorksheetOutput, failure *sdkgo.Failure) connectormock.Case[excel.CreateWorksheetOutput] {
+	return connectormock.Branch(excel.CreateWorksheetBranchNameConflict, value, failure)
+}
+
+// CreateWorksheetProviderRejected selects the providerRejected branch: Graph rejected the worksheet creation.
+func CreateWorksheetProviderRejected(value excel.CreateWorksheetOutput, failure *sdkgo.Failure) connectormock.Case[excel.CreateWorksheetOutput] {
+	return connectormock.Branch(excel.CreateWorksheetBranchProviderRejected, value, failure)
+}
+
+// CreateWorksheetInvalidResponse selects the invalidResponse branch: Graph returned an invalid worksheet.
+func CreateWorksheetInvalidResponse(value excel.CreateWorksheetOutput, failure *sdkgo.Failure) connectormock.Case[excel.CreateWorksheetOutput] {
+	return connectormock.Branch(excel.CreateWorksheetBranchInvalidResponse, value, failure)
+}
+
+// CreateWorksheetUncertain returns an uncertain createWorksheet outcome.
+func CreateWorksheetUncertain(value excel.CreateWorksheetOutput, failure sdkgo.Failure) connectormock.Case[excel.CreateWorksheetOutput] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateWorksheetDefect selects the defect branch: The input or connection is invalid.
+func CreateWorksheetDefect(value excel.CreateWorksheetOutput, failure *sdkgo.Failure) connectormock.Case[excel.CreateWorksheetOutput] {
+	return connectormock.Branch(excel.CreateWorksheetBranchDefect, value, failure)
+}
+
+// CreateWorksheetRetry asks Dex to retry the createWorksheet Step, after the delay when it is positive.
+func CreateWorksheetRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[excel.CreateWorksheetOutput] {
+	return connectormock.Retry[excel.CreateWorksheetOutput](failure, after)
+}
+
+// CreateWorksheetAuditWorksheet is the manifest mock auditWorksheet: An Audit worksheet is added to the policy workbook.
+func CreateWorksheetAuditWorksheet() connectormock.Case[excel.CreateWorksheetOutput] {
+	value := connectormock.MustDecodeOutput[excel.CreateWorksheetOutput](`{"worksheet":{"id":"{FC034FA8-F8CC-4D24-9C0A-02A81B7792A2}","name":"Audit","position":2,"visibility":"Visible"}}`)
+	return connectormock.Branch(excel.CreateWorksheetBranchCreated, value, nil)
+}
+
+// CreateWorksheetDefault is the manifest default, auditWorksheet, which New installs.
+func CreateWorksheetDefault() connectormock.Case[excel.CreateWorksheetOutput] {
+	return CreateWorksheetAuditWorksheet()
 }
 
 // GetTableRowsRead selects the read branch: The table's columns and data rows were read within the configured limits.

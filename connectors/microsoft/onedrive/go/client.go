@@ -14,6 +14,7 @@ package onedrive
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -205,11 +206,12 @@ type graphCollectionResponse struct {
 
 // graphRequest is one Graph HTTP request; body is resent once after a 401 forces a refresh.
 type graphRequest struct {
-	method        string
-	target        string
-	body          []byte
-	contentType   string
-	responseLimit int64
+	method         string
+	target         string
+	body           []byte
+	contentType    string
+	responseLimit  int64
+	requestContext context.Context
 	// isRawContent omits Accept: application/json from a file content request.
 	isRawContent bool
 }
@@ -314,6 +316,18 @@ func (client *Client) CreateFolder() CreateFolderOperation {
 	return CreateFolderOperation{client: client}
 }
 
+// DeleteItem returns the DeleteItem operation bound to this client.
+func (client *Client) DeleteItem() DeleteItemOperation { return DeleteItemOperation{client: client} }
+
+// RenameItem returns the RenameItem operation bound to this client.
+func (client *Client) RenameItem() RenameItemOperation { return RenameItemOperation{client: client} }
+
+// MoveItem returns the MoveItem operation bound to this client.
+func (client *Client) MoveItem() MoveItemOperation { return MoveItemOperation{client: client} }
+
+// CopyFile returns the CopyFile operation bound to this client.
+func (client *Client) CopyFile() CopyFileOperation { return CopyFileOperation{client: client} }
+
 // resolveCredential refreshes the credential and rejects a blank drive ID for app-only connections.
 func (client *Client) resolveCredential(call sdkgo.Call, operationID string, driveID string) (Credentials, *sdkgo.Failure) {
 	credential, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
@@ -373,7 +387,11 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 		if request.body != nil {
 			body = bytes.NewReader(request.body)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, request.target, body)
+		requestContext := request.requestContext
+		if requestContext == nil {
+			requestContext = call.Context
+		}
+		httpRequest, err := http.NewRequestWithContext(requestContext, request.method, request.target, body)
 		if err != nil {
 			return graphResponse{}, &graphRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}

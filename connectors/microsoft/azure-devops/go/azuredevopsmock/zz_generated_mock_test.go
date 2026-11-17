@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "queryWorkItems/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[azuredevops.WorkItemIDs](`{"ids":[144]}`)
+			return err
+		}},
 		{name: "listProjects/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[azuredevops.Projects](`{"projects":[{"id":"eb6e4656-77fc-42a1-9181-4c6d8e9da5d1","name":"Example","state":"wellFormed"}],"top":20,"skip":0}`)
 			return err
@@ -34,6 +38,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.QueryWorkItems().Definition().Operation.OperationID != "queryWorkItems" {
+		t.Errorf("queryWorkItems mock has another definition")
+	}
 	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
 		t.Errorf("listProjects mock has another definition")
 	}

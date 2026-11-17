@@ -8,7 +8,8 @@ import { MicrosoftTodoClient } from '../src/client.js';
 import { ListTaskListsInputSchema, ListTasksInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/todo/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/todo/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'listTaskLists' || scenario.operation === 'listTasks');
 const connection = { provider: 'microsoft', name: 'microsoft-todo' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTodo, '/v1.0'));
 

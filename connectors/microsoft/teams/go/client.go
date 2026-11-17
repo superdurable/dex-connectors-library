@@ -218,6 +218,30 @@ func (client *Client) ListThreadReplies() ListThreadRepliesOperation {
 	return ListThreadRepliesOperation{client: client}
 }
 
+// ListChannels returns the listChannels Query bound to this client.
+func (client *Client) ListChannels() ListChannelsOperation {
+	return ListChannelsOperation{client: client}
+}
+
+// GetChannel returns the getChannel Query bound to this client.
+func (client *Client) GetChannel() GetChannelOperation { return GetChannelOperation{client: client} }
+
+// ListChannelMessages returns the listChannelMessages Query bound to this client.
+func (client *Client) ListChannelMessages() ListChannelMessagesOperation {
+	return ListChannelMessagesOperation{client: client}
+}
+
+// GetChannelMessage returns the getChannelMessage Query bound to this client.
+func (client *Client) GetChannelMessage() GetChannelMessageOperation {
+	return GetChannelMessageOperation{client: client}
+}
+
+// ListChats returns the listChats Query bound to this client.
+func (client *Client) ListChats() ListChatsOperation { return ListChatsOperation{client: client} }
+
+// GetChat returns the getChat Query bound to this client.
+func (client *Client) GetChat() GetChatOperation { return GetChatOperation{client: client} }
+
 // PostChannelMessage returns the postChannelMessage Mutation bound to this client.
 func (client *Client) PostChannelMessage() PostChannelMessageOperation {
 	return PostChannelMessageOperation{client: client}

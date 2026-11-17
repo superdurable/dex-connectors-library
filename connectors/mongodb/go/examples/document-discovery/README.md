@@ -1,5 +1,7 @@
 # MongoDB document discovery
 
+The worker package also defines `MongoDBDocumentAggregation`, a read-only aggregation Flow. Its mock-backed real-Dex test starts both Flows and checks the selected collection and pipeline.
+
 This Flow reads matching `orders` documents and completes with canonical
 Extended JSON. It uses the static Dex connection name `mongodb`.
 

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: outlook-calendar
   displayName: Microsoft Outlook Calendar
-  description: List and read Outlook calendar events in a bounded window, create and update events idempotently, and query free/busy schedules through Microsoft Graph, with delegated Microsoft OAuth or an app-only connection to one mailbox.
+  description: List and read Outlook calendars and events, create, update, and delete events, and query free/busy schedules through Microsoft Graph, with delegated Microsoft OAuth or an app-only connection to one mailbox.
   company: Microsoft
   categories: [productivity]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: microsoft
   languages:
@@ -187,6 +187,128 @@ spec:
           - {name: calendarId, goName: CalendarID, type: string}
           - {name: calendarName, goName: CalendarName, type: string}
   operations:
+    - name: createCalendar
+      goName: CreateCalendar
+      inputType: CreateCalendarInput
+      outputType: Calendar
+      kind: mutation
+      description: Create a calendar by name; an unknown POST may repeat at most three times.
+      idempotency: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        repeatOnUnknown: limited
+        maxSends: 3
+      branches:
+        - {id: created, goName: Created, description: Graph created the calendar.}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected calendar creation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid calendar metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirmation., optional: true}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          default: true
+          description: Create the Ops Team calendar.
+          output: {"id":"team-calendar","name":"Ops Team","canEdit":true}
+    - name: updateCalendar
+      goName: UpdateCalendar
+      inputType: UpdateCalendarInput
+      outputType: Calendar
+      kind: mutation
+      description: Set a calendar's name absolutely by ID.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The calendar was renamed.}
+        - {id: notFound, goName: NotFound, description: The calendar is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the rename., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid calendar metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: updatedDefaultAnswer
+          branch: updated
+          default: true
+          description: Rename the Ops Team calendar.
+          output: {"id":"team-calendar","name":"Operations","canEdit":true}
+    - name: deleteCalendar
+      goName: DeleteCalendar
+      inputType: DeleteCalendarInput
+      outputType: DeleteCalendarOutput
+      kind: mutation
+      description: Delete a non-default calendar by ID; repeat safely until absent.
+      idempotency: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The calendar is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: deletedDefaultAnswer
+          branch: deleted
+          default: true
+          description: Delete the Ops Team calendar.
+          output: {"calendarId":"team-calendar"}
+    - name: listCalendars
+      goName: ListCalendars
+      inputType: ListCalendarsInput
+      outputType: ListCalendarsOutput
+      kind: query
+      description: List one bounded page of calendars in the connection's mailbox.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: A page of calendars was listed.}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the calendar list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid calendar metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          default: true
+          description: List the Ops Team calendar.
+          output: {"calendars":[{"id":"team-calendar","name":"Ops Team","canEdit":true}]}
+    - name: getCalendar
+      goName: GetCalendar
+      inputType: GetCalendarInput
+      outputType: Calendar
+      kind: query
+      description: Read one calendar by its Graph ID.
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: The calendar was found.}
+        - {id: notFound, goName: NotFound, description: The calendar is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the calendar read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid calendar metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          default: true
+          description: Read the Ops Team calendar.
+          output: {"id":"team-calendar","name":"Ops Team","canEdit":true}
+    - name: deleteEvent
+      goName: DeleteEvent
+      inputType: DeleteEventInput
+      outputType: DeleteEventOutput
+      kind: mutation
+      description: Delete an event by ID; repeat deletion safely until Graph confirms the event is absent.
+      idempotency: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      branches:
+        - {id: deleted, goName: Deleted, description: The event is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected event deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: deletedDefaultAnswer
+          branch: deleted
+          default: true
+          description: Delete the Meridian kickoff event.
+          output: {"eventId":"hold-1"}
     - name: listEvents
       goName: ListEvents
       inputType: ListEventsInput

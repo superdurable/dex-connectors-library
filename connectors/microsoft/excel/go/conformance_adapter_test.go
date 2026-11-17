@@ -31,6 +31,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = prior + int32(attempt)
 		},
 		actions: map[string]conformanceOperationInvocation{
+			"listTableColumns": newConformanceQueryInvocation(t, scenario.Input, context, client.ListTableColumns(), excelConnection),
+			"findTableRow":     newConformanceQueryInvocation(t, scenario.Input, context, client.FindTableRow(), excelConnection),
+			"listWorksheets":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListWorksheets(), excelConnection),
+			"listWorkbooks":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListWorkbooks(), excelConnection),
+			"createWorksheet":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateWorksheet(), excelConnection, scenario.CallID),
 			"getTableRows":    newConformanceQueryInvocation(t, scenario.Input, context, client.GetTableRows(), excelConnection),
 			"getValues":       newConformanceQueryInvocation(t, scenario.Input, context, client.GetValues(), excelConnection),
 			"updateValues":    newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateValues(), excelConnection, scenario.CallID),

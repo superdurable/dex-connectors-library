@@ -11,7 +11,7 @@ runs all four operations with a static `approvals` connection. Its integration
 test verifies the Flow through a real Dex Worker and Client against a local
 Microsoft Graph stand-in. Live Microsoft workbook behavior remains unverified.
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go@v0.25.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/excel`.
 
@@ -33,6 +33,11 @@ these operation-specific Dex Step factories:
 | `excel.NewGetValuesStep` | Query | `read` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
 | `excel.NewUpdateValuesStep` | Mutation | `updated` | `notFound`, `providerRejected`, `defect` |
 | `excel.NewAppendTableRowsStep` | Mutation | `appended` | `notFound`, `columnsMismatch`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
+| `excel.NewListTableColumnsStep` | Query | `listed` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `excel.NewFindTableRowStep` | Query | `found` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `excel.NewListWorksheetsStep` | Query | `listed` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `excel.NewListWorkbooksStep` | Query | `listed` | `notFound`, `tooLarge`, `providerRejected`, `invalidResponse`, `defect` |
+| `excel.NewCreateWorksheetStep` | Mutation | `created` | `nameConflict`, `providerRejected`, `invalidResponse`, `uncertain`, `defect` |
 
 - `getTableRows` reads an Excel table as rows keyed by column name, without its
   header and total rows. It is the "policy table" read: one Step returns every
@@ -43,11 +48,17 @@ these operation-specific Dex Step factories:
   matches the values exactly.
 - `appendTableRows` appends rows to a table, skipping every row whose key
   column value the table already holds.
+- `listTableColumns` reads stable column IDs, positions, and names in table order.
+- `findTableRow` reads a bounded table and returns its first exact typed value match.
+- `listWorksheets` reads worksheet IDs and names for one workbook.
+- `listWorkbooks` searches one drive for `.xlsx` workbooks, one page at a time;
+  pass its `nextPageToken` to continue.
+- `createWorksheet` adds a named sheet. Its `limited` retry tier reads the name
+  back before another send and caps possible sends at three.
 
 Only the happy branch of each operation is required; an unwired optional branch
-fails the Flow. The three idempotent operations use async Execute durability, a
-30-second Execute timeout, and the one-hour default retry budget. `appendTableRows`
-uses sync durability and retries for up to five minutes; see
+fails the Flow. The read operations and `updateValues` use async Execute
+durability. `appendTableRows` uses sync durability and retries for up to five minutes; see
 [Duplicate dispatch](#duplicate-dispatch).
 
 The release has three Studio pickers, `workbookPicker`, `worksheetPicker`, and
@@ -285,8 +296,8 @@ See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for script
 
 ## Example
 
-[`examples/approval-decision`](go/examples/approval-decision/README.md) uses every
-operation in one Flow started from Dex Web: it reads an approval-policy table,
+[`examples/approval-decision`](go/examples/approval-decision/README.md) exercises
+table column listing in one Flow started from Dex Web: it reads an approval-policy table,
 decides a spending request, appends the decision to a decision log keyed by
 request ID, writes the latest decision to a summary range, and reads it back.
 
@@ -302,8 +313,7 @@ The [TypeScript example](typescript/examples/approval-decision/README.md) expose
   so a Trigger would also need a table read after each change.
 - **App-only access**, because Microsoft documents no application permission
   for the workbook API; see [Why there is no app-only method](#why-there-is-no-app-only-method).
-- Workbook sessions, formulas, formatting, charts, and worksheet or table
-  creation.
+- Workbook sessions, formulas, formatting, charts, and table creation.
 - Personal Microsoft accounts and national clouds, whose sign-in hosts differ
   from the manifest's static endpoints.
 

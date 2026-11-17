@@ -1,7 +1,7 @@
 # OneDrive and SharePoint text-copy example
 
 This example runs one operation-only Flow from Dex Web **Start Flow** and uses
-every OneDrive and SharePoint operation:
+the file operations needed to copy text and optionally rename the copy:
 
 1. `RecordTextCopyRequest` validates and persists the source, copy folder, and
    copy names;
@@ -17,7 +17,10 @@ every OneDrive and SharePoint operation:
 7. `UploadTextCopy` calls `onedrive.NewUploadFileStep` into the copy folder and
    keeps its Result in an Attribute;
 8. `ReadBackTextCopy` calls `onedrive.NewGetFileStep` on the copy;
-9. `CompleteTextCopy` completes as `copied` with the read-back metadata.
+9. When `finalName` is supplied, `RenameTextCopy` calls
+   `onedrive.NewRenameItemStep` and `CompleteRenamedTextCopy` records the
+   renamed file; otherwise `CompleteTextCopy` completes with the read-back
+   metadata.
 
 Only happy-path branches are wired. A missing source, an existing different
 copy, unsupported or oversized content, rejection, invalid response, and local
@@ -73,6 +76,9 @@ Start `OneDriveTextCopy` with a unique Flow ID:
   "copyName": "Ops Policy (copy).txt"
 }
 ```
+
+Set optional `finalName` to give the copied file a different name after its
+upload has been read back. The output then identifies the renamed file.
 
 The Flow output reports the source, the copy folder (`isCopyFolderExisting` is
 true when it already existed), the text size, and the copy.

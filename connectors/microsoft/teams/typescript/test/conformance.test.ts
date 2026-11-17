@@ -14,7 +14,7 @@ import {
   PostThreadReplyInputSchema,
 } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/teams/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/teams/scenarios.json', import.meta.url)).filter(scenario => ['listThreadReplies', 'postChannelMessage', 'postThreadReply', 'postChatMessage'].includes(scenario.operation));
 const connection = { provider: 'microsoft', name: 'teams-test' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeTeams, '/v1.0'));

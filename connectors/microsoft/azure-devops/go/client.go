@@ -5,6 +5,7 @@
 package azuredevops
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -60,6 +61,14 @@ var errCredential = errors.New("Azure DevOps credential unavailable")
 var errRequest = errors.New("Azure DevOps request failed")
 
 func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Duration, error) {
+	return client.request(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) post(call sdkgo.Call, path string, body []byte) ([]byte, int, time.Duration, error) {
+	return client.request(call, http.MethodPost, path, body)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string, body []byte) ([]byte, int, time.Duration, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return nil, 0, 0, errCredential
@@ -68,11 +77,14 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	if !providerhttp.IsHeaderSafeCredential(personalAccessToken) {
 		return nil, 0, 0, errCredential
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return nil, 0, 0, errRequest
 	}
 	request.Header.Set("Accept", "application/json")
+	if method == http.MethodPost {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.SetBasicAuth("", personalAccessToken)
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
 	response, err := client.httpClient.Do(request)
@@ -81,15 +93,19 @@ func (client *Client) get(call sdkgo.Call, path string) ([]byte, int, time.Durat
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
-	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	body, err = providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
 	return body, response.StatusCode, retryAfter, err
 }
 
 type queryBranches struct{ found, notFound, rejected, invalid, defect sdkgo.BranchID }
 
 func invokeQuery[T any](call sdkgo.Call, client *Client, operation, path string, branches queryBranches, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {
-	var zero T
 	body, status, retryAfter, err := client.get(call, path)
+	return queryResponse(operation, body, status, retryAfter, err, branches, decode)
+}
+
+func queryResponse[T any](operation string, body []byte, status int, retryAfter time.Duration, err error, branches queryBranches, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {
+	var zero T
 	if errors.Is(err, errCredential) {
 		return queryBranch(operation, branches.defect, zero, sdkgo.FailureAuthentication, "connection credentials are unavailable or invalid")
 	}

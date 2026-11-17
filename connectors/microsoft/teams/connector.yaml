@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: microsoft-teams
   displayName: Microsoft Teams
-  description: Post Microsoft Teams channel messages, thread replies, and chat messages as the signed-in user, each at most once per Step execution, and read a channel message's replies so a Flow can wait for a person's answer.
+  description: Post Microsoft Teams channel messages, thread replies, and chat messages, and read channels, channel messages, chats, and replies as the signed-in user.
   company: Microsoft
   categories: [communication]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: microsoft
   languages:
@@ -152,6 +152,131 @@ spec:
           - {name: chatId, goName: ChatID, type: string}
           - {name: chatName, goName: ChatName, type: string}
   operations:
+    - name: listChannels
+      goName: ListChannels
+      inputType: ListChannelsInput
+      outputType: ListChannelsOutput
+      kind: query
+      description: List one page of channels in a team using Channel.ReadBasic.All.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: A page of channels was listed.}
+        - {id: notFound, goName: NotFound, description: The team is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the channel list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid channel metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          default: true
+          description: List the incident channel.
+          output: {channels: [{id: "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2", displayName: Incidents, membershipType: standard}]}
+    - name: getChannel
+      goName: GetChannel
+      inputType: GetChannelInput
+      outputType: Channel
+      kind: query
+      description: Read one channel's metadata using Channel.ReadBasic.All.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: The channel was found.}
+        - {id: notFound, goName: NotFound, description: The team or channel is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the channel read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid channel metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          default: true
+          description: Read the incident channel.
+          output: {id: "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2", displayName: Incidents, membershipType: standard}
+    - name: listChannelMessages
+      goName: ListChannelMessages
+      inputType: ListChannelMessagesInput
+      outputType: ListChannelMessagesOutput
+      kind: query
+      description: List one page of root channel messages using ChannelMessage.Read.All.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: A page of messages was listed.}
+        - {id: notFound, goName: NotFound, description: The team or channel is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the message list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid messages., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          default: true
+          description: List the incident root message.
+          output: {messages: [{id: "1616990032035", messageType: message, createdAt: "2026-10-01T09:30:00Z", sender: {userId: "8ea0e38b-efb3-4757-924a-5f94061cf8c2", displayName: Incident Bot}, importance: normal, contentType: text, text: "INC-1042"}]}
+    - name: getChannelMessage
+      goName: GetChannelMessage
+      inputType: GetChannelMessageInput
+      outputType: Message
+      kind: query
+      description: Read one root channel message using ChannelMessage.Read.All.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: The message was found.}
+        - {id: notFound, goName: NotFound, description: The message is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the message read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned an invalid message., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          default: true
+          description: Read the incident root message.
+          output: {id: "1616990032035", messageType: message, createdAt: "2026-10-01T09:30:00Z", sender: {userId: "8ea0e38b-efb3-4757-924a-5f94061cf8c2", displayName: Incident Bot}, importance: normal, contentType: text, text: "INC-1042"}
+    - name: listChats
+      goName: ListChats
+      inputType: ListChatsInput
+      outputType: ListChatsOutput
+      kind: query
+      description: List one page of the signed-in user's chat metadata using Chat.ReadBasic.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: A page of chats was listed.}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the chat list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid chat metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: listedDefaultAnswer
+          branch: listed
+          default: true
+          description: List an incident group chat.
+          output: {chats: [{id: "19:incident@thread.v2", chatType: group, topic: Incident response}]}
+    - name: getChat
+      goName: GetChat
+      inputType: GetChatInput
+      outputType: Chat
+      kind: query
+      description: Read one chat's metadata using Chat.ReadBasic.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: The chat was found.}
+        - {id: notFound, goName: NotFound, description: The chat is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph rejected the chat read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned invalid chat metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or configuration is invalid., optional: true}
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          default: true
+          description: Read an incident group chat.
+          output: {id: "19:incident@thread.v2", chatType: group, topic: Incident response}
     - name: listThreadReplies
       goName: ListThreadReplies
       inputType: ListThreadRepliesInput

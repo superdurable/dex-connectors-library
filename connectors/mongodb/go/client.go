@@ -69,3 +69,8 @@ func newClient(config Config, credentials sdkgo.CredentialProvider[Credentials],
 func (client *Client) FindDocuments() FindDocumentsOperation {
 	return FindDocumentsOperation{client: client}
 }
+
+// AggregateDocuments binds a read-only aggregation Query to this client.
+func (client *Client) AggregateDocuments() AggregateDocumentsOperation {
+	return AggregateDocumentsOperation{client: client}
+}

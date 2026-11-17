@@ -750,6 +750,1942 @@
       },
       "name": "findContact-queryUnavailable",
       "operation": "findContact"
+    },
+    {
+      "callId": "b07-dynamics-listAccounts-1",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"value\":[{\"accountid\":\"33333333-3333-4333-8333-333333333333\",\"name\":\"Example\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/accounts",
+          "query": {
+            "$orderby": [
+              "accountid asc"
+            ],
+            "$select": [
+              "accountid,name"
+            ],
+            "$top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "accounts": [
+            {
+              "accountId": "33333333-3333-4333-8333-333333333333",
+              "name": "Example"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 20
+      },
+      "name": "listAccounts-success",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "b07-dynamics-listAccounts-2",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/accounts",
+          "query": {
+            "$orderby": [
+              "accountid asc"
+            ],
+            "$select": [
+              "accountid,name"
+            ],
+            "$top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accounts": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 20
+      },
+      "name": "listAccounts-rejected",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "b07-dynamics-listAccounts-3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/accounts",
+          "query": {
+            "$orderby": [
+              "accountid asc"
+            ],
+            "$select": [
+              "accountid,name"
+            ],
+            "$top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accounts": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 20
+      },
+      "name": "listAccounts-invalid",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "b07-dynamics-listAccounts-4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accounts": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 0
+      },
+      "name": "listAccounts-defect",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "b07-dynamics-listAccounts-5",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 20
+      },
+      "name": "listAccounts-429",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "b07-dynamics-listAccounts-6",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 20
+      },
+      "name": "listAccounts-500",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "b07-dynamics-listAccounts-7",
+      "exchanges": [
+        {
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "top": 20
+      },
+      "name": "listAccounts-transport",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "b07-dynamics-getAccount-1",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"accountid\":\"33333333-3333-4333-8333-333333333333\",\"name\":\"Example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "query": {
+            "$select": [
+              "accountid,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "accountId": "33333333-3333-4333-8333-333333333333",
+          "name": "Example"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "getAccount-success",
+      "operation": "getAccount"
+    },
+    {
+      "callId": "b07-dynamics-getAccount-2",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "query": {
+            "$select": [
+              "accountid,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "getAccount-rejected",
+      "operation": "getAccount"
+    },
+    {
+      "callId": "b07-dynamics-getAccount-3",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "query": {
+            "$select": [
+              "accountid,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "getAccount-missing",
+      "operation": "getAccount"
+    },
+    {
+      "callId": "b07-dynamics-getAccount-4",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "query": {
+            "$select": [
+              "accountid,name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "getAccount-invalid",
+      "operation": "getAccount"
+    },
+    {
+      "callId": "b07-dynamics-getAccount-5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "INVALID"
+      },
+      "name": "getAccount-defect",
+      "operation": "getAccount"
+    },
+    {
+      "callId": "b07-dynamics-getAccount-6",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "getAccount-429",
+      "operation": "getAccount"
+    },
+    {
+      "callId": "b07-dynamics-getAccount-7",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "getAccount-500",
+      "operation": "getAccount"
+    },
+    {
+      "callId": "b07-dynamics-getAccount-8",
+      "exchanges": [
+        {
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "getAccount-transport",
+      "operation": "getAccount"
+    },
+    {
+      "callId": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/data/v9.2/accounts(d1facdbd-5a5b-503d-8096-3b2186644a55)",
+          "requestBody": {
+            "name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "accountId": "d1facdbd-5a5b-503d-8096-3b2186644a55",
+          "name": "Example"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "input": {
+        "name": "Example"
+      },
+      "name": "createAccount-success",
+      "operation": "createAccount"
+    },
+    {
+      "callId": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/data/v9.2/accounts(d1facdbd-5a5b-503d-8096-3b2186644a55)",
+          "requestBody": {
+            "name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "input": {
+        "name": "Example"
+      },
+      "name": "createAccount-rejected",
+      "operation": "createAccount"
+    },
+    {
+      "callId": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "input": {
+        "name": "Example"
+      },
+      "name": "createAccount-invalidToken",
+      "operation": "createAccount"
+    },
+    {
+      "callId": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "input": {
+        "name": ""
+      },
+      "name": "createAccount-defect",
+      "operation": "createAccount"
+    },
+    {
+      "callId": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "input": {
+        "name": "Example"
+      },
+      "name": "createAccount-429",
+      "operation": "createAccount"
+    },
+    {
+      "callId": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "input": {
+        "name": "Example"
+      },
+      "name": "createAccount-500",
+      "operation": "createAccount"
+    },
+    {
+      "callId": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "exchanges": [
+        {
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "551dafcd-e974-5eb4-8106-14a05cf3d20c",
+      "input": {
+        "name": "Example"
+      },
+      "name": "createAccount-transport",
+      "operation": "createAccount"
+    },
+    {
+      "callId": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "requestBody": {
+            "name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "*"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accountId": "33333333-3333-4333-8333-333333333333",
+          "name": "Example"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333",
+        "name": "Example"
+      },
+      "name": "updateAccount-success",
+      "operation": "updateAccount"
+    },
+    {
+      "callId": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "requestBody": {
+            "name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "*"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333",
+        "name": "Example"
+      },
+      "name": "updateAccount-rejected",
+      "operation": "updateAccount"
+    },
+    {
+      "callId": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "requestBody": {
+            "name": "Example"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "*"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333",
+        "name": "Example"
+      },
+      "name": "updateAccount-missing",
+      "operation": "updateAccount"
+    },
+    {
+      "callId": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountId": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "input": {
+        "accountId": "INVALID",
+        "name": "Example"
+      },
+      "name": "updateAccount-defect",
+      "operation": "updateAccount"
+    },
+    {
+      "callId": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333",
+        "name": "Example"
+      },
+      "name": "updateAccount-429",
+      "operation": "updateAccount"
+    },
+    {
+      "callId": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333",
+        "name": "Example"
+      },
+      "name": "updateAccount-500",
+      "operation": "updateAccount"
+    },
+    {
+      "callId": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "exchanges": [
+        {
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "68d18235-7ffe-5af0-aed2-df0224b52268",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333",
+        "name": "Example"
+      },
+      "name": "updateAccount-transport",
+      "operation": "updateAccount"
+    },
+    {
+      "callId": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "deleteAccount-success",
+      "operation": "deleteAccount"
+    },
+    {
+      "callId": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/data/v9.2/accounts(33333333-3333-4333-8333-333333333333)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "deleteAccount-rejected",
+      "operation": "deleteAccount"
+    },
+    {
+      "callId": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "input": {
+        "accountId": "INVALID"
+      },
+      "name": "deleteAccount-defect",
+      "operation": "deleteAccount"
+    },
+    {
+      "callId": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "deleteAccount-429",
+      "operation": "deleteAccount"
+    },
+    {
+      "callId": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "deleteAccount-500",
+      "operation": "deleteAccount"
+    },
+    {
+      "callId": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "exchanges": [
+        {
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "513c7370-2186-58ce-a421-58edfdd3a628",
+      "input": {
+        "accountId": "33333333-3333-4333-8333-333333333333"
+      },
+      "name": "deleteAccount-transport",
+      "operation": "deleteAccount"
     }
   ],
   "schemaVersion": 1

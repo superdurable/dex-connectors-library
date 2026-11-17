@@ -68,7 +68,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/microsoft/excel/conn
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/excel/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go \
-  --version v0.24.0 --tag connectors/microsoft/excel/go/v0.24.0 \
+  --version v0.25.0 --tag connectors/microsoft/excel/go/v0.25.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/microsoft-excel-release/connector-ui.tgz \
   --ui-digest /tmp/microsoft-excel-release/connector-ui.tgz.sha256 \

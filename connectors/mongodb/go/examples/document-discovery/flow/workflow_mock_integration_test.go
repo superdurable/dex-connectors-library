@@ -24,7 +24,8 @@ import (
 func TestDocumentDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := mongodbmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	aggregationFlow := NewAggregationFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, aggregationFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,4 +58,13 @@ func TestDocumentDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Len(t, output.Documents, 1)
 	require.Equal(t, "active", output.Documents[0]["status"])
 	require.Len(t, mock.FindDocuments().Calls(), 1)
+	aggregationFlowID := "mongodb-aggregation-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, aggregationFlow, aggregationFlowID, mongodb.AggregateDocumentsInput{
+		Collection: "orders", Pipeline: []map[string]any{{"$match": map[string]any{"status": "active"}}},
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	aggregationResult, err := client.WaitForFlow(ctx, aggregationFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, aggregationResult.Status, aggregationResult.ErrorMessage)
+	require.Len(t, mock.AggregateDocuments().Calls(), 1)
 }

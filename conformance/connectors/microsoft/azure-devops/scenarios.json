@@ -738,6 +738,355 @@
       },
       "name": "getWorkItem-transportFailure",
       "operation": "getWorkItem"
+    },
+    {
+      "callId": "b07-devops-1",
+      "exchanges": [
+        {
+          "body": "{\"queryType\":\"flat\",\"workItems\":[{\"id\":144}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ProjectA/_apis/wit/wiql",
+          "query": {
+            "$top": [
+              "20"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestBody": {
+            "query": "SELECT [System.Id] FROM WorkItems"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "ids": [
+            144
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "project": "ProjectA",
+        "top": 20,
+        "wiql": "SELECT [System.Id] FROM WorkItems"
+      },
+      "name": "queryWorkItems-listed",
+      "operation": "queryWorkItems"
+    },
+    {
+      "callId": "b07-devops-2",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ProjectA/_apis/wit/wiql",
+          "query": {
+            "$top": [
+              "20"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestBody": {
+            "query": "SELECT [System.Id] FROM WorkItems"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "ids": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "project": "ProjectA",
+        "top": 20,
+        "wiql": "SELECT [System.Id] FROM WorkItems"
+      },
+      "name": "queryWorkItems-rejected",
+      "operation": "queryWorkItems"
+    },
+    {
+      "callId": "b07-devops-3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ProjectA/_apis/wit/wiql",
+          "query": {
+            "$top": [
+              "20"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestBody": {
+            "query": "SELECT [System.Id] FROM WorkItems"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "ids": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "project": "ProjectA",
+        "top": 20,
+        "wiql": "SELECT [System.Id] FROM WorkItems"
+      },
+      "name": "queryWorkItems-invalid",
+      "operation": "queryWorkItems"
+    },
+    {
+      "callId": "b07-devops-4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "ids": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "project": "ProjectA",
+        "top": 20,
+        "wiql": "DELETE FROM WorkItems"
+      },
+      "name": "queryWorkItems-defect",
+      "operation": "queryWorkItems"
+    },
+    {
+      "callId": "b07-devops-5",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ProjectA/_apis/wit/wiql",
+          "query": {
+            "$top": [
+              "20"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestBody": {
+            "query": "SELECT [System.Id] FROM WorkItems"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "project": "ProjectA",
+        "top": 20,
+        "wiql": "SELECT [System.Id] FROM WorkItems"
+      },
+      "name": "queryWorkItems-429",
+      "operation": "queryWorkItems"
+    },
+    {
+      "callId": "b07-devops-6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ProjectA/_apis/wit/wiql",
+          "query": {
+            "$top": [
+              "20"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestBody": {
+            "query": "SELECT [System.Id] FROM WorkItems"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "project": "ProjectA",
+        "top": 20,
+        "wiql": "SELECT [System.Id] FROM WorkItems"
+      },
+      "name": "queryWorkItems-500",
+      "operation": "queryWorkItems"
+    },
+    {
+      "callId": "b07-devops-7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ProjectA/_apis/wit/wiql",
+          "query": {
+            "$top": [
+              "20"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestBody": {
+            "query": "SELECT [System.Id] FROM WorkItems"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "project": "ProjectA",
+        "top": 20,
+        "wiql": "SELECT [System.Id] FROM WorkItems"
+      },
+      "name": "queryWorkItems-transport",
+      "operation": "queryWorkItems"
     }
   ],
   "schemaVersion": 1

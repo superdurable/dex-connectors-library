@@ -16,6 +16,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createCalendar/createdDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[outlookcalendar.Calendar](`{"id":"team-calendar","name":"Ops Team","canEdit":true}`)
+			return err
+		}},
+		{name: "updateCalendar/updatedDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[outlookcalendar.Calendar](`{"id":"team-calendar","name":"Operations","canEdit":true}`)
+			return err
+		}},
+		{name: "deleteCalendar/deletedDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[outlookcalendar.DeleteCalendarOutput](`{"calendarId":"team-calendar"}`)
+			return err
+		}},
+		{name: "listCalendars/listedDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[outlookcalendar.ListCalendarsOutput](`{"calendars":[{"id":"team-calendar","name":"Ops Team","canEdit":true}]}`)
+			return err
+		}},
+		{name: "getCalendar/foundDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[outlookcalendar.Calendar](`{"id":"team-calendar","name":"Ops Team","canEdit":true}`)
+			return err
+		}},
+		{name: "deleteEvent/deletedDefaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[outlookcalendar.DeleteEventOutput](`{"eventId":"hold-1"}`)
+			return err
+		}},
 		{name: "listEvents/listedDefaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[outlookcalendar.ListEventsOutput](`{"calendarId":"team-calendar","timeMin":"2026-02-20T14:00:00-08:00","timeMax":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles","events":[{"id":"hold-1","calendarId":"team-calendar","subject":"Meridian kickoff","start":{"dateTime":"2026-02-20T14:00:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T15:00:00-08:00","timeZone":"America/Los_Angeles"},"showAs":"busy","isOrganizer":true,"onlineMeeting":{"provider":"teamsForBusiness","joinUrl":"https://teams.microsoft.com/l/meetup-join/hold-1"}},{"id":"free-briefing-1","calendarId":"team-calendar","subject":"Optional briefing","start":{"dateTime":"2026-02-20T14:15:00-08:00","timeZone":"America/Los_Angeles"},"end":{"dateTime":"2026-02-20T14:45:00-08:00","timeZone":"America/Los_Angeles"},"showAs":"free"}],"nextPageToken":""}`)
 			return err
@@ -50,6 +74,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateCalendar().Definition().Operation.OperationID != "createCalendar" {
+		t.Errorf("createCalendar mock has another definition")
+	}
+	if mock.UpdateCalendar().Definition().Operation.OperationID != "updateCalendar" {
+		t.Errorf("updateCalendar mock has another definition")
+	}
+	if mock.DeleteCalendar().Definition().Operation.OperationID != "deleteCalendar" {
+		t.Errorf("deleteCalendar mock has another definition")
+	}
+	if mock.ListCalendars().Definition().Operation.OperationID != "listCalendars" {
+		t.Errorf("listCalendars mock has another definition")
+	}
+	if mock.GetCalendar().Definition().Operation.OperationID != "getCalendar" {
+		t.Errorf("getCalendar mock has another definition")
+	}
+	if mock.DeleteEvent().Definition().Operation.OperationID != "deleteEvent" {
+		t.Errorf("deleteEvent mock has another definition")
+	}
 	if mock.ListEvents().Definition().Operation.OperationID != "listEvents" {
 		t.Errorf("listEvents mock has another definition")
 	}

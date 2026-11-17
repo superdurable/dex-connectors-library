@@ -2458,6 +2458,953 @@
       },
       "name": "searchFiles-sharp-s-not-equal-fold-614",
       "operation": "searchFiles"
+    },
+    {
+      "callId": "bddbf8a4-bb46-521d-a794-3f4ea977d167",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "itemId": "copy-file-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bddbf8a4-bb46-521d-a794-3f4ea977d167",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1"
+      },
+      "name": "deleteItem-success",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "bddbf8a4-bb46-521d-a794-3f4ea977d167",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bddbf8a4-bb46-521d-a794-3f4ea977d167",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1"
+      },
+      "name": "deleteItem-429",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "bddbf8a4-bb46-521d-a794-3f4ea977d167",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bddbf8a4-bb46-521d-a794-3f4ea977d167",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1"
+      },
+      "name": "deleteItem-500",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "bddbf8a4-bb46-521d-a794-3f4ea977d167",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bddbf8a4-bb46-521d-a794-3f4ea977d167",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1"
+      },
+      "name": "deleteItem-transport",
+      "operation": "deleteItem"
+    },
+    {
+      "callId": "fd5ea88e-74e0-578a-a2b4-6c86f6cca820",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"copy-file-1\",\"name\":\"Ops-Policy-Final.txt\",\"size\":44,\"parentReference\":{\"driveId\":\"b!financeLibrary-2\",\"id\":\"copy-folder-1\"},\"file\":{\"mimeType\":\"text/plain\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestBody": {
+            "name": "Ops-Policy-Final.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "renamed",
+        "failureKind": "",
+        "output": {
+          "item": {
+            "driveId": "b!financeLibrary-2",
+            "id": "copy-file-1",
+            "isFolder": false,
+            "mimeType": "text/plain",
+            "name": "Ops-Policy-Final.txt",
+            "parentFolderId": "copy-folder-1",
+            "sizeBytes": 44
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd5ea88e-74e0-578a-a2b4-6c86f6cca820",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1",
+        "name": "Ops-Policy-Final.txt"
+      },
+      "name": "renameItem-success",
+      "operation": "renameItem"
+    },
+    {
+      "callId": "fd5ea88e-74e0-578a-a2b4-6c86f6cca820",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestBody": {
+            "name": "Ops-Policy-Final.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd5ea88e-74e0-578a-a2b4-6c86f6cca820",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1",
+        "name": "Ops-Policy-Final.txt"
+      },
+      "name": "renameItem-429",
+      "operation": "renameItem"
+    },
+    {
+      "callId": "fd5ea88e-74e0-578a-a2b4-6c86f6cca820",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestBody": {
+            "name": "Ops-Policy-Final.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd5ea88e-74e0-578a-a2b4-6c86f6cca820",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1",
+        "name": "Ops-Policy-Final.txt"
+      },
+      "name": "renameItem-500",
+      "operation": "renameItem"
+    },
+    {
+      "callId": "fd5ea88e-74e0-578a-a2b4-6c86f6cca820",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestBody": {
+            "name": "Ops-Policy-Final.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fd5ea88e-74e0-578a-a2b4-6c86f6cca820",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1",
+        "name": "Ops-Policy-Final.txt"
+      },
+      "name": "renameItem-transport",
+      "operation": "renameItem"
+    },
+    {
+      "callId": "2fa2ee35-50b1-5f01-a456-90e71b2d4daf",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"copy-file-1\",\"name\":\"Ops-Policy-Final.txt\",\"size\":44,\"parentReference\":{\"driveId\":\"b!financeLibrary-2\",\"id\":\"archive-folder-1\"},\"file\":{\"mimeType\":\"text/plain\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestBody": {
+            "parentReference": {
+              "id": "archive-folder-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "moved",
+        "failureKind": "",
+        "output": {
+          "item": {
+            "driveId": "b!financeLibrary-2",
+            "id": "copy-file-1",
+            "isFolder": false,
+            "mimeType": "text/plain",
+            "name": "Ops-Policy-Final.txt",
+            "parentFolderId": "archive-folder-1",
+            "sizeBytes": 44
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fa2ee35-50b1-5f01-a456-90e71b2d4daf",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1",
+        "parentFolderId": "archive-folder-1"
+      },
+      "name": "moveItem-success",
+      "operation": "moveItem"
+    },
+    {
+      "callId": "2fa2ee35-50b1-5f01-a456-90e71b2d4daf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestBody": {
+            "parentReference": {
+              "id": "archive-folder-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fa2ee35-50b1-5f01-a456-90e71b2d4daf",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1",
+        "parentFolderId": "archive-folder-1"
+      },
+      "name": "moveItem-429",
+      "operation": "moveItem"
+    },
+    {
+      "callId": "2fa2ee35-50b1-5f01-a456-90e71b2d4daf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestBody": {
+            "parentReference": {
+              "id": "archive-folder-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fa2ee35-50b1-5f01-a456-90e71b2d4daf",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1",
+        "parentFolderId": "archive-folder-1"
+      },
+      "name": "moveItem-500",
+      "operation": "moveItem"
+    },
+    {
+      "callId": "2fa2ee35-50b1-5f01-a456-90e71b2d4daf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/drives/b!financeLibrary-2/items/copy-file-1",
+          "requestBody": {
+            "parentReference": {
+              "id": "archive-folder-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fa2ee35-50b1-5f01-a456-90e71b2d4daf",
+      "input": {
+        "driveId": "b!financeLibrary-2",
+        "itemId": "copy-file-1",
+        "parentFolderId": "archive-folder-1"
+      },
+      "name": "moveItem-transport",
+      "operation": "moveItem"
+    },
+    {
+      "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!financeLibrary-2/items/copy-folder-1:/Ops-Policy-Copy.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!financeLibrary-2/items/source-file-1/copy",
+          "requestBody": {
+            "name": "Ops-Policy-Copy.txt",
+            "parentReference": {
+              "driveId": "b!financeLibrary-2",
+              "id": "copy-folder-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "queued",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "destinationDriveId": "b!financeLibrary-2",
+          "destinationFolderId": "copy-folder-1",
+          "isQueued": true,
+          "name": "Ops-Policy-Copy.txt"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "input": {
+        "destinationDriveId": "b!financeLibrary-2",
+        "destinationFolderId": "copy-folder-1",
+        "driveId": "b!financeLibrary-2",
+        "itemId": "source-file-1",
+        "name": "Ops-Policy-Copy.txt"
+      },
+      "name": "copyFile-success",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!financeLibrary-2/items/copy-folder-1:/Ops-Policy-Copy.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "input": {
+        "destinationDriveId": "b!financeLibrary-2",
+        "destinationFolderId": "copy-folder-1",
+        "driveId": "b!financeLibrary-2",
+        "itemId": "source-file-1",
+        "name": "Ops-Policy-Copy.txt"
+      },
+      "name": "copyFile-429",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!financeLibrary-2/items/copy-folder-1:/Ops-Policy-Copy.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "input": {
+        "destinationDriveId": "b!financeLibrary-2",
+        "destinationFolderId": "copy-folder-1",
+        "driveId": "b!financeLibrary-2",
+        "itemId": "source-file-1",
+        "name": "Ops-Policy-Copy.txt"
+      },
+      "name": "copyFile-500",
+      "operation": "copyFile"
+    },
+    {
+      "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!financeLibrary-2/items/copy-folder-1:/Ops-Policy-Copy.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "input": {
+        "destinationDriveId": "b!financeLibrary-2",
+        "destinationFolderId": "copy-folder-1",
+        "driveId": "b!financeLibrary-2",
+        "itemId": "source-file-1",
+        "name": "Ops-Policy-Copy.txt"
+      },
+      "name": "copyFile-transport",
+      "operation": "copyFile"
+    },
+    {
+      "attempts": 4,
+      "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!financeLibrary-2/items/copy-folder-1:/Ops-Policy-Copy.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!financeLibrary-2/items/source-file-1/copy",
+          "requestBody": {
+            "name": "Ops-Policy-Copy.txt",
+            "parentReference": {
+              "driveId": "b!financeLibrary-2",
+              "id": "copy-folder-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!financeLibrary-2/items/copy-folder-1:/Ops-Policy-Copy.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!financeLibrary-2/items/source-file-1/copy",
+          "requestBody": {
+            "name": "Ops-Policy-Copy.txt",
+            "parentReference": {
+              "driveId": "b!financeLibrary-2",
+              "id": "copy-folder-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!financeLibrary-2/items/copy-folder-1:/Ops-Policy-Copy.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!financeLibrary-2/items/source-file-1/copy",
+          "requestBody": {
+            "name": "Ops-Policy-Copy.txt",
+            "parentReference": {
+              "driveId": "b!financeLibrary-2",
+              "id": "copy-folder-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!financeLibrary-2/items/copy-folder-1:/Ops-Policy-Copy.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "destinationDriveId": "b!financeLibrary-2",
+          "destinationFolderId": "copy-folder-1",
+          "name": "Ops-Policy-Copy.txt"
+        },
+        "requestCount": 7,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1e335bb6-dd14-5a80-8363-e381024a251f",
+      "input": {
+        "destinationDriveId": "b!financeLibrary-2",
+        "destinationFolderId": "copy-folder-1",
+        "driveId": "b!financeLibrary-2",
+        "itemId": "source-file-1",
+        "name": "Ops-Policy-Copy.txt"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 4,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 6,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "1e335bb6-dd14-5a80-8363-e381024a251f",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "copyFile-uncertain",
+      "operation": "copyFile"
     }
   ],
   "schemaVersion": 1

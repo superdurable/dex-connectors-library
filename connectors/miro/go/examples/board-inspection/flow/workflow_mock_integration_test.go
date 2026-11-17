@@ -24,7 +24,8 @@ import (
 func TestBoardInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := miromock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	listFlow := NewListBoardsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, listFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestBoardInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "uXjVOD6LSME=", output.ID)
 	require.Len(t, mock.GetBoard().Calls(), 1)
+	listFlowID := "miro-board-discovery-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, listFlow, listFlowID, miro.ListBoardsInput{Offset: 0, Limit: 20}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	listResult, err := client.WaitForFlow(ctx, listFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, listResult.Status, listResult.ErrorMessage)
+	var listOutput miro.BoardsPage
+	require.NoError(t, listResult.DecodeSingleOutput(&listOutput))
+	require.Equal(t, "uXjVOD6LSME=", listOutput.Boards[0].ID)
+	require.Len(t, mock.ListBoards().Calls(), 1)
 }

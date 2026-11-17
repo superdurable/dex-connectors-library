@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted azure-devops connection. Script each operation through its accessor.
 type Mock struct {
-	connection   azuredevops.Connection
-	listProjects *connectormock.Query[azuredevops.ListProjectsInput, azuredevops.Projects]
-	getWorkItem  *connectormock.Query[azuredevops.GetWorkItemInput, azuredevops.WorkItemMetadata]
+	connection     azuredevops.Connection
+	queryWorkItems *connectormock.Query[azuredevops.QueryWorkItemsInput, azuredevops.WorkItemIDs]
+	listProjects   *connectormock.Query[azuredevops.ListProjectsInput, azuredevops.Projects]
+	getWorkItem    *connectormock.Query[azuredevops.GetWorkItemInput, azuredevops.WorkItemMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +28,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listProjects: connectormock.NewQuery[azuredevops.ListProjectsInput, azuredevops.Projects](t, azuredevops.ListProjectsDefinition),
-		getWorkItem:  connectormock.NewQuery[azuredevops.GetWorkItemInput, azuredevops.WorkItemMetadata](t, azuredevops.GetWorkItemDefinition),
+		queryWorkItems: connectormock.NewQuery[azuredevops.QueryWorkItemsInput, azuredevops.WorkItemIDs](t, azuredevops.QueryWorkItemsDefinition),
+		listProjects:   connectormock.NewQuery[azuredevops.ListProjectsInput, azuredevops.Projects](t, azuredevops.ListProjectsDefinition),
+		getWorkItem:    connectormock.NewQuery[azuredevops.GetWorkItemInput, azuredevops.WorkItemMetadata](t, azuredevops.GetWorkItemDefinition),
 	}
+	mock.queryWorkItems.Default(QueryWorkItemsDefault())
 	mock.listProjects.Default(ListProjectsDefault())
 	mock.getWorkItem.Default(GetWorkItemDefault())
 	connection, err := azuredevops.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "azure-devops", Name: connectionName})
@@ -43,6 +46,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() azuredevops.Connection { return mock.connection }
 
+// QueryWorkItems returns the queryWorkItems script.
+func (mock *Mock) QueryWorkItems() *connectormock.Query[azuredevops.QueryWorkItemsInput, azuredevops.WorkItemIDs] {
+	return mock.queryWorkItems
+}
+
 // ListProjects returns the listProjects script.
 func (mock *Mock) ListProjects() *connectormock.Query[azuredevops.ListProjectsInput, azuredevops.Projects] {
 	return mock.listProjects
@@ -55,11 +63,50 @@ func (mock *Mock) GetWorkItem() *connectormock.Query[azuredevops.GetWorkItemInpu
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) QueryWorkItems() sdkgo.Query[azuredevops.QueryWorkItemsInput, azuredevops.WorkItemIDs] {
+	return operations.mock.queryWorkItems
+}
 func (operations mockOperations) ListProjects() sdkgo.Query[azuredevops.ListProjectsInput, azuredevops.Projects] {
 	return operations.mock.listProjects
 }
 func (operations mockOperations) GetWorkItem() sdkgo.Query[azuredevops.GetWorkItemInput, azuredevops.WorkItemMetadata] {
 	return operations.mock.getWorkItem
+}
+
+// QueryWorkItemsListed selects the listed branch: Azure DevOps returned matching work item IDs.
+func QueryWorkItemsListed(value azuredevops.WorkItemIDs, failure *sdkgo.Failure) connectormock.Case[azuredevops.WorkItemIDs] {
+	return connectormock.Branch(azuredevops.QueryWorkItemsBranchListed, value, failure)
+}
+
+// QueryWorkItemsProviderRejected selects the providerRejected branch: Azure DevOps rejected the query.
+func QueryWorkItemsProviderRejected(value azuredevops.WorkItemIDs, failure *sdkgo.Failure) connectormock.Case[azuredevops.WorkItemIDs] {
+	return connectormock.Branch(azuredevops.QueryWorkItemsBranchProviderRejected, value, failure)
+}
+
+// QueryWorkItemsInvalidResponse selects the invalidResponse branch: Azure DevOps returned malformed or oversized JSON.
+func QueryWorkItemsInvalidResponse(value azuredevops.WorkItemIDs, failure *sdkgo.Failure) connectormock.Case[azuredevops.WorkItemIDs] {
+	return connectormock.Branch(azuredevops.QueryWorkItemsBranchInvalidResponse, value, failure)
+}
+
+// QueryWorkItemsDefect selects the defect branch: The project, WIQL, page size, or credentials are invalid.
+func QueryWorkItemsDefect(value azuredevops.WorkItemIDs, failure *sdkgo.Failure) connectormock.Case[azuredevops.WorkItemIDs] {
+	return connectormock.Branch(azuredevops.QueryWorkItemsBranchDefect, value, failure)
+}
+
+// QueryWorkItemsRetry asks Dex to retry the queryWorkItems Step, after the delay when it is positive.
+func QueryWorkItemsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[azuredevops.WorkItemIDs] {
+	return connectormock.Retry[azuredevops.WorkItemIDs](failure, after)
+}
+
+// QueryWorkItemsListedDefault is the manifest mock listedDefault: One matching work item ID is returned.
+func QueryWorkItemsListedDefault() connectormock.Case[azuredevops.WorkItemIDs] {
+	value := connectormock.MustDecodeOutput[azuredevops.WorkItemIDs](`{"ids":[144]}`)
+	return connectormock.Branch(azuredevops.QueryWorkItemsBranchListed, value, nil)
+}
+
+// QueryWorkItemsDefault is the manifest default, listedDefault, which New installs.
+func QueryWorkItemsDefault() connectormock.Case[azuredevops.WorkItemIDs] {
+	return QueryWorkItemsListedDefault()
 }
 
 // ListProjectsListed selects the listed branch: Azure DevOps returned accessible projects.

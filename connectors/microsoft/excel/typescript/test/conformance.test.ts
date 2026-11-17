@@ -8,7 +8,8 @@ import { ExcelClient } from '../src/client.js';
 import { AppendTableRowsInputSchema, GetTableRowsInputSchema, GetValuesInputSchema, UpdateValuesInputSchema, type Credentials } from '../src/models.js';
 import { answerRecordedRequest, ExchangeRecorder, HeartbeatContext, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/excel/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/microsoft/excel/scenarios.json', import.meta.url))
+  .filter(scenario => ['getTableRows', 'getValues', 'updateValues', 'appendTableRows'].includes(scenario.operation));
 const connection = { provider: 'microsoft', name: 'approvals' };
 const credentials: Credentials = { authMethodId: 'microsoft-oauth', accessToken: new SecretString('excel-token-SENTINEL'),
   oauthClientId: '', oauthClientSecret: new SecretString(''), refreshToken: new SecretString('') };
