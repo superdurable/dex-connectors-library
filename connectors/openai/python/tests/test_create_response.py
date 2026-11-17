@@ -101,8 +101,12 @@ class ProgressCollector:
 
 
 def make_call(
-    context: FakeContext, text: TextCollector | None = None, progress: ProgressCollector | None = None
+    context: FakeContext,
+    text: TextCollector | None = None,
+    progress: ProgressCollector | None = None,
+    max_sends: int = 1,
 ) -> Call:
+    """Build a call; the default cap of 1 permits no resend, so unknown outcomes are uncertain."""
     return Call(
         CallID(str(uuid4())),
         CONNECTION,
@@ -110,6 +114,7 @@ def make_call(
         context=context,  # type: ignore[arg-type]
         _progress_reporter=progress,  # type: ignore[arg-type]
         _text_writer=text,  # type: ignore[arg-type]
+        max_sends=max_sends,
     )
 
 
@@ -173,8 +178,8 @@ async def test_first_attempt_sends_payload_and_checkpoints_response_id() -> None
             }
         },
     }
-    assert context.heartbeats[0] == CreateResponseCheckpoint(str(call.id), 1)
-    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 1, RESPONSE_ID)
+    assert context.heartbeats[0] == CreateResponseCheckpoint(str(call.id), 1, send_count=1)
+    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 1, RESPONSE_ID, send_count=1)
 
 
 @pytest.mark.asyncio
@@ -205,7 +210,7 @@ async def test_retryable_status_marks_checkpoint_resendable() -> None:
     call = make_call(context)
     with pytest.raises(RetryError):
         await create(client, call)
-    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 1, can_resend=True)
+    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 1, can_resend=True, send_count=0)
 
 
 @pytest.mark.asyncio
@@ -277,10 +282,62 @@ async def test_resendable_previous_attempt_sends_again() -> None:
     requests: list[httpx.Request] = []
     client = make_client(lambda request: httpx.Response(200, json=wire()), requests)
     context = FakeContext(attempt=3)
-    call = make_call(context)
-    context.previous = CreateResponseCheckpoint(str(call.id), 2, can_resend=True)
+    call = make_call(context, max_sends=3)
+    context.previous = CreateResponseCheckpoint(str(call.id), 2, can_resend=True, send_count=0)
     assert (await create(client, call)).branch == COMPLETED
     assert [request.method for request in requests] == ["POST"]
+    assert context.heartbeats[0] == CreateResponseCheckpoint(str(call.id), 3, send_count=1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("attempt", "previous", "expected"),
+    [
+        (2, CreateResponseCheckpoint("", 1, send_count=1), "retry"),
+        (3, CreateResponseCheckpoint("", 2, send_count=2), "uncertain"),
+        (3, None, "uncertain"),
+        (5, CreateResponseCheckpoint("", 4, can_resend=True, send_count=0), "retry"),
+    ],
+)
+async def test_unknown_outcome_resends_below_the_cap(
+    attempt: int, previous: CreateResponseCheckpoint | None, expected: str
+) -> None:
+    """A 500 retries while possible creates stay below 3, and selects uncertain at the cap."""
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(500), requests)
+    context = FakeContext(attempt=attempt)
+    call = make_call(context, max_sends=3)
+    if previous is not None:
+        context.previous = CreateResponseCheckpoint(
+            str(call.id), previous.attempt, can_resend=previous.can_resend, send_count=previous.send_count
+        )
+    if expected == "retry":
+        with pytest.raises(RetryError):
+            await create(client, call)
+    else:
+        assert (await create(client, call)).branch == UNCERTAIN
+    assert [request.method for request in requests] == ["POST"]
+
+
+@pytest.mark.asyncio
+async def test_send_cap_reached_sends_nothing() -> None:
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(200, json=wire()), requests)
+    context = FakeContext(attempt=4)
+    call = make_call(context, max_sends=3)
+    context.previous = CreateResponseCheckpoint(str(call.id), 3, send_count=3)
+    assert (await create(client, call)).branch == UNCERTAIN
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_refused_resend_after_a_possible_create_is_uncertain() -> None:
+    client = make_client(lambda request: httpx.Response(400), [])
+    context = FakeContext(attempt=2)
+    call = make_call(context, max_sends=3)
+    context.previous = CreateResponseCheckpoint(str(call.id), 1, send_count=1)
+    assert (await create(client, call)).branch == UNCERTAIN
+    assert context.heartbeats[-1] == CreateResponseCheckpoint(str(call.id), 2, can_resend=True, send_count=1)
 
 
 @pytest.mark.asyncio
@@ -300,9 +357,14 @@ async def test_unfenced_retry_is_uncertain_without_sending(previous_attempt: int
 @pytest.mark.asyncio
 @pytest.mark.parametrize("previous", [CreateResponseCheckpoint("other-call", 1), ValueError("foreign value")])
 async def test_foreign_heartbeat_value_is_defect(previous: object) -> None:
-    client = make_client(lambda request: httpx.Response(200, json=wire()), [])
-    result = await create(client, make_call(FakeContext(attempt=2, previous=previous)))
+    """Attempt 1 has no earlier send, so another heartbeat writer is a defect; later it is no checkpoint."""
+    requests: list[httpx.Request] = []
+    client = make_client(lambda request: httpx.Response(200, json=wire()), requests)
+    result = await create(client, make_call(FakeContext(attempt=1, previous=previous), max_sends=3))
     assert result.branch == DEFECT
+    result = await create(client, make_call(FakeContext(attempt=2, previous=previous), max_sends=3))
+    assert result.branch == COMPLETED
+    assert [request.method for request in requests] == ["POST"]
 
 
 @pytest.mark.asyncio

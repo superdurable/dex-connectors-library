@@ -298,7 +298,7 @@ wheels = [
 
 [[package]]
 name = "dex-connector-openai"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "dex-connectors-sdk" },
@@ -318,7 +318,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dex-connectors-sdk", specifier = "==0.2.0" },
+    { name = "dex-connectors-sdk", specifier = "==0.12.0" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
     { name = "httpx", specifier = ">=0.27" },
 ]
@@ -335,17 +335,19 @@ dev = [
 
 [[package]]
 name = "dex-connectors-sdk"
-version = "0.2.0"
+version = "0.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "anyio" },
     { name = "boto3" },
     { name = "cryptography" },
     { name = "dex-python-sdk" },
+    { name = "httpcore" },
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/74/c69c0b6b97a4a74aaba19b6d23a3b0369baf0ffec05a9a55a858074b5eb1/dex_connectors_sdk-0.2.0.tar.gz", hash = "sha256:4d93585d971ff34010f00550953813e54f879de8af62f38711a81a25e8a58a18", size = 199183, upload-time = "2026-11-03T17:27:28.081Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/bb/16f57d6258cd5c02cbdae98dfe4ed35e55146c73eb13693eaaf56ca8f34a/dex_connectors_sdk-0.12.0.tar.gz", hash = "sha256:9d0cb7086b9c61712ecbca829c05cfc4f4d45663b077659855d9a4784eafdbd3", size = 374308, upload-time = "2026-11-15T22:17:52.158Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/72/d090a7507ff502f0f7d58ed7e4915876c42cc3358ac6985238f41bae6a2c/dex_connectors_sdk-0.2.0-py3-none-any.whl", hash = "sha256:8915d5a053781d5658ff1f1736969cbcdc9fa9b27ec2c5bc0bf0a6fe15fa9979", size = 108919, upload-time = "2026-11-03T17:27:26.91Z" },
+    { url = "https://files.pythonhosted.org/packages/66/41/3d2fd56b92e0b4325eb3eb59a744de6f5a45c6976cc4a0f5a6aa983b83f8/dex_connectors_sdk-0.12.0-py3-none-any.whl", hash = "sha256:b4b6e264187a72ce44e1aab20737882bcde824a3cb170bbd62f6ea7076e13333", size = 204649, upload-time = "2026-11-15T22:17:50.84Z" },
 ]
 
 [[package]]

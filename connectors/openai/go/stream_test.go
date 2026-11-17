@@ -127,7 +127,7 @@ func TestOpenAIStreamEarlyEOFAndBoundsAreUnknown(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			call := sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "stream-step")}
-			attempt := CreateResponseOperation{client: test.client}.readStream(call, newTestHeartbeat(call), strings.NewReader(test.body), nil, "req_1")
+			attempt := CreateResponseOperation{client: test.client}.readStream(call, newTestHeartbeat(call), singleSendBudget, strings.NewReader(test.body), nil, "req_1")
 			result, err := sdkgo.RunMutation(
 				testsupport.NewDexContext("stream-flow", "stream-step"),
 				streamAttemptOperation{attempt: attempt}, sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
@@ -170,7 +170,7 @@ func TestOpenAIInterruptedStreamReadsKnownResponse(t *testing.T) {
 			if streamBody == "" {
 				streamBody = sse(`{"type":"response.created","response":{"id":"resp_known","status":"in_progress"}}`)
 			}
-			attempt := client.CreateResponse().readStream(call, newTestHeartbeat(call), strings.NewReader(streamBody), nil, "req_create")
+			attempt := client.CreateResponse().readStream(call, newTestHeartbeat(call), singleSendBudget, strings.NewReader(streamBody), nil, "req_create")
 			result, err := sdkgo.RunMutation(testsupport.NewDexContext("stream-flow", "result"), streamAttemptOperation{attempt: attempt}, call.Connection, struct{}{})
 			require.NoError(t, err)
 			require.Equal(t, test.wantBranch, result.Branch)
@@ -291,7 +291,7 @@ func TestOpenAIStreamKeepsReadingItsResponseAfterAForeignTerminalEvent(t *testin
 			dexContext := testsupport.NewDexContext("stream-flow", "foreign-terminal")
 			dexContext.Context = attemptContext
 			call := sdkgo.Call{Context: dexContext, Connection: sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, Operation: CreateResponseDefinition.Operation}
-			attempt := client.CreateResponse().readStream(call, newTestHeartbeat(call), body, nil, "req_foreign")
+			attempt := client.CreateResponse().readStream(call, newTestHeartbeat(call), singleSendBudget, body, nil, "req_foreign")
 			result, err := sdkgo.RunMutation(testsupport.NewDexContext("stream-flow", "result"), streamAttemptOperation{attempt: attempt}, call.Connection, struct{}{})
 			require.NoError(t, err, "a read-back before the stream ends finds the response cancelled")
 			require.Equal(t, CreateResponseBranchCompleted, result.Branch)
@@ -333,7 +333,7 @@ func TestOpenAIOversizedStreamFinishesBeforeReadBack(t *testing.T) {
 	events = append(events, `{"type":"response.completed","response":{"id":"resp_long","status":"completed"}}`)
 	body := &drainObservingReader{reader: strings.NewReader(sse(events...))}
 	call := sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "oversized"), Connection: sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, Operation: CreateResponseDefinition.Operation}
-	attempt := client.CreateResponse().readStream(call, newTestHeartbeat(call), body, nil, "req_long")
+	attempt := client.CreateResponse().readStream(call, newTestHeartbeat(call), singleSendBudget, body, nil, "req_long")
 	require.True(t, body.isAtEOF, "closing an unfinished stream would cancel the response")
 	result, err := sdkgo.RunMutation(testsupport.NewDexContext("stream-flow", "result"), streamAttemptOperation{attempt: attempt}, call.Connection, struct{}{})
 	require.NoError(t, err)
@@ -345,7 +345,7 @@ func runStreamAttempt(t *testing.T, body *strings.Reader) sdkgo.MutationResult[R
 	t.Helper()
 	client := &Client{maxResponseBytes: 16 << 10, maxSSEEventBytes: 4 << 10}
 	call := sdkgo.Call{Context: testsupport.NewDexContext("stream-flow", "stream-step")}
-	attempt := CreateResponseOperation{client: client}.readStream(call, newTestHeartbeat(call), body, nil, "req_stream")
+	attempt := CreateResponseOperation{client: client}.readStream(call, newTestHeartbeat(call), singleSendBudget, body, nil, "req_stream")
 	result, err := sdkgo.RunMutation(
 		testsupport.NewDexContext("stream-flow", "stream-step"),
 		streamAttemptOperation{attempt: attempt}, sdkgo.ConnectionRef{Provider: "openai", Name: "default"}, struct{}{},
@@ -358,6 +358,9 @@ func runStreamAttempt(t *testing.T, body *strings.Reader) sdkgo.MutationResult[R
 func newTestHeartbeat(call sdkgo.Call) *createResponseHeartbeat {
 	return newCreateResponseHeartbeat(call, time.Hour)
 }
+
+// singleSendBudget permits no resend, so an unknown stream outcome selects uncertain.
+var singleSendBudget = createResponseSendBudget{priorSendUpperBound: 0, maxSends: 1}
 
 func sse(events ...string) string {
 	return "data: " + strings.Join(events, "\n\ndata: ") + "\n\n"

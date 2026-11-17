@@ -34,9 +34,11 @@ async def invoke_openai(scenario: dict[str, Any], recorder: conformance.Exchange
         )
         operation_name = scenario["operation"]
         request = scenario["input"]
+        send_cap = (conformance.production_send_cap_arguments(client.create_response().definition())
+                    if operation_name == "createResponse" else {})
         call = sdk.Call(sdk.CallID(scenario["callId"]), CONNECTION,
                         sdk.OperationRef("openai", operation_name), sdk.IdempotencyKey(""),
-                        context=context)  # type: ignore[arg-type]
+                        context=context, **send_cap)  # type: ignore[arg-type]
         if operation_name == "createResponse":
             structured = request.get("StructuredOutput")
             output = (openai.StructuredOutput(

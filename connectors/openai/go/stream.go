@@ -34,6 +34,7 @@ type responseStreamHandler struct {
 	operation  CreateResponseOperation
 	call       sdkgo.Call
 	heartbeat  *createResponseHeartbeat
+	sends      createResponseSendBudget
 	header     http.Header
 	requestID  string
 	responseID string
@@ -43,8 +44,8 @@ type responseStreamHandler struct {
 	hasStreamError bool
 }
 
-func (operation CreateResponseOperation) readStream(call sdkgo.Call, heartbeat *createResponseHeartbeat, body io.Reader, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
-	handler := &responseStreamHandler{operation: operation, call: call, heartbeat: heartbeat, header: header, requestID: requestID}
+func (operation CreateResponseOperation) readStream(call sdkgo.Call, heartbeat *createResponseHeartbeat, sends createResponseSendBudget, body io.Reader, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
+	handler := &responseStreamHandler{operation: operation, call: call, heartbeat: heartbeat, sends: sends, header: header, requestID: requestID}
 	attempt, err := readSSE(body, operation.client.maxResponseBytes, operation.client.maxSSEEventBytes, handler.handle)
 	if err == nil {
 		return attempt
@@ -54,7 +55,7 @@ func (operation CreateResponseOperation) readStream(call sdkgo.Call, heartbeat *
 		if handler.hasStreamError {
 			message = "provider streamed an error before naming a response, which may exist"
 		}
-		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureProtocol, "createResponse", message), handler.receipt())
+		return resendOrSelectUncertain(sends, openAIFailure(sdkgo.FailureProtocol, "createResponse", message), handler.receipt())
 	}
 	if errors.As(err, &streamLimitError{}) {
 		// Closing the connection now would cancel the response, so let it finish before reading it back.
@@ -66,10 +67,10 @@ func (operation CreateResponseOperation) readStream(call sdkgo.Call, heartbeat *
 func (handler *responseStreamHandler) handle(event streamEvent) (bool, sdkgo.MutationAttempt[Response]) {
 	if event.Response.ID != "" && handler.responseID == "" {
 		if !isSafeResponseID(event.Response.ID) {
-			return true, sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response ID is invalid"), handler.receipt())
+			return true, resendOrSelectUncertain(handler.sends, openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response ID is invalid"), handler.receipt())
 		}
 		handler.responseID = event.Response.ID
-		// A lost checkpoint makes a later attempt select uncertain; the ticker records it again meanwhile.
+		// A lost checkpoint leaves the claim, which a later attempt counts; the ticker records it again meanwhile.
 		_ = handler.heartbeat.recordResponseID(handler.responseID)
 	}
 	switch event.Type {

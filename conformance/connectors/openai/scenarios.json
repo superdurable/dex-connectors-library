@@ -49,7 +49,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "output": {
           "id": "resp_001",
@@ -123,7 +124,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "output": {
           "id": "resp_001",
@@ -197,7 +199,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "output": {
           "id": "resp_001",
@@ -278,7 +281,9 @@
         "failureKind": "PROVIDER_REJECTION",
         "heartbeat": {
           "attempt": 1,
-          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+          "canResend": true,
+          "sendCount": 0
         },
         "output": {
           "id": "",
@@ -316,8 +321,79 @@
       "operation": "createResponse"
     },
     {
+      "attempts": 3,
       "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 500
+        },
         {
           "body": "{}",
           "headers": {},
@@ -358,8 +434,9 @@
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "heartbeat": {
-          "attempt": 1,
-          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+          "attempt": 3,
+          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+          "sendCount": 3
         },
         "output": {
           "id": "",
@@ -374,7 +451,7 @@
             "totalTokens": 0
           }
         },
-        "requestCount": 1,
+        "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -393,6 +470,28 @@
           "strict": true
         }
       },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+            "sendCount": 1
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+            "sendCount": 2
+          },
+          "retryAfterMs": 0
+        }
+      ],
       "name": "create-uncertain-server",
       "operation": "createResponse"
     },
@@ -436,29 +535,17 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "CONFLICT",
         "heartbeat": {
           "attempt": 1,
-          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
-        },
-        "output": {
-          "id": "",
-          "model": "",
-          "outputText": "",
-          "status": "",
-          "usage": {
-            "cachedInputTokens": 0,
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "reasoningOutputTokens": 0,
-            "totalTokens": 0
-          }
+          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+          "sendCount": 1
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "input": {
@@ -565,7 +652,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "canResend": true
+          "canResend": true,
+          "sendCount": 0
         },
         "requestCount": 1,
         "retry": true,
@@ -634,7 +722,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "canResend": true
+          "canResend": true,
+          "sendCount": 0
         },
         "requestCount": 1,
         "retry": true,
@@ -701,7 +790,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "canResend": true
+          "canResend": true,
+          "sendCount": 0
         },
         "requestCount": 0,
         "retry": true,
@@ -763,29 +853,17 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
         "heartbeat": {
           "attempt": 1,
-          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
-        },
-        "output": {
-          "id": "",
-          "model": "",
-          "outputText": "",
-          "status": "",
-          "usage": {
-            "cachedInputTokens": 0,
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "reasoningOutputTokens": 0,
-            "totalTokens": 0
-          }
+          "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+          "sendCount": 1
         },
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
       "input": {
@@ -865,7 +943,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "output": {
           "id": "resp_001",
@@ -1308,7 +1387,8 @@
         "heartbeat": {
           "attempt": 2,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "output": {
           "id": "resp_001",
@@ -1349,7 +1429,8 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-            "canResend": true
+            "canResend": true,
+            "sendCount": 0
           },
           "retryAfterMs": 3000
         }
@@ -1418,7 +1499,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "output": {
           "id": "resp_001",
@@ -1516,7 +1598,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "output": {
           "id": "resp_001",
@@ -1614,7 +1697,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "output": {
           "id": "resp_001",
@@ -1714,7 +1798,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "requestCount": 2,
         "retry": true,
@@ -1799,7 +1884,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "requestCount": 2,
         "retry": true,
@@ -1882,7 +1968,8 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 1
         },
         "requestCount": 2,
         "retry": true,
@@ -1993,7 +2080,8 @@
         "heartbeat": {
           "attempt": 2,
           "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-          "responseId": "resp_001"
+          "responseId": "resp_001",
+          "sendCount": 2
         },
         "output": {
           "id": "resp_001",
@@ -2034,7 +2122,8 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
-            "canResend": true
+            "canResend": true,
+            "sendCount": 1
           },
           "retryAfterMs": 0
         }

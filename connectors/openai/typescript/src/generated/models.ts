@@ -12,9 +12,9 @@ export interface Config {
   model?: string;
   /** OpenAI API base URL that each operation appends its path to, such as /responses; leave blank for the displayed public v1 default. Enter an absolute HTTPS URL only for a trusted compatible gateway, except for loopback test servers. The Studio model list always uses api.openai.com. */
   endpoint?: string;
-  /** Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed output tokens; raise it only for longer outputs. When a createResponse stream grows larger, the connector reads it to the end and reads the stored response back if its ID was observed, or selects uncertain otherwise; a larger non-streamed createResponse response selects uncertain, and a larger retrieveResponse response selects invalidResponse. */
+  /** Positive maximum total response size in bytes, counting every byte of a stream. Each streamed text delta carries about 260 bytes of event framing, so the displayed default holds roughly 30,000 streamed output tokens; raise it only for longer outputs. When a createResponse stream grows larger, the connector reads it to the end and reads the stored response back if its ID was observed, or otherwise resends below the send cap and selects uncertain at it; a larger non-streamed createResponse response is handled the same way, and a larger retrieveResponse response selects invalidResponse. */
   maxResponseBytes?: number;
-  /** Positive maximum size of one createResponse server-sent event in bytes. The final Responses event repeats the whole response, so raise it only for very long outputs. After an oversized event the connector reads the stream to the end and reads the stored response back if its ID was observed, or selects uncertain otherwise. */
+  /** Positive maximum size of one createResponse server-sent event in bytes. The final Responses event repeats the whole response, so raise it only for very long outputs. After an oversized event the connector reads the stream to the end and reads the stored response back if its ID was observed, or otherwise resends below the send cap and selects uncertain at it. */
   maxSseEventBytes?: number;
 }
 

@@ -139,10 +139,13 @@ func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	result, err := sdkgo.RunMutation(
-		testsupport.NewDexContext("flow-1", "malformed-response-1"), client.CreateResponse(), openAIConnection,
-		openai.CreateRequest{Model: "gpt-test", Input: "profile"},
-	)
+	ctx := testsupport.NewDexContext("flow-1", "malformed-response-1")
+	_, err := sdkgo.RunMutation(ctx, client.CreateResponse(), openAIConnection, openai.CreateRequest{Model: "gpt-test", Input: "profile"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry, "an unreadable answer resends below the cap")
+	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+	ctx.AttemptNo = 3
+	result, err := sdkgo.RunMutation(ctx, client.CreateResponse(), openAIConnection, openai.CreateRequest{Model: "gpt-test", Input: "profile"})
 	require.NoError(t, err)
 	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
@@ -179,18 +182,19 @@ func TestCreateResponseRetriesRateLimitAndUnavailable(t *testing.T) {
 	}
 }
 
-func TestCreateResponseKeepsUnconfirmedServerFailureUncertain(t *testing.T) {
+func TestCreateResponseResendsAnUnconfirmedServerFailureBelowTheCap(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		response.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 	client := newClient(t, server.URL)
-	result, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "server-failure"), client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
-	require.NoError(t, err)
-	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
+	_, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "server-failure"), client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 }
 
-func TestCreateResponseKeepsDispatchedLostResponseUncertain(t *testing.T) {
+func TestCreateResponseResendsADispatchedLostResponseUpToTheCap(t *testing.T) {
 	var requestCount int
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		requestCount++
@@ -202,14 +206,17 @@ func TestCreateResponseKeepsDispatchedLostResponseUncertain(t *testing.T) {
 	defer server.Close()
 	client := newClient(t, server.URL)
 	ctx := testsupport.NewDexContext("flow-1", "lost-response")
+	for attempt := int32(1); attempt < 3; attempt++ {
+		ctx.AttemptNo = attempt
+		_, err := sdkgo.RunMutation(ctx, client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "attempt %d resends on the next attempt", attempt)
+	}
+	ctx.AttemptNo = 3
 	result, err := sdkgo.RunMutation(ctx, client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
 	require.NoError(t, err)
 	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
-	ctx.AttemptNo = 2
-	result, err = sdkgo.RunMutation(ctx, client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
-	require.NoError(t, err)
-	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
-	require.Equal(t, 1, requestCount)
+	require.Equal(t, 3, requestCount, "the default cap allows three billed creates")
 }
 
 func TestConfirmedRejectionUsesProviderRejectedBranch(t *testing.T) {

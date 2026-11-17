@@ -1,7 +1,7 @@
 # OpenAI connector for Python
 
-Install with `pip install dex-connector-openai==0.2.0`. The package requires
-`dex-connectors-sdk==0.2.0` and `dex-python-sdk>=1.28.0`, and implements the
+Install with `pip install dex-connector-openai==0.2.1`. The package requires
+`dex-connectors-sdk==0.12.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `createResponse` (Mutation) and `retrieveResponse` (Query)
 with the same branches, defaults, and failure classification as the Go module.
 
@@ -21,15 +21,18 @@ manifest sync Execute durability, and record no other heartbeats in that Step.
 - An attempt that observed a response ID reads that response back instead of
   creating another one, polling `queued` and `in_progress` until five seconds
   before the Execute deadline.
-- Only an attempt that provably created nothing (503, 429, a connection
-  refused before sending, or a `cancelled` response) lets the next attempt
-  resend.
-- Every other unconfirmed outcome selects `uncertain`: 408, 409, a 5xx other
-  than 503, an ambiguous transport failure, a streamed error before a response
-  ID, an unreadable body, or a read-back that cannot confirm the response.
+- Each checkpoint carries `sendCount`, the possibly billed creates so far.
+  503, 429, a connection refused before sending, and a definite refusal add
+  none; a `cancelled` response counts, since it may be billed.
+- Every other unconfirmed outcome without a response ID (408, 409, a 3xx,
+  another 4xx, a 5xx other than 503, an ambiguous transport failure, a
+  streamed error before a response ID, or an unreadable body) retries and
+  resends while possible creates stay below the send cap of 3, and selects
+  `uncertain` at the cap. A read-back that cannot confirm a known response
+  selects `uncertain`.
 
-The manifest retry policy allows three attempts within five minutes because a
-duplicate create is billed.
+The manifest retry policy allows eight attempts within fifteen minutes; the
+send cap still allows at most three billed creates.
 
 ## Streaming and structured output
 
