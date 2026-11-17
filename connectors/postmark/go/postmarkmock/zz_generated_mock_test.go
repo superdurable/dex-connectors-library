@@ -60,6 +60,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":false,"canActivate":true}`)
 			return err
 		}},
+		{name: "listSuppressions/listSuppressionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SuppressionPage](`{"suppressions":[{"emailAddress":"recipient@example.com","suppressionReason":"ManualSuppression","origin":"Customer"}]}`)
+			return err
+		}},
+		{name: "createSuppression/createSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Suppressed"}`)
+			return err
+		}},
+		{name: "deleteSuppression/deleteSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Deleted"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -102,5 +114,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ActivateBounce().Definition().Operation.OperationID != "activateBounce" {
 		t.Errorf("activateBounce mock has another definition")
+	}
+	if mock.ListSuppressions().Definition().Operation.OperationID != "listSuppressions" {
+		t.Errorf("listSuppressions mock has another definition")
+	}
+	if mock.CreateSuppression().Definition().Operation.OperationID != "createSuppression" {
+		t.Errorf("createSuppression mock has another definition")
+	}
+	if mock.DeleteSuppression().Definition().Operation.OperationID != "deleteSuppression" {
+		t.Errorf("deleteSuppression mock has another definition")
 	}
 }

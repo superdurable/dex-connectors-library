@@ -29,6 +29,9 @@ type Mock struct {
 	listBounces          *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage]
 	getBounce            *connectormock.Query[postmark.GetBounceInput, postmark.Bounce]
 	activateBounce       *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce]
+	listSuppressions     *connectormock.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage]
+	createSuppression    *connectormock.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction]
+	deleteSuppression    *connectormock.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -47,6 +50,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		listBounces:          connectormock.NewQuery[postmark.ListBouncesInput, postmark.BouncePage](t, postmark.ListBouncesDefinition),
 		getBounce:            connectormock.NewQuery[postmark.GetBounceInput, postmark.Bounce](t, postmark.GetBounceDefinition),
 		activateBounce:       connectormock.NewMutation[postmark.ActivateBounceInput, postmark.Bounce](t, postmark.ActivateBounceDefinition),
+		listSuppressions:     connectormock.NewQuery[postmark.ListSuppressionsInput, postmark.SuppressionPage](t, postmark.ListSuppressionsDefinition),
+		createSuppression:    connectormock.NewMutation[postmark.CreateSuppressionInput, postmark.SuppressionAction](t, postmark.CreateSuppressionDefinition),
+		deleteSuppression:    connectormock.NewMutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction](t, postmark.DeleteSuppressionDefinition),
 	}
 	mock.listOutboundMessages.Default(ListOutboundMessagesDefault())
 	mock.getMessageDetails.Default(GetMessageDetailsDefault())
@@ -59,6 +65,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listBounces.Default(ListBouncesDefault())
 	mock.getBounce.Default(GetBounceDefault())
 	mock.activateBounce.Default(ActivateBounceDefault())
+	mock.listSuppressions.Default(ListSuppressionsDefault())
+	mock.createSuppression.Default(CreateSuppressionDefault())
+	mock.deleteSuppression.Default(DeleteSuppressionDefault())
 	connection, err := postmark.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "postmark", Name: connectionName})
 	if err != nil {
 		t.Fatalf("postmark mock connection: %v", err)
@@ -125,6 +134,21 @@ func (mock *Mock) ActivateBounce() *connectormock.Mutation[postmark.ActivateBoun
 	return mock.activateBounce
 }
 
+// ListSuppressions returns the listSuppressions script.
+func (mock *Mock) ListSuppressions() *connectormock.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage] {
+	return mock.listSuppressions
+}
+
+// CreateSuppression returns the createSuppression script.
+func (mock *Mock) CreateSuppression() *connectormock.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction] {
+	return mock.createSuppression
+}
+
+// DeleteSuppression returns the deleteSuppression script.
+func (mock *Mock) DeleteSuppression() *connectormock.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction] {
+	return mock.deleteSuppression
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage] {
@@ -159,6 +183,15 @@ func (operations mockOperations) GetBounce() sdkgo.Query[postmark.GetBounceInput
 }
 func (operations mockOperations) ActivateBounce() sdkgo.Mutation[postmark.ActivateBounceInput, postmark.Bounce] {
 	return operations.mock.activateBounce
+}
+func (operations mockOperations) ListSuppressions() sdkgo.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage] {
+	return operations.mock.listSuppressions
+}
+func (operations mockOperations) CreateSuppression() sdkgo.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction] {
+	return operations.mock.createSuppression
+}
+func (operations mockOperations) DeleteSuppression() sdkgo.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction] {
+	return operations.mock.deleteSuppression
 }
 
 // ListOutboundMessagesListed selects the listed branch: Postmark returned the requested result.
@@ -551,4 +584,112 @@ func ActivateBounceActivateBounceDefault() connectormock.Case[postmark.Bounce] {
 // ActivateBounceDefault is the manifest default, activateBounceDefault, which New installs.
 func ActivateBounceDefault() connectormock.Case[postmark.Bounce] {
 	return ActivateBounceActivateBounceDefault()
+}
+
+// ListSuppressionsListed selects the listed branch: Postmark confirmed the suppression outcome.
+func ListSuppressionsListed(value postmark.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Branch(postmark.ListSuppressionsBranchListed, value, failure)
+}
+
+// ListSuppressionsProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func ListSuppressionsProviderRejected(value postmark.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Branch(postmark.ListSuppressionsBranchProviderRejected, value, failure)
+}
+
+// ListSuppressionsInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func ListSuppressionsInvalidResponse(value postmark.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Branch(postmark.ListSuppressionsBranchInvalidResponse, value, failure)
+}
+
+// ListSuppressionsDefect selects the defect branch: Postmark defect outcome.
+func ListSuppressionsDefect(value postmark.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Branch(postmark.ListSuppressionsBranchDefect, value, failure)
+}
+
+// ListSuppressionsRetry asks Dex to retry the listSuppressions Step, after the delay when it is positive.
+func ListSuppressionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SuppressionPage] {
+	return connectormock.Retry[postmark.SuppressionPage](failure, after)
+}
+
+// ListSuppressionsListSuppressionsDefault is the manifest mock listSuppressionsDefault: Representative Postmark suppression response.
+func ListSuppressionsListSuppressionsDefault() connectormock.Case[postmark.SuppressionPage] {
+	value := connectormock.MustDecodeOutput[postmark.SuppressionPage](`{"suppressions":[{"emailAddress":"recipient@example.com","suppressionReason":"ManualSuppression","origin":"Customer"}]}`)
+	return connectormock.Branch(postmark.ListSuppressionsBranchListed, value, nil)
+}
+
+// ListSuppressionsDefault is the manifest default, listSuppressionsDefault, which New installs.
+func ListSuppressionsDefault() connectormock.Case[postmark.SuppressionPage] {
+	return ListSuppressionsListSuppressionsDefault()
+}
+
+// CreateSuppressionSuppressed selects the suppressed branch: Postmark confirmed the suppression outcome.
+func CreateSuppressionSuppressed(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.CreateSuppressionBranchSuppressed, value, failure)
+}
+
+// CreateSuppressionProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func CreateSuppressionProviderRejected(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.CreateSuppressionBranchProviderRejected, value, failure)
+}
+
+// CreateSuppressionInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func CreateSuppressionInvalidResponse(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.CreateSuppressionBranchInvalidResponse, value, failure)
+}
+
+// CreateSuppressionDefect selects the defect branch: Postmark defect outcome.
+func CreateSuppressionDefect(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.CreateSuppressionBranchDefect, value, failure)
+}
+
+// CreateSuppressionRetry asks Dex to retry the createSuppression Step, after the delay when it is positive.
+func CreateSuppressionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Retry[postmark.SuppressionAction](failure, after)
+}
+
+// CreateSuppressionCreateSuppressionDefault is the manifest mock createSuppressionDefault: Representative Postmark suppression response.
+func CreateSuppressionCreateSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
+	value := connectormock.MustDecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Suppressed"}`)
+	return connectormock.Branch(postmark.CreateSuppressionBranchSuppressed, value, nil)
+}
+
+// CreateSuppressionDefault is the manifest default, createSuppressionDefault, which New installs.
+func CreateSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
+	return CreateSuppressionCreateSuppressionDefault()
+}
+
+// DeleteSuppressionDeleted selects the deleted branch: Postmark confirmed the suppression outcome.
+func DeleteSuppressionDeleted(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.DeleteSuppressionBranchDeleted, value, failure)
+}
+
+// DeleteSuppressionProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func DeleteSuppressionProviderRejected(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.DeleteSuppressionBranchProviderRejected, value, failure)
+}
+
+// DeleteSuppressionInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func DeleteSuppressionInvalidResponse(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.DeleteSuppressionBranchInvalidResponse, value, failure)
+}
+
+// DeleteSuppressionDefect selects the defect branch: Postmark defect outcome.
+func DeleteSuppressionDefect(value postmark.SuppressionAction, failure *sdkgo.Failure) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Branch(postmark.DeleteSuppressionBranchDefect, value, failure)
+}
+
+// DeleteSuppressionRetry asks Dex to retry the deleteSuppression Step, after the delay when it is positive.
+func DeleteSuppressionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.SuppressionAction] {
+	return connectormock.Retry[postmark.SuppressionAction](failure, after)
+}
+
+// DeleteSuppressionDeleteSuppressionDefault is the manifest mock deleteSuppressionDefault: Representative Postmark suppression response.
+func DeleteSuppressionDeleteSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
+	value := connectormock.MustDecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Deleted"}`)
+	return connectormock.Branch(postmark.DeleteSuppressionBranchDeleted, value, nil)
+}
+
+// DeleteSuppressionDefault is the manifest default, deleteSuppressionDefault, which New installs.
+func DeleteSuppressionDefault() connectormock.Case[postmark.SuppressionAction] {
+	return DeleteSuppressionDeleteSuppressionDefault()
 }

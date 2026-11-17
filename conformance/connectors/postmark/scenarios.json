@@ -4434,6 +4434,1200 @@
       },
       "name": "activateBounce-defect",
       "operation": "activateBounce"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"Suppressions\":[{\"EmailAddress\":\"recipient@example.com\",\"SuppressionReason\":\"ManualSuppression\",\"Origin\":\"Customer\",\"CreatedAt\":\"2019-12-17T08:58:33-05:00\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/message-streams/outbound/suppressions/dump",
+          "query": {
+            "EmailAddress": [
+              "recipient@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "Suppressions": [
+            {
+              "CreatedAt": "2019-12-17T08:58:33-05:00",
+              "EmailAddress": "recipient@example.com",
+              "Origin": "Customer",
+              "SuppressionReason": "ManualSuppression"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "listSuppressions-success",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":500,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/message-streams/outbound/suppressions/dump",
+          "query": {
+            "EmailAddress": [
+              "recipient@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "Suppressions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "listSuppressions-provider-rejected",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/message-streams/outbound/suppressions/dump",
+          "query": {
+            "EmailAddress": [
+              "recipient@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "listSuppressions-rate-limited",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/message-streams/outbound/suppressions/dump",
+          "query": {
+            "EmailAddress": [
+              "recipient@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "listSuppressions-service-unavailable",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/message-streams/outbound/suppressions/dump",
+          "query": {
+            "EmailAddress": [
+              "recipient@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "listSuppressions-unknown-5xx",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/message-streams/outbound/suppressions/dump",
+          "query": {
+            "EmailAddress": [
+              "recipient@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "Suppressions": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "listSuppressions-invalid-response",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/message-streams/outbound/suppressions/dump",
+          "query": {
+            "EmailAddress": [
+              "recipient@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "listSuppressions-transport",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "Suppressions": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": ""
+      },
+      "name": "listSuppressions-defect",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{\"Suppressions\":[{\"EmailAddress\":\"recipient@example.com\",\"Status\":\"Suppressed\",\"Message\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "suppressed",
+        "failureKind": "",
+        "output": {
+          "EmailAddress": "recipient@example.com",
+          "Status": "Suppressed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-success",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":500,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "EmailAddress": "",
+          "Status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-provider-rejected",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-rate-limited",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-service-unavailable",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-unknown-5xx",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "EmailAddress": "",
+          "Status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-invalid-response",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "body": "{\"Suppressions\":[{\"EmailAddress\":\"recipient@example.com\",\"Status\":\"Failed\",\"Message\":\"No authority\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "EmailAddress": "",
+          "Status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-per-address-rejected",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-transport",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "2a483d98-d600-5103-8dd5-877f69763756",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "EmailAddress": "",
+          "Status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2a483d98-d600-5103-8dd5-877f69763756",
+      "input": {
+        "emailAddress": "",
+        "streamId": "outbound"
+      },
+      "name": "createSuppression-defect",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [
+        {
+          "body": "{\"Suppressions\":[{\"EmailAddress\":\"recipient@example.com\",\"Status\":\"Deleted\",\"Message\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions/delete",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "EmailAddress": "recipient@example.com",
+          "Status": "Deleted"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-success",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":500,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions/delete",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "EmailAddress": "",
+          "Status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-provider-rejected",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions/delete",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-rate-limited",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions/delete",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-service-unavailable",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions/delete",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-unknown-5xx",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions/delete",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "EmailAddress": "",
+          "Status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-invalid-response",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [
+        {
+          "body": "{\"Suppressions\":[{\"EmailAddress\":\"recipient@example.com\",\"Status\":\"Failed\",\"Message\":\"No authority\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions/delete",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "EmailAddress": "",
+          "Status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-per-address-rejected",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/message-streams/outbound/suppressions/delete",
+          "requestBody": {
+            "Suppressions": [
+              {
+                "EmailAddress": "recipient@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "recipient@example.com",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-transport",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "EmailAddress": "",
+          "Status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0708b4b6-940c-591a-ad47-5ca0a0ecf9a0",
+      "input": {
+        "emailAddress": "",
+        "streamId": "outbound"
+      },
+      "name": "deleteSuppression-defect",
+      "operation": "deleteSuppression"
     }
   ],
   "schemaVersion": 1

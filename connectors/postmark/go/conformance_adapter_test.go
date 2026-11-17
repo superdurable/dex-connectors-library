@@ -54,5 +54,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listBounces":          newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListBounces(), connection),
 		"getBounce":            newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetBounce(), connection),
 		"activateBounce":       newConformanceMutationInvocation(t, scenario.Input, sendContext, client.ActivateBounce(), connection, scenario.CallID),
+		"listSuppressions":     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListSuppressions(), connection),
+		"createSuppression":    newConformanceMutationInvocation(t, scenario.Input, sendContext, client.CreateSuppression(), connection, scenario.CallID),
+		"deleteSuppression":    newConformanceMutationInvocation(t, scenario.Input, sendContext, client.DeleteSuppression(), connection, scenario.CallID),
 	}}
 }

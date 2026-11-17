@@ -32,6 +32,9 @@ uses the static `postmark` connection and a real Dex Worker and Client.
 | `listBounces` | query | BouncePage |
 | `getBounce` | query | Bounce |
 | `activateBounce` | safe mutation | Bounce |
+| `listSuppressions` | query | SuppressionPage |
+| `createSuppression` | safe mutation | SuppressionAction |
+| `deleteSuppression` | safe mutation | SuppressionAction |
 
 `sendEmail` accepts one plain text message from a verified sender. Postmark does
 not document a deduplication key for sends, so the connector uses Dex's durable
@@ -48,6 +51,13 @@ content; `deleteTemplate` treats an already missing template as deleted.
 `listBounces` and `getBounce` inspect delivery failures for the current server.
 `activateBounce` applies Postmark's recipient reactivation action to a bounce ID;
 use it only after deciding the recipient should receive mail again.
+
+Suppression operations require a message stream ID from **Servers > select a
+server > Message Streams** at `https://account.postmarkapp.com/servers` and an
+email address. The list operation can filter by recipient. Create and delete
+apply the requested recipient state; a per-address `Failed` result selects
+`providerRejected`, even when Postmark returns HTTP 200. Postmark does not allow
+deletion of a spam-complaint suppression.
 
 ## Authorization
 
@@ -93,6 +103,7 @@ flow := NewFlow(mock.Connection())
 - [https://postmarkapp.com/developer/api/email-api](https://postmarkapp.com/developer/api/email-api)
 - [https://postmarkapp.com/developer/api/templates-api](https://postmarkapp.com/developer/api/templates-api)
 - [https://postmarkapp.com/developer/api/bounce-api](https://postmarkapp.com/developer/api/bounce-api)
+- [https://postmarkapp.com/developer/api/suppressions-api](https://postmarkapp.com/developer/api/suppressions-api)
 - [https://postmarkapp.com/developer/api/overview](https://postmarkapp.com/developer/api/overview)
 
 The HTTP unit tests verify request shapes and local classification against

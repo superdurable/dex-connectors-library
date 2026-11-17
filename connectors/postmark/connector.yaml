@@ -482,3 +482,112 @@ spec:
         email: recipient@example.com
         inactive: false
         canActivate: true
+  - name: listSuppressions
+    goName: ListSuppressions
+    inputType: ListSuppressionsInput
+    outputType: SuppressionPage
+    kind: query
+    description: ListSuppressions through the Postmark server-token Suppressions API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Postmark confirmed the suppression outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listSuppressionsDefault
+      branch: listed
+      description: Representative Postmark suppression response.
+      default: true
+      output:
+        suppressions:
+        - emailAddress: recipient@example.com
+          suppressionReason: ManualSuppression
+          origin: Customer
+  - name: createSuppression
+    goName: CreateSuppression
+    inputType: CreateSuppressionInput
+    outputType: SuppressionAction
+    kind: mutation
+    description: CreateSuppression through the Postmark server-token Suppressions API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: suppressed
+      goName: Suppressed
+      description: Postmark confirmed the suppression outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: createSuppressionDefault
+      branch: suppressed
+      description: Representative Postmark suppression response.
+      default: true
+      output:
+        emailAddress: recipient@example.com
+        status: Suppressed
+  - name: deleteSuppression
+    goName: DeleteSuppression
+    inputType: DeleteSuppressionInput
+    outputType: SuppressionAction
+    kind: mutation
+    description: DeleteSuppression through the Postmark server-token Suppressions API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: deleted
+      goName: Deleted
+      description: Postmark confirmed the suppression outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+      repeatOnUnknown: safe
+    mocks:
+    - name: deleteSuppressionDefault
+      branch: deleted
+      description: Representative Postmark suppression response.
+      default: true
+      output:
+        emailAddress: recipient@example.com
+        status: Deleted

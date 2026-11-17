@@ -7,7 +7,9 @@ registers `PostmarkSendEmail`, which accepts `outboundlookup.SendRequest`, calls
 accepts `outboundlookup.TemplateRequest`, calls `postmark.NewListTemplatesStep`,
 and returns `postmark.TemplatePage`. `PostmarkBounceList` accepts
 `outboundlookup.BounceRequest`, calls `postmark.NewListBouncesStep`, and returns
-`postmark.BouncePage`. The
+`postmark.BouncePage`. `PostmarkSuppressionList` accepts
+`outboundlookup.SuppressionRequest`, calls `postmark.NewListSuppressionsStep`,
+and returns `postmark.SuppressionPage`. The
 static Dex Web connection name is `postmark`. Optional failure branches are
 unwired and fail the Flow when selected.
 
@@ -58,6 +60,7 @@ go run ./examples/outbound-lookup
 Start `PostmarkOutboundLookup` in Dex Web with a JSON input matching `postmark.ListOutboundMessagesInput`.
 The mock backed real Dex test is `flow/workflow_mock_integration_test.go` and
 CI runs it with the integration tag. `TestMockBackedSendFlowWithRealDex` and
-`TestMockBackedTemplateFlowWithRealDex`, and `TestMockBackedBounceFlowWithRealDex`
+`TestMockBackedTemplateFlowWithRealDex`, `TestMockBackedBounceFlowWithRealDex`,
+and `TestMockBackedSuppressionFlowWithRealDex`
 exercise the new Flows through the same
 real Worker and Client path.
