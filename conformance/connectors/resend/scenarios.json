@@ -25969,6 +25969,2533 @@
       ],
       "name": "duplicateTemplate-send-cap",
       "operation": "duplicateTemplate"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"suppression\",\"id\":\"suppression-1\",\"email\":\"blocked@example.test\",\"origin\":\"manual\",\"source_id\":\"event-1\",\"created_at\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "2026-11-16T00:00:00Z",
+          "email": "blocked@example.test",
+          "id": "suppression-1",
+          "origin": "manual",
+          "source_id": "event-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "getSuppression-success",
+      "operation": "getSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created_at": "",
+          "email": "",
+          "id": "",
+          "origin": "",
+          "source_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "getSuppression-missing",
+      "operation": "getSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "email": "",
+          "id": "",
+          "origin": "",
+          "source_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "getSuppression-rejected",
+      "operation": "getSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created_at": "",
+          "email": "",
+          "id": "",
+          "origin": "",
+          "source_id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "getSuppression-invalid",
+      "operation": "getSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "email": "",
+          "id": "",
+          "origin": "",
+          "source_id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "suppression": ""
+      },
+      "name": "getSuppression-defect",
+      "operation": "getSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "getSuppression-rate",
+      "operation": "getSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "getSuppression-server",
+      "operation": "getSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "getSuppression-transport",
+      "operation": "getSuppression"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"suppression\",\"id\":\"suppression-1\",\"email\":\"blocked@example.test\",\"origin\":\"manual\",\"source_id\":\"event-1\",\"created_at\":\"2026-11-16T00:00:00Z\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions",
+          "query": {
+            "after": [
+              "suppression-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "origin": [
+              "manual"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-11-16T00:00:00Z",
+              "email": "blocked@example.test",
+              "id": "suppression-1",
+              "origin": "manual",
+              "source_id": "event-1"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "suppression-0",
+        "limit": 10,
+        "origin": "manual"
+      },
+      "name": "listSuppressions-success",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions",
+          "query": {
+            "after": [
+              "suppression-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "origin": [
+              "manual"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "suppression-0",
+        "limit": 10,
+        "origin": "manual"
+      },
+      "name": "listSuppressions-rejected",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions",
+          "query": {
+            "after": [
+              "suppression-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "origin": [
+              "manual"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "suppression-0",
+        "limit": 10,
+        "origin": "manual"
+      },
+      "name": "listSuppressions-invalid",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "suppression-0",
+        "limit": 10,
+        "origin": "invalid"
+      },
+      "name": "listSuppressions-defect",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions",
+          "query": {
+            "after": [
+              "suppression-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "origin": [
+              "manual"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "suppression-0",
+        "limit": 10,
+        "origin": "manual"
+      },
+      "name": "listSuppressions-rate",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions",
+          "query": {
+            "after": [
+              "suppression-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "origin": [
+              "manual"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "suppression-0",
+        "limit": 10,
+        "origin": "manual"
+      },
+      "name": "listSuppressions-server",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions",
+          "query": {
+            "after": [
+              "suppression-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "origin": [
+              "manual"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "suppression-0",
+        "limit": 10,
+        "origin": "manual"
+      },
+      "name": "listSuppressions-transport",
+      "operation": "listSuppressions"
+    },
+    {
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"suppression\",\"id\":\"suppression-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "suppression-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": "blocked@example.test"
+      },
+      "name": "createSuppression-success",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"suppression-1\"},{\"id\":\"suppression-2\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "data": [
+            {
+              "id": "suppression-1"
+            },
+            {
+              "id": "suppression-2"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchAddSuppressions-success",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": "blocked@example.test"
+      },
+      "name": "createSuppression-rejected",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchAddSuppressions-rejected",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": "blocked@example.test"
+      },
+      "name": "createSuppression-429",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchAddSuppressions-429",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": "blocked@example.test"
+      },
+      "name": "createSuppression-5xx",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchAddSuppressions-5xx",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": "blocked@example.test"
+      },
+      "name": "createSuppression-transport",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchAddSuppressions-transport",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": ""
+      },
+      "name": "createSuppression-defect",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": []
+      },
+      "name": "batchAddSuppressions-defect",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": "blocked@example.test"
+      },
+      "name": "createSuppression-conflict",
+      "operation": "createSuppression"
+    },
+    {
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchAddSuppressions-conflict",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "attempts": 2,
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"suppression\",\"id\":\"suppression-1\",\"email\":\"blocked@example.test\",\"origin\":\"manual\",\"source_id\":\"event-1\",\"created_at\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "suppression-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": "blocked@example.test"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSuppression-retry-readback",
+      "operation": "createSuppression"
+    },
+    {
+      "attempts": 2,
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"suppression\",\"id\":\"suppression-1\",\"email\":\"blocked@example.test\",\"origin\":\"manual\",\"source_id\":\"event-1\",\"created_at\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"object\":\"suppression\",\"id\":\"suppression-2\",\"email\":\"blocked2@example.test\",\"origin\":\"manual\",\"source_id\":\"event-1\",\"created_at\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked2@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": "suppression-1"
+            },
+            {
+              "id": "suppression-2"
+            }
+          ]
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "batchAddSuppressions-retry-readback",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "attempts": 3,
+      "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions",
+          "requestBody": {
+            "email": "blocked@example.test"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+      "input": {
+        "email": "blocked@example.test"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createSuppression-send-cap",
+      "operation": "createSuppression"
+    },
+    {
+      "attempts": 3,
+      "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/add",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "data": []
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "batchAddSuppressions-send-cap",
+      "operation": "batchAddSuppressions"
+    },
+    {
+      "callId": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"suppression-1\",\"deleted\":true},{\"id\":\"suppression-2\",\"deleted\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/remove",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "deleted": true,
+              "id": "suppression-1"
+            },
+            {
+              "deleted": true,
+              "id": "suppression-2"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchRemoveSuppressions-success",
+      "operation": "batchRemoveSuppressions"
+    },
+    {
+      "callId": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/remove",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchRemoveSuppressions-providerRejected",
+      "operation": "batchRemoveSuppressions"
+    },
+    {
+      "callId": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/remove",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchRemoveSuppressions-invalidResponse",
+      "operation": "batchRemoveSuppressions"
+    },
+    {
+      "callId": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "input": {
+        "emails": [
+          "blocked@example.test"
+        ],
+        "ids": [
+          "suppression-1"
+        ]
+      },
+      "name": "batchRemoveSuppressions-defect",
+      "operation": "batchRemoveSuppressions"
+    },
+    {
+      "callId": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/remove",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchRemoveSuppressions-429",
+      "operation": "batchRemoveSuppressions"
+    },
+    {
+      "callId": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/remove",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchRemoveSuppressions-5xx",
+      "operation": "batchRemoveSuppressions"
+    },
+    {
+      "callId": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/suppressions/batch/remove",
+          "requestBody": {
+            "emails": [
+              "blocked@example.test",
+              "blocked2@example.test"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5bc0e4ab-debe-5a3a-b957-02f96805406e",
+      "input": {
+        "emails": [
+          "blocked@example.test",
+          "blocked2@example.test"
+        ]
+      },
+      "name": "batchRemoveSuppressions-transport",
+      "operation": "batchRemoveSuppressions"
+    },
+    {
+      "callId": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"suppression\",\"id\":\"suppression-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "suppression-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "deleteSuppression-success",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "deleteSuppression-notFound",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "deleteSuppression-rejected",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "deleteSuppression-invalid",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "deleteSuppression-429",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "deleteSuppression-5xx",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/suppressions/blocked@example.test",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "input": {
+        "suppression": "blocked@example.test"
+      },
+      "name": "deleteSuppression-transport",
+      "operation": "deleteSuppression"
+    },
+    {
+      "callId": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5789b264-e16c-50d5-b6ac-6af262073199",
+      "input": {
+        "suppression": ""
+      },
+      "name": "deleteSuppression-defect",
+      "operation": "deleteSuppression"
     }
   ],
   "schemaVersion": 1

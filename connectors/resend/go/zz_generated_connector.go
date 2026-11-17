@@ -107,6 +107,12 @@ type Operations interface {
 	DeleteTemplate() sdkgo.Mutation[DeleteTemplateInput, DeletedTemplate]
 	PublishTemplate() sdkgo.Mutation[PublishTemplateInput, TemplateReference]
 	DuplicateTemplate() sdkgo.Mutation[DuplicateTemplateInput, TemplateReference]
+	CreateSuppression() sdkgo.Mutation[CreateSuppressionInput, SuppressionReference]
+	ListSuppressions() sdkgo.Query[ListSuppressionsInput, SuppressionPage]
+	GetSuppression() sdkgo.Query[GetSuppressionInput, Suppression]
+	DeleteSuppression() sdkgo.Mutation[DeleteSuppressionInput, DeletedSuppression]
+	BatchAddSuppressions() sdkgo.Mutation[BatchAddSuppressionsInput, SuppressionBatch]
+	BatchRemoveSuppressions() sdkgo.Mutation[BatchRemoveSuppressionsInput, RemovedSuppressionBatch]
 }
 
 type clientOperations struct{ client *Client }
@@ -311,6 +317,24 @@ func (operations clientOperations) PublishTemplate() sdkgo.Mutation[PublishTempl
 }
 func (operations clientOperations) DuplicateTemplate() sdkgo.Mutation[DuplicateTemplateInput, TemplateReference] {
 	return operations.client.DuplicateTemplate()
+}
+func (operations clientOperations) CreateSuppression() sdkgo.Mutation[CreateSuppressionInput, SuppressionReference] {
+	return operations.client.CreateSuppression()
+}
+func (operations clientOperations) ListSuppressions() sdkgo.Query[ListSuppressionsInput, SuppressionPage] {
+	return operations.client.ListSuppressions()
+}
+func (operations clientOperations) GetSuppression() sdkgo.Query[GetSuppressionInput, Suppression] {
+	return operations.client.GetSuppression()
+}
+func (operations clientOperations) DeleteSuppression() sdkgo.Mutation[DeleteSuppressionInput, DeletedSuppression] {
+	return operations.client.DeleteSuppression()
+}
+func (operations clientOperations) BatchAddSuppressions() sdkgo.Mutation[BatchAddSuppressionsInput, SuppressionBatch] {
+	return operations.client.BatchAddSuppressions()
+}
+func (operations clientOperations) BatchRemoveSuppressions() sdkgo.Mutation[BatchRemoveSuppressionsInput, RemovedSuppressionBatch] {
+	return operations.client.BatchRemoveSuppressions()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -5470,5 +5494,455 @@ func NewDuplicateTemplateStep[IN any](config DuplicateTemplateStepConfig[IN]) sd
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateSuppressionBranchCreated sdkgo.BranchID = "created"
+const CreateSuppressionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSuppressionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateSuppressionBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateSuppressionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSuppression"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSuppressionBranchCreated, Description: "Resend completed the suppression request."},
+		{ID: CreateSuppressionBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateSuppressionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateSuppressionBranchUncertain, Description: "Bounded sends ended without confirming suppression.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateSuppressionResult = sdkgo.MutationResult[SuppressionReference]
+
+type CreateSuppressionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=resend"`
+	operationID                       struct{}                                                   `connector:"operationId=createSuppression"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSuppressionInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSuppressionResult]                      `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSuppressionResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateSuppressionResult]                      `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateSuppressionResult]                      `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SuppressionReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateSuppressionStep[IN any](config CreateSuppressionStepConfig[IN]) sdkgo.MutationStep[IN, CreateSuppressionInput, SuppressionReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSuppressionInput, SuppressionReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateSuppression(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSuppressionResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSuppressionResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSuppressionBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSuppressionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSuppressionBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateSuppressionBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListSuppressionsBranchListed sdkgo.BranchID = "listed"
+const ListSuppressionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSuppressionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSuppressionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSuppressionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSuppressions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSuppressionsBranchListed, Description: "Resend completed the suppression request."},
+		{ID: ListSuppressionsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListSuppressionsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListSuppressionsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSuppressionsResult = sdkgo.QueryResult[SuppressionPage]
+
+type ListSuppressionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=resend"`
+	operationID                    struct{}                                           `connector:"operationId=listSuppressions"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSuppressionsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSuppressionsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSuppressionsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSuppressionsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSuppressionsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SuppressionPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListSuppressionsStep[IN any](config ListSuppressionsStepConfig[IN]) sdkgo.QueryStep[IN, ListSuppressionsInput, SuppressionPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSuppressionsInput, SuppressionPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSuppressions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSuppressionsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSuppressionsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSuppressionsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSuppressionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSuppressionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSuppressionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSuppressionBranchFound sdkgo.BranchID = "found"
+const GetSuppressionBranchNotFound sdkgo.BranchID = "notFound"
+const GetSuppressionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSuppressionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSuppressionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSuppressionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSuppression"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSuppressionBranchFound, Description: "Resend completed the suppression request."},
+		{ID: GetSuppressionBranchNotFound, Description: "The suppression does not exist.", Optional: true},
+		{ID: GetSuppressionBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetSuppressionBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetSuppressionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSuppressionResult = sdkgo.QueryResult[Suppression]
+
+type GetSuppressionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=resend"`
+	operationID                    struct{}                                       `connector:"operationId=getSuppression"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSuppressionInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSuppressionResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSuppressionResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSuppressionResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSuppressionResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSuppressionResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Suppression]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetSuppressionStep[IN any](config GetSuppressionStepConfig[IN]) sdkgo.QueryStep[IN, GetSuppressionInput, Suppression] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSuppressionInput, Suppression]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSuppression(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSuppressionResult] {
+			branches := make([]sdkgo.BranchTarget[GetSuppressionResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSuppressionBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSuppressionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSuppressionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSuppressionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSuppressionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSuppressionBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSuppressionBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteSuppressionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSuppressionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteSuppressionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSuppressionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSuppression"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSuppressionBranchDeleted, Description: "Resend completed the suppression request."},
+		{ID: DeleteSuppressionBranchNotFound, Description: "The suppression does not exist.", Optional: true},
+		{ID: DeleteSuppressionBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DeleteSuppressionBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: DeleteSuppressionBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSuppressionResult = sdkgo.MutationResult[DeletedSuppression]
+
+type DeleteSuppressionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=resend"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteSuppression"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSuppressionInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSuppressionResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteSuppressionResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteSuppressionResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteSuppressionResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteSuppressionResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedSuppression]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSuppressionStep[IN any](config DeleteSuppressionStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSuppressionInput, DeletedSuppression] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSuppressionInput, DeletedSuppression]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSuppression(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSuppressionResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSuppressionResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSuppressionBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteSuppressionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSuppressionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteSuppressionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSuppressionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const BatchAddSuppressionsBranchAdded sdkgo.BranchID = "added"
+const BatchAddSuppressionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const BatchAddSuppressionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const BatchAddSuppressionsBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var BatchAddSuppressionsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "batchAddSuppressions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: BatchAddSuppressionsBranchAdded, Description: "Resend completed the suppression request."},
+		{ID: BatchAddSuppressionsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: BatchAddSuppressionsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: BatchAddSuppressionsBranchUncertain, Description: "Bounded sends ended without confirming suppression.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type BatchAddSuppressionsResult = sdkgo.MutationResult[SuppressionBatch]
+
+type BatchAddSuppressionsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=resend"`
+	operationID                       struct{}                                               `connector:"operationId=batchAddSuppressions"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) BatchAddSuppressionsInput                     `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[BatchAddSuppressionsResult]               `connector:"branch=added"`
+	ProviderRejected                  sdkgo.Target[BatchAddSuppressionsResult]               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[BatchAddSuppressionsResult]               `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[BatchAddSuppressionsResult]               `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SuppressionBatch]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewBatchAddSuppressionsStep[IN any](config BatchAddSuppressionsStepConfig[IN]) sdkgo.MutationStep[IN, BatchAddSuppressionsInput, SuppressionBatch] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, BatchAddSuppressionsInput, SuppressionBatch]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.BatchAddSuppressions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[BatchAddSuppressionsResult] {
+			branches := make([]sdkgo.BranchTarget[BatchAddSuppressionsResult], 0, 4)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(BatchAddSuppressionsBranchAdded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(BatchAddSuppressionsBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(BatchAddSuppressionsBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(BatchAddSuppressionsBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const BatchRemoveSuppressionsBranchRemoved sdkgo.BranchID = "removed"
+const BatchRemoveSuppressionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const BatchRemoveSuppressionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const BatchRemoveSuppressionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var BatchRemoveSuppressionsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "batchRemoveSuppressions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: BatchRemoveSuppressionsBranchRemoved, Description: "Resend completed the suppression request."},
+		{ID: BatchRemoveSuppressionsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: BatchRemoveSuppressionsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: BatchRemoveSuppressionsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type BatchRemoveSuppressionsResult = sdkgo.MutationResult[RemovedSuppressionBatch]
+
+type BatchRemoveSuppressionsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                      `connector:"connectorId=resend"`
+	operationID                       struct{}                                                      `connector:"operationId=batchRemoveSuppressions"`
+	StepType                          string                                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                        Connection                                                    `connector:"connection"`
+	ConnectionName                    string                                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) BatchRemoveSuppressionsInput                         `connector:"mapToOperationInput"`
+	Removed                           sdkgo.Target[BatchRemoveSuppressionsResult]                   `connector:"branch=removed"`
+	ProviderRejected                  sdkgo.Target[BatchRemoveSuppressionsResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[BatchRemoveSuppressionsResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[BatchRemoveSuppressionsResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RemovedSuppressionBatch]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewBatchRemoveSuppressionsStep[IN any](config BatchRemoveSuppressionsStepConfig[IN]) sdkgo.MutationStep[IN, BatchRemoveSuppressionsInput, RemovedSuppressionBatch] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, BatchRemoveSuppressionsInput, RemovedSuppressionBatch]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.BatchRemoveSuppressions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[BatchRemoveSuppressionsResult] {
+			branches := make([]sdkgo.BranchTarget[BatchRemoveSuppressionsResult], 0, 4)
+			if config.Removed.HasStep() {
+				branches = append(branches, config.Removed.BranchTarget(BatchRemoveSuppressionsBranchRemoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(BatchRemoveSuppressionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(BatchRemoveSuppressionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(BatchRemoveSuppressionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }

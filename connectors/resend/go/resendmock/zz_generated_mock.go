@@ -85,6 +85,12 @@ type Mock struct {
 	deleteTemplate               *connectormock.Mutation[resend.DeleteTemplateInput, resend.DeletedTemplate]
 	publishTemplate              *connectormock.Mutation[resend.PublishTemplateInput, resend.TemplateReference]
 	duplicateTemplate            *connectormock.Mutation[resend.DuplicateTemplateInput, resend.TemplateReference]
+	createSuppression            *connectormock.Mutation[resend.CreateSuppressionInput, resend.SuppressionReference]
+	listSuppressions             *connectormock.Query[resend.ListSuppressionsInput, resend.SuppressionPage]
+	getSuppression               *connectormock.Query[resend.GetSuppressionInput, resend.Suppression]
+	deleteSuppression            *connectormock.Mutation[resend.DeleteSuppressionInput, resend.DeletedSuppression]
+	batchAddSuppressions         *connectormock.Mutation[resend.BatchAddSuppressionsInput, resend.SuppressionBatch]
+	batchRemoveSuppressions      *connectormock.Mutation[resend.BatchRemoveSuppressionsInput, resend.RemovedSuppressionBatch]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -159,6 +165,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteTemplate:               connectormock.NewMutation[resend.DeleteTemplateInput, resend.DeletedTemplate](t, resend.DeleteTemplateDefinition),
 		publishTemplate:              connectormock.NewMutation[resend.PublishTemplateInput, resend.TemplateReference](t, resend.PublishTemplateDefinition),
 		duplicateTemplate:            connectormock.NewMutation[resend.DuplicateTemplateInput, resend.TemplateReference](t, resend.DuplicateTemplateDefinition),
+		createSuppression:            connectormock.NewMutation[resend.CreateSuppressionInput, resend.SuppressionReference](t, resend.CreateSuppressionDefinition),
+		listSuppressions:             connectormock.NewQuery[resend.ListSuppressionsInput, resend.SuppressionPage](t, resend.ListSuppressionsDefinition),
+		getSuppression:               connectormock.NewQuery[resend.GetSuppressionInput, resend.Suppression](t, resend.GetSuppressionDefinition),
+		deleteSuppression:            connectormock.NewMutation[resend.DeleteSuppressionInput, resend.DeletedSuppression](t, resend.DeleteSuppressionDefinition),
+		batchAddSuppressions:         connectormock.NewMutation[resend.BatchAddSuppressionsInput, resend.SuppressionBatch](t, resend.BatchAddSuppressionsDefinition),
+		batchRemoveSuppressions:      connectormock.NewMutation[resend.BatchRemoveSuppressionsInput, resend.RemovedSuppressionBatch](t, resend.BatchRemoveSuppressionsDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -227,6 +239,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.deleteTemplate.Default(DeleteTemplateDefault())
 	mock.publishTemplate.Default(PublishTemplateDefault())
 	mock.duplicateTemplate.Default(DuplicateTemplateDefault())
+	mock.createSuppression.Default(CreateSuppressionDefault())
+	mock.listSuppressions.Default(ListSuppressionsDefault())
+	mock.getSuppression.Default(GetSuppressionDefault())
+	mock.deleteSuppression.Default(DeleteSuppressionDefault())
+	mock.batchAddSuppressions.Default(BatchAddSuppressionsDefault())
+	mock.batchRemoveSuppressions.Default(BatchRemoveSuppressionsDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -573,6 +591,36 @@ func (mock *Mock) DuplicateTemplate() *connectormock.Mutation[resend.DuplicateTe
 	return mock.duplicateTemplate
 }
 
+// CreateSuppression returns the createSuppression script.
+func (mock *Mock) CreateSuppression() *connectormock.Mutation[resend.CreateSuppressionInput, resend.SuppressionReference] {
+	return mock.createSuppression
+}
+
+// ListSuppressions returns the listSuppressions script.
+func (mock *Mock) ListSuppressions() *connectormock.Query[resend.ListSuppressionsInput, resend.SuppressionPage] {
+	return mock.listSuppressions
+}
+
+// GetSuppression returns the getSuppression script.
+func (mock *Mock) GetSuppression() *connectormock.Query[resend.GetSuppressionInput, resend.Suppression] {
+	return mock.getSuppression
+}
+
+// DeleteSuppression returns the deleteSuppression script.
+func (mock *Mock) DeleteSuppression() *connectormock.Mutation[resend.DeleteSuppressionInput, resend.DeletedSuppression] {
+	return mock.deleteSuppression
+}
+
+// BatchAddSuppressions returns the batchAddSuppressions script.
+func (mock *Mock) BatchAddSuppressions() *connectormock.Mutation[resend.BatchAddSuppressionsInput, resend.SuppressionBatch] {
+	return mock.batchAddSuppressions
+}
+
+// BatchRemoveSuppressions returns the batchRemoveSuppressions script.
+func (mock *Mock) BatchRemoveSuppressions() *connectormock.Mutation[resend.BatchRemoveSuppressionsInput, resend.RemovedSuppressionBatch] {
+	return mock.batchRemoveSuppressions
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -775,6 +823,24 @@ func (operations mockOperations) PublishTemplate() sdkgo.Mutation[resend.Publish
 }
 func (operations mockOperations) DuplicateTemplate() sdkgo.Mutation[resend.DuplicateTemplateInput, resend.TemplateReference] {
 	return operations.mock.duplicateTemplate
+}
+func (operations mockOperations) CreateSuppression() sdkgo.Mutation[resend.CreateSuppressionInput, resend.SuppressionReference] {
+	return operations.mock.createSuppression
+}
+func (operations mockOperations) ListSuppressions() sdkgo.Query[resend.ListSuppressionsInput, resend.SuppressionPage] {
+	return operations.mock.listSuppressions
+}
+func (operations mockOperations) GetSuppression() sdkgo.Query[resend.GetSuppressionInput, resend.Suppression] {
+	return operations.mock.getSuppression
+}
+func (operations mockOperations) DeleteSuppression() sdkgo.Mutation[resend.DeleteSuppressionInput, resend.DeletedSuppression] {
+	return operations.mock.deleteSuppression
+}
+func (operations mockOperations) BatchAddSuppressions() sdkgo.Mutation[resend.BatchAddSuppressionsInput, resend.SuppressionBatch] {
+	return operations.mock.batchAddSuppressions
+}
+func (operations mockOperations) BatchRemoveSuppressions() sdkgo.Mutation[resend.BatchRemoveSuppressionsInput, resend.RemovedSuppressionBatch] {
+	return operations.mock.batchRemoveSuppressions
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -3323,4 +3389,230 @@ func DuplicateTemplateDuplicateTemplateDefault() connectormock.Case[resend.Templ
 // DuplicateTemplateDefault is the manifest default, duplicateTemplateDefault, which New installs.
 func DuplicateTemplateDefault() connectormock.Case[resend.TemplateReference] {
 	return DuplicateTemplateDuplicateTemplateDefault()
+}
+
+// CreateSuppressionCreated selects the created branch: Resend completed the suppression request.
+func CreateSuppressionCreated(value resend.SuppressionReference, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionReference] {
+	return connectormock.Branch(resend.CreateSuppressionBranchCreated, value, failure)
+}
+
+// CreateSuppressionProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateSuppressionProviderRejected(value resend.SuppressionReference, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionReference] {
+	return connectormock.Branch(resend.CreateSuppressionBranchProviderRejected, value, failure)
+}
+
+// CreateSuppressionDefect selects the defect branch: Local input or credentials are invalid.
+func CreateSuppressionDefect(value resend.SuppressionReference, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionReference] {
+	return connectormock.Branch(resend.CreateSuppressionBranchDefect, value, failure)
+}
+
+// CreateSuppressionUncertain returns an uncertain createSuppression outcome.
+func CreateSuppressionUncertain(value resend.SuppressionReference, failure sdkgo.Failure) connectormock.Case[resend.SuppressionReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateSuppressionRetry asks Dex to retry the createSuppression Step, after the delay when it is positive.
+func CreateSuppressionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SuppressionReference] {
+	return connectormock.Retry[resend.SuppressionReference](failure, after)
+}
+
+// CreateSuppressionCreateSuppressionDefault is the manifest mock createSuppressionDefault: Resend completed the suppression request.
+func CreateSuppressionCreateSuppressionDefault() connectormock.Case[resend.SuppressionReference] {
+	value := connectormock.MustDecodeOutput[resend.SuppressionReference](`{"id":"suppression-1"}`)
+	return connectormock.Branch(resend.CreateSuppressionBranchCreated, value, nil)
+}
+
+// CreateSuppressionDefault is the manifest default, createSuppressionDefault, which New installs.
+func CreateSuppressionDefault() connectormock.Case[resend.SuppressionReference] {
+	return CreateSuppressionCreateSuppressionDefault()
+}
+
+// ListSuppressionsListed selects the listed branch: Resend completed the suppression request.
+func ListSuppressionsListed(value resend.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionPage] {
+	return connectormock.Branch(resend.ListSuppressionsBranchListed, value, failure)
+}
+
+// ListSuppressionsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListSuppressionsProviderRejected(value resend.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionPage] {
+	return connectormock.Branch(resend.ListSuppressionsBranchProviderRejected, value, failure)
+}
+
+// ListSuppressionsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListSuppressionsInvalidResponse(value resend.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionPage] {
+	return connectormock.Branch(resend.ListSuppressionsBranchInvalidResponse, value, failure)
+}
+
+// ListSuppressionsDefect selects the defect branch: Local input or credentials are invalid.
+func ListSuppressionsDefect(value resend.SuppressionPage, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionPage] {
+	return connectormock.Branch(resend.ListSuppressionsBranchDefect, value, failure)
+}
+
+// ListSuppressionsRetry asks Dex to retry the listSuppressions Step, after the delay when it is positive.
+func ListSuppressionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SuppressionPage] {
+	return connectormock.Retry[resend.SuppressionPage](failure, after)
+}
+
+// ListSuppressionsListSuppressionsDefault is the manifest mock listSuppressionsDefault: Resend completed the suppression request.
+func ListSuppressionsListSuppressionsDefault() connectormock.Case[resend.SuppressionPage] {
+	value := connectormock.MustDecodeOutput[resend.SuppressionPage](`{"data":[{"id":"suppression-1","email":"blocked@example.test","origin":"manual"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListSuppressionsBranchListed, value, nil)
+}
+
+// ListSuppressionsDefault is the manifest default, listSuppressionsDefault, which New installs.
+func ListSuppressionsDefault() connectormock.Case[resend.SuppressionPage] {
+	return ListSuppressionsListSuppressionsDefault()
+}
+
+// GetSuppressionFound selects the found branch: Resend completed the suppression request.
+func GetSuppressionFound(value resend.Suppression, failure *sdkgo.Failure) connectormock.Case[resend.Suppression] {
+	return connectormock.Branch(resend.GetSuppressionBranchFound, value, failure)
+}
+
+// GetSuppressionNotFound selects the notFound branch: The suppression does not exist.
+func GetSuppressionNotFound(value resend.Suppression, failure *sdkgo.Failure) connectormock.Case[resend.Suppression] {
+	return connectormock.Branch(resend.GetSuppressionBranchNotFound, value, failure)
+}
+
+// GetSuppressionProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetSuppressionProviderRejected(value resend.Suppression, failure *sdkgo.Failure) connectormock.Case[resend.Suppression] {
+	return connectormock.Branch(resend.GetSuppressionBranchProviderRejected, value, failure)
+}
+
+// GetSuppressionInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetSuppressionInvalidResponse(value resend.Suppression, failure *sdkgo.Failure) connectormock.Case[resend.Suppression] {
+	return connectormock.Branch(resend.GetSuppressionBranchInvalidResponse, value, failure)
+}
+
+// GetSuppressionDefect selects the defect branch: Local input or credentials are invalid.
+func GetSuppressionDefect(value resend.Suppression, failure *sdkgo.Failure) connectormock.Case[resend.Suppression] {
+	return connectormock.Branch(resend.GetSuppressionBranchDefect, value, failure)
+}
+
+// GetSuppressionRetry asks Dex to retry the getSuppression Step, after the delay when it is positive.
+func GetSuppressionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Suppression] {
+	return connectormock.Retry[resend.Suppression](failure, after)
+}
+
+// GetSuppressionGetSuppressionDefault is the manifest mock getSuppressionDefault: Resend completed the suppression request.
+func GetSuppressionGetSuppressionDefault() connectormock.Case[resend.Suppression] {
+	value := connectormock.MustDecodeOutput[resend.Suppression](`{"id":"suppression-1","email":"blocked@example.test","origin":"manual"}`)
+	return connectormock.Branch(resend.GetSuppressionBranchFound, value, nil)
+}
+
+// GetSuppressionDefault is the manifest default, getSuppressionDefault, which New installs.
+func GetSuppressionDefault() connectormock.Case[resend.Suppression] {
+	return GetSuppressionGetSuppressionDefault()
+}
+
+// DeleteSuppressionDeleted selects the deleted branch: Resend completed the suppression request.
+func DeleteSuppressionDeleted(value resend.DeletedSuppression, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSuppression] {
+	return connectormock.Branch(resend.DeleteSuppressionBranchDeleted, value, failure)
+}
+
+// DeleteSuppressionNotFound selects the notFound branch: The suppression does not exist.
+func DeleteSuppressionNotFound(value resend.DeletedSuppression, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSuppression] {
+	return connectormock.Branch(resend.DeleteSuppressionBranchNotFound, value, failure)
+}
+
+// DeleteSuppressionProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteSuppressionProviderRejected(value resend.DeletedSuppression, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSuppression] {
+	return connectormock.Branch(resend.DeleteSuppressionBranchProviderRejected, value, failure)
+}
+
+// DeleteSuppressionInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteSuppressionInvalidResponse(value resend.DeletedSuppression, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSuppression] {
+	return connectormock.Branch(resend.DeleteSuppressionBranchInvalidResponse, value, failure)
+}
+
+// DeleteSuppressionDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteSuppressionDefect(value resend.DeletedSuppression, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSuppression] {
+	return connectormock.Branch(resend.DeleteSuppressionBranchDefect, value, failure)
+}
+
+// DeleteSuppressionRetry asks Dex to retry the deleteSuppression Step, after the delay when it is positive.
+func DeleteSuppressionRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedSuppression] {
+	return connectormock.Retry[resend.DeletedSuppression](failure, after)
+}
+
+// DeleteSuppressionDeleteSuppressionDefault is the manifest mock deleteSuppressionDefault: Resend completed the suppression request.
+func DeleteSuppressionDeleteSuppressionDefault() connectormock.Case[resend.DeletedSuppression] {
+	value := connectormock.MustDecodeOutput[resend.DeletedSuppression](`{"id":"suppression-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteSuppressionBranchDeleted, value, nil)
+}
+
+// DeleteSuppressionDefault is the manifest default, deleteSuppressionDefault, which New installs.
+func DeleteSuppressionDefault() connectormock.Case[resend.DeletedSuppression] {
+	return DeleteSuppressionDeleteSuppressionDefault()
+}
+
+// BatchAddSuppressionsAdded selects the added branch: Resend completed the suppression request.
+func BatchAddSuppressionsAdded(value resend.SuppressionBatch, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionBatch] {
+	return connectormock.Branch(resend.BatchAddSuppressionsBranchAdded, value, failure)
+}
+
+// BatchAddSuppressionsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func BatchAddSuppressionsProviderRejected(value resend.SuppressionBatch, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionBatch] {
+	return connectormock.Branch(resend.BatchAddSuppressionsBranchProviderRejected, value, failure)
+}
+
+// BatchAddSuppressionsDefect selects the defect branch: Local input or credentials are invalid.
+func BatchAddSuppressionsDefect(value resend.SuppressionBatch, failure *sdkgo.Failure) connectormock.Case[resend.SuppressionBatch] {
+	return connectormock.Branch(resend.BatchAddSuppressionsBranchDefect, value, failure)
+}
+
+// BatchAddSuppressionsUncertain returns an uncertain batchAddSuppressions outcome.
+func BatchAddSuppressionsUncertain(value resend.SuppressionBatch, failure sdkgo.Failure) connectormock.Case[resend.SuppressionBatch] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// BatchAddSuppressionsRetry asks Dex to retry the batchAddSuppressions Step, after the delay when it is positive.
+func BatchAddSuppressionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SuppressionBatch] {
+	return connectormock.Retry[resend.SuppressionBatch](failure, after)
+}
+
+// BatchAddSuppressionsBatchAddSuppressionsDefault is the manifest mock batchAddSuppressionsDefault: Resend completed the suppression request.
+func BatchAddSuppressionsBatchAddSuppressionsDefault() connectormock.Case[resend.SuppressionBatch] {
+	value := connectormock.MustDecodeOutput[resend.SuppressionBatch](`{"data":[{"id":"suppression-1"}]}`)
+	return connectormock.Branch(resend.BatchAddSuppressionsBranchAdded, value, nil)
+}
+
+// BatchAddSuppressionsDefault is the manifest default, batchAddSuppressionsDefault, which New installs.
+func BatchAddSuppressionsDefault() connectormock.Case[resend.SuppressionBatch] {
+	return BatchAddSuppressionsBatchAddSuppressionsDefault()
+}
+
+// BatchRemoveSuppressionsRemoved selects the removed branch: Resend completed the suppression request.
+func BatchRemoveSuppressionsRemoved(value resend.RemovedSuppressionBatch, failure *sdkgo.Failure) connectormock.Case[resend.RemovedSuppressionBatch] {
+	return connectormock.Branch(resend.BatchRemoveSuppressionsBranchRemoved, value, failure)
+}
+
+// BatchRemoveSuppressionsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func BatchRemoveSuppressionsProviderRejected(value resend.RemovedSuppressionBatch, failure *sdkgo.Failure) connectormock.Case[resend.RemovedSuppressionBatch] {
+	return connectormock.Branch(resend.BatchRemoveSuppressionsBranchProviderRejected, value, failure)
+}
+
+// BatchRemoveSuppressionsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func BatchRemoveSuppressionsInvalidResponse(value resend.RemovedSuppressionBatch, failure *sdkgo.Failure) connectormock.Case[resend.RemovedSuppressionBatch] {
+	return connectormock.Branch(resend.BatchRemoveSuppressionsBranchInvalidResponse, value, failure)
+}
+
+// BatchRemoveSuppressionsDefect selects the defect branch: Local input or credentials are invalid.
+func BatchRemoveSuppressionsDefect(value resend.RemovedSuppressionBatch, failure *sdkgo.Failure) connectormock.Case[resend.RemovedSuppressionBatch] {
+	return connectormock.Branch(resend.BatchRemoveSuppressionsBranchDefect, value, failure)
+}
+
+// BatchRemoveSuppressionsRetry asks Dex to retry the batchRemoveSuppressions Step, after the delay when it is positive.
+func BatchRemoveSuppressionsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.RemovedSuppressionBatch] {
+	return connectormock.Retry[resend.RemovedSuppressionBatch](failure, after)
+}
+
+// BatchRemoveSuppressionsBatchRemoveSuppressionsDefault is the manifest mock batchRemoveSuppressionsDefault: Resend completed the suppression request.
+func BatchRemoveSuppressionsBatchRemoveSuppressionsDefault() connectormock.Case[resend.RemovedSuppressionBatch] {
+	value := connectormock.MustDecodeOutput[resend.RemovedSuppressionBatch](`{"data":[{"id":"suppression-1","deleted":true}]}`)
+	return connectormock.Branch(resend.BatchRemoveSuppressionsBranchRemoved, value, nil)
+}
+
+// BatchRemoveSuppressionsDefault is the manifest default, batchRemoveSuppressionsDefault, which New installs.
+func BatchRemoveSuppressionsDefault() connectormock.Case[resend.RemovedSuppressionBatch] {
+	return BatchRemoveSuppressionsBatchRemoveSuppressionsDefault()
 }

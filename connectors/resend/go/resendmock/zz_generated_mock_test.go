@@ -284,6 +284,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.TemplateReference](`{"id":"template-2"}`)
 			return err
 		}},
+		{name: "createSuppression/createSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SuppressionReference](`{"id":"suppression-1"}`)
+			return err
+		}},
+		{name: "listSuppressions/listSuppressionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SuppressionPage](`{"data":[{"id":"suppression-1","email":"blocked@example.test","origin":"manual"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getSuppression/getSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Suppression](`{"id":"suppression-1","email":"blocked@example.test","origin":"manual"}`)
+			return err
+		}},
+		{name: "deleteSuppression/deleteSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedSuppression](`{"id":"suppression-1","deleted":true}`)
+			return err
+		}},
+		{name: "batchAddSuppressions/batchAddSuppressionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SuppressionBatch](`{"data":[{"id":"suppression-1"}]}`)
+			return err
+		}},
+		{name: "batchRemoveSuppressions/batchRemoveSuppressionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.RemovedSuppressionBatch](`{"data":[{"id":"suppression-1","deleted":true}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -494,5 +518,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DuplicateTemplate().Definition().Operation.OperationID != "duplicateTemplate" {
 		t.Errorf("duplicateTemplate mock has another definition")
+	}
+	if mock.CreateSuppression().Definition().Operation.OperationID != "createSuppression" {
+		t.Errorf("createSuppression mock has another definition")
+	}
+	if mock.ListSuppressions().Definition().Operation.OperationID != "listSuppressions" {
+		t.Errorf("listSuppressions mock has another definition")
+	}
+	if mock.GetSuppression().Definition().Operation.OperationID != "getSuppression" {
+		t.Errorf("getSuppression mock has another definition")
+	}
+	if mock.DeleteSuppression().Definition().Operation.OperationID != "deleteSuppression" {
+		t.Errorf("deleteSuppression mock has another definition")
+	}
+	if mock.BatchAddSuppressions().Definition().Operation.OperationID != "batchAddSuppressions" {
+		t.Errorf("batchAddSuppressions mock has another definition")
+	}
+	if mock.BatchRemoveSuppressions().Definition().Operation.OperationID != "batchRemoveSuppressions" {
+		t.Errorf("batchRemoveSuppressions mock has another definition")
 	}
 }

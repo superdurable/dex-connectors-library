@@ -236,6 +236,14 @@ Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and
 credentials never enter a Dex result, receipt, Stream, or log.
 
+## Suppressions
+
+`CreateSuppression` and `BatchAddSuppressions` use bounded `limited` retries
+and read back addresses after an unknown send. Get/list, single delete, and
+batch removal are safe operations. Batch inputs support up to 100 addresses
+or IDs. The runnable [`create-suppression` example](go/examples/create-suppression/README.md)
+exercises the create path through a real Dex Worker and generated provider mock.
+
 ## Templates
 
 `CreateTemplate` and `DuplicateTemplate` use bounded `limited` retries;

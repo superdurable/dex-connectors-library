@@ -1232,3 +1232,101 @@ spec:
     execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
     mocks:
     - {name: duplicateTemplateDefault, branch: duplicated, default: true, description: Resend completed the template request., output: {id: template-2}}
+  - name: createSuppression
+    goName: CreateSuppression
+    inputType: CreateSuppressionInput
+    outputType: SuppressionReference
+    kind: mutation
+    description: Suppress one email address.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the suppression request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming suppression., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createSuppressionDefault, branch: created, default: true, description: Resend completed the suppression request., output: {id: suppression-1}}
+  - name: listSuppressions
+    goName: ListSuppressions
+    inputType: ListSuppressionsInput
+    outputType: SuppressionPage
+    kind: query
+    description: List suppressed addresses by origin and page.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the suppression request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listSuppressionsDefault, branch: listed, default: true, description: Resend completed the suppression request., output: {data: [{id: suppression-1, email: blocked@example.test, origin: manual}], has_more: false}}
+  - name: getSuppression
+    goName: GetSuppression
+    inputType: GetSuppressionInput
+    outputType: Suppression
+    kind: query
+    description: Retrieve one suppressed address by ID or email.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the suppression request.}
+    - {id: notFound, goName: NotFound, description: The suppression does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getSuppressionDefault, branch: found, default: true, description: Resend completed the suppression request., output: {id: suppression-1, email: blocked@example.test, origin: manual}}
+  - name: deleteSuppression
+    goName: DeleteSuppression
+    inputType: DeleteSuppressionInput
+    outputType: DeletedSuppression
+    kind: mutation
+    description: Remove one suppressed address.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the suppression request.}
+    - {id: notFound, goName: NotFound, description: The suppression does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteSuppressionDefault, branch: deleted, default: true, description: Resend completed the suppression request., output: {id: suppression-1, deleted: true}}
+  - name: batchAddSuppressions
+    goName: BatchAddSuppressions
+    inputType: BatchAddSuppressionsInput
+    outputType: SuppressionBatch
+    kind: mutation
+    description: Suppress 1 through 100 email addresses in one request.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: added, goName: Added, description: Resend completed the suppression request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming suppression., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: batchAddSuppressionsDefault, branch: added, default: true, description: Resend completed the suppression request., output: {data: [{id: suppression-1}]}}
+  - name: batchRemoveSuppressions
+    goName: BatchRemoveSuppressions
+    inputType: BatchRemoveSuppressionsInput
+    outputType: RemovedSuppressionBatch
+    kind: mutation
+    description: Remove 1 through 100 suppressions by email or ID.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: removed, goName: Removed, description: Resend completed the suppression request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: batchRemoveSuppressionsDefault, branch: removed, default: true, description: Resend completed the suppression request., output: {data: [{id: suppression-1, deleted: true}]}}
