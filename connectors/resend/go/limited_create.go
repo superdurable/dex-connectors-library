@@ -71,7 +71,7 @@ func (CreateDomainOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateDomainI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates or confirms the contact identified by Email.
+// Invoke creates a contact identified by Email.
 func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateContactInput) sdkgo.MutationAttempt[ContactReference] {
 	if strings.TrimSpace(input.Email) == "" || !strings.Contains(input.Email, "@") {
 		return mutationFailure[ContactReference]("createContact", CreateContactBranchDefect, sdkgo.FailureValidation, "valid contact email is required")
@@ -89,7 +89,7 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 	return request.invoke()
 }
 
-// Invoke creates or confirms the domain identified by Name.
+// Invoke creates a domain identified by Name.
 func (operation CreateDomainOperation) Invoke(call sdkgo.Call, input CreateDomainInput) sdkgo.MutationAttempt[DomainReference] {
 	if strings.TrimSpace(input.Name) == "" || strings.ContainsAny(input.Name, " /\t\n") {
 		return mutationFailure[DomainReference]("createDomain", CreateDomainBranchDefect, sdkgo.FailureValidation, "DNS domain name is required")
@@ -137,10 +137,10 @@ func (request resendLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 		return request.uncertain("create checkpoint cannot be trusted")
 	}
 	if decision.Kind == singledispatch.ReadBackRequired || decision.Kind == singledispatch.ReadBackThenResendAllowed {
-		value, state := request.readBack(request.call)
+		_, state := request.readBack(request.call)
 		switch state {
 		case readBackMatched:
-			return sdkgo.NewMutationBranch(request.created, value, nil, sdkgo.Receipt{})
+			return request.uncertain("resource fields do not identify this create")
 		case readBackRetry:
 			return request.retry(sdkgo.FailureAvailability, "provider read-back is temporarily unavailable", 0)
 		case readBackConflicted:
@@ -191,9 +191,9 @@ func (request resendLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 		if !hasPossibleEarlierSend {
 			return mutationFailure[T](request.operation, request.rejected, sdkgo.FailureProviderRejection, "provider reports the resource already exists")
 		}
-		value, state := request.readBack(request.call)
+		_, state := request.readBack(request.call)
 		if state == readBackMatched {
-			return sdkgo.NewMutationBranch(request.created, value, nil, sdkgo.Receipt{})
+			return request.uncertain("resource fields do not identify this create")
 		}
 		if state == readBackRetry {
 			return request.retry(sdkgo.FailureAvailability, "provider read-back is temporarily unavailable", 0)
@@ -211,9 +211,9 @@ func (request resendLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 	}
 	value, err := request.decode(dispatch.body)
 	if err != nil {
-		confirmed, state := request.readBack(request.call)
+		_, state := request.readBack(request.call)
 		if state == readBackMatched {
-			return sdkgo.NewMutationBranch(request.created, confirmed, nil, sdkgo.Receipt{})
+			return request.uncertain("resource fields do not identify this create")
 		}
 		if state == readBackRetry || (state == readBackAbsent && canResendUnknown) {
 			return request.retry(sdkgo.FailureAvailability, "accepted create could not be confirmed", 0)

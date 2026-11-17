@@ -22,6 +22,10 @@ verifies the Flow through a real Dex Worker and Client. Provider HTTP behavior
 is replayed against Go-recorded scenarios; live Resend authorization remains
 unverified.
 
+For limited Go creates without a provider idempotency key, read-back can detect
+absence or a conflict. Matching user-supplied fields cannot prove which call
+created a resource, so an ambiguous matching result selects `uncertain`.
+
 ## Operations
 
 | Operation | Kind | Output |

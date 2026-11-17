@@ -4742,15 +4742,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "contact-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "77b56df0-f538-5349-a1bf-5535116b7af0",
       "input": {
@@ -4772,7 +4772,7 @@
           "retryAfterMs": 0
         }
       ],
-      "name": "createContact-retry-readback",
+      "name": "createContact-preexisting-email-after-5xx",
       "operation": "createContact"
     },
     {
@@ -5003,15 +5003,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "domain-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "324d4651-1c9b-5cf9-802d-32ed8d3f7a5c",
       "input": {
@@ -7945,10 +7945,10 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
         "output": {
-          "id": "topic-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
@@ -12842,10 +12842,10 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
         "output": {
-          "id": "segment-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
@@ -17200,10 +17200,10 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
         "output": {
-          "id": "property-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
@@ -19714,10 +19714,10 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
         "output": {
-          "id": "broadcast-1"
+          "id": ""
         },
         "requestCount": 3,
         "retry": false,
@@ -24053,15 +24053,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "template-1"
+          "id": ""
         },
         "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "33272b7d-f26f-5c37-a591-2b55aa32dd78",
       "input": {
@@ -27367,15 +27367,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "suppression-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "2fe0e373-e73e-550a-9d20-ee1c9daaa0bd",
       "input": {
@@ -27469,22 +27469,15 @@
         }
       ],
       "expected": {
-        "branch": "added",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "data": [
-            {
-              "id": "suppression-1"
-            },
-            {
-              "id": "suppression-2"
-            }
-          ]
+          "data": []
         },
         "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "60de16b2-4e0c-5719-83d8-2a92491c8f26",
       "input": {
@@ -30534,15 +30527,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "webhook-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "6566ec99-ab78-569a-8b9c-b596078a3efb",
       "input": {
@@ -33061,15 +33054,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "event-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
       "input": {
@@ -36769,15 +36762,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "automation-1"
+          "id": ""
         },
         "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
       "input": {
@@ -39967,15 +39960,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "inbox-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "664eebd8-4a16-51e0-9e59-e0528c4fb58d",
       "input": {
@@ -42148,15 +42141,15 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "id": "label-1"
+          "id": ""
         },
         "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "fe7e51e8-3aee-524a-98a0-8749ad1507d0",
       "input": {
@@ -51981,25 +51974,25 @@
         }
       ],
       "expected": {
-        "branch": "created",
-        "failureKind": "",
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
         "output": {
-          "domain_id": "domain-1",
-          "id": "claim-1",
-          "name": "example.test",
+          "domain_id": "",
+          "id": "",
+          "name": "",
           "record": {
-            "name": "example.test",
-            "ttl": "Auto",
-            "type": "TXT",
-            "value": "resend-domain-verification=example"
+            "name": "",
+            "ttl": "",
+            "type": "",
+            "value": ""
           },
-          "region": "eu-west-1",
-          "status": "pending"
+          "region": "",
+          "status": ""
         },
         "requestCount": 3,
         "retry": false,
         "retryAfterMs": 0,
-        "uncertain": false
+        "uncertain": true
       },
       "idempotencyKey": "713e8bec-cfa7-5364-89f3-101a1f22e341",
       "input": {

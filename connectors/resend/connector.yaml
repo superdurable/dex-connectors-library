@@ -75,7 +75,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected creation., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createContactDefault, branch: created, default: true, description: One contact was created., output: {id: contact-1}}
   - name: createDomain
@@ -91,7 +91,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected creation., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createDomainDefault, branch: created, default: true, description: One domain was created., output: {id: domain-1}}
   - name: updateContact
@@ -338,7 +338,7 @@ spec:
     - {id: created, goName: Created, description: Resend created the topic.}
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createTopicDefault, branch: created, default: true, description: Resend created the topic., output: {"id":"topic-1"}}
   - name: getTopic
@@ -535,7 +535,7 @@ spec:
     - {id: created, goName: Created, description: Resend created the requested resource.}
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createSegmentDefault, branch: created, default: true, description: Resend created the requested resource., output: {"id":"segment-1"}}
   - name: getSegment
@@ -750,7 +750,7 @@ spec:
     - {id: created, goName: Created, description: Resend created the contact property.}
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createContactPropertyDefault, branch: created, default: true, description: Resend created the contact property., output: {"id":"property-1"}}
   - name: getContactProperty
@@ -832,7 +832,7 @@ spec:
     - {id: created, goName: Created, description: Resend created the broadcast.}
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createBroadcastDefault, branch: created, default: true, description: Resend created the broadcast., output: {"id":"broadcast-1"}}
   - name: getBroadcast
@@ -948,7 +948,7 @@ spec:
     - {id: duplicated, goName: Duplicated, description: Resend duplicated the broadcast.}
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: duplicateBroadcastDefault, branch: duplicated, default: true, description: Resend duplicated the broadcast., output: {"id":"broadcast-2"}}
   - name: listBroadcastRecipients
@@ -1127,7 +1127,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the new draft., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createTemplateDefault, branch: created, default: true, description: Resend completed the template request., output: {id: template-1}}
   - name: getTemplate
@@ -1227,7 +1227,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the new draft., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: duplicateTemplateDefault, branch: duplicated, default: true, description: Resend completed the template request., output: {id: template-2}}
   - name: createSuppression
@@ -1243,7 +1243,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming suppression., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createSuppressionDefault, branch: created, default: true, description: Resend completed the suppression request., output: {id: suppression-1}}
   - name: listSuppressions
@@ -1309,7 +1309,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming suppression., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: batchAddSuppressionsDefault, branch: added, default: true, description: Resend completed the suppression request., output: {data: [{id: suppression-1}]}}
   - name: batchRemoveSuppressions
@@ -1341,7 +1341,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createWebhookDefault, branch: created, default: true, description: Resend completed the webhook request., output: {id: webhook-1}}
   - name: getWebhook
@@ -1473,7 +1473,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: replayWebhookEventDefault, branch: replayed, default: true, description: Resend completed the webhook request., output: {id: event-1}}
   - name: createEvent
@@ -1489,7 +1489,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createEventDefault, branch: created, default: true, description: Resend completed the event request., output: {id: event-1}}
   - name: getEvent
@@ -1572,7 +1572,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: sendEventDefault, branch: sent, default: true, description: Resend completed the event request., output: {event: order.paid}}
   - name: createAutomation
@@ -1588,7 +1588,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createAutomationDefault, branch: created, default: true, description: Resend completed the automation request., output: {id: automation-1}}
   - name: getAutomation
@@ -1671,7 +1671,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: duplicateAutomationDefault, branch: duplicated, default: true, description: Resend completed the automation request., output: {id: automation-2}}
   - name: stopAutomation
@@ -1737,7 +1737,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createInboxDefault, branch: created, default: true, description: Resend completed the inbox request., output: {id: inbox-1}}
   - name: getInbox
@@ -1871,7 +1871,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming creation., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createInboxLabelDefault, branch: created, default: true, description: Resend created the label., output: {id: label-1}}
   - name: updateInboxLabel
@@ -2227,7 +2227,7 @@ spec:
     - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
     - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
     - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the claim., optional: true}
-    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: createDomainClaimDefault, branch: created, default: true, description: Resend completed the claim request., output: {id: claim-1, name: example.test, status: pending, domain_id: domain-1, region: us-east-1, record: {type: TXT, name: example.test, value: "resend-domain-verification=example", ttl: Auto}}}
   - name: getDomainClaim
