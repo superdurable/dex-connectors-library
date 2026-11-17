@@ -349,6 +349,25 @@ describe('single-dispatch fences sharing one Step', () => {
     expect(retry.frames.at(-1)!.singleDispatchMarkers[gmail.id]).toEqual({ callId: gmail.id, attempt: 1, state: 'claimed' });
   });
 
+  it('gives repeated calls of one operation distinct call IDs that are stable on retry', async () => {
+    const step = stepContext();
+    const calls = [step.callFor('postThreadReply'), step.callFor('postThreadReply')];
+    expect(calls[0]!.id).not.toBe(calls[1]!.id);
+    for (const call of calls) {
+      const fence = new Fence(call, 10_000);
+      expect(fence.decide().kind).toBe('sendAllowed');
+      await fence.dispatch(() => undefined);
+    }
+    expect(Object.keys(step.frames.at(-1)!.singleDispatchMarkers).sort()).toEqual(calls.map(call => call.id).sort());
+
+    const retry = stepContext(2, step.frames.at(-1));
+    for (const call of calls) {
+      const retriedCall = retry.callFor('postThreadReply');
+      expect(retriedCall.id).toBe(call.id);
+      expect(new Fence(retriedCall, 10_000).decide().kind).toBe('readBackRequired');
+    }
+  });
+
   it('keeps every entry when fences in one Step run concurrently', async () => {
     const step = stepContext();
     const calls = Array.from({ length: 16 }, (_, index) => step.callFor(`write${index}`));
@@ -365,14 +384,15 @@ describe('single-dispatch fences sharing one Step', () => {
 
   it('keeps the shared registry on a global symbol so every SDK copy finds it', async () => {
     const step = stepContext();
-    const first = new Fence(step.callFor('sendMessage'), 10_000);
+    const firstCall = step.callFor('sendMessage');
+    const first = new Fence(firstCall, 10_000);
     const holder = globalThis as unknown as Record<symbol, WeakMap<object, { attempt: number; markers: Map<string, unknown> }>>;
     const registry = holder[Symbol.for('@superdurable/connectors-sdk/singleDispatchCheckpoints/v1')];
     expect(registry).toBeInstanceOf(WeakMap);
     first.decide();
     await first.dispatch(() => undefined);
     // Another SDK copy would read and extend the same plain-data entry.
-    expect([...registry!.get(step.context)!.markers.keys()]).toEqual([step.callFor('sendMessage').id]);
+    expect([...registry!.get(step.context)!.markers.keys()]).toEqual([firstCall.id]);
     expect(registry!.get(step.context)!.attempt).toBe(1);
   });
 });

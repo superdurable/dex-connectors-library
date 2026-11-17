@@ -4,7 +4,9 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import type { AsyncContext } from '@superdurable/dex';
 import { z } from 'zod';
+import { createCall } from '../src/credentials.js';
 import { CallIDNamespace, CallIDSchema, ConnectionRefSchema, MutationDefinitionWireSchema, OperationRefSchema, QueryDefinitionWireSchema, QueryResultSchema, ReceiptSchema, defaultConnectorStepExecuteRetryPolicy, deriveCallID, retryPolicyToGoWire } from '../src/index.js';
 import { FailureSchema } from '../src/errors.js';
 import { BrokerAnswerSchema } from '../src/projectconfig/broker.js';
@@ -30,7 +32,7 @@ describe('sdkgo conformance fixtures', () => {
     const names = (await readdir(directory)).filter(name => name.endsWith('.json'));
     expect(names.sort()).toEqual(['connections.json', 'connectormock.json', 'credential-broker.json', 'failures.json', 'identity.json', 'project-environment.json', 'project-storage.json', 'results.json', 'retry-policy.json', 'single-dispatch-markers.json']);
     const fixtureFields: Record<string, string[]> = {
-      identity: ['callIDNamespace', 'derivedCall', 'differentOperationCallId', 'differentStepCallId', 'fallbackCompletedReceipt', 'providerKey', 'source', 'unicodeDerivedCallId', 'unicodeSource'],
+      identity: ['callIDNamespace', 'derivedCall', 'differentOperationCallId', 'differentStepCallId', 'fallbackCompletedReceipt', 'occurrenceCallIds', 'providerKey', 'source', 'unicodeDerivedCallId', 'unicodeSource'],
       results: ['mutationHappy', 'mutationOptionalFailure', 'mutationUncertain', 'nanosecondOffsetReceipt', 'queryHappy', 'queryNull', 'queryOptionalFailure', 'wholeSecondReceipt'],
       'retry-policy': ['InitialInterval', 'BackoffCoefficient', 'MaximumInterval', 'MaximumAttempts', 'TotalDuration'],
       connections: ['schemaVersion', 'connections', 'triggerBindings'],
@@ -55,8 +57,15 @@ describe('sdkgo conformance fixtures', () => {
     const sourceSchema = z.strictObject({ flowId: z.string(), stepExecutionId: z.string(), connectorId: z.string(), operationId: z.string() });
     const values = z.strictObject({ callIDNamespace: CallIDSchema, source: sourceSchema, unicodeSource: sourceSchema,
       unicodeDerivedCallId: CallIDSchema, derivedCall: z.strictObject({ id: CallIDSchema, idempotencyKey: z.string(), connection: ConnectionRefSchema, operation: OperationRefSchema }),
-      differentStepCallId: CallIDSchema, differentOperationCallId: CallIDSchema, fallbackCompletedReceipt: ReceiptSchema, providerKey: z.string() }).parse(await fixture('identity'));
+      differentStepCallId: CallIDSchema, differentOperationCallId: CallIDSchema, fallbackCompletedReceipt: ReceiptSchema, providerKey: z.string(),
+      occurrenceCallIds: z.array(CallIDSchema) }).parse(await fixture('identity'));
     const { source, derivedCall } = values;
+    expect([1, 2, 3].map(occurrence => deriveCallID(source.flowId, source.stepExecutionId, derivedCall.operation, occurrence))).toEqual(values.occurrenceCallIds);
+    const stepContext = { flowId: source.flowId, stepExecutionId: source.stepExecutionId, attempt: 1 } as AsyncContext;
+    expect([1, 2, 3].map(() => createCall(stepContext, derivedCall.connection, derivedCall.operation).id)).toEqual(values.occurrenceCallIds);
+    const retriedContext = { ...stepContext, attempt: 2 } as AsyncContext;
+    expect(createCall(retriedContext, derivedCall.connection, derivedCall.operation).id).toBe(derivedCall.id);
+    expect(() => deriveCallID(source.flowId, source.stepExecutionId, derivedCall.operation, 0)).toThrow(RangeError);
     expect(values.callIDNamespace).toBe(CallIDNamespace);
     expect(deriveCallID(source.flowId, source.stepExecutionId, derivedCall.operation)).toBe(derivedCall.id);
     expect(deriveCallID(source.flowId, 'step-execution-8', derivedCall.operation)).toBe(values.differentStepCallId);

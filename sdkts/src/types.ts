@@ -26,11 +26,18 @@ export const OperationRefSchema = z.strictObject({ connectorId: z.string().regex
 /** Manifest operation identity. */
 export type OperationRef = z.infer<typeof OperationRefSchema>;
 
-/** Derive the Go-compatible UUIDv5 identity from one Dex Step execution. */
-export function deriveCallID(flowId: string, stepExecutionId: string, operation: OperationRef): CallID {
+/**
+ * Derive the Go-compatible UUIDv5 identity from one Dex Step execution.
+ *
+ * `occurrence` is the one-based ordinal of this call among the calls of the same operation in one
+ * Step attempt. Occurrence 1 keeps the four-field derivation; from 2 the decimal ordinal is a
+ * fifth field, as in Go. `createCall` counts occurrences itself.
+ */
+export function deriveCallID(flowId: string, stepExecutionId: string, operation: OperationRef, occurrence = 1): CallID {
   OperationRefSchema.parse(operation);
+  if (!Number.isSafeInteger(occurrence) || occurrence < 1) throw new RangeError('call occurrence must be a positive integer');
   const namespace = CallIDNamespace;
-  const fields = [flowId, stepExecutionId, operation.connectorId, operation.operationId];
+  const fields = [flowId, stepExecutionId, operation.connectorId, operation.operationId, ...(occurrence > 1 ? [String(occurrence)] : [])];
   const payload = Buffer.concat(fields.flatMap(field => {
     const encoded = Buffer.from(field, 'utf8');
     const length = Buffer.alloc(4);

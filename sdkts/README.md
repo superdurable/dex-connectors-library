@@ -309,6 +309,8 @@ Bounded resend lets a `limited` operation, whose duplicate is acceptable, resend
 
 From 0.13.0, one Step may make several fenced writes, such as an agent tool that sends a Gmail message and then posts a Slack thread reply, also concurrently under `Promise.all`. Each `Fence` keeps the marker of its own call ID, and every heartbeat any Fence of the Step attempt records carries the markers of all its calls: the previous attempt's entries plus those recorded so far in this attempt. The shared per-attempt state lives in a registry on `globalThis` under `Symbol.for('@superdurable/connectors-sdk/singleDispatchCheckpoints/v1')`, so connector packages that load different copies of this SDK still share it. `decideDispatch` takes the previous attempt's whole heartbeat and reads only its own call ID's entry. A missing entry, or a heartbeat it cannot read, including the single marker that releases before 0.13.0 recorded and a `null` or `undefined` value, counts as no marker: attempt one may send, and a later attempt assumes each earlier attempt sent once, which can only overcount. Only a heartbeat read error fails closed besides an impossible own entry. The heartbeat format is internal to the connector SDKs and may change; hosts must not parse it and classify a result by the connector's selected branch.
 
+Each call needs its own call ID even when one Step calls the same operation twice. `createCall` counts the calls of each operation in a Step attempt, in a registry on `globalThis` under `Symbol.for('@superdurable/connectors-sdk/callOccurrences/v1')`: the first keeps `deriveCallID`'s four-field ID, so idempotency keys of single calls never change, and the n-th gets `deriveCallID(..., n)`. The count restarts each attempt, so the Step must create its calls in a deterministic order.
+
 ```js
 import { decideDispatch } from '../dist/singledispatch/index.js';
 
@@ -393,7 +395,7 @@ Records carry `connector`, `connection`, and `trigger` plus `binding` (or `feed`
 
 ### 0.13.0
 
-(breaking) Several fenced writes in one Step. Every `Fence` heartbeat holds one marker per call ID of the Step attempt, merged across Fences, concurrent ones and ones from other copies of this SDK included. `decideDispatch` takes the previous attempt's whole heartbeat and reads only its own call ID's entry. A heartbeat it cannot read, including a single marker from an earlier release or a `null` value, counts as no marker instead of failing closed; a later attempt then assumes each earlier attempt sent once. The heartbeat format is internal and may change; hosts must not parse it. Releases before 0.13.0 fail closed on the new format.
+(breaking) Several fenced writes in one Step. Every `Fence` heartbeat holds one marker per call ID of the Step attempt, merged across Fences, concurrent ones and ones from other copies of this SDK included. `decideDispatch` takes the previous attempt's whole heartbeat and reads only its own call ID's entry. A heartbeat it cannot read, including a single marker from an earlier release or a `null` value, counts as no marker instead of failing closed; a later attempt then assumes each earlier attempt sent once. The heartbeat format is internal and may change; hosts must not parse it. Releases before 0.13.0 fail closed on the new format. `createCall` gives the n-th call of one operation in a Step attempt its own call ID through the new `occurrence` parameter of `deriveCallID`; the first call's ID is unchanged.
 
 ### 0.12.0
 
