@@ -18,6 +18,8 @@ import (
 // Mock is a scripted tiktok-business connection. Script each operation through its accessor.
 type Mock struct {
 	connection    tiktok.Connection
+	listAdgroups  *connectormock.Query[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage]
+	listAds       *connectormock.Query[tiktok.ListAdsInput, tiktok.AdsPage]
 	listCampaigns *connectormock.Query[tiktok.ListCampaignsInput, tiktok.CampaignsPage]
 }
 
@@ -26,8 +28,12 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listAdgroups:  connectormock.NewQuery[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage](t, tiktok.ListAdgroupsDefinition),
+		listAds:       connectormock.NewQuery[tiktok.ListAdsInput, tiktok.AdsPage](t, tiktok.ListAdsDefinition),
 		listCampaigns: connectormock.NewQuery[tiktok.ListCampaignsInput, tiktok.CampaignsPage](t, tiktok.ListCampaignsDefinition),
 	}
+	mock.listAdgroups.Default(ListAdgroupsDefault())
+	mock.listAds.Default(ListAdsDefault())
 	mock.listCampaigns.Default(ListCampaignsDefault())
 	connection, err := tiktok.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "tiktok-business", Name: connectionName})
 	if err != nil {
@@ -40,6 +46,16 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() tiktok.Connection { return mock.connection }
 
+// ListAdgroups returns the listAdgroups script.
+func (mock *Mock) ListAdgroups() *connectormock.Query[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage] {
+	return mock.listAdgroups
+}
+
+// ListAds returns the listAds script.
+func (mock *Mock) ListAds() *connectormock.Query[tiktok.ListAdsInput, tiktok.AdsPage] {
+	return mock.listAds
+}
+
 // ListCampaigns returns the listCampaigns script.
 func (mock *Mock) ListCampaigns() *connectormock.Query[tiktok.ListCampaignsInput, tiktok.CampaignsPage] {
 	return mock.listCampaigns
@@ -47,9 +63,85 @@ func (mock *Mock) ListCampaigns() *connectormock.Query[tiktok.ListCampaignsInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListAdgroups() sdkgo.Query[tiktok.ListAdgroupsInput, tiktok.AdgroupsPage] {
+	return operations.mock.listAdgroups
+}
+func (operations mockOperations) ListAds() sdkgo.Query[tiktok.ListAdsInput, tiktok.AdsPage] {
+	return operations.mock.listAds
+}
 func (operations mockOperations) ListCampaigns() sdkgo.Query[tiktok.ListCampaignsInput, tiktok.CampaignsPage] {
 	return operations.mock.listCampaigns
 }
+
+// ListAdgroupsListed selects the listed branch: TikTok returned an ad group page.
+func ListAdgroupsListed(value tiktok.AdgroupsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupsPage] {
+	return connectormock.Branch(tiktok.ListAdgroupsBranchListed, value, failure)
+}
+
+// ListAdgroupsProviderRejected selects the providerRejected branch: TikTok conclusively rejected the query or token.
+func ListAdgroupsProviderRejected(value tiktok.AdgroupsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupsPage] {
+	return connectormock.Branch(tiktok.ListAdgroupsBranchProviderRejected, value, failure)
+}
+
+// ListAdgroupsInvalidResponse selects the invalidResponse branch: TikTok returned malformed or oversized JSON.
+func ListAdgroupsInvalidResponse(value tiktok.AdgroupsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupsPage] {
+	return connectormock.Branch(tiktok.ListAdgroupsBranchInvalidResponse, value, failure)
+}
+
+// ListAdgroupsDefect selects the defect branch: Advertiser ID or pagination is invalid.
+func ListAdgroupsDefect(value tiktok.AdgroupsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupsPage] {
+	return connectormock.Branch(tiktok.ListAdgroupsBranchDefect, value, failure)
+}
+
+// ListAdgroupsRetry asks Dex to retry the listAdgroups Step, after the delay when it is positive.
+func ListAdgroupsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tiktok.AdgroupsPage] {
+	return connectormock.Retry[tiktok.AdgroupsPage](failure, after)
+}
+
+// ListAdgroupsListedDefault is the manifest mock listedDefault: One example ad group is visible.
+func ListAdgroupsListedDefault() connectormock.Case[tiktok.AdgroupsPage] {
+	value := connectormock.MustDecodeOutput[tiktok.AdgroupsPage](`{"adgroups":[{"id":"1845123456789012346","name":"Example Ad Group"}],"page":1,"totalPages":1}`)
+	return connectormock.Branch(tiktok.ListAdgroupsBranchListed, value, nil)
+}
+
+// ListAdgroupsDefault is the manifest default, listedDefault, which New installs.
+func ListAdgroupsDefault() connectormock.Case[tiktok.AdgroupsPage] {
+	return ListAdgroupsListedDefault()
+}
+
+// ListAdsListed selects the listed branch: TikTok returned an ad page.
+func ListAdsListed(value tiktok.AdsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.AdsPage] {
+	return connectormock.Branch(tiktok.ListAdsBranchListed, value, failure)
+}
+
+// ListAdsProviderRejected selects the providerRejected branch: TikTok conclusively rejected the query or token.
+func ListAdsProviderRejected(value tiktok.AdsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.AdsPage] {
+	return connectormock.Branch(tiktok.ListAdsBranchProviderRejected, value, failure)
+}
+
+// ListAdsInvalidResponse selects the invalidResponse branch: TikTok returned malformed or oversized JSON.
+func ListAdsInvalidResponse(value tiktok.AdsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.AdsPage] {
+	return connectormock.Branch(tiktok.ListAdsBranchInvalidResponse, value, failure)
+}
+
+// ListAdsDefect selects the defect branch: Advertiser ID or pagination is invalid.
+func ListAdsDefect(value tiktok.AdsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.AdsPage] {
+	return connectormock.Branch(tiktok.ListAdsBranchDefect, value, failure)
+}
+
+// ListAdsRetry asks Dex to retry the listAds Step, after the delay when it is positive.
+func ListAdsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tiktok.AdsPage] {
+	return connectormock.Retry[tiktok.AdsPage](failure, after)
+}
+
+// ListAdsListedDefault is the manifest mock listedDefault: One example ad is visible.
+func ListAdsListedDefault() connectormock.Case[tiktok.AdsPage] {
+	value := connectormock.MustDecodeOutput[tiktok.AdsPage](`{"ads":[{"id":"1845123456789012347","name":"Example Ad"}],"page":1,"totalPages":1}`)
+	return connectormock.Branch(tiktok.ListAdsBranchListed, value, nil)
+}
+
+// ListAdsDefault is the manifest default, listedDefault, which New installs.
+func ListAdsDefault() connectormock.Case[tiktok.AdsPage] { return ListAdsListedDefault() }
 
 // ListCampaignsListed selects the listed branch: TikTok returned a campaign page, possibly empty.
 func ListCampaignsListed(value tiktok.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[tiktok.CampaignsPage] {

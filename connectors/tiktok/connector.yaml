@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: tiktok-business
   displayName: TikTok for Business
-  description: Read paginated TikTok advertising campaigns.
+  description: Read paginated TikTok advertising campaigns, ad groups, and ads.
   company: TikTok
   categories: [marketing, social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: tiktok-business
   languages:
@@ -56,6 +56,46 @@ spec:
         - Exchange the returned auth_code with the app ID and secret at the documented /oauth2/access_token/ endpoint. Save only the returned access_token in Dex Web secret access_token; never put the app secret or token in Flow input. Renew or reauthorize when TikTok invalidates it.
         - Open https://ads.tiktok.com > Ads Manager > Account Name > ID and copy the decimal ad account ID into listCampaigns advertiserId. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listAdgroups
+      goName: ListAdgroups
+      inputType: ListAdgroupsInput
+      outputType: AdgroupsPage
+      kind: query
+      description: Read one page of ad group IDs and names for an authorized advertiser.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: TikTok returned an ad group page.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the query or token., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Advertiser ID or pagination is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example ad group is visible.
+          output: {adgroups: [{id: '1845123456789012346', name: Example Ad Group}], page: 1, totalPages: 1}
+    - name: listAds
+      goName: ListAds
+      inputType: ListAdsInput
+      outputType: AdsPage
+      kind: query
+      description: Read one page of ad IDs and names for an authorized advertiser.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: TikTok returned an ad page.}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the query or token., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Advertiser ID or pagination is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example ad is visible.
+          output: {ads: [{id: '1845123456789012347', name: Example Ad}], page: 1, totalPages: 1}
     - name: listCampaigns
       goName: ListCampaigns
       inputType: ListCampaignsInput

@@ -24,7 +24,9 @@ import (
 func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := tiktokmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	adgroupsFlow := NewAdgroupsFlow(mock.Connection())
+	adsFlow := NewAdsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, adgroupsFlow, adsFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +58,24 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "1845123456789012345", output.Campaigns[0].ID)
 	require.Len(t, mock.ListCampaigns().Calls(), 1)
+	adgroupsFlowID := flowID + "-adgroups"
+	_, err = client.StartFlow(ctx, adgroupsFlow, adgroupsFlowID, tiktok.ListAdgroupsInput{AdvertiserID: "1845123456789012344"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	adgroupsResult, err := client.WaitForFlow(ctx, adgroupsFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, adgroupsResult.Status, adgroupsResult.ErrorMessage)
+	var adgroupsOutput tiktok.AdgroupsPage
+	require.NoError(t, adgroupsResult.DecodeSingleOutput(&adgroupsOutput))
+	require.Equal(t, "1845123456789012346", adgroupsOutput.Adgroups[0].ID)
+	require.Len(t, mock.ListAdgroups().Calls(), 1)
+	adsFlowID := flowID + "-ads"
+	_, err = client.StartFlow(ctx, adsFlow, adsFlowID, tiktok.ListAdsInput{AdvertiserID: "1845123456789012344"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	adsResult, err := client.WaitForFlow(ctx, adsFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, adsResult.Status, adsResult.ErrorMessage)
+	var adsOutput tiktok.AdsPage
+	require.NoError(t, adsResult.DecodeSingleOutput(&adsOutput))
+	require.Equal(t, "1845123456789012347", adsOutput.Ads[0].ID)
+	require.Len(t, mock.ListAds().Calls(), 1)
 }

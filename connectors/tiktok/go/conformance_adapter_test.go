@@ -22,6 +22,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+		"listAdgroups":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAdgroups(), reference),
+		"listAds":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAds(), reference),
 		"listCampaigns": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
 	}}
 }

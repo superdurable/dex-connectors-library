@@ -476,6 +476,654 @@
       },
       "name": "listCampaigns-bodyCodeSystemError",
       "operation": "listCampaigns"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"list\":[{\"adgroup_id\":\"1845123456789012346\",\"adgroup_name\":\"Example Resource\"}],\"page_info\":{\"page\":2,\"total_page\":3}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/adgroup/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "adgroups": [
+            {
+              "id": "1845123456789012346",
+              "name": "Example Resource"
+            }
+          ],
+          "page": 2,
+          "totalPages": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAdgroups-listed",
+      "operation": "listAdgroups"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"code\":40001,\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/adgroup/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "adgroups": [],
+          "page": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAdgroups-providerRejected",
+      "operation": "listAdgroups"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"list\":[{\"adgroup_id\":\"1845123456789012346\"}],\"page_info\":{\"page\":2,\"total_page\":3}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/adgroup/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "adgroups": [],
+          "page": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAdgroups-invalidResponse",
+      "operation": "listAdgroups"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000004",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "adgroups": [],
+          "page": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "bad",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAdgroups-defect",
+      "operation": "listAdgroups"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/adgroup/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAdgroups-rateLimit",
+      "operation": "listAdgroups"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/adgroup/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAdgroups-serverError",
+      "operation": "listAdgroups"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/adgroup/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAdgroups-transportFailure",
+      "operation": "listAdgroups"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"list\":[{\"ad_id\":\"1845123456789012347\",\"ad_name\":\"Example Resource\"}],\"page_info\":{\"page\":2,\"total_page\":3}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ad/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "ads": [
+            {
+              "id": "1845123456789012347",
+              "name": "Example Resource"
+            }
+          ],
+          "page": 2,
+          "totalPages": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAds-listed",
+      "operation": "listAds"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"code\":40001,\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ad/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "ads": [],
+          "page": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAds-providerRejected",
+      "operation": "listAds"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"data\":{\"list\":[{\"ad_id\":\"1845123456789012347\"}],\"page_info\":{\"page\":2,\"total_page\":3}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ad/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "ads": [],
+          "page": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAds-invalidResponse",
+      "operation": "listAds"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000011",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "ads": [],
+          "page": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "bad",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAds-defect",
+      "operation": "listAds"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ad/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAds-rateLimit",
+      "operation": "listAds"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000013",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ad/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAds-serverError",
+      "operation": "listAds"
+    },
+    {
+      "callId": "10000000-0000-5000-8000-000000000014",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ad/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listAds-transportFailure",
+      "operation": "listAds"
     }
   ],
   "schemaVersion": 1

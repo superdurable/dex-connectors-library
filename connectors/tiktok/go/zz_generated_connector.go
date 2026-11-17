@@ -40,11 +40,19 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListAdgroups() sdkgo.Query[ListAdgroupsInput, AdgroupsPage]
+	ListAds() sdkgo.Query[ListAdsInput, AdsPage]
 	ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListAdgroups() sdkgo.Query[ListAdgroupsInput, AdgroupsPage] {
+	return operations.client.ListAdgroups()
+}
+func (operations clientOperations) ListAds() sdkgo.Query[ListAdsInput, AdsPage] {
+	return operations.client.ListAds()
+}
 func (operations clientOperations) ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsPage] {
 	return operations.client.ListCampaigns()
 }
@@ -184,6 +192,148 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const ListAdgroupsBranchListed sdkgo.BranchID = "listed"
+const ListAdgroupsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAdgroupsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAdgroupsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAdgroupsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAdgroups"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAdgroupsBranchListed, Description: "TikTok returned an ad group page."},
+		{ID: ListAdgroupsBranchProviderRejected, Description: "TikTok conclusively rejected the query or token.", Optional: true},
+		{ID: ListAdgroupsBranchInvalidResponse, Description: "TikTok returned malformed or oversized JSON.", Optional: true},
+		{ID: ListAdgroupsBranchDefect, Description: "Advertiser ID or pagination is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAdgroupsResult = sdkgo.QueryResult[AdgroupsPage]
+
+type ListAdgroupsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=tiktok-business"`
+	operationID                    struct{}                                        `connector:"operationId=listAdgroups"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAdgroupsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAdgroupsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAdgroupsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAdgroupsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAdgroupsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AdgroupsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListAdgroupsStep[IN any](config ListAdgroupsStepConfig[IN]) sdkgo.QueryStep[IN, ListAdgroupsInput, AdgroupsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("tiktok-business connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAdgroupsInput, AdgroupsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAdgroups(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAdgroupsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAdgroupsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAdgroupsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAdgroupsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAdgroupsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAdgroupsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAdsBranchListed sdkgo.BranchID = "listed"
+const ListAdsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAdsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAdsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAdsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAds"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAdsBranchListed, Description: "TikTok returned an ad page."},
+		{ID: ListAdsBranchProviderRejected, Description: "TikTok conclusively rejected the query or token.", Optional: true},
+		{ID: ListAdsBranchInvalidResponse, Description: "TikTok returned malformed or oversized JSON.", Optional: true},
+		{ID: ListAdsBranchDefect, Description: "Advertiser ID or pagination is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAdsResult = sdkgo.QueryResult[AdsPage]
+
+type ListAdsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=tiktok-business"`
+	operationID                    struct{}                                   `connector:"operationId=listAds"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAdsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAdsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAdsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAdsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAdsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AdsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewListAdsStep[IN any](config ListAdsStepConfig[IN]) sdkgo.QueryStep[IN, ListAdsInput, AdsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("tiktok-business connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAdsInput, AdsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAds(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAdsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAdsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAdsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAdsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAdsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAdsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListCampaignsBranchListed sdkgo.BranchID = "listed"
