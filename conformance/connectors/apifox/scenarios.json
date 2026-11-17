@@ -1,0 +1,325 @@
+{
+  "connector": "apifox",
+  "scenarios": [
+    {
+      "callId": "035f93c8-b08a-4401-999d-05457444c5ed",
+      "exchanges": [
+        {
+          "body": "{\"openapi\":\"3.1.0\",\"info\":{\"title\":\"Example API\",\"version\":\"1.0.0\"},\"paths\":{\"/one\":{\"get\":{},\"post\":{}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/123/export-openapi",
+          "requestBody": {
+            "exportFormat": "JSON",
+            "oasVersion": "3.1",
+            "scope": {
+              "type": "ALL"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apifox-Api-Version": [
+              "2024-03-28"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "endpointCount": 2,
+          "title": "Example API",
+          "version": "1.0.0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectID": "123"
+      },
+      "name": "getProjectAPISummary-found",
+      "operation": "getProjectAPISummary"
+    },
+    {
+      "callId": "ab515f73-3e2d-4492-97f0-50b143416d52",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/123/export-openapi",
+          "requestBody": {
+            "exportFormat": "JSON",
+            "oasVersion": "3.1",
+            "scope": {
+              "type": "ALL"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apifox-Api-Version": [
+              "2024-03-28"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "endpointCount": 0,
+          "title": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectID": "123"
+      },
+      "name": "getProjectAPISummary-providerRejected",
+      "operation": "getProjectAPISummary"
+    },
+    {
+      "callId": "9a97efaa-ffb1-446e-a443-067a5ac2e0cb",
+      "exchanges": [
+        {
+          "body": "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"Example API\",\"version\":\"1.0.0\"},\"paths\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/123/export-openapi",
+          "requestBody": {
+            "exportFormat": "JSON",
+            "oasVersion": "3.1",
+            "scope": {
+              "type": "ALL"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apifox-Api-Version": [
+              "2024-03-28"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "endpointCount": 0,
+          "title": "",
+          "version": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectID": "123"
+      },
+      "name": "getProjectAPISummary-invalidResponse",
+      "operation": "getProjectAPISummary"
+    },
+    {
+      "callId": "5f5f088b-41ea-4984-b650-9e1a517bcce3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endpointCount": 0,
+          "title": "",
+          "version": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectID": "0"
+      },
+      "name": "getProjectAPISummary-defect",
+      "operation": "getProjectAPISummary"
+    },
+    {
+      "callId": "de785973-be33-4a51-b2ce-b1501af7cbbe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/123/export-openapi",
+          "requestBody": {
+            "exportFormat": "JSON",
+            "oasVersion": "3.1",
+            "scope": {
+              "type": "ALL"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apifox-Api-Version": [
+              "2024-03-28"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "projectID": "123"
+      },
+      "name": "getProjectAPISummary-rateLimit",
+      "operation": "getProjectAPISummary"
+    },
+    {
+      "callId": "516c2931-aeb6-4fa0-bbe8-c72a5b346fe0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/123/export-openapi",
+          "requestBody": {
+            "exportFormat": "JSON",
+            "oasVersion": "3.1",
+            "scope": {
+              "type": "ALL"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apifox-Api-Version": [
+              "2024-03-28"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectID": "123"
+      },
+      "name": "getProjectAPISummary-unavailable",
+      "operation": "getProjectAPISummary"
+    },
+    {
+      "callId": "52d49096-f284-4375-aa73-d4bc66df47a0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/projects/123/export-openapi",
+          "requestBody": {
+            "exportFormat": "JSON",
+            "oasVersion": "3.1",
+            "scope": {
+              "type": "ALL"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Apifox-Api-Version": [
+              "2024-03-28"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "projectID": "123"
+      },
+      "name": "getProjectAPISummary-transportFailure",
+      "operation": "getProjectAPISummary"
+    }
+  ],
+  "schemaVersion": 1
+}
