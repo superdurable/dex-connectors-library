@@ -12,7 +12,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
-const webSearchEndpoint = "https://api.bocha.cn/v1/web-search"
+const webSearchEndpoint = "https://api.bochaai.com/v1/web-search"
 
 // Option supplies a client dependency at construction.
 type Option interface{ applyClientOption(*Client) }

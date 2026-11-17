@@ -6,7 +6,7 @@ metadata:
   description: Search public web pages using Bocha AI Search.
   company: Bocha
   categories: [data-search, ai]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: bocha
   codegen:
@@ -32,11 +32,11 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret API Key from https://open.bocha.cn/api-keys > API KEY. Create or copy it there; blank prevents requests. Dex stores it as a secret.
+        description: Secret API Key from https://open.bochaai.com/api-keys > 账户管理 > API KEY管理 > 创建 API KEY. Copy the exact ASCII value shown once, without whitespace; blank prevents requests. Dex stores it as a secret.
     guide:
-      startURL: https://open.bocha.cn/api-keys
+      startURL: https://open.bochaai.com/api-keys
       steps:
-        - Register or sign in at https://open.bocha.cn, open API KEY at https://open.bocha.cn/api-keys, create or copy your secret API Key, and enter it in Dex Connections. Blank prevents requests; never put it in Flow input or a URL.
+        - Register or sign in at https://open.bochaai.com, open 账户管理 > API KEY管理 at https://open.bochaai.com/api-keys, choose 创建 API KEY, and copy the one-time secret into Dex Connections. Blank prevents requests; never put the Key in Flow input or a URL.
         - Start SearchWeb with a nonblank query of at most 256 Unicode characters, for example {"query":"博查 搜索 API"}. The connector requests five public web results with no freshness filter and no long summaries. Leave timeout and maxResponseBytes blank for the displayed defaults.
         - Search calls may consume provider credit. Retry is limited because a response lost after a successful billed search could cause a second charge. Inspect the provider console for quota and rotate a compromised Key there.
   operations:
