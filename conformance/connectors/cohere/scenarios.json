@@ -2,6 +2,367 @@
   "connector": "cohere",
   "scenarios": [
     {
+      "callId": "cohere-chat-success",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"chat-1\",\"finish_reason\":\"COMPLETE\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The release note is the best match.\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/chat",
+          "requestBody": {
+            "max_tokens": 128,
+            "messages": [
+              {
+                "content": "Summarize the release note",
+                "role": "user"
+              }
+            ],
+            "model": "command-a-03-2025"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "answered",
+        "failureKind": "",
+        "output": {
+          "finishReason": "COMPLETE",
+          "id": "chat-1",
+          "text": "The release note is the best match."
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "max_tokens": 128,
+        "messages": [
+          {
+            "content": "Summarize the release note",
+            "role": "user"
+          }
+        ],
+        "model": "command-a-03-2025"
+      },
+      "name": "chat-success",
+      "operation": "chat"
+    },
+    {
+      "callId": "cohere-chat-providerRejected",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/chat",
+          "requestBody": {
+            "max_tokens": 128,
+            "messages": [
+              {
+                "content": "Summarize the release note",
+                "role": "user"
+              }
+            ],
+            "model": "command-a-03-2025"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "finishReason": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "max_tokens": 128,
+        "messages": [
+          {
+            "content": "Summarize the release note",
+            "role": "user"
+          }
+        ],
+        "model": "command-a-03-2025"
+      },
+      "name": "chat-providerRejected",
+      "operation": "chat"
+    },
+    {
+      "callId": "cohere-chat-invalidResponse",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/chat",
+          "requestBody": {
+            "max_tokens": 128,
+            "messages": [
+              {
+                "content": "Summarize the release note",
+                "role": "user"
+              }
+            ],
+            "model": "command-a-03-2025"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "finishReason": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "max_tokens": 128,
+        "messages": [
+          {
+            "content": "Summarize the release note",
+            "role": "user"
+          }
+        ],
+        "model": "command-a-03-2025"
+      },
+      "name": "chat-invalidResponse",
+      "operation": "chat"
+    },
+    {
+      "callId": "cohere-chat-rateLimit429",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/chat",
+          "requestBody": {
+            "max_tokens": 128,
+            "messages": [
+              {
+                "content": "Summarize the release note",
+                "role": "user"
+              }
+            ],
+            "model": "command-a-03-2025"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "max_tokens": 128,
+        "messages": [
+          {
+            "content": "Summarize the release note",
+            "role": "user"
+          }
+        ],
+        "model": "command-a-03-2025"
+      },
+      "name": "chat-rateLimit429",
+      "operation": "chat"
+    },
+    {
+      "callId": "cohere-chat-serverUnavailable503",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/chat",
+          "requestBody": {
+            "max_tokens": 128,
+            "messages": [
+              {
+                "content": "Summarize the release note",
+                "role": "user"
+              }
+            ],
+            "model": "command-a-03-2025"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "max_tokens": 128,
+        "messages": [
+          {
+            "content": "Summarize the release note",
+            "role": "user"
+          }
+        ],
+        "model": "command-a-03-2025"
+      },
+      "name": "chat-serverUnavailable503",
+      "operation": "chat"
+    },
+    {
+      "callId": "cohere-chat-transportFailure",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/chat",
+          "requestBody": {
+            "max_tokens": 128,
+            "messages": [
+              {
+                "content": "Summarize the release note",
+                "role": "user"
+              }
+            ],
+            "model": "command-a-03-2025"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "max_tokens": 128,
+        "messages": [
+          {
+            "content": "Summarize the release note",
+            "role": "user"
+          }
+        ],
+        "model": "command-a-03-2025"
+      },
+      "name": "chat-transportFailure",
+      "operation": "chat"
+    },
+    {
+      "callId": "cohere-chat-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "finishReason": "",
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "max_tokens": 128,
+        "messages": [],
+        "model": ""
+      },
+      "name": "chat-defect",
+      "operation": "chat"
+    },
+    {
       "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
       "exchanges": [
         {

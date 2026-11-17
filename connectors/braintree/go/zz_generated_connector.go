@@ -19,10 +19,11 @@ import (
 const ConnectorID = "braintree"
 
 type Config struct {
-	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
-	APIVersion       string        `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
-	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	BaseURL           string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
+	APIVersion        string        `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+	Timeout           time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	MaxResponseBytes  int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	EvidenceDirectory string        `json:"evidenceDirectory,omitempty" yaml:"evidenceDirectory,omitempty"`
 }
 
 type Credentials struct {
@@ -42,11 +43,103 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetDispute() sdkgo.Query[GetDisputeInput, DisputeProfile]
+	SearchDisputes() sdkgo.Query[SearchDisputesInput, DisputesPage]
+	AcceptDispute() sdkgo.Mutation[GetDisputeInput, DisputeProfile]
+	CreateDisputeTextEvidence() sdkgo.Mutation[CreateDisputeTextEvidenceInput, DisputeTextEvidenceProfile]
+	CreateDisputeFileEvidence() sdkgo.Mutation[CreateDisputeFileEvidenceInput, DisputeEvidenceProfile]
+	DeleteDisputeEvidence() sdkgo.Mutation[DeleteDisputeEvidenceInput, DisputeEvidenceDeleteResult]
+	FinalizeDispute() sdkgo.Mutation[GetDisputeInput, DisputeProfile]
+	SearchTransactions() sdkgo.Query[SearchTransactionsInput, TransactionsPage]
+	ChargePaymentMethod() sdkgo.Mutation[ChargePaymentMethodInput, TransactionProfile]
+	CaptureTransaction() sdkgo.Mutation[CaptureTransactionInput, TransactionProfile]
+	VoidTransaction() sdkgo.Mutation[GetTransactionInput, TransactionProfile]
+	RefundTransaction() sdkgo.Mutation[RefundTransactionInput, RefundProfile]
+	VaultPaymentMethod() sdkgo.Mutation[VaultPaymentMethodInput, PaymentMethodProfile]
+	UpdateCreditCardCardholderName() sdkgo.Mutation[UpdateCreditCardCardholderNameInput, PaymentMethodProfile]
+	UpdateCreditCardExpirationDate() sdkgo.Mutation[UpdateCreditCardExpirationDateInput, PaymentMethodProfile]
+	UpdateCreditCardBillingAddress() sdkgo.Mutation[UpdateCreditCardBillingAddressInput, PaymentMethodProfile]
+	DeletePaymentMethodFromVault() sdkgo.Mutation[GetPaymentMethodInput, PaymentMethodDeleteResult]
+	CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CustomerProfile]
+	UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, CustomerProfile]
+	DeleteCustomer() sdkgo.Mutation[GetCustomerInput, CustomerDeleteResult]
+	GetCustomer() sdkgo.Query[GetCustomerInput, CustomerProfile]
+	GetPaymentMethod() sdkgo.Query[GetPaymentMethodInput, PaymentMethodProfile]
+	GetRefund() sdkgo.Query[GetRefundInput, RefundProfile]
 	GetTransaction() sdkgo.Query[GetTransactionInput, TransactionProfile]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetDispute() sdkgo.Query[GetDisputeInput, DisputeProfile] {
+	return operations.client.GetDispute()
+}
+func (operations clientOperations) SearchDisputes() sdkgo.Query[SearchDisputesInput, DisputesPage] {
+	return operations.client.SearchDisputes()
+}
+func (operations clientOperations) AcceptDispute() sdkgo.Mutation[GetDisputeInput, DisputeProfile] {
+	return operations.client.AcceptDispute()
+}
+func (operations clientOperations) CreateDisputeTextEvidence() sdkgo.Mutation[CreateDisputeTextEvidenceInput, DisputeTextEvidenceProfile] {
+	return operations.client.CreateDisputeTextEvidence()
+}
+func (operations clientOperations) CreateDisputeFileEvidence() sdkgo.Mutation[CreateDisputeFileEvidenceInput, DisputeEvidenceProfile] {
+	return operations.client.CreateDisputeFileEvidence()
+}
+func (operations clientOperations) DeleteDisputeEvidence() sdkgo.Mutation[DeleteDisputeEvidenceInput, DisputeEvidenceDeleteResult] {
+	return operations.client.DeleteDisputeEvidence()
+}
+func (operations clientOperations) FinalizeDispute() sdkgo.Mutation[GetDisputeInput, DisputeProfile] {
+	return operations.client.FinalizeDispute()
+}
+func (operations clientOperations) SearchTransactions() sdkgo.Query[SearchTransactionsInput, TransactionsPage] {
+	return operations.client.SearchTransactions()
+}
+func (operations clientOperations) ChargePaymentMethod() sdkgo.Mutation[ChargePaymentMethodInput, TransactionProfile] {
+	return operations.client.ChargePaymentMethod()
+}
+func (operations clientOperations) CaptureTransaction() sdkgo.Mutation[CaptureTransactionInput, TransactionProfile] {
+	return operations.client.CaptureTransaction()
+}
+func (operations clientOperations) VoidTransaction() sdkgo.Mutation[GetTransactionInput, TransactionProfile] {
+	return operations.client.VoidTransaction()
+}
+func (operations clientOperations) RefundTransaction() sdkgo.Mutation[RefundTransactionInput, RefundProfile] {
+	return operations.client.RefundTransaction()
+}
+func (operations clientOperations) VaultPaymentMethod() sdkgo.Mutation[VaultPaymentMethodInput, PaymentMethodProfile] {
+	return operations.client.VaultPaymentMethod()
+}
+func (operations clientOperations) UpdateCreditCardCardholderName() sdkgo.Mutation[UpdateCreditCardCardholderNameInput, PaymentMethodProfile] {
+	return operations.client.UpdateCreditCardCardholderName()
+}
+func (operations clientOperations) UpdateCreditCardExpirationDate() sdkgo.Mutation[UpdateCreditCardExpirationDateInput, PaymentMethodProfile] {
+	return operations.client.UpdateCreditCardExpirationDate()
+}
+func (operations clientOperations) UpdateCreditCardBillingAddress() sdkgo.Mutation[UpdateCreditCardBillingAddressInput, PaymentMethodProfile] {
+	return operations.client.UpdateCreditCardBillingAddress()
+}
+func (operations clientOperations) DeletePaymentMethodFromVault() sdkgo.Mutation[GetPaymentMethodInput, PaymentMethodDeleteResult] {
+	return operations.client.DeletePaymentMethodFromVault()
+}
+func (operations clientOperations) CreateCustomer() sdkgo.Mutation[CreateCustomerInput, CustomerProfile] {
+	return operations.client.CreateCustomer()
+}
+func (operations clientOperations) UpdateCustomer() sdkgo.Mutation[UpdateCustomerInput, CustomerProfile] {
+	return operations.client.UpdateCustomer()
+}
+func (operations clientOperations) DeleteCustomer() sdkgo.Mutation[GetCustomerInput, CustomerDeleteResult] {
+	return operations.client.DeleteCustomer()
+}
+func (operations clientOperations) GetCustomer() sdkgo.Query[GetCustomerInput, CustomerProfile] {
+	return operations.client.GetCustomer()
+}
+func (operations clientOperations) GetPaymentMethod() sdkgo.Query[GetPaymentMethodInput, PaymentMethodProfile] {
+	return operations.client.GetPaymentMethod()
+}
+func (operations clientOperations) GetRefund() sdkgo.Query[GetRefundInput, RefundProfile] {
+	return operations.client.GetRefund()
+}
 func (operations clientOperations) GetTransaction() sdkgo.Query[GetTransactionInput, TransactionProfile] {
 	return operations.client.GetTransaction()
 }
@@ -147,10 +240,11 @@ func (Connection) GoString() string { return "braintree.Connection{[REDACTED]}" 
 
 func DefaultConfig() Config {
 	return Config{
-		BaseURL:          "https://payments.sandbox.braintree-api.com",
-		APIVersion:       "2019-01-01",
-		Timeout:          time.Duration(15000000000),
-		MaxResponseBytes: 1048576,
+		BaseURL:           "https://payments.sandbox.braintree-api.com",
+		APIVersion:        "2019-01-01",
+		Timeout:           time.Duration(15000000000),
+		MaxResponseBytes:  1048576,
+		EvidenceDirectory: "",
 	}
 }
 
@@ -167,6 +261,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.EvidenceDirectory == "" {
+		config.EvidenceDirectory = defaults.EvidenceDirectory
 	}
 	return config
 }
@@ -195,6 +292,1800 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential privateKey is required")
 	}
 	return nil
+}
+
+const GetDisputeBranchFound sdkgo.BranchID = "found"
+const GetDisputeBranchNotFound sdkgo.BranchID = "notFound"
+const GetDisputeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDisputeBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDisputeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDisputeDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDispute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDisputeBranchFound, Description: "Braintree returned the requested result."},
+		{ID: GetDisputeBranchNotFound, Description: "The dispute or evidence was not found.", Optional: true},
+		{ID: GetDisputeBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: GetDisputeBranchInvalidResponse, Description: "Braintree returned invalid dispute JSON.", Optional: true},
+		{ID: GetDisputeBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDisputeResult = sdkgo.QueryResult[DisputeProfile]
+
+type GetDisputeStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=braintree"`
+	operationID                    struct{}                                          `connector:"operationId=getDispute"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDisputeInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDisputeResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDisputeResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDisputeResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDisputeResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDisputeResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DisputeProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetDisputeStep[IN any](config GetDisputeStepConfig[IN]) sdkgo.QueryStep[IN, GetDisputeInput, DisputeProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDisputeInput, DisputeProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDispute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDisputeResult] {
+			branches := make([]sdkgo.BranchTarget[GetDisputeResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDisputeBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDisputeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDisputeBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDisputeBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDisputeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SearchDisputesBranchSearched sdkgo.BranchID = "searched"
+const SearchDisputesBranchNotFound sdkgo.BranchID = "notFound"
+const SearchDisputesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchDisputesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchDisputesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchDisputesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchDisputes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchDisputesBranchSearched, Description: "Braintree returned the requested result."},
+		{ID: SearchDisputesBranchNotFound, Description: "The dispute or evidence was not found.", Optional: true},
+		{ID: SearchDisputesBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: SearchDisputesBranchInvalidResponse, Description: "Braintree returned invalid dispute JSON.", Optional: true},
+		{ID: SearchDisputesBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchDisputesResult = sdkgo.QueryResult[DisputesPage]
+
+type SearchDisputesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=braintree"`
+	operationID                    struct{}                                        `connector:"operationId=searchDisputes"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchDisputesInput                    `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchDisputesResult]              `connector:"branch=searched"`
+	NotFound                       sdkgo.Target[SearchDisputesResult]              `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[SearchDisputesResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchDisputesResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchDisputesResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DisputesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewSearchDisputesStep[IN any](config SearchDisputesStepConfig[IN]) sdkgo.QueryStep[IN, SearchDisputesInput, DisputesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchDisputesInput, DisputesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchDisputes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchDisputesResult] {
+			branches := make([]sdkgo.BranchTarget[SearchDisputesResult], 0, 5)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchDisputesBranchSearched))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SearchDisputesBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchDisputesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchDisputesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchDisputesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AcceptDisputeBranchAccepted sdkgo.BranchID = "accepted"
+const AcceptDisputeBranchNotFound sdkgo.BranchID = "notFound"
+const AcceptDisputeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AcceptDisputeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const AcceptDisputeBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var AcceptDisputeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "acceptDispute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AcceptDisputeBranchAccepted, Description: "Braintree returned the requested result."},
+		{ID: AcceptDisputeBranchNotFound, Description: "The dispute or evidence was not found.", Optional: true},
+		{ID: AcceptDisputeBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: AcceptDisputeBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: AcceptDisputeBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type AcceptDisputeResult = sdkgo.MutationResult[DisputeProfile]
+
+type AcceptDisputeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=braintree"`
+	operationID                       struct{}                                             `connector:"operationId=acceptDispute"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetDisputeInput                             `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[AcceptDisputeResult]                    `connector:"branch=accepted"`
+	NotFound                          sdkgo.Target[AcceptDisputeResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[AcceptDisputeResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[AcceptDisputeResult]                    `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[AcceptDisputeResult]                    `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DisputeProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewAcceptDisputeStep[IN any](config AcceptDisputeStepConfig[IN]) sdkgo.MutationStep[IN, GetDisputeInput, DisputeProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetDisputeInput, DisputeProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AcceptDispute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AcceptDisputeResult] {
+			branches := make([]sdkgo.BranchTarget[AcceptDisputeResult], 0, 5)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(AcceptDisputeBranchAccepted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(AcceptDisputeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AcceptDisputeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AcceptDisputeBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(AcceptDisputeBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateDisputeTextEvidenceBranchCreated sdkgo.BranchID = "created"
+const CreateDisputeTextEvidenceBranchNotFound sdkgo.BranchID = "notFound"
+const CreateDisputeTextEvidenceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDisputeTextEvidenceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateDisputeTextEvidenceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateDisputeTextEvidenceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDisputeTextEvidence"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDisputeTextEvidenceBranchCreated, Description: "Braintree returned the requested result."},
+		{ID: CreateDisputeTextEvidenceBranchNotFound, Description: "The dispute or evidence was not found.", Optional: true},
+		{ID: CreateDisputeTextEvidenceBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: CreateDisputeTextEvidenceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: CreateDisputeTextEvidenceBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDisputeTextEvidenceResult = sdkgo.MutationResult[DisputeTextEvidenceProfile]
+
+type CreateDisputeTextEvidenceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                         `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                         `connector:"operationId=createDisputeTextEvidence"`
+	StepType                          string                                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                            `connector:"annotations"`
+	Connection                        Connection                                                       `connector:"connection"`
+	ConnectionName                    string                                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDisputeTextEvidenceInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDisputeTextEvidenceResult]                    `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreateDisputeTextEvidenceResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateDisputeTextEvidenceResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateDisputeTextEvidenceResult]                    `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateDisputeTextEvidenceResult]                    `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DisputeTextEvidenceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                 `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDisputeTextEvidenceStep[IN any](config CreateDisputeTextEvidenceStepConfig[IN]) sdkgo.MutationStep[IN, CreateDisputeTextEvidenceInput, DisputeTextEvidenceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDisputeTextEvidenceInput, DisputeTextEvidenceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDisputeTextEvidence(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDisputeTextEvidenceResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDisputeTextEvidenceResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDisputeTextEvidenceBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateDisputeTextEvidenceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDisputeTextEvidenceBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDisputeTextEvidenceBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDisputeTextEvidenceBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateDisputeFileEvidenceBranchCreated sdkgo.BranchID = "created"
+const CreateDisputeFileEvidenceBranchNotFound sdkgo.BranchID = "notFound"
+const CreateDisputeFileEvidenceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateDisputeFileEvidenceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateDisputeFileEvidenceBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateDisputeFileEvidenceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createDisputeFileEvidence"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateDisputeFileEvidenceBranchCreated, Description: "Braintree returned the created evidence."},
+		{ID: CreateDisputeFileEvidenceBranchNotFound, Description: "The dispute was not found.", Optional: true},
+		{ID: CreateDisputeFileEvidenceBranchProviderRejected, Description: "Braintree definitively rejected the file.", Optional: true},
+		{ID: CreateDisputeFileEvidenceBranchDefect, Description: "Invalid file or input or credentials.", Optional: true},
+		{ID: CreateDisputeFileEvidenceBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateDisputeFileEvidenceResult = sdkgo.MutationResult[DisputeEvidenceProfile]
+
+type CreateDisputeFileEvidenceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                     `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                     `connector:"operationId=createDisputeFileEvidence"`
+	StepType                          string                                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                        `connector:"annotations"`
+	Connection                        Connection                                                   `connector:"connection"`
+	ConnectionName                    string                                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateDisputeFileEvidenceInput                      `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=created"`
+	NotFound                          sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateDisputeFileEvidenceResult]                `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DisputeEvidenceProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                             `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateDisputeFileEvidenceStep[IN any](config CreateDisputeFileEvidenceStepConfig[IN]) sdkgo.MutationStep[IN, CreateDisputeFileEvidenceInput, DisputeEvidenceProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateDisputeFileEvidenceInput, DisputeEvidenceProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateDisputeFileEvidence(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateDisputeFileEvidenceResult] {
+			branches := make([]sdkgo.BranchTarget[CreateDisputeFileEvidenceResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateDisputeFileEvidenceBranchCreated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CreateDisputeFileEvidenceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateDisputeFileEvidenceBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateDisputeFileEvidenceBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateDisputeFileEvidenceBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const DeleteDisputeEvidenceBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteDisputeEvidenceBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteDisputeEvidenceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDisputeEvidenceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteDisputeEvidenceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDisputeEvidenceDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDisputeEvidence"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDisputeEvidenceBranchDeleted, Description: "Braintree returned the requested result."},
+		{ID: DeleteDisputeEvidenceBranchNotFound, Description: "The dispute or evidence was not found.", Optional: true},
+		{ID: DeleteDisputeEvidenceBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: DeleteDisputeEvidenceBranchInvalidResponse, Description: "Braintree returned invalid dispute JSON.", Optional: true},
+		{ID: DeleteDisputeEvidenceBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteDisputeEvidenceResult = sdkgo.MutationResult[DisputeEvidenceDeleteResult]
+
+type DeleteDisputeEvidenceStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                          `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                          `connector:"operationId=deleteDisputeEvidence"`
+	StepType                          string                                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                             `connector:"annotations"`
+	Connection                        Connection                                                        `connector:"connection"`
+	ConnectionName                    string                                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteDisputeEvidenceInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteDisputeEvidenceResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteDisputeEvidenceResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteDisputeEvidenceResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteDisputeEvidenceResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteDisputeEvidenceResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DisputeEvidenceDeleteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDisputeEvidenceStep[IN any](config DeleteDisputeEvidenceStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDisputeEvidenceInput, DisputeEvidenceDeleteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteDisputeEvidenceInput, DisputeEvidenceDeleteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDisputeEvidence(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDisputeEvidenceResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDisputeEvidenceResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteDisputeEvidenceBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteDisputeEvidenceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDisputeEvidenceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteDisputeEvidenceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDisputeEvidenceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const FinalizeDisputeBranchFinalized sdkgo.BranchID = "finalized"
+const FinalizeDisputeBranchNotFound sdkgo.BranchID = "notFound"
+const FinalizeDisputeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const FinalizeDisputeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const FinalizeDisputeBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var FinalizeDisputeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "finalizeDispute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: FinalizeDisputeBranchFinalized, Description: "Braintree returned the requested result."},
+		{ID: FinalizeDisputeBranchNotFound, Description: "The dispute or evidence was not found.", Optional: true},
+		{ID: FinalizeDisputeBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: FinalizeDisputeBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: FinalizeDisputeBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type FinalizeDisputeResult = sdkgo.MutationResult[DisputeProfile]
+
+type FinalizeDisputeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=braintree"`
+	operationID                       struct{}                                             `connector:"operationId=finalizeDispute"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetDisputeInput                             `connector:"mapToOperationInput"`
+	Finalized                         sdkgo.Target[FinalizeDisputeResult]                  `connector:"branch=finalized"`
+	NotFound                          sdkgo.Target[FinalizeDisputeResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[FinalizeDisputeResult]                  `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[FinalizeDisputeResult]                  `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[FinalizeDisputeResult]                  `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DisputeProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewFinalizeDisputeStep[IN any](config FinalizeDisputeStepConfig[IN]) sdkgo.MutationStep[IN, GetDisputeInput, DisputeProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetDisputeInput, DisputeProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.FinalizeDispute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[FinalizeDisputeResult] {
+			branches := make([]sdkgo.BranchTarget[FinalizeDisputeResult], 0, 5)
+			if config.Finalized.HasStep() {
+				branches = append(branches, config.Finalized.BranchTarget(FinalizeDisputeBranchFinalized))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(FinalizeDisputeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(FinalizeDisputeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(FinalizeDisputeBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(FinalizeDisputeBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SearchTransactionsBranchSearched sdkgo.BranchID = "searched"
+const SearchTransactionsBranchNotFound sdkgo.BranchID = "notFound"
+const SearchTransactionsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchTransactionsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchTransactionsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchTransactionsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchTransactions"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchTransactionsBranchSearched, Description: "Braintree returned the requested result."},
+		{ID: SearchTransactionsBranchNotFound, Description: "The selected resource was not found.", Optional: true},
+		{ID: SearchTransactionsBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: SearchTransactionsBranchInvalidResponse, Description: "Braintree returned invalid search JSON.", Optional: true},
+		{ID: SearchTransactionsBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchTransactionsResult = sdkgo.QueryResult[TransactionsPage]
+
+type SearchTransactionsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=braintree"`
+	operationID                    struct{}                                            `connector:"operationId=searchTransactions"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchTransactionsInput                    `connector:"mapToOperationInput"`
+	Searched                       sdkgo.Target[SearchTransactionsResult]              `connector:"branch=searched"`
+	NotFound                       sdkgo.Target[SearchTransactionsResult]              `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[SearchTransactionsResult]              `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchTransactionsResult]              `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchTransactionsResult]              `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TransactionsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewSearchTransactionsStep[IN any](config SearchTransactionsStepConfig[IN]) sdkgo.QueryStep[IN, SearchTransactionsInput, TransactionsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchTransactionsInput, TransactionsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchTransactions(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchTransactionsResult] {
+			branches := make([]sdkgo.BranchTarget[SearchTransactionsResult], 0, 5)
+			if config.Searched.HasStep() {
+				branches = append(branches, config.Searched.BranchTarget(SearchTransactionsBranchSearched))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SearchTransactionsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchTransactionsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchTransactionsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchTransactionsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ChargePaymentMethodBranchCharged sdkgo.BranchID = "charged"
+const ChargePaymentMethodBranchNotFound sdkgo.BranchID = "notFound"
+const ChargePaymentMethodBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ChargePaymentMethodBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ChargePaymentMethodDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "chargePaymentMethod"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ChargePaymentMethodBranchCharged, Description: "Braintree returned the requested result."},
+		{ID: ChargePaymentMethodBranchNotFound, Description: "The selected resource was not found.", Optional: true},
+		{ID: ChargePaymentMethodBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: ChargePaymentMethodBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ChargePaymentMethodResult = sdkgo.MutationResult[TransactionProfile]
+
+type ChargePaymentMethodStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                 `connector:"operationId=chargePaymentMethod"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) ChargePaymentMethodInput                        `connector:"mapToOperationInput"`
+	Charged                           sdkgo.Target[ChargePaymentMethodResult]                  `connector:"branch=charged"`
+	NotFound                          sdkgo.Target[ChargePaymentMethodResult]                  `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ChargePaymentMethodResult]                  `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[ChargePaymentMethodResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewChargePaymentMethodStep[IN any](config ChargePaymentMethodStepConfig[IN]) sdkgo.MutationStep[IN, ChargePaymentMethodInput, TransactionProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ChargePaymentMethodInput, TransactionProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ChargePaymentMethod(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ChargePaymentMethodResult] {
+			branches := make([]sdkgo.BranchTarget[ChargePaymentMethodResult], 0, 4)
+			if config.Charged.HasStep() {
+				branches = append(branches, config.Charged.BranchTarget(ChargePaymentMethodBranchCharged))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ChargePaymentMethodBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ChargePaymentMethodBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ChargePaymentMethodBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CaptureTransactionBranchCaptured sdkgo.BranchID = "captured"
+const CaptureTransactionBranchNotFound sdkgo.BranchID = "notFound"
+const CaptureTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CaptureTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CaptureTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "captureTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CaptureTransactionBranchCaptured, Description: "Braintree returned the requested result."},
+		{ID: CaptureTransactionBranchNotFound, Description: "The selected resource was not found.", Optional: true},
+		{ID: CaptureTransactionBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: CaptureTransactionBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CaptureTransactionResult = sdkgo.MutationResult[TransactionProfile]
+
+type CaptureTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                 `connector:"operationId=captureTransaction"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CaptureTransactionInput                         `connector:"mapToOperationInput"`
+	Captured                          sdkgo.Target[CaptureTransactionResult]                   `connector:"branch=captured"`
+	NotFound                          sdkgo.Target[CaptureTransactionResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CaptureTransactionResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CaptureTransactionResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewCaptureTransactionStep[IN any](config CaptureTransactionStepConfig[IN]) sdkgo.MutationStep[IN, CaptureTransactionInput, TransactionProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CaptureTransactionInput, TransactionProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CaptureTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CaptureTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[CaptureTransactionResult], 0, 4)
+			if config.Captured.HasStep() {
+				branches = append(branches, config.Captured.BranchTarget(CaptureTransactionBranchCaptured))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CaptureTransactionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CaptureTransactionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CaptureTransactionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const VoidTransactionBranchVoided sdkgo.BranchID = "voided"
+const VoidTransactionBranchNotFound sdkgo.BranchID = "notFound"
+const VoidTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const VoidTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var VoidTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "voidTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: VoidTransactionBranchVoided, Description: "Braintree returned the requested result."},
+		{ID: VoidTransactionBranchNotFound, Description: "The selected resource was not found.", Optional: true},
+		{ID: VoidTransactionBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: VoidTransactionBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type VoidTransactionResult = sdkgo.MutationResult[TransactionProfile]
+
+type VoidTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                 `connector:"operationId=voidTransaction"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetTransactionInput                             `connector:"mapToOperationInput"`
+	Voided                            sdkgo.Target[VoidTransactionResult]                      `connector:"branch=voided"`
+	NotFound                          sdkgo.Target[VoidTransactionResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[VoidTransactionResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[VoidTransactionResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TransactionProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewVoidTransactionStep[IN any](config VoidTransactionStepConfig[IN]) sdkgo.MutationStep[IN, GetTransactionInput, TransactionProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetTransactionInput, TransactionProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.VoidTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[VoidTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[VoidTransactionResult], 0, 4)
+			if config.Voided.HasStep() {
+				branches = append(branches, config.Voided.BranchTarget(VoidTransactionBranchVoided))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(VoidTransactionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(VoidTransactionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(VoidTransactionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RefundTransactionBranchRefunded sdkgo.BranchID = "refunded"
+const RefundTransactionBranchNotFound sdkgo.BranchID = "notFound"
+const RefundTransactionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RefundTransactionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RefundTransactionDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "refundTransaction"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RefundTransactionBranchRefunded, Description: "Braintree returned the requested result."},
+		{ID: RefundTransactionBranchNotFound, Description: "The selected resource was not found.", Optional: true},
+		{ID: RefundTransactionBranchProviderRejected, Description: "Braintree definitively rejected the request.", Optional: true},
+		{ID: RefundTransactionBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type RefundTransactionResult = sdkgo.MutationResult[RefundProfile]
+
+type RefundTransactionStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=braintree"`
+	operationID                       struct{}                                            `connector:"operationId=refundTransaction"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) RefundTransactionInput                     `connector:"mapToOperationInput"`
+	Refunded                          sdkgo.Target[RefundTransactionResult]               `connector:"branch=refunded"`
+	NotFound                          sdkgo.Target[RefundTransactionResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[RefundTransactionResult]               `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RefundTransactionResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[RefundProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewRefundTransactionStep[IN any](config RefundTransactionStepConfig[IN]) sdkgo.MutationStep[IN, RefundTransactionInput, RefundProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RefundTransactionInput, RefundProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RefundTransaction(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RefundTransactionResult] {
+			branches := make([]sdkgo.BranchTarget[RefundTransactionResult], 0, 4)
+			if config.Refunded.HasStep() {
+				branches = append(branches, config.Refunded.BranchTarget(RefundTransactionBranchRefunded))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(RefundTransactionBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RefundTransactionBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RefundTransactionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const VaultPaymentMethodBranchVaulted sdkgo.BranchID = "vaulted"
+const VaultPaymentMethodBranchNotFound sdkgo.BranchID = "notFound"
+const VaultPaymentMethodBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const VaultPaymentMethodBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const VaultPaymentMethodBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var VaultPaymentMethodDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "vaultPaymentMethod"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: VaultPaymentMethodBranchVaulted, Description: "A vaulted payment method was returned."},
+		{ID: VaultPaymentMethodBranchNotFound, Description: "The selected payment method was not found.", Optional: true},
+		{ID: VaultPaymentMethodBranchProviderRejected, Description: "Braintree definitively rejected the mutation.", Optional: true},
+		{ID: VaultPaymentMethodBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: VaultPaymentMethodBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type VaultPaymentMethodResult = sdkgo.MutationResult[PaymentMethodProfile]
+
+type VaultPaymentMethodStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=vaultPaymentMethod"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) VaultPaymentMethodInput                           `connector:"mapToOperationInput"`
+	Vaulted                           sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=vaulted"`
+	NotFound                          sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[VaultPaymentMethodResult]                     `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewVaultPaymentMethodStep[IN any](config VaultPaymentMethodStepConfig[IN]) sdkgo.MutationStep[IN, VaultPaymentMethodInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, VaultPaymentMethodInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.VaultPaymentMethod(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[VaultPaymentMethodResult] {
+			branches := make([]sdkgo.BranchTarget[VaultPaymentMethodResult], 0, 5)
+			if config.Vaulted.HasStep() {
+				branches = append(branches, config.Vaulted.BranchTarget(VaultPaymentMethodBranchVaulted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(VaultPaymentMethodBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(VaultPaymentMethodBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(VaultPaymentMethodBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(VaultPaymentMethodBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCreditCardCardholderNameBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCreditCardCardholderNameBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCreditCardCardholderNameBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCreditCardCardholderNameBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const UpdateCreditCardCardholderNameBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var UpdateCreditCardCardholderNameDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCreditCardCardholderName"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCreditCardCardholderNameBranchUpdated, Description: "The cardholder name was updated."},
+		{ID: UpdateCreditCardCardholderNameBranchNotFound, Description: "The selected payment method was not found.", Optional: true},
+		{ID: UpdateCreditCardCardholderNameBranchProviderRejected, Description: "Braintree definitively rejected the mutation.", Optional: true},
+		{ID: UpdateCreditCardCardholderNameBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: UpdateCreditCardCardholderNameBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type UpdateCreditCardCardholderNameResult = sdkgo.MutationResult[PaymentMethodProfile]
+
+type UpdateCreditCardCardholderNameStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=updateCreditCardCardholderName"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCreditCardCardholderNameInput               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[UpdateCreditCardCardholderNameResult]         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewUpdateCreditCardCardholderNameStep[IN any](config UpdateCreditCardCardholderNameStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCreditCardCardholderNameInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCreditCardCardholderNameInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCreditCardCardholderName(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCreditCardCardholderNameResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCreditCardCardholderNameResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCreditCardCardholderNameBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCreditCardCardholderNameBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCreditCardCardholderNameBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCreditCardCardholderNameBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UpdateCreditCardCardholderNameBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCreditCardExpirationDateBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCreditCardExpirationDateBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCreditCardExpirationDateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCreditCardExpirationDateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const UpdateCreditCardExpirationDateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var UpdateCreditCardExpirationDateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCreditCardExpirationDate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCreditCardExpirationDateBranchUpdated, Description: "The expiration date was updated."},
+		{ID: UpdateCreditCardExpirationDateBranchNotFound, Description: "The selected payment method was not found.", Optional: true},
+		{ID: UpdateCreditCardExpirationDateBranchProviderRejected, Description: "Braintree definitively rejected the mutation.", Optional: true},
+		{ID: UpdateCreditCardExpirationDateBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: UpdateCreditCardExpirationDateBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type UpdateCreditCardExpirationDateResult = sdkgo.MutationResult[PaymentMethodProfile]
+
+type UpdateCreditCardExpirationDateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=updateCreditCardExpirationDate"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCreditCardExpirationDateInput               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[UpdateCreditCardExpirationDateResult]         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewUpdateCreditCardExpirationDateStep[IN any](config UpdateCreditCardExpirationDateStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCreditCardExpirationDateInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCreditCardExpirationDateInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCreditCardExpirationDate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCreditCardExpirationDateResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCreditCardExpirationDateResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCreditCardExpirationDateBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCreditCardExpirationDateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCreditCardExpirationDateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCreditCardExpirationDateBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UpdateCreditCardExpirationDateBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCreditCardBillingAddressBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCreditCardBillingAddressBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCreditCardBillingAddressBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCreditCardBillingAddressBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const UpdateCreditCardBillingAddressBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var UpdateCreditCardBillingAddressDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCreditCardBillingAddress"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCreditCardBillingAddressBranchUpdated, Description: "The billing address was updated."},
+		{ID: UpdateCreditCardBillingAddressBranchNotFound, Description: "The selected payment method was not found.", Optional: true},
+		{ID: UpdateCreditCardBillingAddressBranchProviderRejected, Description: "Braintree definitively rejected the mutation.", Optional: true},
+		{ID: UpdateCreditCardBillingAddressBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: UpdateCreditCardBillingAddressBranchUncertain, Description: "The outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type UpdateCreditCardBillingAddressResult = sdkgo.MutationResult[PaymentMethodProfile]
+
+type UpdateCreditCardBillingAddressStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=updateCreditCardBillingAddress"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCreditCardBillingAddressInput               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[UpdateCreditCardBillingAddressResult]         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewUpdateCreditCardBillingAddressStep[IN any](config UpdateCreditCardBillingAddressStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCreditCardBillingAddressInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCreditCardBillingAddressInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCreditCardBillingAddress(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCreditCardBillingAddressResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCreditCardBillingAddressResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCreditCardBillingAddressBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCreditCardBillingAddressBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCreditCardBillingAddressBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCreditCardBillingAddressBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(UpdateCreditCardBillingAddressBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const DeletePaymentMethodFromVaultBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePaymentMethodFromVaultBranchNotFound sdkgo.BranchID = "notFound"
+const DeletePaymentMethodFromVaultBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePaymentMethodFromVaultBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePaymentMethodFromVaultBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePaymentMethodFromVaultDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePaymentMethodFromVault"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePaymentMethodFromVaultBranchDeleted, Description: "The vaulted payment method was deleted."},
+		{ID: DeletePaymentMethodFromVaultBranchNotFound, Description: "The payment method was not found.", Optional: true},
+		{ID: DeletePaymentMethodFromVaultBranchProviderRejected, Description: "Braintree definitively rejected deletion.", Optional: true},
+		{ID: DeletePaymentMethodFromVaultBranchInvalidResponse, Description: "Braintree returned malformed deletion JSON.", Optional: true},
+		{ID: DeletePaymentMethodFromVaultBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePaymentMethodFromVaultResult = sdkgo.MutationResult[PaymentMethodDeleteResult]
+
+type DeletePaymentMethodFromVaultStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                        `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                        `connector:"operationId=deletePaymentMethodFromVault"`
+	StepType                          string                                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                           `connector:"annotations"`
+	Connection                        Connection                                                      `connector:"connection"`
+	ConnectionName                    string                                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetPaymentMethodInput                                  `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePaymentMethodFromVaultResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentMethodDeleteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                                `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePaymentMethodFromVaultStep[IN any](config DeletePaymentMethodFromVaultStepConfig[IN]) sdkgo.MutationStep[IN, GetPaymentMethodInput, PaymentMethodDeleteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetPaymentMethodInput, PaymentMethodDeleteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePaymentMethodFromVault(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePaymentMethodFromVaultResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePaymentMethodFromVaultResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePaymentMethodFromVaultBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeletePaymentMethodFromVaultBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePaymentMethodFromVaultBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePaymentMethodFromVaultBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePaymentMethodFromVaultBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateCustomerBranchCreated sdkgo.BranchID = "created"
+const CreateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateCustomerBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCustomerBranchCreated, Description: "Braintree created the customer."},
+		{ID: CreateCustomerBranchProviderRejected, Description: "Braintree definitively rejected creation.", Optional: true},
+		{ID: CreateCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+		{ID: CreateCustomerBranchUncertain, Description: "The customer outcome cannot be confirmed after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCustomerResult = sdkgo.MutationResult[CustomerProfile]
+
+type CreateCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=braintree"`
+	operationID                       struct{}                                              `connector:"operationId=createCustomer"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCustomerInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCustomerResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCustomerResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateCustomerResult]                    `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateCustomerResult]                    `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCustomerStep[IN any](config CreateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, CreateCustomerInput, CustomerProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCustomerInput, CustomerProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCustomerResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCustomerBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCustomerBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCustomerBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCustomerBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCustomerBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCustomerBranchUpdated, Description: "Braintree updated the customer."},
+		{ID: UpdateCustomerBranchNotFound, Description: "The customer was not found.", Optional: true},
+		{ID: UpdateCustomerBranchProviderRejected, Description: "Braintree definitively rejected the update.", Optional: true},
+		{ID: UpdateCustomerBranchInvalidResponse, Description: "Braintree returned malformed customer JSON.", Optional: true},
+		{ID: UpdateCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCustomerResult = sdkgo.MutationResult[CustomerProfile]
+
+type UpdateCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=braintree"`
+	operationID                       struct{}                                              `connector:"operationId=updateCustomer"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCustomerInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCustomerResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCustomerStep[IN any](config UpdateCustomerStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCustomerInput, CustomerProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCustomerInput, CustomerProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCustomerResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCustomerBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCustomerBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCustomerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCustomerBranchDeleted, Description: "Braintree deleted the customer."},
+		{ID: DeleteCustomerBranchNotFound, Description: "The customer was not found.", Optional: true},
+		{ID: DeleteCustomerBranchProviderRejected, Description: "Braintree rejected deletion because payment methods may remain.", Optional: true},
+		{ID: DeleteCustomerBranchInvalidResponse, Description: "Braintree returned malformed deletion JSON.", Optional: true},
+		{ID: DeleteCustomerBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCustomerResult = sdkgo.MutationResult[CustomerDeleteResult]
+
+type DeleteCustomerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=braintree"`
+	operationID                       struct{}                                                   `connector:"operationId=deleteCustomer"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) GetCustomerInput                                  `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCustomerResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteCustomerResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteCustomerResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteCustomerResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteCustomerResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CustomerDeleteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCustomerStep[IN any](config DeleteCustomerStepConfig[IN]) sdkgo.MutationStep[IN, GetCustomerInput, CustomerDeleteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, GetCustomerInput, CustomerDeleteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCustomerResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCustomerBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCustomerBranchFound sdkgo.BranchID = "found"
+const GetCustomerBranchNotFound sdkgo.BranchID = "notFound"
+const GetCustomerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCustomerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCustomerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCustomerDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCustomer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCustomerBranchFound, Description: "Braintree returned the customer."},
+		{ID: GetCustomerBranchNotFound, Description: "The node is absent or has another type.", Optional: true},
+		{ID: GetCustomerBranchProviderRejected, Description: "Braintree definitively rejected the query.", Optional: true},
+		{ID: GetCustomerBranchInvalidResponse, Description: "Braintree returned malformed or oversized JSON.", Optional: true},
+		{ID: GetCustomerBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCustomerResult = sdkgo.QueryResult[CustomerProfile]
+
+type GetCustomerStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=braintree"`
+	operationID                    struct{}                                           `connector:"operationId=getCustomer"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCustomerInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCustomerResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCustomerResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCustomerResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCustomerResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCustomerResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CustomerProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetCustomerStep[IN any](config GetCustomerStepConfig[IN]) sdkgo.QueryStep[IN, GetCustomerInput, CustomerProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCustomerInput, CustomerProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCustomer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCustomerResult] {
+			branches := make([]sdkgo.BranchTarget[GetCustomerResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCustomerBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCustomerBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCustomerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCustomerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCustomerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPaymentMethodBranchFound sdkgo.BranchID = "found"
+const GetPaymentMethodBranchNotFound sdkgo.BranchID = "notFound"
+const GetPaymentMethodBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPaymentMethodBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPaymentMethodBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPaymentMethodDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPaymentMethod"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPaymentMethodBranchFound, Description: "Braintree returned the payment method."},
+		{ID: GetPaymentMethodBranchNotFound, Description: "The node is absent or has another type.", Optional: true},
+		{ID: GetPaymentMethodBranchProviderRejected, Description: "Braintree definitively rejected the query.", Optional: true},
+		{ID: GetPaymentMethodBranchInvalidResponse, Description: "Braintree returned malformed or oversized JSON.", Optional: true},
+		{ID: GetPaymentMethodBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPaymentMethodResult = sdkgo.QueryResult[PaymentMethodProfile]
+
+type GetPaymentMethodStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=braintree"`
+	operationID                    struct{}                                                `connector:"operationId=getPaymentMethod"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPaymentMethodInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPaymentMethodResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PaymentMethodProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetPaymentMethodStep[IN any](config GetPaymentMethodStepConfig[IN]) sdkgo.QueryStep[IN, GetPaymentMethodInput, PaymentMethodProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPaymentMethodInput, PaymentMethodProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPaymentMethod(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPaymentMethodResult] {
+			branches := make([]sdkgo.BranchTarget[GetPaymentMethodResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPaymentMethodBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPaymentMethodBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPaymentMethodBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPaymentMethodBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPaymentMethodBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetRefundBranchFound sdkgo.BranchID = "found"
+const GetRefundBranchNotFound sdkgo.BranchID = "notFound"
+const GetRefundBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetRefundBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetRefundBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetRefundDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getRefund"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetRefundBranchFound, Description: "Braintree returned the refund."},
+		{ID: GetRefundBranchNotFound, Description: "The node is absent or has another type.", Optional: true},
+		{ID: GetRefundBranchProviderRejected, Description: "Braintree definitively rejected the query.", Optional: true},
+		{ID: GetRefundBranchInvalidResponse, Description: "Braintree returned malformed or oversized JSON.", Optional: true},
+		{ID: GetRefundBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetRefundResult = sdkgo.QueryResult[RefundProfile]
+
+type GetRefundStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=braintree"`
+	operationID                    struct{}                                         `connector:"operationId=getRefund"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetRefundInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetRefundResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetRefundResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetRefundResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetRefundResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetRefundResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[RefundProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetRefundStep[IN any](config GetRefundStepConfig[IN]) sdkgo.QueryStep[IN, GetRefundInput, RefundProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braintree connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetRefundInput, RefundProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetRefund(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetRefundResult] {
+			branches := make([]sdkgo.BranchTarget[GetRefundResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetRefundBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetRefundBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetRefundBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetRefundBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetRefundBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetTransactionBranchFound sdkgo.BranchID = "found"

@@ -8,7 +8,7 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { CloseClient } from '../src/client.js';
 import { GetLeadInputSchema, ListLeadsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/close/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/close/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'listLeads' || scenario.operation === 'getLead');
 const connection = { provider: 'close', name: 'close' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeClose));

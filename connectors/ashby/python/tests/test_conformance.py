@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/ashby/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/ashby/scenarios.json")
+    if scenario["operation"] == "getCandidate"
+]
 CONNECTION = sdk.ConnectionRef("ashby", "ashby")
 TEST_CREDENTIALS = ashby.Credentials(sdk.SecretString("sample-ashby-api-key"))
 ADAPTER = conformance.PythonOperationAdapter(

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: brevo
   displayName: Brevo
-  description: Create or update a contact by email and retrieve a contact.
+  description: Manage contacts, attributes, and senders, and send transactional emails.
   company: Brevo
   categories: [marketing]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: brevo
   languages:
@@ -55,6 +55,286 @@ spec:
         - Select Generate a new API key, give it a name, and copy the displayed secret string once.
         - Paste the key into the secret api_key field; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: ContactWriteResult
+      kind: mutation
+      description: Create a contact by email without updating an existing contact.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Brevo created the contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the contact., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The contact may have been created after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample new contact.
+          output: {id: 21, email: member@meridian.example, created: true}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsList
+      kind: query
+      description: List one page of contact IDs and emails.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Brevo completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Brevo returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample Brevo result.
+          output: {contacts: [{id: 21, email: member@meridian.example}], count: 1}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: ContactChangeResult
+      kind: mutation
+      description: Set absolute attributes on a contact identified by email.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Brevo completed the operation.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample Brevo result.
+          output: {email: member@meridian.example}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: ContactChangeResult
+      kind: mutation
+      description: Delete a contact identified by email.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Brevo completed the operation.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample Brevo result.
+          output: {email: member@meridian.example}
+    - name: listAttributes
+      goName: ListAttributes
+      inputType: ListAttributesInput
+      outputType: AttributesList
+      kind: query
+      description: List contact attribute names, categories, and types.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Brevo completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Brevo returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample Brevo result.
+          output: {attributes: [{name: FIRSTNAME, category: normal, type: text}]}
+    - name: createAttribute
+      goName: CreateAttribute
+      inputType: CreateAttributeInput
+      outputType: AttributeChangeResult
+      kind: mutation
+      description: Create a contact attribute with its type, options, or formula.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Brevo created the attribute.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the attribute., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The attribute may have been created after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample created attribute.
+          output: {category: normal, name: CUSTOMER_CODE}
+    - name: updateAttribute
+      goName: UpdateAttribute
+      inputType: UpdateAttributeInput
+      outputType: AttributeChangeResult
+      kind: mutation
+      description: Replace a contact attribute's choices or formula.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Brevo updated the attribute.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the attribute., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample updated attribute.
+          output: {category: normal, name: CUSTOMER_TIER}
+    - name: deleteAttribute
+      goName: DeleteAttribute
+      inputType: DeleteAttributeInput
+      outputType: AttributeChangeResult
+      kind: mutation
+      description: Delete a contact attribute by category and name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Brevo deleted the attribute.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the attribute., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample deleted attribute.
+          output: {category: normal, name: CUSTOMER_CODE}
+    - name: listSenders
+      goName: ListSenders
+      inputType: ListSendersInput
+      outputType: SendersList
+      kind: query
+      description: List email sender IDs, names, addresses, and active status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Brevo completed the operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Brevo returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample Brevo result.
+          output: {senders: [{id: 1, name: Support, email: support@example.com, active: true}]}
+    - name: createSender
+      goName: CreateSender
+      inputType: CreateSenderInput
+      outputType: SenderChangeResult
+      kind: mutation
+      description: Create an email sender; Brevo sends an address verification message.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Brevo created the sender.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the sender., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The sender may have been created after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample created sender.
+          output: {id: 1}
+    - name: updateSender
+      goName: UpdateSender
+      inputType: UpdateSenderInput
+      outputType: SenderChangeResult
+      kind: mutation
+      description: Set an existing sender's display name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Brevo updated the sender.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the sender., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample updated sender.
+          output: {id: 1}
+    - name: deleteSender
+      goName: DeleteSender
+      inputType: DeleteSenderInput
+      outputType: SenderChangeResult
+      kind: mutation
+      description: Delete an email sender by numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Brevo deleted the sender.}
+        - {id: notFound, goName: NotFound, description: Brevo did not find the sender., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample deleted sender.
+          output: {id: 1}
+    - name: sendEmail
+      goName: SendEmail
+      inputType: SendEmailInput
+      outputType: EmailSendResult
+      kind: mutation
+      description: Send one transactional email with inline text or HTML content.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Brevo accepted the transactional email.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the email., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been sent after the send cap., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample transactional email send.
+          output: {messageId: '<sample@relay.example>'}
+    - name: sendTemplateEmail
+      goName: SendTemplateEmail
+      inputType: SendTemplateEmailInput
+      outputType: EmailSendResult
+      kind: mutation
+      description: Send one transactional email from a configured Brevo template.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Brevo accepted the template email.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the email., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been sent after the send cap., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample template email send.
+          output: {messageId: '<sample-template@relay.example>'}
     - name: createOrUpdateContact
       goName: CreateOrUpdateContact
       inputType: CreateOrUpdateContactInput

@@ -40,12 +40,68 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateContact() sdkgo.Mutation[CreateContactInput, ContactWriteResult]
+	ListContacts() sdkgo.Query[ListContactsInput, ContactsList]
+	UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactChangeResult]
+	DeleteContact() sdkgo.Mutation[DeleteContactInput, ContactChangeResult]
+	ListAttributes() sdkgo.Query[ListAttributesInput, AttributesList]
+	CreateAttribute() sdkgo.Mutation[CreateAttributeInput, AttributeChangeResult]
+	UpdateAttribute() sdkgo.Mutation[UpdateAttributeInput, AttributeChangeResult]
+	DeleteAttribute() sdkgo.Mutation[DeleteAttributeInput, AttributeChangeResult]
+	ListSenders() sdkgo.Query[ListSendersInput, SendersList]
+	CreateSender() sdkgo.Mutation[CreateSenderInput, SenderChangeResult]
+	UpdateSender() sdkgo.Mutation[UpdateSenderInput, SenderChangeResult]
+	DeleteSender() sdkgo.Mutation[DeleteSenderInput, SenderChangeResult]
+	SendEmail() sdkgo.Mutation[SendEmailInput, EmailSendResult]
+	SendTemplateEmail() sdkgo.Mutation[SendTemplateEmailInput, EmailSendResult]
 	CreateOrUpdateContact() sdkgo.Mutation[CreateOrUpdateContactInput, ContactWriteResult]
 	GetContact() sdkgo.Query[GetContactInput, Contact]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateContact() sdkgo.Mutation[CreateContactInput, ContactWriteResult] {
+	return operations.client.CreateContact()
+}
+func (operations clientOperations) ListContacts() sdkgo.Query[ListContactsInput, ContactsList] {
+	return operations.client.ListContacts()
+}
+func (operations clientOperations) UpdateContact() sdkgo.Mutation[UpdateContactInput, ContactChangeResult] {
+	return operations.client.UpdateContact()
+}
+func (operations clientOperations) DeleteContact() sdkgo.Mutation[DeleteContactInput, ContactChangeResult] {
+	return operations.client.DeleteContact()
+}
+func (operations clientOperations) ListAttributes() sdkgo.Query[ListAttributesInput, AttributesList] {
+	return operations.client.ListAttributes()
+}
+func (operations clientOperations) CreateAttribute() sdkgo.Mutation[CreateAttributeInput, AttributeChangeResult] {
+	return operations.client.CreateAttribute()
+}
+func (operations clientOperations) UpdateAttribute() sdkgo.Mutation[UpdateAttributeInput, AttributeChangeResult] {
+	return operations.client.UpdateAttribute()
+}
+func (operations clientOperations) DeleteAttribute() sdkgo.Mutation[DeleteAttributeInput, AttributeChangeResult] {
+	return operations.client.DeleteAttribute()
+}
+func (operations clientOperations) ListSenders() sdkgo.Query[ListSendersInput, SendersList] {
+	return operations.client.ListSenders()
+}
+func (operations clientOperations) CreateSender() sdkgo.Mutation[CreateSenderInput, SenderChangeResult] {
+	return operations.client.CreateSender()
+}
+func (operations clientOperations) UpdateSender() sdkgo.Mutation[UpdateSenderInput, SenderChangeResult] {
+	return operations.client.UpdateSender()
+}
+func (operations clientOperations) DeleteSender() sdkgo.Mutation[DeleteSenderInput, SenderChangeResult] {
+	return operations.client.DeleteSender()
+}
+func (operations clientOperations) SendEmail() sdkgo.Mutation[SendEmailInput, EmailSendResult] {
+	return operations.client.SendEmail()
+}
+func (operations clientOperations) SendTemplateEmail() sdkgo.Mutation[SendTemplateEmailInput, EmailSendResult] {
+	return operations.client.SendTemplateEmail()
+}
 func (operations clientOperations) CreateOrUpdateContact() sdkgo.Mutation[CreateOrUpdateContactInput, ContactWriteResult] {
 	return operations.client.CreateOrUpdateContact()
 }
@@ -190,6 +246,1031 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const CreateContactBranchCreated sdkgo.BranchID = "created"
+const CreateContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateContactBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateContactBranchCreated, Description: "Brevo created the contact."},
+		{ID: CreateContactBranchProviderRejected, Description: "Brevo conclusively rejected the contact.", Optional: true},
+		{ID: CreateContactBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateContactBranchUncertain, Description: "The contact may have been created after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateContactResult = sdkgo.MutationResult[ContactWriteResult]
+
+type CreateContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                 `connector:"operationId=createContact"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateContactInput                              `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateContactResult]                        `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateContactResult]                        `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateContactResult]                        `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateContactResult]                        `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateContactStep[IN any](config CreateContactStepConfig[IN]) sdkgo.MutationStep[IN, CreateContactInput, ContactWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateContactInput, ContactWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateContactResult] {
+			branches := make([]sdkgo.BranchTarget[CreateContactResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateContactBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateContactBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateContactBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateContactBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListContactsBranchListed sdkgo.BranchID = "listed"
+const ListContactsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContactsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContactsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContactsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContacts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContactsBranchListed, Description: "Brevo completed the operation."},
+		{ID: ListContactsBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: ListContactsBranchInvalidResponse, Description: "Brevo returned malformed or oversized data.", Optional: true},
+		{ID: ListContactsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContactsResult = sdkgo.QueryResult[ContactsList]
+
+type ListContactsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=brevo"`
+	operationID                    struct{}                                        `connector:"operationId=listContacts"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListContactsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContactsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContactsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContactsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContactsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContactsList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListContactsStep[IN any](config ListContactsStepConfig[IN]) sdkgo.QueryStep[IN, ListContactsInput, ContactsList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListContactsInput, ContactsList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContacts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContactsResult] {
+			branches := make([]sdkgo.BranchTarget[ListContactsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContactsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContactsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContactsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContactsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateContactBranchUpdated sdkgo.BranchID = "updated"
+const UpdateContactBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateContactBranchUpdated, Description: "Brevo completed the operation."},
+		{ID: UpdateContactBranchNotFound, Description: "Brevo did not find the contact.", Optional: true},
+		{ID: UpdateContactBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: UpdateContactBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateContactResult = sdkgo.MutationResult[ContactChangeResult]
+
+type UpdateContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                  `connector:"operationId=updateContact"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateContactInput                               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateContactResult]                         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateContactResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateContactResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateContactResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateContactStep[IN any](config UpdateContactStepConfig[IN]) sdkgo.MutationStep[IN, UpdateContactInput, ContactChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateContactInput, ContactChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateContactResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateContactResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateContactBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateContactBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteContactBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteContactBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteContactBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteContactDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteContact"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteContactBranchDeleted, Description: "Brevo completed the operation."},
+		{ID: DeleteContactBranchNotFound, Description: "Brevo did not find the contact.", Optional: true},
+		{ID: DeleteContactBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: DeleteContactBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteContactResult = sdkgo.MutationResult[ContactChangeResult]
+
+type DeleteContactStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                  `connector:"operationId=deleteContact"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteContactInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteContactResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteContactResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteContactResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteContactResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteContactStep[IN any](config DeleteContactStepConfig[IN]) sdkgo.MutationStep[IN, DeleteContactInput, ContactChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteContactInput, ContactChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteContact(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteContactResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteContactResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteContactBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteContactBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteContactBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteContactBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAttributesBranchListed sdkgo.BranchID = "listed"
+const ListAttributesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAttributesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAttributesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAttributesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAttributes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAttributesBranchListed, Description: "Brevo completed the operation."},
+		{ID: ListAttributesBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: ListAttributesBranchInvalidResponse, Description: "Brevo returned malformed or oversized data.", Optional: true},
+		{ID: ListAttributesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAttributesResult = sdkgo.QueryResult[AttributesList]
+
+type ListAttributesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=brevo"`
+	operationID                    struct{}                                          `connector:"operationId=listAttributes"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAttributesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAttributesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAttributesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAttributesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAttributesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AttributesList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListAttributesStep[IN any](config ListAttributesStepConfig[IN]) sdkgo.QueryStep[IN, ListAttributesInput, AttributesList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAttributesInput, AttributesList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAttributes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAttributesResult] {
+			branches := make([]sdkgo.BranchTarget[ListAttributesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAttributesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAttributesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAttributesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAttributesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateAttributeBranchCreated sdkgo.BranchID = "created"
+const CreateAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateAttributeBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAttributeBranchCreated, Description: "Brevo created the attribute."},
+		{ID: CreateAttributeBranchProviderRejected, Description: "Brevo conclusively rejected the attribute.", Optional: true},
+		{ID: CreateAttributeBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateAttributeBranchUncertain, Description: "The attribute may have been created after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAttributeResult = sdkgo.MutationResult[AttributeChangeResult]
+
+type CreateAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                    `connector:"operationId=createAttribute"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAttributeInput                               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAttributeResult]                         `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateAttributeResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateAttributeResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateAttributeResult]                         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AttributeChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAttributeStep[IN any](config CreateAttributeStepConfig[IN]) sdkgo.MutationStep[IN, CreateAttributeInput, AttributeChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAttributeInput, AttributeChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAttributeResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAttributeBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAttributeBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAttributeBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateAttributeBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAttributeBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAttributeBranchUpdated, Description: "Brevo updated the attribute."},
+		{ID: UpdateAttributeBranchNotFound, Description: "Brevo did not find the attribute.", Optional: true},
+		{ID: UpdateAttributeBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: UpdateAttributeBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAttributeResult = sdkgo.MutationResult[AttributeChangeResult]
+
+type UpdateAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                    `connector:"operationId=updateAttribute"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAttributeInput                               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAttributeResult]                         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateAttributeResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateAttributeResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateAttributeResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AttributeChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAttributeStep[IN any](config UpdateAttributeStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAttributeInput, AttributeChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAttributeInput, AttributeChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAttributeResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAttributeBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateAttributeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAttributeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteAttributeBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteAttributeBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteAttributeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteAttributeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteAttributeDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteAttribute"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteAttributeBranchDeleted, Description: "Brevo deleted the attribute."},
+		{ID: DeleteAttributeBranchNotFound, Description: "Brevo did not find the attribute.", Optional: true},
+		{ID: DeleteAttributeBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: DeleteAttributeBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteAttributeResult = sdkgo.MutationResult[AttributeChangeResult]
+
+type DeleteAttributeStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                    `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                    `connector:"operationId=deleteAttribute"`
+	StepType                          string                                                      `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                        Connection                                                  `connector:"connection"`
+	ConnectionName                    string                                                      `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteAttributeInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteAttributeResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteAttributeResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteAttributeResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteAttributeResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AttributeChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteAttributeStep[IN any](config DeleteAttributeStepConfig[IN]) sdkgo.MutationStep[IN, DeleteAttributeInput, AttributeChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteAttributeInput, AttributeChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteAttribute(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteAttributeResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteAttributeResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteAttributeBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteAttributeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteAttributeBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteAttributeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSendersBranchListed sdkgo.BranchID = "listed"
+const ListSendersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSendersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSendersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSendersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSenders"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSendersBranchListed, Description: "Brevo completed the operation."},
+		{ID: ListSendersBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: ListSendersBranchInvalidResponse, Description: "Brevo returned malformed or oversized data.", Optional: true},
+		{ID: ListSendersBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSendersResult = sdkgo.QueryResult[SendersList]
+
+type ListSendersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=brevo"`
+	operationID                    struct{}                                       `connector:"operationId=listSenders"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSendersInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSendersResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSendersResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSendersResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSendersResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SendersList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListSendersStep[IN any](config ListSendersStepConfig[IN]) sdkgo.QueryStep[IN, ListSendersInput, SendersList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSendersInput, SendersList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSenders(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSendersResult] {
+			branches := make([]sdkgo.BranchTarget[ListSendersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSendersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSendersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSendersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSendersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateSenderBranchCreated sdkgo.BranchID = "created"
+const CreateSenderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateSenderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateSenderBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateSenderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createSender"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateSenderBranchCreated, Description: "Brevo created the sender."},
+		{ID: CreateSenderBranchProviderRejected, Description: "Brevo conclusively rejected the sender.", Optional: true},
+		{ID: CreateSenderBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateSenderBranchUncertain, Description: "The sender may have been created after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateSenderResult = sdkgo.MutationResult[SenderChangeResult]
+
+type CreateSenderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                 `connector:"operationId=createSender"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateSenderInput                               `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateSenderResult]                         `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateSenderResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateSenderResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateSenderResult]                         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SenderChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateSenderStep[IN any](config CreateSenderStepConfig[IN]) sdkgo.MutationStep[IN, CreateSenderInput, SenderChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateSenderInput, SenderChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateSender(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateSenderResult] {
+			branches := make([]sdkgo.BranchTarget[CreateSenderResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateSenderBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateSenderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateSenderBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateSenderBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateSenderBranchUpdated sdkgo.BranchID = "updated"
+const UpdateSenderBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateSenderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateSenderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateSenderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateSender"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateSenderBranchUpdated, Description: "Brevo updated the sender."},
+		{ID: UpdateSenderBranchNotFound, Description: "Brevo did not find the sender.", Optional: true},
+		{ID: UpdateSenderBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: UpdateSenderBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateSenderResult = sdkgo.MutationResult[SenderChangeResult]
+
+type UpdateSenderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                 `connector:"operationId=updateSender"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateSenderInput                               `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateSenderResult]                         `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateSenderResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateSenderResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateSenderResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SenderChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateSenderStep[IN any](config UpdateSenderStepConfig[IN]) sdkgo.MutationStep[IN, UpdateSenderInput, SenderChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateSenderInput, SenderChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateSender(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateSenderResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateSenderResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateSenderBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateSenderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateSenderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateSenderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSenderBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSenderBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteSenderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSenderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSenderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSender"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSenderBranchDeleted, Description: "Brevo deleted the sender."},
+		{ID: DeleteSenderBranchNotFound, Description: "Brevo did not find the sender.", Optional: true},
+		{ID: DeleteSenderBranchProviderRejected, Description: "Brevo conclusively rejected the request.", Optional: true},
+		{ID: DeleteSenderBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteSenderResult = sdkgo.MutationResult[SenderChangeResult]
+
+type DeleteSenderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=brevo"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteSender"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSenderInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSenderResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteSenderResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteSenderResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteSenderResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SenderChangeResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSenderStep[IN any](config DeleteSenderStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSenderInput, SenderChangeResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSenderInput, SenderChangeResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSender(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSenderResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSenderResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSenderBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteSenderBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSenderBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSenderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendEmailBranchSent sdkgo.BranchID = "sent"
+const SendEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SendEmailBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var SendEmailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendEmailBranchSent, Description: "Brevo accepted the transactional email."},
+		{ID: SendEmailBranchProviderRejected, Description: "Brevo conclusively rejected the email.", Optional: true},
+		{ID: SendEmailBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: SendEmailBranchUncertain, Description: "The email may have been sent after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendEmailResult = sdkgo.MutationResult[EmailSendResult]
+
+type SendEmailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=brevo"`
+	operationID                       struct{}                                              `connector:"operationId=sendEmail"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendEmailInput                               `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendEmailResult]                         `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendEmailResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SendEmailResult]                         `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SendEmailResult]                         `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailSendResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendEmailStep[IN any](config SendEmailStepConfig[IN]) sdkgo.MutationStep[IN, SendEmailInput, EmailSendResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendEmailInput, EmailSendResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendEmailResult] {
+			branches := make([]sdkgo.BranchTarget[SendEmailResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendEmailBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendEmailBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendEmailBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendEmailBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendTemplateEmailBranchSent sdkgo.BranchID = "sent"
+const SendTemplateEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendTemplateEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const SendTemplateEmailBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var SendTemplateEmailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendTemplateEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendTemplateEmailBranchSent, Description: "Brevo accepted the template email."},
+		{ID: SendTemplateEmailBranchProviderRejected, Description: "Brevo conclusively rejected the email.", Optional: true},
+		{ID: SendTemplateEmailBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: SendTemplateEmailBranchUncertain, Description: "The email may have been sent after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendTemplateEmailResult = sdkgo.MutationResult[EmailSendResult]
+
+type SendTemplateEmailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=brevo"`
+	operationID                       struct{}                                              `connector:"operationId=sendTemplateEmail"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendTemplateEmailInput                       `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendTemplateEmailResult]                 `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendTemplateEmailResult]                 `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[SendTemplateEmailResult]                 `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[SendTemplateEmailResult]                 `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailSendResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendTemplateEmailStep[IN any](config SendTemplateEmailStepConfig[IN]) sdkgo.MutationStep[IN, SendTemplateEmailInput, EmailSendResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("brevo connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendTemplateEmailInput, EmailSendResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendTemplateEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendTemplateEmailResult] {
+			branches := make([]sdkgo.BranchTarget[SendTemplateEmailResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendTemplateEmailBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendTemplateEmailBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendTemplateEmailBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendTemplateEmailBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const CreateOrUpdateContactBranchSaved sdkgo.BranchID = "saved"
 const CreateOrUpdateContactBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const CreateOrUpdateContactBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
@@ -208,6 +1289,8 @@ var CreateOrUpdateContactDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateOrUpdateContactResult = sdkgo.MutationResult[ContactWriteResult]
@@ -227,6 +1310,8 @@ type CreateOrUpdateContactStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateOrUpdateContactResult]                `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ContactWriteResult]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateOrUpdateContactStep[IN any](config CreateOrUpdateContactStepConfig[IN]) sdkgo.MutationStep[IN, CreateOrUpdateContactInput, ContactWriteResult] {
@@ -258,6 +1343,7 @@ func NewCreateOrUpdateContactStep[IN any](config CreateOrUpdateContactStepConfig
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

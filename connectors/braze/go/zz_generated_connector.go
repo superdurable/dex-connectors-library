@@ -40,11 +40,39 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	TriggerCampaignSend() sdkgo.Mutation[TriggerCampaignSendInput, TargetedSendResult]
+	TriggerCanvasSend() sdkgo.Mutation[TriggerCanvasSendInput, TargetedSendResult]
+	UpdateUserProfile() sdkgo.Mutation[UpdateUserProfileInput, UserWriteResult]
+	DeleteUserProfile() sdkgo.Mutation[DeleteUserProfileInput, UserDeleteResult]
+	ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsList]
+	ListCanvases() sdkgo.Query[ListCanvasesInput, CanvasesList]
+	ListSegments() sdkgo.Query[ListSegmentsInput, SegmentsList]
 	GetUserProfile() sdkgo.Query[GetUserProfileInput, UserProfile]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) TriggerCampaignSend() sdkgo.Mutation[TriggerCampaignSendInput, TargetedSendResult] {
+	return operations.client.TriggerCampaignSend()
+}
+func (operations clientOperations) TriggerCanvasSend() sdkgo.Mutation[TriggerCanvasSendInput, TargetedSendResult] {
+	return operations.client.TriggerCanvasSend()
+}
+func (operations clientOperations) UpdateUserProfile() sdkgo.Mutation[UpdateUserProfileInput, UserWriteResult] {
+	return operations.client.UpdateUserProfile()
+}
+func (operations clientOperations) DeleteUserProfile() sdkgo.Mutation[DeleteUserProfileInput, UserDeleteResult] {
+	return operations.client.DeleteUserProfile()
+}
+func (operations clientOperations) ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsList] {
+	return operations.client.ListCampaigns()
+}
+func (operations clientOperations) ListCanvases() sdkgo.Query[ListCanvasesInput, CanvasesList] {
+	return operations.client.ListCanvases()
+}
+func (operations clientOperations) ListSegments() sdkgo.Query[ListSegmentsInput, SegmentsList] {
+	return operations.client.ListSegments()
+}
 func (operations clientOperations) GetUserProfile() sdkgo.Query[GetUserProfileInput, UserProfile] {
 	return operations.client.GetUserProfile()
 }
@@ -183,6 +211,515 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential rest_api_key is required")
 	}
 	return nil
+}
+
+const TriggerCampaignSendBranchSent sdkgo.BranchID = "sent"
+const TriggerCampaignSendBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TriggerCampaignSendBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const TriggerCampaignSendBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var TriggerCampaignSendDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "triggerCampaignSend"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TriggerCampaignSendBranchSent, Description: "Braze accepted the targeted campaign dispatch."},
+		{ID: TriggerCampaignSendBranchProviderRejected, Description: "Braze conclusively rejected the dispatch.", Optional: true},
+		{ID: TriggerCampaignSendBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+		{ID: TriggerCampaignSendBranchUncertain, Description: "The campaign may have been dispatched after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type TriggerCampaignSendResult = sdkgo.MutationResult[TargetedSendResult]
+
+type TriggerCampaignSendStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=braze"`
+	operationID                       struct{}                                                 `connector:"operationId=triggerCampaignSend"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) TriggerCampaignSendInput                        `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[TriggerCampaignSendResult]                  `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[TriggerCampaignSendResult]                  `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TriggerCampaignSendResult]                  `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[TriggerCampaignSendResult]                  `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TargetedSendResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewTriggerCampaignSendStep[IN any](config TriggerCampaignSendStepConfig[IN]) sdkgo.MutationStep[IN, TriggerCampaignSendInput, TargetedSendResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braze connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TriggerCampaignSendInput, TargetedSendResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TriggerCampaignSend(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TriggerCampaignSendResult] {
+			branches := make([]sdkgo.BranchTarget[TriggerCampaignSendResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(TriggerCampaignSendBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TriggerCampaignSendBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TriggerCampaignSendBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(TriggerCampaignSendBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const TriggerCanvasSendBranchSent sdkgo.BranchID = "sent"
+const TriggerCanvasSendBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const TriggerCanvasSendBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const TriggerCanvasSendBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var TriggerCanvasSendDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "triggerCanvasSend"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: TriggerCanvasSendBranchSent, Description: "Braze accepted the targeted Canvas dispatch."},
+		{ID: TriggerCanvasSendBranchProviderRejected, Description: "Braze conclusively rejected the dispatch.", Optional: true},
+		{ID: TriggerCanvasSendBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+		{ID: TriggerCanvasSendBranchUncertain, Description: "The Canvas may have been dispatched after the send cap.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type TriggerCanvasSendResult = sdkgo.MutationResult[TargetedSendResult]
+
+type TriggerCanvasSendStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=braze"`
+	operationID                       struct{}                                                 `connector:"operationId=triggerCanvasSend"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) TriggerCanvasSendInput                          `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[TriggerCanvasSendResult]                    `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[TriggerCanvasSendResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[TriggerCanvasSendResult]                    `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[TriggerCanvasSendResult]                    `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[TargetedSendResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewTriggerCanvasSendStep[IN any](config TriggerCanvasSendStepConfig[IN]) sdkgo.MutationStep[IN, TriggerCanvasSendInput, TargetedSendResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braze connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TriggerCanvasSendInput, TargetedSendResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.TriggerCanvasSend(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[TriggerCanvasSendResult] {
+			branches := make([]sdkgo.BranchTarget[TriggerCanvasSendResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(TriggerCanvasSendBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(TriggerCanvasSendBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(TriggerCanvasSendBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(TriggerCanvasSendBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateUserProfileBranchAccepted sdkgo.BranchID = "accepted"
+const UpdateUserProfileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateUserProfileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateUserProfileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateUserProfileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateUserProfile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateUserProfileBranchAccepted, Description: "Braze queued the profile update."},
+		{ID: UpdateUserProfileBranchProviderRejected, Description: "Braze conclusively rejected the update.", Optional: true},
+		{ID: UpdateUserProfileBranchInvalidResponse, Description: "Braze returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateUserProfileBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateUserProfileResult = sdkgo.MutationResult[UserWriteResult]
+
+type UpdateUserProfileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=braze"`
+	operationID                       struct{}                                              `connector:"operationId=updateUserProfile"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateUserProfileInput                       `connector:"mapToOperationInput"`
+	Accepted                          sdkgo.Target[UpdateUserProfileResult]                 `connector:"branch=accepted"`
+	ProviderRejected                  sdkgo.Target[UpdateUserProfileResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateUserProfileResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateUserProfileResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UserWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateUserProfileStep[IN any](config UpdateUserProfileStepConfig[IN]) sdkgo.MutationStep[IN, UpdateUserProfileInput, UserWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braze connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateUserProfileInput, UserWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateUserProfile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateUserProfileResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateUserProfileResult], 0, 4)
+			if config.Accepted.HasStep() {
+				branches = append(branches, config.Accepted.BranchTarget(UpdateUserProfileBranchAccepted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateUserProfileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateUserProfileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateUserProfileBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteUserProfileBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteUserProfileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteUserProfileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteUserProfileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteUserProfileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteUserProfile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteUserProfileBranchDeleted, Description: "Braze queued the user deletion."},
+		{ID: DeleteUserProfileBranchProviderRejected, Description: "Braze conclusively rejected the deletion.", Optional: true},
+		{ID: DeleteUserProfileBranchInvalidResponse, Description: "Braze returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteUserProfileBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteUserProfileResult = sdkgo.MutationResult[UserDeleteResult]
+
+type DeleteUserProfileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=braze"`
+	operationID                       struct{}                                               `connector:"operationId=deleteUserProfile"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteUserProfileInput                        `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteUserProfileResult]                  `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteUserProfileResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteUserProfileResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteUserProfileResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UserDeleteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteUserProfileStep[IN any](config DeleteUserProfileStepConfig[IN]) sdkgo.MutationStep[IN, DeleteUserProfileInput, UserDeleteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braze connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteUserProfileInput, UserDeleteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteUserProfile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteUserProfileResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteUserProfileResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteUserProfileBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteUserProfileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteUserProfileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteUserProfileBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCampaignsBranchListed sdkgo.BranchID = "listed"
+const ListCampaignsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCampaignsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCampaignsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCampaignsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCampaigns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCampaignsBranchListed, Description: "Braze returned campaign identities."},
+		{ID: ListCampaignsBranchProviderRejected, Description: "Braze conclusively rejected the request.", Optional: true},
+		{ID: ListCampaignsBranchInvalidResponse, Description: "Braze returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCampaignsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCampaignsResult = sdkgo.QueryResult[CampaignsList]
+
+type ListCampaignsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=braze"`
+	operationID                    struct{}                                         `connector:"operationId=listCampaigns"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCampaignsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCampaignsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCampaignsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCampaignsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCampaignsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignsList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListCampaignsStep[IN any](config ListCampaignsStepConfig[IN]) sdkgo.QueryStep[IN, ListCampaignsInput, CampaignsList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braze connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCampaignsInput, CampaignsList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCampaigns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCampaignsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCampaignsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCampaignsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCampaignsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCampaignsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCampaignsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCanvasesBranchListed sdkgo.BranchID = "listed"
+const ListCanvasesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCanvasesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCanvasesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCanvasesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCanvases"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCanvasesBranchListed, Description: "Braze returned Canvas identities."},
+		{ID: ListCanvasesBranchProviderRejected, Description: "Braze conclusively rejected the request.", Optional: true},
+		{ID: ListCanvasesBranchInvalidResponse, Description: "Braze returned malformed or oversized JSON.", Optional: true},
+		{ID: ListCanvasesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCanvasesResult = sdkgo.QueryResult[CanvasesList]
+
+type ListCanvasesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=braze"`
+	operationID                    struct{}                                        `connector:"operationId=listCanvases"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCanvasesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCanvasesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCanvasesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCanvasesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCanvasesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CanvasesList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListCanvasesStep[IN any](config ListCanvasesStepConfig[IN]) sdkgo.QueryStep[IN, ListCanvasesInput, CanvasesList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braze connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCanvasesInput, CanvasesList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListCanvases(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCanvasesResult] {
+			branches := make([]sdkgo.BranchTarget[ListCanvasesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCanvasesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCanvasesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCanvasesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCanvasesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSegmentsBranchListed sdkgo.BranchID = "listed"
+const ListSegmentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSegmentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSegmentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSegmentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSegments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSegmentsBranchListed, Description: "Braze returned segment identities."},
+		{ID: ListSegmentsBranchProviderRejected, Description: "Braze conclusively rejected the request.", Optional: true},
+		{ID: ListSegmentsBranchInvalidResponse, Description: "Braze returned malformed or oversized JSON.", Optional: true},
+		{ID: ListSegmentsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSegmentsResult = sdkgo.QueryResult[SegmentsList]
+
+type ListSegmentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=braze"`
+	operationID                    struct{}                                        `connector:"operationId=listSegments"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSegmentsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSegmentsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSegmentsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSegmentsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSegmentsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SegmentsList]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListSegmentsStep[IN any](config ListSegmentsStepConfig[IN]) sdkgo.QueryStep[IN, ListSegmentsInput, SegmentsList] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("braze connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSegmentsInput, SegmentsList]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSegments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSegmentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListSegmentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSegmentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSegmentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSegmentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSegmentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetUserProfileBranchFound sdkgo.BranchID = "found"
