@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Checkout API root as an absolute HTTPS URL. Blank uses the displayed test endpoint. For live, find your company prefix in Customer Area > Developers > API URLs > Prefix and use https://{PREFIX}-checkout-live.adyenpayments.com/checkout/v72; override only for live or a trusted local test gateway. */
   baseUrl?: string;
-  /** Maximum duration of one payment link API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow link creation, reads, or expiry updates. Runtime value in milliseconds. */
+  /** Maximum duration of one Checkout API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow provider responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete payment link response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large link metadata from creation, reads, or expiry updates. */
+  /** Maximum complete Checkout response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually large provider metadata. */
   maxResponseBytes?: number;
 }
 

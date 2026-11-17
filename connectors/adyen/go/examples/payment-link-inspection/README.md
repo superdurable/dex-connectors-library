@@ -37,3 +37,7 @@ The Worker also registers `AdyenCreatePaymentLink`. Start it with `CreatePayment
 ## Payment method availability
 
 The Worker also registers `AdyenListPaymentMethods`. Start it with `ListPaymentMethodsInput{MerchantAccount: "TestMerchant", CurrencyCode: "EUR", AmountMinorUnits: 1200, CountryCode: "NL"}` after replacing the merchant account and amount. Its result includes only method codes and names; stored shopper payment methods are discarded. The checked-in mock-backed integration test exercises this Query through a real Dex Worker and Client.
+
+## Payment cancellation
+
+The Worker also registers `AdyenCancelPayment`. Start it with the `PaymentReferenceModificationInput` fields shown in `flow/cancel_payment_mock_integration_test.go`, replacing the merchant account and PSP reference with those from your Customer Area. The result is a request receipt; inspect the CANCELLATION webhook for the final outcome. The checked-in integration test exercises the Flow through a real Dex Worker and Client using a mock provider.

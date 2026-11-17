@@ -1293,6 +1293,1619 @@
       },
       "name": "getPaymentLink-transportFailure",
       "operation": "getPaymentLink"
+    },
+    {
+      "callId": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "exchanges": [
+        {
+          "body": "{\"merchantAccount\":\"TestMerchant\",\"paymentPspReference\":\"881617891407032C\",\"pspReference\":\"991617891407032C\",\"status\":\"received\"}",
+          "derivedKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/captures",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "received",
+        "failureKind": "",
+        "output": {
+          "modificationPspReference": "991617891407032C",
+          "paymentPspReference": "881617891407032C",
+          "status": "received"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "capturePayment-success",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/captures",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "capturePayment-providerRejected",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/captures",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "capturePayment-invalidResponse",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/captures",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "capturePayment-rateLimit",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/captures",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "capturePayment-serverUnavailable",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "exchanges": [
+        {
+          "derivedKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/captures",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "capturePayment-transportFailure",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7543b909-1b6a-5959-9574-eb84ea94927b",
+      "input": {
+        "merchantAccount": "bad"
+      },
+      "name": "capturePayment-defect",
+      "operation": "capturePayment"
+    },
+    {
+      "callId": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "exchanges": [
+        {
+          "body": "{\"merchantAccount\":\"TestMerchant\",\"paymentPspReference\":\"881617891407032C\",\"pspReference\":\"991617891407032C\",\"status\":\"received\"}",
+          "derivedKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/cancels",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "received",
+        "failureKind": "",
+        "output": {
+          "modificationPspReference": "991617891407032C",
+          "paymentPspReference": "881617891407032C",
+          "status": "received"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "cancelPayment-success",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/cancels",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "cancelPayment-providerRejected",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/cancels",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "cancelPayment-invalidResponse",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/cancels",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "cancelPayment-rateLimit",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/cancels",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "cancelPayment-serverUnavailable",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "exchanges": [
+        {
+          "derivedKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/cancels",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "cancelPayment-transportFailure",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "021a0718-5e2a-57b3-8149-6d2aff279f60",
+      "input": {
+        "merchantAccount": "bad"
+      },
+      "name": "cancelPayment-defect",
+      "operation": "cancelPayment"
+    },
+    {
+      "callId": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "exchanges": [
+        {
+          "body": "{\"merchantAccount\":\"TestMerchant\",\"paymentPspReference\":\"881617891407032C\",\"pspReference\":\"991617891407032C\",\"status\":\"received\"}",
+          "derivedKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/refunds",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "received",
+        "failureKind": "",
+        "output": {
+          "modificationPspReference": "991617891407032C",
+          "paymentPspReference": "881617891407032C",
+          "status": "received"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "refundPayment-success",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/refunds",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "refundPayment-providerRejected",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/refunds",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "refundPayment-invalidResponse",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/refunds",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "refundPayment-rateLimit",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/refunds",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "refundPayment-serverUnavailable",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "exchanges": [
+        {
+          "derivedKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/refunds",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "refundPayment-transportFailure",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dca80e36-babf-5cea-83d0-46749cd858e2",
+      "input": {
+        "merchantAccount": "bad"
+      },
+      "name": "refundPayment-defect",
+      "operation": "refundPayment"
+    },
+    {
+      "callId": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "exchanges": [
+        {
+          "body": "{\"merchantAccount\":\"TestMerchant\",\"paymentPspReference\":\"881617891407032C\",\"pspReference\":\"991617891407032C\",\"status\":\"received\"}",
+          "derivedKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/reversals",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "received",
+        "failureKind": "",
+        "output": {
+          "modificationPspReference": "991617891407032C",
+          "paymentPspReference": "881617891407032C",
+          "status": "received"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "reversePayment-success",
+      "operation": "reversePayment"
+    },
+    {
+      "callId": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/reversals",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "reversePayment-providerRejected",
+      "operation": "reversePayment"
+    },
+    {
+      "callId": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/reversals",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "reversePayment-invalidResponse",
+      "operation": "reversePayment"
+    },
+    {
+      "callId": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/reversals",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "reversePayment-rateLimit",
+      "operation": "reversePayment"
+    },
+    {
+      "callId": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/reversals",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "reversePayment-serverUnavailable",
+      "operation": "reversePayment"
+    },
+    {
+      "callId": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "exchanges": [
+        {
+          "derivedKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/reversals",
+          "requestBody": {
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "input": {
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "reversePayment-transportFailure",
+      "operation": "reversePayment"
+    },
+    {
+      "callId": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0a7db26-13a9-5ba4-82d5-c264dfddd712",
+      "input": {
+        "merchantAccount": "bad"
+      },
+      "name": "reversePayment-defect",
+      "operation": "reversePayment"
+    },
+    {
+      "callId": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "exchanges": [
+        {
+          "body": "{\"merchantAccount\":\"TestMerchant\",\"paymentPspReference\":\"881617891407032C\",\"pspReference\":\"991617891407032C\",\"status\":\"received\"}",
+          "derivedKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/amountUpdates",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "received",
+        "failureKind": "",
+        "output": {
+          "modificationPspReference": "991617891407032C",
+          "paymentPspReference": "881617891407032C",
+          "status": "received"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "updateAuthorisedAmount-success",
+      "operation": "updateAuthorisedAmount"
+    },
+    {
+      "callId": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/amountUpdates",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "updateAuthorisedAmount-providerRejected",
+      "operation": "updateAuthorisedAmount"
+    },
+    {
+      "callId": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/amountUpdates",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "updateAuthorisedAmount-invalidResponse",
+      "operation": "updateAuthorisedAmount"
+    },
+    {
+      "callId": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/amountUpdates",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "updateAuthorisedAmount-rateLimit",
+      "operation": "updateAuthorisedAmount"
+    },
+    {
+      "callId": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/amountUpdates",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "updateAuthorisedAmount-serverUnavailable",
+      "operation": "updateAuthorisedAmount"
+    },
+    {
+      "callId": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "exchanges": [
+        {
+          "derivedKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/payments/881617891407032C/amountUpdates",
+          "requestBody": {
+            "amount": {
+              "currency": "EUR",
+              "value": 1200
+            },
+            "merchantAccount": "TestMerchant",
+            "reference": "case-100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "input": {
+        "amountMinorUnits": 1200,
+        "currencyCode": "EUR",
+        "merchantAccount": "TestMerchant",
+        "paymentPspReference": "881617891407032C",
+        "reference": "case-100"
+      },
+      "name": "updateAuthorisedAmount-transportFailure",
+      "operation": "updateAuthorisedAmount"
+    },
+    {
+      "callId": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "modificationPspReference": "",
+          "paymentPspReference": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b2e3fe67-cfac-5f19-8b47-897d85b366fe",
+      "input": {
+        "merchantAccount": "bad"
+      },
+      "name": "updateAuthorisedAmount-defect",
+      "operation": "updateAuthorisedAmount"
     }
   ],
   "schemaVersion": 1

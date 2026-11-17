@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "capturePayment/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "cancelPayment/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "refundPayment/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "reversePayment/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
+		{name: "updateAuthorisedAmount/receivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+			return err
+		}},
 		{name: "listPaymentMethods/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[adyen.PaymentMethodPage](`{"methods":[{"type":"scheme","name":"Cards"},{"type":"ideal","name":"iDEAL"}]}`)
 			return err
@@ -42,6 +62,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CapturePayment().Definition().Operation.OperationID != "capturePayment" {
+		t.Errorf("capturePayment mock has another definition")
+	}
+	if mock.CancelPayment().Definition().Operation.OperationID != "cancelPayment" {
+		t.Errorf("cancelPayment mock has another definition")
+	}
+	if mock.RefundPayment().Definition().Operation.OperationID != "refundPayment" {
+		t.Errorf("refundPayment mock has another definition")
+	}
+	if mock.ReversePayment().Definition().Operation.OperationID != "reversePayment" {
+		t.Errorf("reversePayment mock has another definition")
+	}
+	if mock.UpdateAuthorisedAmount().Definition().Operation.OperationID != "updateAuthorisedAmount" {
+		t.Errorf("updateAuthorisedAmount mock has another definition")
+	}
 	if mock.ListPaymentMethods().Definition().Operation.OperationID != "listPaymentMethods" {
 		t.Errorf("listPaymentMethods mock has another definition")
 	}

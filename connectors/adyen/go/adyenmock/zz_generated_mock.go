@@ -17,11 +17,16 @@ import (
 
 // Mock is a scripted adyen connection. Script each operation through its accessor.
 type Mock struct {
-	connection         adyen.Connection
-	listPaymentMethods *connectormock.Query[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage]
-	createPaymentLink  *connectormock.Mutation[adyen.CreatePaymentLinkInput, adyen.CreatedPaymentLink]
-	expirePaymentLink  *connectormock.Mutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus]
-	getPaymentLink     *connectormock.Query[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus]
+	connection             adyen.Connection
+	capturePayment         *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt]
+	cancelPayment          *connectormock.Mutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt]
+	refundPayment          *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt]
+	reversePayment         *connectormock.Mutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt]
+	updateAuthorisedAmount *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt]
+	listPaymentMethods     *connectormock.Query[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage]
+	createPaymentLink      *connectormock.Mutation[adyen.CreatePaymentLinkInput, adyen.CreatedPaymentLink]
+	expirePaymentLink      *connectormock.Mutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus]
+	getPaymentLink         *connectormock.Query[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,11 +34,21 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listPaymentMethods: connectormock.NewQuery[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage](t, adyen.ListPaymentMethodsDefinition),
-		createPaymentLink:  connectormock.NewMutation[adyen.CreatePaymentLinkInput, adyen.CreatedPaymentLink](t, adyen.CreatePaymentLinkDefinition),
-		expirePaymentLink:  connectormock.NewMutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.ExpirePaymentLinkDefinition),
-		getPaymentLink:     connectormock.NewQuery[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.GetPaymentLinkDefinition),
+		capturePayment:         connectormock.NewMutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt](t, adyen.CapturePaymentDefinition),
+		cancelPayment:          connectormock.NewMutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt](t, adyen.CancelPaymentDefinition),
+		refundPayment:          connectormock.NewMutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt](t, adyen.RefundPaymentDefinition),
+		reversePayment:         connectormock.NewMutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt](t, adyen.ReversePaymentDefinition),
+		updateAuthorisedAmount: connectormock.NewMutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt](t, adyen.UpdateAuthorisedAmountDefinition),
+		listPaymentMethods:     connectormock.NewQuery[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage](t, adyen.ListPaymentMethodsDefinition),
+		createPaymentLink:      connectormock.NewMutation[adyen.CreatePaymentLinkInput, adyen.CreatedPaymentLink](t, adyen.CreatePaymentLinkDefinition),
+		expirePaymentLink:      connectormock.NewMutation[adyen.ExpirePaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.ExpirePaymentLinkDefinition),
+		getPaymentLink:         connectormock.NewQuery[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus](t, adyen.GetPaymentLinkDefinition),
 	}
+	mock.capturePayment.Default(CapturePaymentDefault())
+	mock.cancelPayment.Default(CancelPaymentDefault())
+	mock.refundPayment.Default(RefundPaymentDefault())
+	mock.reversePayment.Default(ReversePaymentDefault())
+	mock.updateAuthorisedAmount.Default(UpdateAuthorisedAmountDefault())
 	mock.listPaymentMethods.Default(ListPaymentMethodsDefault())
 	mock.createPaymentLink.Default(CreatePaymentLinkDefault())
 	mock.expirePaymentLink.Default(ExpirePaymentLinkDefault())
@@ -48,6 +63,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() adyen.Connection { return mock.connection }
+
+// CapturePayment returns the capturePayment script.
+func (mock *Mock) CapturePayment() *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt] {
+	return mock.capturePayment
+}
+
+// CancelPayment returns the cancelPayment script.
+func (mock *Mock) CancelPayment() *connectormock.Mutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt] {
+	return mock.cancelPayment
+}
+
+// RefundPayment returns the refundPayment script.
+func (mock *Mock) RefundPayment() *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt] {
+	return mock.refundPayment
+}
+
+// ReversePayment returns the reversePayment script.
+func (mock *Mock) ReversePayment() *connectormock.Mutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt] {
+	return mock.reversePayment
+}
+
+// UpdateAuthorisedAmount returns the updateAuthorisedAmount script.
+func (mock *Mock) UpdateAuthorisedAmount() *connectormock.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt] {
+	return mock.updateAuthorisedAmount
+}
 
 // ListPaymentMethods returns the listPaymentMethods script.
 func (mock *Mock) ListPaymentMethods() *connectormock.Query[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage] {
@@ -71,6 +111,21 @@ func (mock *Mock) GetPaymentLink() *connectormock.Query[adyen.GetPaymentLinkInpu
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CapturePayment() sdkgo.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt] {
+	return operations.mock.capturePayment
+}
+func (operations mockOperations) CancelPayment() sdkgo.Mutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt] {
+	return operations.mock.cancelPayment
+}
+func (operations mockOperations) RefundPayment() sdkgo.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt] {
+	return operations.mock.refundPayment
+}
+func (operations mockOperations) ReversePayment() sdkgo.Mutation[adyen.PaymentReferenceModificationInput, adyen.PaymentModificationReceipt] {
+	return operations.mock.reversePayment
+}
+func (operations mockOperations) UpdateAuthorisedAmount() sdkgo.Mutation[adyen.PaymentModificationInput, adyen.PaymentModificationReceipt] {
+	return operations.mock.updateAuthorisedAmount
+}
 func (operations mockOperations) ListPaymentMethods() sdkgo.Query[adyen.ListPaymentMethodsInput, adyen.PaymentMethodPage] {
 	return operations.mock.listPaymentMethods
 }
@@ -82,6 +137,161 @@ func (operations mockOperations) ExpirePaymentLink() sdkgo.Mutation[adyen.Expire
 }
 func (operations mockOperations) GetPaymentLink() sdkgo.Query[adyen.GetPaymentLinkInput, adyen.PaymentLinkStatus] {
 	return operations.mock.getPaymentLink
+}
+
+// CapturePaymentReceived selects the received branch: Adyen received the modification for asynchronous processing.
+func CapturePaymentReceived(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.CapturePaymentBranchReceived, value, failure)
+}
+
+// CapturePaymentProviderRejected selects the providerRejected branch: Adyen conclusively rejected the modification.
+func CapturePaymentProviderRejected(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.CapturePaymentBranchProviderRejected, value, failure)
+}
+
+// CapturePaymentDefect selects the defect branch: Local input or credentials are invalid.
+func CapturePaymentDefect(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.CapturePaymentBranchDefect, value, failure)
+}
+
+// CapturePaymentRetry asks Dex to retry the capturePayment Step, after the delay when it is positive.
+func CapturePaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Retry[adyen.PaymentModificationReceipt](failure, after)
+}
+
+// CapturePaymentReceivedDefault is the manifest mock receivedDefault: Sample accepted modification.
+func CapturePaymentReceivedDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	value := connectormock.MustDecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+	return connectormock.Branch(adyen.CapturePaymentBranchReceived, value, nil)
+}
+
+// CapturePaymentDefault is the manifest default, receivedDefault, which New installs.
+func CapturePaymentDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	return CapturePaymentReceivedDefault()
+}
+
+// CancelPaymentReceived selects the received branch: Adyen received the modification for asynchronous processing.
+func CancelPaymentReceived(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.CancelPaymentBranchReceived, value, failure)
+}
+
+// CancelPaymentProviderRejected selects the providerRejected branch: Adyen conclusively rejected the modification.
+func CancelPaymentProviderRejected(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.CancelPaymentBranchProviderRejected, value, failure)
+}
+
+// CancelPaymentDefect selects the defect branch: Local input or credentials are invalid.
+func CancelPaymentDefect(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.CancelPaymentBranchDefect, value, failure)
+}
+
+// CancelPaymentRetry asks Dex to retry the cancelPayment Step, after the delay when it is positive.
+func CancelPaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Retry[adyen.PaymentModificationReceipt](failure, after)
+}
+
+// CancelPaymentReceivedDefault is the manifest mock receivedDefault: Sample accepted modification.
+func CancelPaymentReceivedDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	value := connectormock.MustDecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+	return connectormock.Branch(adyen.CancelPaymentBranchReceived, value, nil)
+}
+
+// CancelPaymentDefault is the manifest default, receivedDefault, which New installs.
+func CancelPaymentDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	return CancelPaymentReceivedDefault()
+}
+
+// RefundPaymentReceived selects the received branch: Adyen received the modification for asynchronous processing.
+func RefundPaymentReceived(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.RefundPaymentBranchReceived, value, failure)
+}
+
+// RefundPaymentProviderRejected selects the providerRejected branch: Adyen conclusively rejected the modification.
+func RefundPaymentProviderRejected(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.RefundPaymentBranchProviderRejected, value, failure)
+}
+
+// RefundPaymentDefect selects the defect branch: Local input or credentials are invalid.
+func RefundPaymentDefect(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.RefundPaymentBranchDefect, value, failure)
+}
+
+// RefundPaymentRetry asks Dex to retry the refundPayment Step, after the delay when it is positive.
+func RefundPaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Retry[adyen.PaymentModificationReceipt](failure, after)
+}
+
+// RefundPaymentReceivedDefault is the manifest mock receivedDefault: Sample accepted modification.
+func RefundPaymentReceivedDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	value := connectormock.MustDecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+	return connectormock.Branch(adyen.RefundPaymentBranchReceived, value, nil)
+}
+
+// RefundPaymentDefault is the manifest default, receivedDefault, which New installs.
+func RefundPaymentDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	return RefundPaymentReceivedDefault()
+}
+
+// ReversePaymentReceived selects the received branch: Adyen received the modification for asynchronous processing.
+func ReversePaymentReceived(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.ReversePaymentBranchReceived, value, failure)
+}
+
+// ReversePaymentProviderRejected selects the providerRejected branch: Adyen conclusively rejected the modification.
+func ReversePaymentProviderRejected(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.ReversePaymentBranchProviderRejected, value, failure)
+}
+
+// ReversePaymentDefect selects the defect branch: Local input or credentials are invalid.
+func ReversePaymentDefect(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.ReversePaymentBranchDefect, value, failure)
+}
+
+// ReversePaymentRetry asks Dex to retry the reversePayment Step, after the delay when it is positive.
+func ReversePaymentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Retry[adyen.PaymentModificationReceipt](failure, after)
+}
+
+// ReversePaymentReceivedDefault is the manifest mock receivedDefault: Sample accepted modification.
+func ReversePaymentReceivedDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	value := connectormock.MustDecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+	return connectormock.Branch(adyen.ReversePaymentBranchReceived, value, nil)
+}
+
+// ReversePaymentDefault is the manifest default, receivedDefault, which New installs.
+func ReversePaymentDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	return ReversePaymentReceivedDefault()
+}
+
+// UpdateAuthorisedAmountReceived selects the received branch: Adyen received the modification for asynchronous processing.
+func UpdateAuthorisedAmountReceived(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.UpdateAuthorisedAmountBranchReceived, value, failure)
+}
+
+// UpdateAuthorisedAmountProviderRejected selects the providerRejected branch: Adyen conclusively rejected the modification.
+func UpdateAuthorisedAmountProviderRejected(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.UpdateAuthorisedAmountBranchProviderRejected, value, failure)
+}
+
+// UpdateAuthorisedAmountDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateAuthorisedAmountDefect(value adyen.PaymentModificationReceipt, failure *sdkgo.Failure) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Branch(adyen.UpdateAuthorisedAmountBranchDefect, value, failure)
+}
+
+// UpdateAuthorisedAmountRetry asks Dex to retry the updateAuthorisedAmount Step, after the delay when it is positive.
+func UpdateAuthorisedAmountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[adyen.PaymentModificationReceipt] {
+	return connectormock.Retry[adyen.PaymentModificationReceipt](failure, after)
+}
+
+// UpdateAuthorisedAmountReceivedDefault is the manifest mock receivedDefault: Sample accepted modification.
+func UpdateAuthorisedAmountReceivedDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	value := connectormock.MustDecodeOutput[adyen.PaymentModificationReceipt](`{"paymentPspReference":"881617891407032C","modificationPspReference":"991617891407032C","status":"received"}`)
+	return connectormock.Branch(adyen.UpdateAuthorisedAmountBranchReceived, value, nil)
+}
+
+// UpdateAuthorisedAmountDefault is the manifest default, receivedDefault, which New installs.
+func UpdateAuthorisedAmountDefault() connectormock.Case[adyen.PaymentModificationReceipt] {
+	return UpdateAuthorisedAmountReceivedDefault()
 }
 
 // ListPaymentMethodsListed selects the listed branch: Adyen returned available payment methods.

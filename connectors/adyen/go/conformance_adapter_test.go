@@ -22,9 +22,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listPaymentMethods": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPaymentMethods(), reference),
-		"createPaymentLink":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreatePaymentLink(), reference, scenario.CallID),
-		"expirePaymentLink":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ExpirePaymentLink(), reference, scenario.CallID),
-		"getPaymentLink":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPaymentLink(), reference),
+		"capturePayment":         newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CapturePayment(), reference, scenario.CallID),
+		"cancelPayment":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelPayment(), reference, scenario.CallID),
+		"refundPayment":          newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.RefundPayment(), reference, scenario.CallID),
+		"reversePayment":         newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ReversePayment(), reference, scenario.CallID),
+		"updateAuthorisedAmount": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateAuthorisedAmount(), reference, scenario.CallID),
+		"listPaymentMethods":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPaymentMethods(), reference),
+		"createPaymentLink":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreatePaymentLink(), reference, scenario.CallID),
+		"expirePaymentLink":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.ExpirePaymentLink(), reference, scenario.CallID),
+		"getPaymentLink":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPaymentLink(), reference),
 	}}
 }
