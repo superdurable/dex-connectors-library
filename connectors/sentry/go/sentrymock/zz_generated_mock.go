@@ -18,6 +18,10 @@ import (
 // Mock is a scripted sentry connection. Script each operation through its accessor.
 type Mock struct {
 	connection        sentry.Connection
+	assignIssue       *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue]
+	deleteIssue       *connectormock.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue]
+	renameProject     *connectormock.Mutation[sentry.RenameProjectInput, sentry.Project]
+	deleteProject     *connectormock.Mutation[sentry.DeleteProjectInput, sentry.DeletedProject]
 	listIssues        *connectormock.Query[sentry.ListIssuesInput, sentry.IssuePage]
 	getIssue          *connectormock.Query[sentry.GetIssueInput, sentry.Issue]
 	updateIssueStatus *connectormock.Mutation[sentry.UpdateIssueStatusInput, sentry.Issue]
@@ -33,6 +37,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		assignIssue:       connectormock.NewMutation[sentry.AssignIssueInput, sentry.Issue](t, sentry.AssignIssueDefinition),
+		deleteIssue:       connectormock.NewMutation[sentry.DeleteIssueInput, sentry.DeletedIssue](t, sentry.DeleteIssueDefinition),
+		renameProject:     connectormock.NewMutation[sentry.RenameProjectInput, sentry.Project](t, sentry.RenameProjectDefinition),
+		deleteProject:     connectormock.NewMutation[sentry.DeleteProjectInput, sentry.DeletedProject](t, sentry.DeleteProjectDefinition),
 		listIssues:        connectormock.NewQuery[sentry.ListIssuesInput, sentry.IssuePage](t, sentry.ListIssuesDefinition),
 		getIssue:          connectormock.NewQuery[sentry.GetIssueInput, sentry.Issue](t, sentry.GetIssueDefinition),
 		updateIssueStatus: connectormock.NewMutation[sentry.UpdateIssueStatusInput, sentry.Issue](t, sentry.UpdateIssueStatusDefinition),
@@ -42,6 +50,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		getProject:        connectormock.NewQuery[sentry.GetProjectInput, sentry.Project](t, sentry.GetProjectDefinition),
 		listOrganizations: connectormock.NewQuery[sentry.ListOrganizationsInput, sentry.OrganizationPage](t, sentry.ListOrganizationsDefinition),
 	}
+	mock.assignIssue.Default(AssignIssueDefault())
+	mock.deleteIssue.Default(DeleteIssueDefault())
+	mock.renameProject.Default(RenameProjectDefault())
+	mock.deleteProject.Default(DeleteProjectDefault())
 	mock.listIssues.Default(ListIssuesDefault())
 	mock.getIssue.Default(GetIssueDefault())
 	mock.updateIssueStatus.Default(UpdateIssueStatusDefault())
@@ -60,6 +72,26 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sentry.Connection { return mock.connection }
+
+// AssignIssue returns the assignIssue script.
+func (mock *Mock) AssignIssue() *connectormock.Mutation[sentry.AssignIssueInput, sentry.Issue] {
+	return mock.assignIssue
+}
+
+// DeleteIssue returns the deleteIssue script.
+func (mock *Mock) DeleteIssue() *connectormock.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue] {
+	return mock.deleteIssue
+}
+
+// RenameProject returns the renameProject script.
+func (mock *Mock) RenameProject() *connectormock.Mutation[sentry.RenameProjectInput, sentry.Project] {
+	return mock.renameProject
+}
+
+// DeleteProject returns the deleteProject script.
+func (mock *Mock) DeleteProject() *connectormock.Mutation[sentry.DeleteProjectInput, sentry.DeletedProject] {
+	return mock.deleteProject
+}
 
 // ListIssues returns the listIssues script.
 func (mock *Mock) ListIssues() *connectormock.Query[sentry.ListIssuesInput, sentry.IssuePage] {
@@ -103,6 +135,18 @@ func (mock *Mock) ListOrganizations() *connectormock.Query[sentry.ListOrganizati
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) AssignIssue() sdkgo.Mutation[sentry.AssignIssueInput, sentry.Issue] {
+	return operations.mock.assignIssue
+}
+func (operations mockOperations) DeleteIssue() sdkgo.Mutation[sentry.DeleteIssueInput, sentry.DeletedIssue] {
+	return operations.mock.deleteIssue
+}
+func (operations mockOperations) RenameProject() sdkgo.Mutation[sentry.RenameProjectInput, sentry.Project] {
+	return operations.mock.renameProject
+}
+func (operations mockOperations) DeleteProject() sdkgo.Mutation[sentry.DeleteProjectInput, sentry.DeletedProject] {
+	return operations.mock.deleteProject
+}
 func (operations mockOperations) ListIssues() sdkgo.Query[sentry.ListIssuesInput, sentry.IssuePage] {
 	return operations.mock.listIssues
 }
@@ -126,6 +170,168 @@ func (operations mockOperations) GetProject() sdkgo.Query[sentry.GetProjectInput
 }
 func (operations mockOperations) ListOrganizations() sdkgo.Query[sentry.ListOrganizationsInput, sentry.OrganizationPage] {
 	return operations.mock.listOrganizations
+}
+
+// AssignIssueAssigned selects the assigned branch: Sentry assigned the issue.
+func AssignIssueAssigned(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchAssigned, value, failure)
+}
+
+// AssignIssueNotFound selects the notFound branch: The issue does not exist.
+func AssignIssueNotFound(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchNotFound, value, failure)
+}
+
+// AssignIssueProviderRejected selects the providerRejected branch: Sentry definitively rejected assignment.
+func AssignIssueProviderRejected(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchProviderRejected, value, failure)
+}
+
+// AssignIssueInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func AssignIssueInvalidResponse(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchInvalidResponse, value, failure)
+}
+
+// AssignIssueDefect selects the defect branch: Local input or credentials are invalid.
+func AssignIssueDefect(value sentry.Issue, failure *sdkgo.Failure) connectormock.Case[sentry.Issue] {
+	return connectormock.Branch(sentry.AssignIssueBranchDefect, value, failure)
+}
+
+// AssignIssueRetry asks Dex to retry the assignIssue Step, after the delay when it is positive.
+func AssignIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Issue] {
+	return connectormock.Retry[sentry.Issue](failure, after)
+}
+
+// AssignIssueAssignIssueDefault is the manifest mock assignIssueDefault: One issue was assigned.
+func AssignIssueAssignIssueDefault() connectormock.Case[sentry.Issue] {
+	value := connectormock.MustDecodeOutput[sentry.Issue](`{"id":"42","shortId":"APP-42","title":"Example","status":"unresolved"}`)
+	return connectormock.Branch(sentry.AssignIssueBranchAssigned, value, nil)
+}
+
+// AssignIssueDefault is the manifest default, assignIssueDefault, which New installs.
+func AssignIssueDefault() connectormock.Case[sentry.Issue] { return AssignIssueAssignIssueDefault() }
+
+// DeleteIssueDeleted selects the deleted branch: Sentry queued issue deletion.
+func DeleteIssueDeleted(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchDeleted, value, failure)
+}
+
+// DeleteIssueNotFound selects the notFound branch: The issue does not exist.
+func DeleteIssueNotFound(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchNotFound, value, failure)
+}
+
+// DeleteIssueProviderRejected selects the providerRejected branch: Sentry definitively rejected deletion.
+func DeleteIssueProviderRejected(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchProviderRejected, value, failure)
+}
+
+// DeleteIssueInvalidResponse selects the invalidResponse branch: Sentry returned unexpected response content.
+func DeleteIssueInvalidResponse(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchInvalidResponse, value, failure)
+}
+
+// DeleteIssueDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteIssueDefect(value sentry.DeletedIssue, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Branch(sentry.DeleteIssueBranchDefect, value, failure)
+}
+
+// DeleteIssueRetry asks Dex to retry the deleteIssue Step, after the delay when it is positive.
+func DeleteIssueRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.DeletedIssue] {
+	return connectormock.Retry[sentry.DeletedIssue](failure, after)
+}
+
+// DeleteIssueDeleteIssueDefault is the manifest mock deleteIssueDefault: One issue deletion was queued.
+func DeleteIssueDeleteIssueDefault() connectormock.Case[sentry.DeletedIssue] {
+	value := connectormock.MustDecodeOutput[sentry.DeletedIssue](`{"id":"42"}`)
+	return connectormock.Branch(sentry.DeleteIssueBranchDeleted, value, nil)
+}
+
+// DeleteIssueDefault is the manifest default, deleteIssueDefault, which New installs.
+func DeleteIssueDefault() connectormock.Case[sentry.DeletedIssue] {
+	return DeleteIssueDeleteIssueDefault()
+}
+
+// RenameProjectRenamed selects the renamed branch: Sentry renamed the project.
+func RenameProjectRenamed(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchRenamed, value, failure)
+}
+
+// RenameProjectNotFound selects the notFound branch: The project does not exist.
+func RenameProjectNotFound(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchNotFound, value, failure)
+}
+
+// RenameProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected the rename.
+func RenameProjectProviderRejected(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchProviderRejected, value, failure)
+}
+
+// RenameProjectInvalidResponse selects the invalidResponse branch: Sentry returned malformed or oversized JSON.
+func RenameProjectInvalidResponse(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchInvalidResponse, value, failure)
+}
+
+// RenameProjectDefect selects the defect branch: Local input or credentials are invalid.
+func RenameProjectDefect(value sentry.Project, failure *sdkgo.Failure) connectormock.Case[sentry.Project] {
+	return connectormock.Branch(sentry.RenameProjectBranchDefect, value, failure)
+}
+
+// RenameProjectRetry asks Dex to retry the renameProject Step, after the delay when it is positive.
+func RenameProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.Project] {
+	return connectormock.Retry[sentry.Project](failure, after)
+}
+
+// RenameProjectRenameProjectDefault is the manifest mock renameProjectDefault: One project was renamed.
+func RenameProjectRenameProjectDefault() connectormock.Case[sentry.Project] {
+	value := connectormock.MustDecodeOutput[sentry.Project](`{"id":"43","slug":"app","name":"New name"}`)
+	return connectormock.Branch(sentry.RenameProjectBranchRenamed, value, nil)
+}
+
+// RenameProjectDefault is the manifest default, renameProjectDefault, which New installs.
+func RenameProjectDefault() connectormock.Case[sentry.Project] {
+	return RenameProjectRenameProjectDefault()
+}
+
+// DeleteProjectDeleted selects the deleted branch: Sentry queued project deletion.
+func DeleteProjectDeleted(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchDeleted, value, failure)
+}
+
+// DeleteProjectNotFound selects the notFound branch: The project does not exist.
+func DeleteProjectNotFound(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchNotFound, value, failure)
+}
+
+// DeleteProjectProviderRejected selects the providerRejected branch: Sentry definitively rejected deletion.
+func DeleteProjectProviderRejected(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchProviderRejected, value, failure)
+}
+
+// DeleteProjectInvalidResponse selects the invalidResponse branch: Sentry returned unexpected response content.
+func DeleteProjectInvalidResponse(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchInvalidResponse, value, failure)
+}
+
+// DeleteProjectDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteProjectDefect(value sentry.DeletedProject, failure *sdkgo.Failure) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Branch(sentry.DeleteProjectBranchDefect, value, failure)
+}
+
+// DeleteProjectRetry asks Dex to retry the deleteProject Step, after the delay when it is positive.
+func DeleteProjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sentry.DeletedProject] {
+	return connectormock.Retry[sentry.DeletedProject](failure, after)
+}
+
+// DeleteProjectDeleteProjectDefault is the manifest mock deleteProjectDefault: One project deletion was queued.
+func DeleteProjectDeleteProjectDefault() connectormock.Case[sentry.DeletedProject] {
+	value := connectormock.MustDecodeOutput[sentry.DeletedProject](`{"slug":"app"}`)
+	return connectormock.Branch(sentry.DeleteProjectBranchDeleted, value, nil)
+}
+
+// DeleteProjectDefault is the manifest default, deleteProjectDefault, which New installs.
+func DeleteProjectDefault() connectormock.Case[sentry.DeletedProject] {
+	return DeleteProjectDeleteProjectDefault()
 }
 
 // ListIssuesListed selects the listed branch: Sentry returned the requested result.

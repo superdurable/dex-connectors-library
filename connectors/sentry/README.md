@@ -9,6 +9,8 @@ manifest version is `v0.3.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`issue-review` example](go/examples/issue-review/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
+The [`assign-issue` example](go/examples/assign-issue/README.md) exercises
+an absolute issue assignment through a real Dex Worker in its mock test.
 
 The Python package is [`dex-connector-sentry`](python/README.md), imported as
 `dex_connectors.sentry`. The TypeScript package is
@@ -26,11 +28,21 @@ The Python package is [`dex-connector-sentry`](python/README.md), imported as
 | `listProjects` | query | ProjectPage |
 | `getProject` | query | Project |
 | `listOrganizations` | query | OrganizationPage |
+| `assignIssue` | mutation | Issue |
+| `deleteIssue` | mutation | DeletedIssue |
+| `renameProject` | mutation | Project |
+| `deleteProject` | mutation | DeletedProject |
 
 The five new Go queries use the `safe` repeat tier. List operations return one
 provider page; pass a Sentry cursor to request a known later page. Sentry
 returns continuation cursors in its `Link` header, which these typed outputs
 do not yet expose. Python and TypeScript retain their declared issue operations.
+
+The new Go writes use the `safe` repeat tier. Assignment and renaming set
+absolute fields; issue and project deletion queue a terminal action. Find issue
+IDs under **Issues** and project slugs under **Projects** in Sentry. `assignedTo`
+accepts a user ID, primary email, or `team:<team ID>`; blank identifiers and
+names are invalid. Deletion can remain pending after an accepted response.
 
 `listIssues` returns the first provider page (default unresolved query); cursor pagination is not exposed in this initial release. `updateIssueStatus` sends an absolute status in a PUT request. Repeating `resolved`, `unresolved`, or `ignored` sets the same state. Only the submitted status field is changed.
 
@@ -38,8 +50,9 @@ do not yet expose. Python and TypeScript retain their declared issue operations.
 
 Start at [https://sentry.io/settings/account/api/auth-tokens/](https://sentry.io/settings/account/api/auth-tokens/) and follow
 **User Settings > Auth Tokens > Create New Token**. Create an auth token with
-`event:read` for issues and events, `event:write` for status updates,
-`project:read` for project reads, and `org:read` for organization reads. Copy
+`event:read` and `event:write` for issues, `event:admin` for issue deletion,
+`project:read`, `project:write`, and `project:admin` for project operations,
+and `org:read` for organization reads. Copy
 the opaque secret; blank prevents requests. Paste the token in the
 secret `api_key` field in Dex Web Connections.
 The key travels only in `Authorization`. Leave `baseUrl`, `timeout`,
@@ -82,6 +95,9 @@ flow := NewFlow(mock.Connection())
 - [https://docs.sentry.io/api/events/list-an-issues-events/](https://docs.sentry.io/api/events/list-an-issues-events/)
 - [https://docs.sentry.io/api/organizations/list-an-organizations-projects/](https://docs.sentry.io/api/organizations/list-an-organizations-projects/)
 - [https://docs.sentry.io/api/users/list-your-organizations/](https://docs.sentry.io/api/users/list-your-organizations/)
+- [https://docs.sentry.io/api/events/remove-an-issue/](https://docs.sentry.io/api/events/remove-an-issue/)
+- [https://docs.sentry.io/api/projects/update-a-project/](https://docs.sentry.io/api/projects/update-a-project/)
+- [https://docs.sentry.io/api/projects/delete-a-project/](https://docs.sentry.io/api/projects/delete-a-project/)
 
 The HTTP unit tests verify request shapes and local classification against
 an `httptest` server. The TypeScript example runs against a local HTTP fixture

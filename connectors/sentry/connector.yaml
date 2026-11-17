@@ -52,8 +52,9 @@ spec:
       required: true
       description: Secret Sentry token. Start at https://sentry.io/settings/account/api/auth-tokens/,
         follow User Settings > Auth Tokens > Create New Token. Create an auth token
-        with event:read for issues and events, event:write for status updates,
-        project:read for project reads, and org:read for organization reads. Copy the opaque
+        with event:read and event:write for issue reads and updates, event:admin
+        for issue deletion, project:read, project:write, and project:admin for
+        project reads and writes, and org:read for organization reads. Copy the opaque
         secret; blank prevents requests. It is sent only in the Authorization header.
     guide:
       startURL: https://sentry.io/settings/account/api/auth-tokens/
@@ -61,12 +62,81 @@ spec:
       - Open https://sentry.io/settings/account/api/auth-tokens/ and sign in or create
         an account.
       - Follow User Settings > Auth Tokens > Create New Token. Create an auth token
-        with event:read for issues and events, event:write for status updates,
-        project:read for project reads, and org:read for organization reads. Copy the opaque
+        with event:read and event:write for issue reads and updates, event:admin
+        for issue deletion, project:read, project:write, and project:admin for
+        project reads and writes, and org:read for organization reads. Copy the opaque
         secret; blank prevents requests.
       - Paste the token into the secret api_key field and save the connection; leave
         baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
   operations:
+  - name: assignIssue
+    goName: AssignIssue
+    inputType: AssignIssueInput
+    outputType: Issue
+    kind: mutation
+    description: Set an issue's assignee to a Sentry user or team.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: assigned, goName: Assigned, description: Sentry assigned the issue.}
+    - {id: notFound, goName: NotFound, description: The issue does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected assignment., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: assignIssueDefault, branch: assigned, default: true, description: One issue was assigned., output: {id: '42', shortId: APP-42, title: Example, status: unresolved}}
+  - name: deleteIssue
+    goName: DeleteIssue
+    inputType: DeleteIssueInput
+    outputType: DeletedIssue
+    kind: mutation
+    description: Queue a Sentry issue for deletion.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Sentry queued issue deletion.}
+    - {id: notFound, goName: NotFound, description: The issue does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned unexpected response content., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteIssueDefault, branch: deleted, default: true, description: One issue deletion was queued., output: {id: '42'}}
+  - name: renameProject
+    goName: RenameProject
+    inputType: RenameProjectInput
+    outputType: Project
+    kind: mutation
+    description: Replace a Sentry project's display name.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: renamed, goName: Renamed, description: Sentry renamed the project.}
+    - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected the rename., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: renameProjectDefault, branch: renamed, default: true, description: One project was renamed., output: {id: '43', slug: app, name: New name}}
+  - name: deleteProject
+    goName: DeleteProject
+    inputType: DeleteProjectInput
+    outputType: DeletedProject
+    kind: mutation
+    description: Queue a Sentry project for deletion.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Sentry queued project deletion.}
+    - {id: notFound, goName: NotFound, description: The project does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Sentry definitively rejected deletion., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Sentry returned unexpected response content., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteProjectDefault, branch: deleted, default: true, description: One project deletion was queued., output: {slug: app}}
   - name: listIssues
     goName: ListIssues
     inputType: ListIssuesInput

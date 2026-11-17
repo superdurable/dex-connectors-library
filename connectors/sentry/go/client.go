@@ -515,7 +515,7 @@ func runMutation[T any](client *Client, call sdkgo.Call, operation, method, path
 		return sdkgo.NewMutationRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is processing the same request"), 0)
 	case response.StatusCode == http.StatusNotFound && notFound != "":
 		return mutationFailure[T](operation, notFound, sdkgo.FailureNotFound, "provider resource was not found")
-	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted:
+	case response.StatusCode != http.StatusOK && response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusAccepted && response.StatusCode != http.StatusNoContent:
 		return mutationFailure[T](operation, rejected, sdkgo.FailureProviderRejection, "provider rejected the request with HTTP "+strconv.Itoa(response.StatusCode))
 	}
 	content, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
