@@ -61,7 +61,7 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Selected authorization method. */
   authMethodId?: string;
-  /** Secret Typeform personal access token copied once from https://admin.typeform.com/user/tokens after choosing Generate a new token with the scopes forms:read, responses:read, and webhooks:write. It looks like tfp_ followed by letters and digits and is sent only as a bearer token to the dataCenter API host. Required: no operation can run without it. */
+  /** Secret Typeform personal access token copied once from https://admin.typeform.com/user/tokens after choosing Generate a new token with the scopes forms:read, responses:read, webhooks:read, and webhooks:write. It looks like tfp_ followed by letters and digits and is sent only as a bearer token to the dataCenter API host. Required: no operation can run without it. */
   accessToken: SecretString;
   /** Secret you generate yourself, such as the output of openssl rand -hex 32, as https://www.typeform.com/developers/webhooks/secure-your-webhooks/ describes. upsertWebhook registers it as the webhook's secret, and the responseSubmitted endpoint checks every Typeform-Signature header with it. After changing it, run upsertWebhook again. Blank is fine for operations only; the endpoint then answers 503 and upsertWebhook selects defect. */
   webhookSecret?: SecretString;

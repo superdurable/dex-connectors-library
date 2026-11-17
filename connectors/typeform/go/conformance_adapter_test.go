@@ -27,5 +27,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, _ string,
 		"getForm":       newConformanceQueryInvocation(t, scenario.Input, context, client.GetForm(), testConnection),
 		"listResponses": newConformanceQueryInvocation(t, scenario.Input, context, client.ListResponses(), testConnection),
 		"upsertWebhook": newConformanceMutationInvocation(t, scenario.Input, context, client.UpsertWebhook(), testConnection, scenario.CallID),
+		"listWebhooks":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListWebhooks(), testConnection),
+		"getWebhook":    newConformanceQueryInvocation(t, scenario.Input, context, client.GetWebhook(), testConnection),
+		"deleteWebhook": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteWebhook(), testConnection, scenario.CallID),
 	}}
 }
