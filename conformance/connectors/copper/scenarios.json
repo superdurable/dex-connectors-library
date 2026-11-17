@@ -4467,6 +4467,1427 @@
       "input": {},
       "name": "listCustomerSources-transportFailure",
       "operation": "listCustomerSources"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000400",
+      "exchanges": [
+        {
+          "body": "[{\"id\":8894157,\"name\":\"Sample Lead\",\"status\":\"New\",\"company_name\":\"\",\"email\":{\"email\":\"sample@example.com\",\"category\":\"work\"}}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads/search",
+          "requestBody": {
+            "emails": "sample@example.com",
+            "name": "Sample Lead",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "leads": [
+            {
+              "companyName": "",
+              "id": 8894157,
+              "name": "Sample Lead",
+              "status": "New"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-success",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000401",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads/search",
+          "requestBody": {
+            "emails": "sample@example.com",
+            "name": "Sample Lead",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "leads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-providerRejected",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000402",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads/search",
+          "requestBody": {
+            "emails": "sample@example.com",
+            "name": "Sample Lead",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "leads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-invalidResponse",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000403",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "leads": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 201
+      },
+      "name": "listLeads-defect",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000404",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads/search",
+          "requestBody": {
+            "emails": "sample@example.com",
+            "name": "Sample Lead",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-rateLimited",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000405",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads/search",
+          "requestBody": {
+            "emails": "sample@example.com",
+            "name": "Sample Lead",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-serviceUnavailable",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000406",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads/search",
+          "requestBody": {
+            "emails": "sample@example.com",
+            "name": "Sample Lead",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-serverFailure",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000407",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads/search",
+          "requestBody": {
+            "emails": "sample@example.com",
+            "name": "Sample Lead",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listLeads-transportFailure",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "exchanges": [
+        {
+          "body": "{\"id\":8894157,\"name\":\"Sample Lead\",\"status\":\"New\",\"company_name\":\"\",\"email\":{\"email\":\"sample@example.com\",\"category\":\"work\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads",
+          "requestBody": {
+            "email": {
+              "category": "work",
+              "email": "sample@example.com"
+            },
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+          "providerId": "8894157",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "companyName": "",
+          "id": 8894157,
+          "name": "Sample Lead",
+          "status": "New"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead"
+      },
+      "name": "createLead-success",
+      "operation": "createLead"
+    },
+    {
+      "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads",
+          "requestBody": {
+            "email": {
+              "category": "work",
+              "email": "sample@example.com"
+            },
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "companyName": "",
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead"
+      },
+      "name": "createLead-providerRejected",
+      "operation": "createLead"
+    },
+    {
+      "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads",
+          "requestBody": {
+            "email": {
+              "category": "work",
+              "email": "sample@example.com"
+            },
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead"
+      },
+      "name": "createLead-rateLimit",
+      "operation": "createLead"
+    },
+    {
+      "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads",
+          "requestBody": {
+            "email": {
+              "category": "work",
+              "email": "sample@example.com"
+            },
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead"
+      },
+      "name": "createLead-serverUnavailable",
+      "operation": "createLead"
+    },
+    {
+      "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads",
+          "requestBody": {
+            "email": {
+              "category": "work",
+              "email": "sample@example.com"
+            },
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead"
+      },
+      "name": "createLead-transportFailure",
+      "operation": "createLead"
+    },
+    {
+      "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/leads/search",
+          "requestBody": {
+            "emails": "sample@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "companyName": "",
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+      "input": {
+        "email": "sample@example.com",
+        "name": "Sample Lead"
+      },
+      "name": "createLead-uncertain",
+      "operation": "createLead",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "ea6b5877-6935-5e60-b93a-b7c2e27cdcfd",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "exchanges": [
+        {
+          "body": "{\"id\":8894157,\"name\":\"Sample Lead\",\"status\":\"New\",\"company_name\":\"\",\"email\":{\"email\":\"sample@example.com\",\"category\":\"work\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/leads/8894157",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "companyName": "",
+          "id": 8894157,
+          "name": "Sample Lead",
+          "status": "New"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "input": {
+        "details": "Updated",
+        "leadId": "8894157",
+        "name": "Sample Lead"
+      },
+      "name": "updateLead-success",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/leads/8894157",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "companyName": "",
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "input": {
+        "details": "Updated",
+        "leadId": "8894157",
+        "name": "Sample Lead"
+      },
+      "name": "updateLead-notFound",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/leads/8894157",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "companyName": "",
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "input": {
+        "details": "Updated",
+        "leadId": "8894157",
+        "name": "Sample Lead"
+      },
+      "name": "updateLead-providerRejected",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/leads/8894157",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "input": {
+        "details": "Updated",
+        "leadId": "8894157",
+        "name": "Sample Lead"
+      },
+      "name": "updateLead-rateLimit",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/leads/8894157",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "input": {
+        "details": "Updated",
+        "leadId": "8894157",
+        "name": "Sample Lead"
+      },
+      "name": "updateLead-serverUnavailable",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/leads/8894157",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Lead"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3c02b5f2-3f56-50aa-bed3-b001bdff7788",
+      "input": {
+        "details": "Updated",
+        "leadId": "8894157",
+        "name": "Sample Lead"
+      },
+      "name": "updateLead-transportFailure",
+      "operation": "updateLead"
+    },
+    {
+      "callId": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "exchanges": [
+        {
+          "body": "{\"id\":8894157,\"is_deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/leads/8894157",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 8894157
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "input": {
+        "leadId": "8894157"
+      },
+      "name": "deleteLead-success",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/leads/8894157",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "input": {
+        "leadId": "8894157"
+      },
+      "name": "deleteLead-notFound",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/leads/8894157",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "input": {
+        "leadId": "8894157"
+      },
+      "name": "deleteLead-providerRejected",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/leads/8894157",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "input": {
+        "leadId": "8894157"
+      },
+      "name": "deleteLead-rateLimit",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/leads/8894157",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "input": {
+        "leadId": "8894157"
+      },
+      "name": "deleteLead-serverUnavailable",
+      "operation": "deleteLead"
+    },
+    {
+      "callId": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/leads/8894157",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "757fb7d8-d938-5b0a-a11e-c2a2e9b96580",
+      "input": {
+        "leadId": "8894157"
+      },
+      "name": "deleteLead-transportFailure",
+      "operation": "deleteLead"
     }
   ],
   "schemaVersion": 1

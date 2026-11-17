@@ -64,6 +64,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[copper.LeadStatusesList](`{"statuses":[{"id":208231,"name":"New"}]}`)
 			return err
 		}},
+		{name: "createLead/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.LeadMetadata](`{"id":8894157,"name":"Sample Lead","status":"New"}`)
+			return err
+		}},
+		{name: "listLeads/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.LeadsPage](`{"leads":[{"id":8894157,"name":"Sample Lead","status":"New"}]}`)
+			return err
+		}},
+		{name: "updateLead/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.LeadMetadata](`{"id":8894157,"name":"Sample Lead","status":"New"}`)
+			return err
+		}},
+		{name: "deleteLead/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeleteLeadOutput](`{"id":8894157,"deleted":true}`)
+			return err
+		}},
 		{name: "getLead/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[copper.LeadMetadata](`{"id":8894157,"name":"Sample Lead","status":"New","companyName":"Example Company"}`)
 			return err
@@ -113,6 +129,18 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListLeadStatuses().Definition().Operation.OperationID != "listLeadStatuses" {
 		t.Errorf("listLeadStatuses mock has another definition")
+	}
+	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
+		t.Errorf("createLead mock has another definition")
+	}
+	if mock.ListLeads().Definition().Operation.OperationID != "listLeads" {
+		t.Errorf("listLeads mock has another definition")
+	}
+	if mock.UpdateLead().Definition().Operation.OperationID != "updateLead" {
+		t.Errorf("updateLead mock has another definition")
+	}
+	if mock.DeleteLead().Definition().Operation.OperationID != "deleteLead" {
+		t.Errorf("deleteLead mock has another definition")
 	}
 	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
 		t.Errorf("getLead mock has another definition")

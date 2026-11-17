@@ -30,6 +30,10 @@ type Mock struct {
 	deletePerson        *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput]
 	listCustomerSources *connectormock.Query[copper.ListCustomerSourcesInput, copper.CustomerSourcesList]
 	listLeadStatuses    *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList]
+	createLead          *connectormock.Mutation[copper.CreateLeadInput, copper.LeadMetadata]
+	listLeads           *connectormock.Query[copper.ListLeadsInput, copper.LeadsPage]
+	updateLead          *connectormock.Mutation[copper.UpdateLeadInput, copper.LeadMetadata]
+	deleteLead          *connectormock.Mutation[copper.DeleteLeadInput, copper.DeleteLeadOutput]
 	getLead             *connectormock.Query[copper.GetLeadInput, copper.LeadMetadata]
 }
 
@@ -50,6 +54,10 @@ func New(t testing.TB, connectionName string) *Mock {
 		deletePerson:        connectormock.NewMutation[copper.DeletePersonInput, copper.DeletePersonOutput](t, copper.DeletePersonDefinition),
 		listCustomerSources: connectormock.NewQuery[copper.ListCustomerSourcesInput, copper.CustomerSourcesList](t, copper.ListCustomerSourcesDefinition),
 		listLeadStatuses:    connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
+		createLead:          connectormock.NewMutation[copper.CreateLeadInput, copper.LeadMetadata](t, copper.CreateLeadDefinition),
+		listLeads:           connectormock.NewQuery[copper.ListLeadsInput, copper.LeadsPage](t, copper.ListLeadsDefinition),
+		updateLead:          connectormock.NewMutation[copper.UpdateLeadInput, copper.LeadMetadata](t, copper.UpdateLeadDefinition),
+		deleteLead:          connectormock.NewMutation[copper.DeleteLeadInput, copper.DeleteLeadOutput](t, copper.DeleteLeadDefinition),
 		getLead:             connectormock.NewQuery[copper.GetLeadInput, copper.LeadMetadata](t, copper.GetLeadDefinition),
 	}
 	mock.createCompany.Default(CreateCompanyDefault())
@@ -64,6 +72,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.deletePerson.Default(DeletePersonDefault())
 	mock.listCustomerSources.Default(ListCustomerSourcesDefault())
 	mock.listLeadStatuses.Default(ListLeadStatusesDefault())
+	mock.createLead.Default(CreateLeadDefault())
+	mock.listLeads.Default(ListLeadsDefault())
+	mock.updateLead.Default(UpdateLeadDefault())
+	mock.deleteLead.Default(DeleteLeadDefault())
 	mock.getLead.Default(GetLeadDefault())
 	connection, err := copper.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "copper", Name: connectionName})
 	if err != nil {
@@ -136,6 +148,26 @@ func (mock *Mock) ListLeadStatuses() *connectormock.Query[copper.ListLeadStatuse
 	return mock.listLeadStatuses
 }
 
+// CreateLead returns the createLead script.
+func (mock *Mock) CreateLead() *connectormock.Mutation[copper.CreateLeadInput, copper.LeadMetadata] {
+	return mock.createLead
+}
+
+// ListLeads returns the listLeads script.
+func (mock *Mock) ListLeads() *connectormock.Query[copper.ListLeadsInput, copper.LeadsPage] {
+	return mock.listLeads
+}
+
+// UpdateLead returns the updateLead script.
+func (mock *Mock) UpdateLead() *connectormock.Mutation[copper.UpdateLeadInput, copper.LeadMetadata] {
+	return mock.updateLead
+}
+
+// DeleteLead returns the deleteLead script.
+func (mock *Mock) DeleteLead() *connectormock.Mutation[copper.DeleteLeadInput, copper.DeleteLeadOutput] {
+	return mock.deleteLead
+}
+
 // GetLead returns the getLead script.
 func (mock *Mock) GetLead() *connectormock.Query[copper.GetLeadInput, copper.LeadMetadata] {
 	return mock.getLead
@@ -178,6 +210,18 @@ func (operations mockOperations) ListCustomerSources() sdkgo.Query[copper.ListCu
 }
 func (operations mockOperations) ListLeadStatuses() sdkgo.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return operations.mock.listLeadStatuses
+}
+func (operations mockOperations) CreateLead() sdkgo.Mutation[copper.CreateLeadInput, copper.LeadMetadata] {
+	return operations.mock.createLead
+}
+func (operations mockOperations) ListLeads() sdkgo.Query[copper.ListLeadsInput, copper.LeadsPage] {
+	return operations.mock.listLeads
+}
+func (operations mockOperations) UpdateLead() sdkgo.Mutation[copper.UpdateLeadInput, copper.LeadMetadata] {
+	return operations.mock.updateLead
+}
+func (operations mockOperations) DeleteLead() sdkgo.Mutation[copper.DeleteLeadInput, copper.DeleteLeadOutput] {
+	return operations.mock.deleteLead
 }
 func (operations mockOperations) GetLead() sdkgo.Query[copper.GetLeadInput, copper.LeadMetadata] {
 	return operations.mock.getLead
@@ -617,6 +661,144 @@ func ListLeadStatusesListedDefault() connectormock.Case[copper.LeadStatusesList]
 // ListLeadStatusesDefault is the manifest default, listedDefault, which New installs.
 func ListLeadStatusesDefault() connectormock.Case[copper.LeadStatusesList] {
 	return ListLeadStatusesListedDefault()
+}
+
+// CreateLeadCreated selects the created branch: Copper created the lead.
+func CreateLeadCreated(value copper.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Branch(copper.CreateLeadBranchCreated, value, failure)
+}
+
+// CreateLeadProviderRejected selects the providerRejected branch: Copper rejected creation.
+func CreateLeadProviderRejected(value copper.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Branch(copper.CreateLeadBranchProviderRejected, value, failure)
+}
+
+// CreateLeadUncertain returns an uncertain createLead outcome.
+func CreateLeadUncertain(value copper.LeadMetadata, failure sdkgo.Failure) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateLeadDefect selects the defect branch: Input or credentials are invalid.
+func CreateLeadDefect(value copper.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Branch(copper.CreateLeadBranchDefect, value, failure)
+}
+
+// CreateLeadRetry asks Dex to retry the createLead Step, after the delay when it is positive.
+func CreateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Retry[copper.LeadMetadata](failure, after)
+}
+
+// CreateLeadCreatedDefault is the manifest mock createdDefault: A sample lead is created.
+func CreateLeadCreatedDefault() connectormock.Case[copper.LeadMetadata] {
+	value := connectormock.MustDecodeOutput[copper.LeadMetadata](`{"id":8894157,"name":"Sample Lead","status":"New"}`)
+	return connectormock.Branch(copper.CreateLeadBranchCreated, value, nil)
+}
+
+// CreateLeadDefault is the manifest default, createdDefault, which New installs.
+func CreateLeadDefault() connectormock.Case[copper.LeadMetadata] { return CreateLeadCreatedDefault() }
+
+// ListLeadsListed selects the listed branch: Copper returned a page of leads.
+func ListLeadsListed(value copper.LeadsPage, failure *sdkgo.Failure) connectormock.Case[copper.LeadsPage] {
+	return connectormock.Branch(copper.ListLeadsBranchListed, value, failure)
+}
+
+// ListLeadsProviderRejected selects the providerRejected branch: Copper rejected the search.
+func ListLeadsProviderRejected(value copper.LeadsPage, failure *sdkgo.Failure) connectormock.Case[copper.LeadsPage] {
+	return connectormock.Branch(copper.ListLeadsBranchProviderRejected, value, failure)
+}
+
+// ListLeadsInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized leads JSON.
+func ListLeadsInvalidResponse(value copper.LeadsPage, failure *sdkgo.Failure) connectormock.Case[copper.LeadsPage] {
+	return connectormock.Branch(copper.ListLeadsBranchInvalidResponse, value, failure)
+}
+
+// ListLeadsDefect selects the defect branch: Input or credentials are invalid.
+func ListLeadsDefect(value copper.LeadsPage, failure *sdkgo.Failure) connectormock.Case[copper.LeadsPage] {
+	return connectormock.Branch(copper.ListLeadsBranchDefect, value, failure)
+}
+
+// ListLeadsRetry asks Dex to retry the listLeads Step, after the delay when it is positive.
+func ListLeadsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.LeadsPage] {
+	return connectormock.Retry[copper.LeadsPage](failure, after)
+}
+
+// ListLeadsListedDefault is the manifest mock listedDefault: A sample leads page is returned.
+func ListLeadsListedDefault() connectormock.Case[copper.LeadsPage] {
+	value := connectormock.MustDecodeOutput[copper.LeadsPage](`{"leads":[{"id":8894157,"name":"Sample Lead","status":"New"}]}`)
+	return connectormock.Branch(copper.ListLeadsBranchListed, value, nil)
+}
+
+// ListLeadsDefault is the manifest default, listedDefault, which New installs.
+func ListLeadsDefault() connectormock.Case[copper.LeadsPage] { return ListLeadsListedDefault() }
+
+// UpdateLeadUpdated selects the updated branch: Copper updated the lead.
+func UpdateLeadUpdated(value copper.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Branch(copper.UpdateLeadBranchUpdated, value, failure)
+}
+
+// UpdateLeadNotFound selects the notFound branch: No lead matches the ID.
+func UpdateLeadNotFound(value copper.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Branch(copper.UpdateLeadBranchNotFound, value, failure)
+}
+
+// UpdateLeadProviderRejected selects the providerRejected branch: Copper rejected the update.
+func UpdateLeadProviderRejected(value copper.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Branch(copper.UpdateLeadBranchProviderRejected, value, failure)
+}
+
+// UpdateLeadDefect selects the defect branch: Input or credentials are invalid.
+func UpdateLeadDefect(value copper.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Branch(copper.UpdateLeadBranchDefect, value, failure)
+}
+
+// UpdateLeadRetry asks Dex to retry the updateLead Step, after the delay when it is positive.
+func UpdateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.LeadMetadata] {
+	return connectormock.Retry[copper.LeadMetadata](failure, after)
+}
+
+// UpdateLeadUpdatedDefault is the manifest mock updatedDefault: A sample lead is updated.
+func UpdateLeadUpdatedDefault() connectormock.Case[copper.LeadMetadata] {
+	value := connectormock.MustDecodeOutput[copper.LeadMetadata](`{"id":8894157,"name":"Sample Lead","status":"New"}`)
+	return connectormock.Branch(copper.UpdateLeadBranchUpdated, value, nil)
+}
+
+// UpdateLeadDefault is the manifest default, updatedDefault, which New installs.
+func UpdateLeadDefault() connectormock.Case[copper.LeadMetadata] { return UpdateLeadUpdatedDefault() }
+
+// DeleteLeadDeleted selects the deleted branch: Copper deleted the lead.
+func DeleteLeadDeleted(value copper.DeleteLeadOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteLeadOutput] {
+	return connectormock.Branch(copper.DeleteLeadBranchDeleted, value, failure)
+}
+
+// DeleteLeadNotFound selects the notFound branch: No lead matches the ID.
+func DeleteLeadNotFound(value copper.DeleteLeadOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteLeadOutput] {
+	return connectormock.Branch(copper.DeleteLeadBranchNotFound, value, failure)
+}
+
+// DeleteLeadProviderRejected selects the providerRejected branch: Copper rejected the deletion.
+func DeleteLeadProviderRejected(value copper.DeleteLeadOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteLeadOutput] {
+	return connectormock.Branch(copper.DeleteLeadBranchProviderRejected, value, failure)
+}
+
+// DeleteLeadDefect selects the defect branch: Input or credentials are invalid.
+func DeleteLeadDefect(value copper.DeleteLeadOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteLeadOutput] {
+	return connectormock.Branch(copper.DeleteLeadBranchDefect, value, failure)
+}
+
+// DeleteLeadRetry asks Dex to retry the deleteLead Step, after the delay when it is positive.
+func DeleteLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.DeleteLeadOutput] {
+	return connectormock.Retry[copper.DeleteLeadOutput](failure, after)
+}
+
+// DeleteLeadDeletedDefault is the manifest mock deletedDefault: A sample lead is deleted.
+func DeleteLeadDeletedDefault() connectormock.Case[copper.DeleteLeadOutput] {
+	value := connectormock.MustDecodeOutput[copper.DeleteLeadOutput](`{"id":8894157,"deleted":true}`)
+	return connectormock.Branch(copper.DeleteLeadBranchDeleted, value, nil)
+}
+
+// DeleteLeadDefault is the manifest default, deletedDefault, which New installs.
+func DeleteLeadDefault() connectormock.Case[copper.DeleteLeadOutput] {
+	return DeleteLeadDeletedDefault()
 }
 
 // GetLeadFound selects the found branch: Copper returned the selected lead.

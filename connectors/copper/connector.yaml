@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: copper
   displayName: Copper CRM
-  description: Read Copper lead metadata and customer sources, and manage people and companies without custom fields.
+  description: Manage Copper leads, people, and companies, and discover customer sources without custom fields.
   company: Copper
   categories: [crm-sales]
   version: v0.2.0
@@ -302,6 +302,86 @@ spec:
           default: true
           description: One sample lead status is listed.
           output: {statuses: [{id: 208231, name: New}]}
+    - name: createLead
+      goName: CreateLead
+      inputType: CreateLeadInput
+      outputType: LeadMetadata
+      kind: mutation
+      description: Create a Copper lead with a name and email for read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Copper created the lead.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample lead is created.
+          output: {id: 8894157, name: Sample Lead, status: New}
+    - name: listLeads
+      goName: ListLeads
+      inputType: ListLeadsInput
+      outputType: LeadsPage
+      kind: query
+      description: Search one bounded page of leads by name or email.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Copper returned a page of leads.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized leads JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample leads page is returned.
+          output: {leads: [{id: 8894157, name: Sample Lead, status: New}]}
+    - name: updateLead
+      goName: UpdateLead
+      inputType: UpdateLeadInput
+      outputType: LeadMetadata
+      kind: mutation
+      description: Replace a Copper lead's name and details without changing other fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Copper updated the lead.}
+        - {id: notFound, goName: NotFound, description: No lead matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample lead is updated.
+          output: {id: 8894157, name: Sample Lead, status: New}
+    - name: deleteLead
+      goName: DeleteLead
+      inputType: DeleteLeadInput
+      outputType: DeleteLeadOutput
+      kind: mutation
+      description: Permanently delete a Copper lead by numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Copper deleted the lead.}
+        - {id: notFound, goName: NotFound, description: No lead matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample lead is deleted.
+          output: {id: 8894157, deleted: true}
     - name: getLead
       goName: GetLead
       inputType: GetLeadInput
