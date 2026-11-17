@@ -17,12 +17,17 @@ import (
 
 // Mock is a scripted zendesk-sell connection. Script each operation through its accessor.
 type Mock struct {
-	connection sell.Connection
-	createLead *connectormock.Mutation[sell.CreateLeadInput, sell.LeadMetadata]
-	updateLead *connectormock.Mutation[sell.UpdateLeadInput, sell.LeadMetadata]
-	deleteLead *connectormock.Mutation[sell.DeleteLeadInput, sell.DeleteLeadOutput]
-	listLeads  *connectormock.Query[sell.ListLeadsInput, sell.LeadsPage]
-	getLead    *connectormock.Query[sell.GetLeadInput, sell.LeadMetadata]
+	connection   sell.Connection
+	listRecords  *connectormock.Query[sell.ListRecordsInput, sell.RecordsPage]
+	getRecord    *connectormock.Query[sell.GetRecordInput, sell.SellRecord]
+	createRecord *connectormock.Mutation[sell.CreateRecordInput, sell.SellRecord]
+	updateRecord *connectormock.Mutation[sell.UpdateRecordInput, sell.SellRecord]
+	deleteRecord *connectormock.Mutation[sell.DeleteRecordInput, sell.DeleteRecordOutput]
+	createLead   *connectormock.Mutation[sell.CreateLeadInput, sell.LeadMetadata]
+	updateLead   *connectormock.Mutation[sell.UpdateLeadInput, sell.LeadMetadata]
+	deleteLead   *connectormock.Mutation[sell.DeleteLeadInput, sell.DeleteLeadOutput]
+	listLeads    *connectormock.Query[sell.ListLeadsInput, sell.LeadsPage]
+	getLead      *connectormock.Query[sell.GetLeadInput, sell.LeadMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -30,12 +35,22 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		createLead: connectormock.NewMutation[sell.CreateLeadInput, sell.LeadMetadata](t, sell.CreateLeadDefinition),
-		updateLead: connectormock.NewMutation[sell.UpdateLeadInput, sell.LeadMetadata](t, sell.UpdateLeadDefinition),
-		deleteLead: connectormock.NewMutation[sell.DeleteLeadInput, sell.DeleteLeadOutput](t, sell.DeleteLeadDefinition),
-		listLeads:  connectormock.NewQuery[sell.ListLeadsInput, sell.LeadsPage](t, sell.ListLeadsDefinition),
-		getLead:    connectormock.NewQuery[sell.GetLeadInput, sell.LeadMetadata](t, sell.GetLeadDefinition),
+		listRecords:  connectormock.NewQuery[sell.ListRecordsInput, sell.RecordsPage](t, sell.ListRecordsDefinition),
+		getRecord:    connectormock.NewQuery[sell.GetRecordInput, sell.SellRecord](t, sell.GetRecordDefinition),
+		createRecord: connectormock.NewMutation[sell.CreateRecordInput, sell.SellRecord](t, sell.CreateRecordDefinition),
+		updateRecord: connectormock.NewMutation[sell.UpdateRecordInput, sell.SellRecord](t, sell.UpdateRecordDefinition),
+		deleteRecord: connectormock.NewMutation[sell.DeleteRecordInput, sell.DeleteRecordOutput](t, sell.DeleteRecordDefinition),
+		createLead:   connectormock.NewMutation[sell.CreateLeadInput, sell.LeadMetadata](t, sell.CreateLeadDefinition),
+		updateLead:   connectormock.NewMutation[sell.UpdateLeadInput, sell.LeadMetadata](t, sell.UpdateLeadDefinition),
+		deleteLead:   connectormock.NewMutation[sell.DeleteLeadInput, sell.DeleteLeadOutput](t, sell.DeleteLeadDefinition),
+		listLeads:    connectormock.NewQuery[sell.ListLeadsInput, sell.LeadsPage](t, sell.ListLeadsDefinition),
+		getLead:      connectormock.NewQuery[sell.GetLeadInput, sell.LeadMetadata](t, sell.GetLeadDefinition),
 	}
+	mock.listRecords.Default(ListRecordsDefault())
+	mock.getRecord.Default(GetRecordDefault())
+	mock.createRecord.Default(CreateRecordDefault())
+	mock.updateRecord.Default(UpdateRecordDefault())
+	mock.deleteRecord.Default(DeleteRecordDefault())
 	mock.createLead.Default(CreateLeadDefault())
 	mock.updateLead.Default(UpdateLeadDefault())
 	mock.deleteLead.Default(DeleteLeadDefault())
@@ -51,6 +66,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sell.Connection { return mock.connection }
+
+// ListRecords returns the listRecords script.
+func (mock *Mock) ListRecords() *connectormock.Query[sell.ListRecordsInput, sell.RecordsPage] {
+	return mock.listRecords
+}
+
+// GetRecord returns the getRecord script.
+func (mock *Mock) GetRecord() *connectormock.Query[sell.GetRecordInput, sell.SellRecord] {
+	return mock.getRecord
+}
+
+// CreateRecord returns the createRecord script.
+func (mock *Mock) CreateRecord() *connectormock.Mutation[sell.CreateRecordInput, sell.SellRecord] {
+	return mock.createRecord
+}
+
+// UpdateRecord returns the updateRecord script.
+func (mock *Mock) UpdateRecord() *connectormock.Mutation[sell.UpdateRecordInput, sell.SellRecord] {
+	return mock.updateRecord
+}
+
+// DeleteRecord returns the deleteRecord script.
+func (mock *Mock) DeleteRecord() *connectormock.Mutation[sell.DeleteRecordInput, sell.DeleteRecordOutput] {
+	return mock.deleteRecord
+}
 
 // CreateLead returns the createLead script.
 func (mock *Mock) CreateLead() *connectormock.Mutation[sell.CreateLeadInput, sell.LeadMetadata] {
@@ -79,6 +119,21 @@ func (mock *Mock) GetLead() *connectormock.Query[sell.GetLeadInput, sell.LeadMet
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListRecords() sdkgo.Query[sell.ListRecordsInput, sell.RecordsPage] {
+	return operations.mock.listRecords
+}
+func (operations mockOperations) GetRecord() sdkgo.Query[sell.GetRecordInput, sell.SellRecord] {
+	return operations.mock.getRecord
+}
+func (operations mockOperations) CreateRecord() sdkgo.Mutation[sell.CreateRecordInput, sell.SellRecord] {
+	return operations.mock.createRecord
+}
+func (operations mockOperations) UpdateRecord() sdkgo.Mutation[sell.UpdateRecordInput, sell.SellRecord] {
+	return operations.mock.updateRecord
+}
+func (operations mockOperations) DeleteRecord() sdkgo.Mutation[sell.DeleteRecordInput, sell.DeleteRecordOutput] {
+	return operations.mock.deleteRecord
+}
 func (operations mockOperations) CreateLead() sdkgo.Mutation[sell.CreateLeadInput, sell.LeadMetadata] {
 	return operations.mock.createLead
 }
@@ -93,6 +148,188 @@ func (operations mockOperations) ListLeads() sdkgo.Query[sell.ListLeadsInput, se
 }
 func (operations mockOperations) GetLead() sdkgo.Query[sell.GetLeadInput, sell.LeadMetadata] {
 	return operations.mock.getLead
+}
+
+// ListRecordsListed selects the listed branch: Zendesk Sell returned a record page.
+func ListRecordsListed(value sell.RecordsPage, failure *sdkgo.Failure) connectormock.Case[sell.RecordsPage] {
+	return connectormock.Branch(sell.ListRecordsBranchListed, value, failure)
+}
+
+// ListRecordsProviderRejected selects the providerRejected branch: Zendesk Sell rejected the list.
+func ListRecordsProviderRejected(value sell.RecordsPage, failure *sdkgo.Failure) connectormock.Case[sell.RecordsPage] {
+	return connectormock.Branch(sell.ListRecordsBranchProviderRejected, value, failure)
+}
+
+// ListRecordsInvalidResponse selects the invalidResponse branch: Zendesk Sell returned malformed or oversized JSON.
+func ListRecordsInvalidResponse(value sell.RecordsPage, failure *sdkgo.Failure) connectormock.Case[sell.RecordsPage] {
+	return connectormock.Branch(sell.ListRecordsBranchInvalidResponse, value, failure)
+}
+
+// ListRecordsDefect selects the defect branch: Resource or page input is invalid.
+func ListRecordsDefect(value sell.RecordsPage, failure *sdkgo.Failure) connectormock.Case[sell.RecordsPage] {
+	return connectormock.Branch(sell.ListRecordsBranchDefect, value, failure)
+}
+
+// ListRecordsRetry asks Dex to retry the listRecords Step, after the delay when it is positive.
+func ListRecordsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sell.RecordsPage] {
+	return connectormock.Retry[sell.RecordsPage](failure, after)
+}
+
+// ListRecordsListedDefault is the manifest mock listedDefault: One sample contact is listed.
+func ListRecordsListedDefault() connectormock.Case[sell.RecordsPage] {
+	value := connectormock.MustDecodeOutput[sell.RecordsPage](`{"resource":"contacts","records":[{"id":144,"resource":"contacts","name":"Ada Lovelace","emailAddress":"ada@example.com"}],"page":1,"perPage":20}`)
+	return connectormock.Branch(sell.ListRecordsBranchListed, value, nil)
+}
+
+// ListRecordsDefault is the manifest default, listedDefault, which New installs.
+func ListRecordsDefault() connectormock.Case[sell.RecordsPage] { return ListRecordsListedDefault() }
+
+// GetRecordFound selects the found branch: Zendesk Sell returned the record.
+func GetRecordFound(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.GetRecordBranchFound, value, failure)
+}
+
+// GetRecordNotFound selects the notFound branch: The record does not exist.
+func GetRecordNotFound(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.GetRecordBranchNotFound, value, failure)
+}
+
+// GetRecordProviderRejected selects the providerRejected branch: Zendesk Sell rejected the read.
+func GetRecordProviderRejected(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.GetRecordBranchProviderRejected, value, failure)
+}
+
+// GetRecordInvalidResponse selects the invalidResponse branch: Zendesk Sell returned malformed or oversized JSON.
+func GetRecordInvalidResponse(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.GetRecordBranchInvalidResponse, value, failure)
+}
+
+// GetRecordDefect selects the defect branch: Resource or ID input is invalid.
+func GetRecordDefect(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.GetRecordBranchDefect, value, failure)
+}
+
+// GetRecordRetry asks Dex to retry the getRecord Step, after the delay when it is positive.
+func GetRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sell.SellRecord] {
+	return connectormock.Retry[sell.SellRecord](failure, after)
+}
+
+// GetRecordFoundDefault is the manifest mock foundDefault: One sample contact is returned.
+func GetRecordFoundDefault() connectormock.Case[sell.SellRecord] {
+	value := connectormock.MustDecodeOutput[sell.SellRecord](`{"id":144,"resource":"contacts","name":"Ada Lovelace","emailAddress":"ada@example.com"}`)
+	return connectormock.Branch(sell.GetRecordBranchFound, value, nil)
+}
+
+// GetRecordDefault is the manifest default, foundDefault, which New installs.
+func GetRecordDefault() connectormock.Case[sell.SellRecord] { return GetRecordFoundDefault() }
+
+// CreateRecordCreated selects the created branch: Zendesk Sell created the record.
+func CreateRecordCreated(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.CreateRecordBranchCreated, value, failure)
+}
+
+// CreateRecordProviderRejected selects the providerRejected branch: Zendesk Sell rejected the create.
+func CreateRecordProviderRejected(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.CreateRecordBranchProviderRejected, value, failure)
+}
+
+// CreateRecordDefect selects the defect branch: Resource, fields, or credentials are invalid.
+func CreateRecordDefect(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.CreateRecordBranchDefect, value, failure)
+}
+
+// CreateRecordUncertain returns an uncertain createRecord outcome.
+func CreateRecordUncertain(value sell.SellRecord, failure sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateRecordRetry asks Dex to retry the createRecord Step, after the delay when it is positive.
+func CreateRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sell.SellRecord] {
+	return connectormock.Retry[sell.SellRecord](failure, after)
+}
+
+// CreateRecordCreatedDefault is the manifest mock createdDefault: One sample contact is created.
+func CreateRecordCreatedDefault() connectormock.Case[sell.SellRecord] {
+	value := connectormock.MustDecodeOutput[sell.SellRecord](`{"id":144,"resource":"contacts","name":"Ada Lovelace","emailAddress":"ada@example.com"}`)
+	return connectormock.Branch(sell.CreateRecordBranchCreated, value, nil)
+}
+
+// CreateRecordDefault is the manifest default, createdDefault, which New installs.
+func CreateRecordDefault() connectormock.Case[sell.SellRecord] { return CreateRecordCreatedDefault() }
+
+// UpdateRecordUpdated selects the updated branch: Zendesk Sell updated the record.
+func UpdateRecordUpdated(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.UpdateRecordBranchUpdated, value, failure)
+}
+
+// UpdateRecordNotFound selects the notFound branch: The record does not exist.
+func UpdateRecordNotFound(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.UpdateRecordBranchNotFound, value, failure)
+}
+
+// UpdateRecordProviderRejected selects the providerRejected branch: Zendesk Sell rejected the update.
+func UpdateRecordProviderRejected(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.UpdateRecordBranchProviderRejected, value, failure)
+}
+
+// UpdateRecordInvalidResponse selects the invalidResponse branch: Zendesk Sell returned malformed or oversized JSON.
+func UpdateRecordInvalidResponse(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.UpdateRecordBranchInvalidResponse, value, failure)
+}
+
+// UpdateRecordDefect selects the defect branch: Resource, fields, ID, or credentials are invalid.
+func UpdateRecordDefect(value sell.SellRecord, failure *sdkgo.Failure) connectormock.Case[sell.SellRecord] {
+	return connectormock.Branch(sell.UpdateRecordBranchDefect, value, failure)
+}
+
+// UpdateRecordRetry asks Dex to retry the updateRecord Step, after the delay when it is positive.
+func UpdateRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sell.SellRecord] {
+	return connectormock.Retry[sell.SellRecord](failure, after)
+}
+
+// UpdateRecordUpdatedDefault is the manifest mock updatedDefault: One sample contact is updated.
+func UpdateRecordUpdatedDefault() connectormock.Case[sell.SellRecord] {
+	value := connectormock.MustDecodeOutput[sell.SellRecord](`{"id":144,"resource":"contacts","name":"Ada Lovelace","emailAddress":"ada@example.com"}`)
+	return connectormock.Branch(sell.UpdateRecordBranchUpdated, value, nil)
+}
+
+// UpdateRecordDefault is the manifest default, updatedDefault, which New installs.
+func UpdateRecordDefault() connectormock.Case[sell.SellRecord] { return UpdateRecordUpdatedDefault() }
+
+// DeleteRecordDeleted selects the deleted branch: Zendesk Sell deleted the record.
+func DeleteRecordDeleted(value sell.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[sell.DeleteRecordOutput] {
+	return connectormock.Branch(sell.DeleteRecordBranchDeleted, value, failure)
+}
+
+// DeleteRecordNotFound selects the notFound branch: The record does not exist.
+func DeleteRecordNotFound(value sell.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[sell.DeleteRecordOutput] {
+	return connectormock.Branch(sell.DeleteRecordBranchNotFound, value, failure)
+}
+
+// DeleteRecordProviderRejected selects the providerRejected branch: Zendesk Sell rejected the delete.
+func DeleteRecordProviderRejected(value sell.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[sell.DeleteRecordOutput] {
+	return connectormock.Branch(sell.DeleteRecordBranchProviderRejected, value, failure)
+}
+
+// DeleteRecordDefect selects the defect branch: Resource, ID, or credentials are invalid.
+func DeleteRecordDefect(value sell.DeleteRecordOutput, failure *sdkgo.Failure) connectormock.Case[sell.DeleteRecordOutput] {
+	return connectormock.Branch(sell.DeleteRecordBranchDefect, value, failure)
+}
+
+// DeleteRecordRetry asks Dex to retry the deleteRecord Step, after the delay when it is positive.
+func DeleteRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sell.DeleteRecordOutput] {
+	return connectormock.Retry[sell.DeleteRecordOutput](failure, after)
+}
+
+// DeleteRecordDeletedDefault is the manifest mock deletedDefault: One sample contact is deleted.
+func DeleteRecordDeletedDefault() connectormock.Case[sell.DeleteRecordOutput] {
+	value := connectormock.MustDecodeOutput[sell.DeleteRecordOutput](`{"resource":"contacts","recordId":"144"}`)
+	return connectormock.Branch(sell.DeleteRecordBranchDeleted, value, nil)
+}
+
+// DeleteRecordDefault is the manifest default, deletedDefault, which New installs.
+func DeleteRecordDefault() connectormock.Case[sell.DeleteRecordOutput] {
+	return DeleteRecordDeletedDefault()
 }
 
 // CreateLeadCreated selects the created branch: Zendesk Sell created the lead.

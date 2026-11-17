@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listRecords/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sell.RecordsPage](`{"resource":"contacts","records":[{"id":144,"resource":"contacts","name":"Ada Lovelace","emailAddress":"ada@example.com"}],"page":1,"perPage":20}`)
+			return err
+		}},
+		{name: "getRecord/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sell.SellRecord](`{"id":144,"resource":"contacts","name":"Ada Lovelace","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "createRecord/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sell.SellRecord](`{"id":144,"resource":"contacts","name":"Ada Lovelace","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateRecord/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sell.SellRecord](`{"id":144,"resource":"contacts","name":"Ada Lovelace","emailAddress":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteRecord/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sell.DeleteRecordOutput](`{"resource":"contacts","recordId":"144"}`)
+			return err
+		}},
 		{name: "createLead/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sell.LeadMetadata](`{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com","organizationName":"Example Co"}`)
 			return err
@@ -46,6 +66,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListRecords().Definition().Operation.OperationID != "listRecords" {
+		t.Errorf("listRecords mock has another definition")
+	}
+	if mock.GetRecord().Definition().Operation.OperationID != "getRecord" {
+		t.Errorf("getRecord mock has another definition")
+	}
+	if mock.CreateRecord().Definition().Operation.OperationID != "createRecord" {
+		t.Errorf("createRecord mock has another definition")
+	}
+	if mock.UpdateRecord().Definition().Operation.OperationID != "updateRecord" {
+		t.Errorf("updateRecord mock has another definition")
+	}
+	if mock.DeleteRecord().Definition().Operation.OperationID != "deleteRecord" {
+		t.Errorf("deleteRecord mock has another definition")
+	}
 	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
 		t.Errorf("createLead mock has another definition")
 	}

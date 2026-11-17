@@ -1,6 +1,6 @@
 # Zendesk Sell lead discovery Flow
 
-This runnable application registers two Flows with the static `zendesk-sell` Dex Web connection. `ZendeskSellLeadDiscovery` calls `listLeads`, stores a bounded lead page in an Attribute, and completes with the typed result. Start input `{"perPage":20,"page":1}` reads the first page; increase `page` to read another page. `ZendeskSellLeadIntake` calls `createLead` and stores the new lead identity; start it with `{"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`. Supply `lastName` for a person or `organizationName` for an organization. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
+This runnable application registers three Flows with the static `zendesk-sell` Dex Web connection. `ZendeskSellLeadDiscovery` calls `listLeads`, stores a bounded lead page in an Attribute, and completes with the typed result. Start input `{"perPage":20,"page":1}` reads the first page; increase `page` to read another page. `ZendeskSellLeadIntake` calls `createLead` and stores the new lead identity; start it with `{"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com"}`. Supply `lastName` for a person or `organizationName` for an organization. `ZendeskSellRecordIntake` calls `createRecord`; its checked-in integration test creates a contact using `{"resource":"contacts","fields":{"last_name":"Lovelace"}}`. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
 
 ## Strict FDG 2.0 generation
 
@@ -9,6 +9,7 @@ From `connectors/zendesk/sell/go`, run:
 ```bash
 dexcli visualize ./examples/lead-discovery/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/sell-lead-discovery-fdg
 dexcli visualize ./examples/lead-discovery/flow/lead_intake.go --schema-version 2.0 --lint app --json --out /tmp/sell-lead-intake-fdg
+dexcli visualize ./examples/lead-discovery/flow/record_intake.go --schema-version 2.0 --lint app --json --out /tmp/sell-record-intake-fdg
 ```
 
 The command must report `valid: true`. Before the first release, `connector_release_required` may warn that automatic Dex Web configuration requires a published release.
