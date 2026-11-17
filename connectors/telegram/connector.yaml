@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: telegram
   displayName: Telegram Bot
-  description: Read and manage chats, and send text messages through a Telegram bot.
+  description: Read and manage chats, and send text, media, and locations through a Telegram bot.
   company: Telegram
   categories: [communication]
   version: v0.2.0
@@ -53,7 +53,7 @@ spec:
       steps:
         - Open https://t.me/BotFather in Telegram, send /newbot, choose a bot name and username ending in bot, and copy the full numeric-ID:secret token shown once.
         - For an existing bot, open BotFather > /mybots > your bot > API Token. Save the token only in bot_token, never in Flow input. Use BotFather to revoke and replace a leaked token.
-        - Add the bot to the target chat and grant access needed to read its metadata or send text. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - Add the bot to the target chat and grant access needed to read its metadata or send messages and media. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
     - name: editMessageText
       goName: EditMessageText
@@ -317,6 +317,166 @@ spec:
           default: true
           description: The chat title was updated.
           output: {chatId: "-1001234567890"}
+    - name: sendAnimation
+      goName: SendAnimation
+      inputType: SendAnimationInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send animation to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example animation was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendAudio
+      goName: SendAudio
+      inputType: SendAudioInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send audio to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example audio was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendDocument
+      goName: SendDocument
+      inputType: SendDocumentInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send document to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example document was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendPhoto
+      goName: SendPhoto
+      inputType: SendPhotoInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send photo to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example photo was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendSticker
+      goName: SendSticker
+      inputType: SendStickerInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send sticker to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example sticker was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendVideo
+      goName: SendVideo
+      inputType: SendVideoInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send video to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example video was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendLocation
+      goName: SendLocation
+      inputType: SendLocationInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send location to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example location was sent.
+          output: {chatId: -1001234567890, messageId: 53, date: 1794110000}
+    - name: sendMediaGroup
+      goName: SendMediaGroup
+      inputType: SendMediaGroupInput
+      outputType: SentMessages
+      kind: mutation
+      description: Send media group to one bot-accessible chat with a bounded resend cap.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Telegram confirmed the sent message identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome remained unknown after the cap., optional: true}
+        - {id: defect, goName: Defect, description: "Input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Example media group was sent.
+          output: {messages: [{chatId: -1001234567890, messageId: 53, date: 1794110000}, {chatId: -1001234567890, messageId: 54, date: 1794110000}]}
     - name: sendMessage
       goName: SendMessage
       inputType: SendMessageInput

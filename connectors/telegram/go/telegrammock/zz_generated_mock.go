@@ -31,6 +31,14 @@ type Mock struct {
 	leaveChat             *connectormock.Mutation[telegram.GetChatInput, telegram.ChatActionResult]
 	setChatDescription    *connectormock.Mutation[telegram.SetChatDescriptionInput, telegram.ChatActionResult]
 	setChatTitle          *connectormock.Mutation[telegram.SetChatTitleInput, telegram.ChatActionResult]
+	sendAnimation         *connectormock.Mutation[telegram.SendAnimationInput, telegram.SentMessage]
+	sendAudio             *connectormock.Mutation[telegram.SendAudioInput, telegram.SentMessage]
+	sendDocument          *connectormock.Mutation[telegram.SendDocumentInput, telegram.SentMessage]
+	sendPhoto             *connectormock.Mutation[telegram.SendPhotoInput, telegram.SentMessage]
+	sendSticker           *connectormock.Mutation[telegram.SendStickerInput, telegram.SentMessage]
+	sendVideo             *connectormock.Mutation[telegram.SendVideoInput, telegram.SentMessage]
+	sendLocation          *connectormock.Mutation[telegram.SendLocationInput, telegram.SentMessage]
+	sendMediaGroup        *connectormock.Mutation[telegram.SendMediaGroupInput, telegram.SentMessages]
 	sendMessage           *connectormock.Mutation[telegram.SendMessageInput, telegram.SentMessage]
 	getChat               *connectormock.Query[telegram.GetChatInput, telegram.Chat]
 }
@@ -53,6 +61,14 @@ func New(t testing.TB, connectionName string) *Mock {
 		leaveChat:             connectormock.NewMutation[telegram.GetChatInput, telegram.ChatActionResult](t, telegram.LeaveChatDefinition),
 		setChatDescription:    connectormock.NewMutation[telegram.SetChatDescriptionInput, telegram.ChatActionResult](t, telegram.SetChatDescriptionDefinition),
 		setChatTitle:          connectormock.NewMutation[telegram.SetChatTitleInput, telegram.ChatActionResult](t, telegram.SetChatTitleDefinition),
+		sendAnimation:         connectormock.NewMutation[telegram.SendAnimationInput, telegram.SentMessage](t, telegram.SendAnimationDefinition),
+		sendAudio:             connectormock.NewMutation[telegram.SendAudioInput, telegram.SentMessage](t, telegram.SendAudioDefinition),
+		sendDocument:          connectormock.NewMutation[telegram.SendDocumentInput, telegram.SentMessage](t, telegram.SendDocumentDefinition),
+		sendPhoto:             connectormock.NewMutation[telegram.SendPhotoInput, telegram.SentMessage](t, telegram.SendPhotoDefinition),
+		sendSticker:           connectormock.NewMutation[telegram.SendStickerInput, telegram.SentMessage](t, telegram.SendStickerDefinition),
+		sendVideo:             connectormock.NewMutation[telegram.SendVideoInput, telegram.SentMessage](t, telegram.SendVideoDefinition),
+		sendLocation:          connectormock.NewMutation[telegram.SendLocationInput, telegram.SentMessage](t, telegram.SendLocationDefinition),
+		sendMediaGroup:        connectormock.NewMutation[telegram.SendMediaGroupInput, telegram.SentMessages](t, telegram.SendMediaGroupDefinition),
 		sendMessage:           connectormock.NewMutation[telegram.SendMessageInput, telegram.SentMessage](t, telegram.SendMessageDefinition),
 		getChat:               connectormock.NewQuery[telegram.GetChatInput, telegram.Chat](t, telegram.GetChatDefinition),
 	}
@@ -69,6 +85,14 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.leaveChat.Default(LeaveChatDefault())
 	mock.setChatDescription.Default(SetChatDescriptionDefault())
 	mock.setChatTitle.Default(SetChatTitleDefault())
+	mock.sendAnimation.Default(SendAnimationDefault())
+	mock.sendAudio.Default(SendAudioDefault())
+	mock.sendDocument.Default(SendDocumentDefault())
+	mock.sendPhoto.Default(SendPhotoDefault())
+	mock.sendSticker.Default(SendStickerDefault())
+	mock.sendVideo.Default(SendVideoDefault())
+	mock.sendLocation.Default(SendLocationDefault())
+	mock.sendMediaGroup.Default(SendMediaGroupDefault())
 	mock.sendMessage.Default(SendMessageDefault())
 	mock.getChat.Default(GetChatDefault())
 	connection, err := telegram.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "telegram", Name: connectionName})
@@ -147,6 +171,46 @@ func (mock *Mock) SetChatTitle() *connectormock.Mutation[telegram.SetChatTitleIn
 	return mock.setChatTitle
 }
 
+// SendAnimation returns the sendAnimation script.
+func (mock *Mock) SendAnimation() *connectormock.Mutation[telegram.SendAnimationInput, telegram.SentMessage] {
+	return mock.sendAnimation
+}
+
+// SendAudio returns the sendAudio script.
+func (mock *Mock) SendAudio() *connectormock.Mutation[telegram.SendAudioInput, telegram.SentMessage] {
+	return mock.sendAudio
+}
+
+// SendDocument returns the sendDocument script.
+func (mock *Mock) SendDocument() *connectormock.Mutation[telegram.SendDocumentInput, telegram.SentMessage] {
+	return mock.sendDocument
+}
+
+// SendPhoto returns the sendPhoto script.
+func (mock *Mock) SendPhoto() *connectormock.Mutation[telegram.SendPhotoInput, telegram.SentMessage] {
+	return mock.sendPhoto
+}
+
+// SendSticker returns the sendSticker script.
+func (mock *Mock) SendSticker() *connectormock.Mutation[telegram.SendStickerInput, telegram.SentMessage] {
+	return mock.sendSticker
+}
+
+// SendVideo returns the sendVideo script.
+func (mock *Mock) SendVideo() *connectormock.Mutation[telegram.SendVideoInput, telegram.SentMessage] {
+	return mock.sendVideo
+}
+
+// SendLocation returns the sendLocation script.
+func (mock *Mock) SendLocation() *connectormock.Mutation[telegram.SendLocationInput, telegram.SentMessage] {
+	return mock.sendLocation
+}
+
+// SendMediaGroup returns the sendMediaGroup script.
+func (mock *Mock) SendMediaGroup() *connectormock.Mutation[telegram.SendMediaGroupInput, telegram.SentMessages] {
+	return mock.sendMediaGroup
+}
+
 // SendMessage returns the sendMessage script.
 func (mock *Mock) SendMessage() *connectormock.Mutation[telegram.SendMessageInput, telegram.SentMessage] {
 	return mock.sendMessage
@@ -197,6 +261,30 @@ func (operations mockOperations) SetChatDescription() sdkgo.Mutation[telegram.Se
 }
 func (operations mockOperations) SetChatTitle() sdkgo.Mutation[telegram.SetChatTitleInput, telegram.ChatActionResult] {
 	return operations.mock.setChatTitle
+}
+func (operations mockOperations) SendAnimation() sdkgo.Mutation[telegram.SendAnimationInput, telegram.SentMessage] {
+	return operations.mock.sendAnimation
+}
+func (operations mockOperations) SendAudio() sdkgo.Mutation[telegram.SendAudioInput, telegram.SentMessage] {
+	return operations.mock.sendAudio
+}
+func (operations mockOperations) SendDocument() sdkgo.Mutation[telegram.SendDocumentInput, telegram.SentMessage] {
+	return operations.mock.sendDocument
+}
+func (operations mockOperations) SendPhoto() sdkgo.Mutation[telegram.SendPhotoInput, telegram.SentMessage] {
+	return operations.mock.sendPhoto
+}
+func (operations mockOperations) SendSticker() sdkgo.Mutation[telegram.SendStickerInput, telegram.SentMessage] {
+	return operations.mock.sendSticker
+}
+func (operations mockOperations) SendVideo() sdkgo.Mutation[telegram.SendVideoInput, telegram.SentMessage] {
+	return operations.mock.sendVideo
+}
+func (operations mockOperations) SendLocation() sdkgo.Mutation[telegram.SendLocationInput, telegram.SentMessage] {
+	return operations.mock.sendLocation
+}
+func (operations mockOperations) SendMediaGroup() sdkgo.Mutation[telegram.SendMediaGroupInput, telegram.SentMessages] {
+	return operations.mock.sendMediaGroup
 }
 func (operations mockOperations) SendMessage() sdkgo.Mutation[telegram.SendMessageInput, telegram.SentMessage] {
 	return operations.mock.sendMessage
@@ -677,6 +765,282 @@ func SetChatTitleUpdatedDefault() connectormock.Case[telegram.ChatActionResult] 
 // SetChatTitleDefault is the manifest default, updatedDefault, which New installs.
 func SetChatTitleDefault() connectormock.Case[telegram.ChatActionResult] {
 	return SetChatTitleUpdatedDefault()
+}
+
+// SendAnimationSent selects the sent branch: Telegram confirmed the sent message identity.
+func SendAnimationSent(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendAnimationBranchSent, value, failure)
+}
+
+// SendAnimationProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send.
+func SendAnimationProviderRejected(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendAnimationBranchProviderRejected, value, failure)
+}
+
+// SendAnimationUncertain returns an uncertain sendAnimation outcome.
+func SendAnimationUncertain(value telegram.SentMessage, failure sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendAnimationDefect selects the defect branch: Input, bot token, or dispatch checkpoint is invalid.
+func SendAnimationDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendAnimationBranchDefect, value, failure)
+}
+
+// SendAnimationRetry asks Dex to retry the sendAnimation Step, after the delay when it is positive.
+func SendAnimationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Retry[telegram.SentMessage](failure, after)
+}
+
+// SendAnimationSentDefault is the manifest mock sentDefault: Example animation was sent.
+func SendAnimationSentDefault() connectormock.Case[telegram.SentMessage] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+	return connectormock.Branch(telegram.SendAnimationBranchSent, value, nil)
+}
+
+// SendAnimationDefault is the manifest default, sentDefault, which New installs.
+func SendAnimationDefault() connectormock.Case[telegram.SentMessage] {
+	return SendAnimationSentDefault()
+}
+
+// SendAudioSent selects the sent branch: Telegram confirmed the sent message identity.
+func SendAudioSent(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendAudioBranchSent, value, failure)
+}
+
+// SendAudioProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send.
+func SendAudioProviderRejected(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendAudioBranchProviderRejected, value, failure)
+}
+
+// SendAudioUncertain returns an uncertain sendAudio outcome.
+func SendAudioUncertain(value telegram.SentMessage, failure sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendAudioDefect selects the defect branch: Input, bot token, or dispatch checkpoint is invalid.
+func SendAudioDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendAudioBranchDefect, value, failure)
+}
+
+// SendAudioRetry asks Dex to retry the sendAudio Step, after the delay when it is positive.
+func SendAudioRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Retry[telegram.SentMessage](failure, after)
+}
+
+// SendAudioSentDefault is the manifest mock sentDefault: Example audio was sent.
+func SendAudioSentDefault() connectormock.Case[telegram.SentMessage] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+	return connectormock.Branch(telegram.SendAudioBranchSent, value, nil)
+}
+
+// SendAudioDefault is the manifest default, sentDefault, which New installs.
+func SendAudioDefault() connectormock.Case[telegram.SentMessage] { return SendAudioSentDefault() }
+
+// SendDocumentSent selects the sent branch: Telegram confirmed the sent message identity.
+func SendDocumentSent(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendDocumentBranchSent, value, failure)
+}
+
+// SendDocumentProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send.
+func SendDocumentProviderRejected(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendDocumentBranchProviderRejected, value, failure)
+}
+
+// SendDocumentUncertain returns an uncertain sendDocument outcome.
+func SendDocumentUncertain(value telegram.SentMessage, failure sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendDocumentDefect selects the defect branch: Input, bot token, or dispatch checkpoint is invalid.
+func SendDocumentDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendDocumentBranchDefect, value, failure)
+}
+
+// SendDocumentRetry asks Dex to retry the sendDocument Step, after the delay when it is positive.
+func SendDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Retry[telegram.SentMessage](failure, after)
+}
+
+// SendDocumentSentDefault is the manifest mock sentDefault: Example document was sent.
+func SendDocumentSentDefault() connectormock.Case[telegram.SentMessage] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+	return connectormock.Branch(telegram.SendDocumentBranchSent, value, nil)
+}
+
+// SendDocumentDefault is the manifest default, sentDefault, which New installs.
+func SendDocumentDefault() connectormock.Case[telegram.SentMessage] { return SendDocumentSentDefault() }
+
+// SendPhotoSent selects the sent branch: Telegram confirmed the sent message identity.
+func SendPhotoSent(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendPhotoBranchSent, value, failure)
+}
+
+// SendPhotoProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send.
+func SendPhotoProviderRejected(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendPhotoBranchProviderRejected, value, failure)
+}
+
+// SendPhotoUncertain returns an uncertain sendPhoto outcome.
+func SendPhotoUncertain(value telegram.SentMessage, failure sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendPhotoDefect selects the defect branch: Input, bot token, or dispatch checkpoint is invalid.
+func SendPhotoDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendPhotoBranchDefect, value, failure)
+}
+
+// SendPhotoRetry asks Dex to retry the sendPhoto Step, after the delay when it is positive.
+func SendPhotoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Retry[telegram.SentMessage](failure, after)
+}
+
+// SendPhotoSentDefault is the manifest mock sentDefault: Example photo was sent.
+func SendPhotoSentDefault() connectormock.Case[telegram.SentMessage] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+	return connectormock.Branch(telegram.SendPhotoBranchSent, value, nil)
+}
+
+// SendPhotoDefault is the manifest default, sentDefault, which New installs.
+func SendPhotoDefault() connectormock.Case[telegram.SentMessage] { return SendPhotoSentDefault() }
+
+// SendStickerSent selects the sent branch: Telegram confirmed the sent message identity.
+func SendStickerSent(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendStickerBranchSent, value, failure)
+}
+
+// SendStickerProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send.
+func SendStickerProviderRejected(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendStickerBranchProviderRejected, value, failure)
+}
+
+// SendStickerUncertain returns an uncertain sendSticker outcome.
+func SendStickerUncertain(value telegram.SentMessage, failure sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendStickerDefect selects the defect branch: Input, bot token, or dispatch checkpoint is invalid.
+func SendStickerDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendStickerBranchDefect, value, failure)
+}
+
+// SendStickerRetry asks Dex to retry the sendSticker Step, after the delay when it is positive.
+func SendStickerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Retry[telegram.SentMessage](failure, after)
+}
+
+// SendStickerSentDefault is the manifest mock sentDefault: Example sticker was sent.
+func SendStickerSentDefault() connectormock.Case[telegram.SentMessage] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+	return connectormock.Branch(telegram.SendStickerBranchSent, value, nil)
+}
+
+// SendStickerDefault is the manifest default, sentDefault, which New installs.
+func SendStickerDefault() connectormock.Case[telegram.SentMessage] { return SendStickerSentDefault() }
+
+// SendVideoSent selects the sent branch: Telegram confirmed the sent message identity.
+func SendVideoSent(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendVideoBranchSent, value, failure)
+}
+
+// SendVideoProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send.
+func SendVideoProviderRejected(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendVideoBranchProviderRejected, value, failure)
+}
+
+// SendVideoUncertain returns an uncertain sendVideo outcome.
+func SendVideoUncertain(value telegram.SentMessage, failure sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendVideoDefect selects the defect branch: Input, bot token, or dispatch checkpoint is invalid.
+func SendVideoDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendVideoBranchDefect, value, failure)
+}
+
+// SendVideoRetry asks Dex to retry the sendVideo Step, after the delay when it is positive.
+func SendVideoRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Retry[telegram.SentMessage](failure, after)
+}
+
+// SendVideoSentDefault is the manifest mock sentDefault: Example video was sent.
+func SendVideoSentDefault() connectormock.Case[telegram.SentMessage] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+	return connectormock.Branch(telegram.SendVideoBranchSent, value, nil)
+}
+
+// SendVideoDefault is the manifest default, sentDefault, which New installs.
+func SendVideoDefault() connectormock.Case[telegram.SentMessage] { return SendVideoSentDefault() }
+
+// SendLocationSent selects the sent branch: Telegram confirmed the sent message identity.
+func SendLocationSent(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendLocationBranchSent, value, failure)
+}
+
+// SendLocationProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send.
+func SendLocationProviderRejected(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendLocationBranchProviderRejected, value, failure)
+}
+
+// SendLocationUncertain returns an uncertain sendLocation outcome.
+func SendLocationUncertain(value telegram.SentMessage, failure sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendLocationDefect selects the defect branch: Input, bot token, or dispatch checkpoint is invalid.
+func SendLocationDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendLocationBranchDefect, value, failure)
+}
+
+// SendLocationRetry asks Dex to retry the sendLocation Step, after the delay when it is positive.
+func SendLocationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Retry[telegram.SentMessage](failure, after)
+}
+
+// SendLocationSentDefault is the manifest mock sentDefault: Example location was sent.
+func SendLocationSentDefault() connectormock.Case[telegram.SentMessage] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":53,"date":1794110000}`)
+	return connectormock.Branch(telegram.SendLocationBranchSent, value, nil)
+}
+
+// SendLocationDefault is the manifest default, sentDefault, which New installs.
+func SendLocationDefault() connectormock.Case[telegram.SentMessage] { return SendLocationSentDefault() }
+
+// SendMediaGroupSent selects the sent branch: Telegram confirmed the sent message identity.
+func SendMediaGroupSent(value telegram.SentMessages, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessages] {
+	return connectormock.Branch(telegram.SendMediaGroupBranchSent, value, failure)
+}
+
+// SendMediaGroupProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send.
+func SendMediaGroupProviderRejected(value telegram.SentMessages, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessages] {
+	return connectormock.Branch(telegram.SendMediaGroupBranchProviderRejected, value, failure)
+}
+
+// SendMediaGroupUncertain returns an uncertain sendMediaGroup outcome.
+func SendMediaGroupUncertain(value telegram.SentMessages, failure sdkgo.Failure) connectormock.Case[telegram.SentMessages] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendMediaGroupDefect selects the defect branch: Input, bot token, or dispatch checkpoint is invalid.
+func SendMediaGroupDefect(value telegram.SentMessages, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessages] {
+	return connectormock.Branch(telegram.SendMediaGroupBranchDefect, value, failure)
+}
+
+// SendMediaGroupRetry asks Dex to retry the sendMediaGroup Step, after the delay when it is positive.
+func SendMediaGroupRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessages] {
+	return connectormock.Retry[telegram.SentMessages](failure, after)
+}
+
+// SendMediaGroupSentDefault is the manifest mock sentDefault: Example media group was sent.
+func SendMediaGroupSentDefault() connectormock.Case[telegram.SentMessages] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessages](`{"messages":[{"chatId":-1001234567890,"messageId":53,"date":1794110000},{"chatId":-1001234567890,"messageId":54,"date":1794110000}]}`)
+	return connectormock.Branch(telegram.SendMediaGroupBranchSent, value, nil)
+}
+
+// SendMediaGroupDefault is the manifest default, sentDefault, which New installs.
+func SendMediaGroupDefault() connectormock.Case[telegram.SentMessages] {
+	return SendMediaGroupSentDefault()
 }
 
 // SendMessageSent selects the sent branch: Telegram created the message and returned its ID.

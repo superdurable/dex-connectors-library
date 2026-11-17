@@ -1,6 +1,6 @@
 # Telegram message send Flow
 
-These runnable Flows call `sendMessage` and `editMessageText` with the static `telegram` connection. Optional branches, including `uncertain`, are unwired so they fail the Flow. If a send becomes uncertain, inspect the destination chat before considering a new send.
+These runnable Flows call `sendMessage`, `editMessageText`, and `sendPhoto` with the static `telegram` connection. Optional branches, including `uncertain`, are unwired so they fail the Flow. If a send becomes uncertain, inspect the destination chat before considering a new send.
 
 ## Strict FDG 2.0 generation
 
@@ -8,6 +8,7 @@ From `connectors/telegram/go`, run:
 
 ```bash
 dexcli visualize ./examples/send-message/flow/edit_message_flow.go --schema-version 2.0 --lint app --json --out /tmp/telegram-message-edit-fdg
+dexcli visualize ./examples/send-message/flow/send_photo_flow.go --schema-version 2.0 --lint app --json --out /tmp/telegram-photo-send-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector can report `connector_release_required` until its release artifact exists.
@@ -31,3 +32,5 @@ In Dex Web Start Flow, choose `TelegramMessageSend`, enter a unique Flow ID, and
 Replace the public username with your accessible chat, or use a decimal chat ID. The pull Worker connects to Dex Server without an inbound listener. Dex Web summary and display show the message identity, not its text. The mock-backed real-Dex integration test runs with `GOWORK=off go test -tags=integration ./examples/send-message/flow` while `dexcli dev` runs.
 
 Choose `TelegramEditMessageText` with a unique Flow ID and input `{"chatId":"@meridian_team","messageId":52,"text":"Edited"}` to replace a bot-editable message's plain text. The result contains only the chat and message IDs.
+
+Choose `TelegramSendPhoto` with a unique Flow ID and input `{"chatId":"@meridian_team","media":"https://example.com/photo.jpg","caption":"Photo"}`. Replace the URL with a public HTTPS photo URL or a Telegram file ID. The result contains only the numeric chat and message IDs and creation time.

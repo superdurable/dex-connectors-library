@@ -27,6 +27,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"sendAnimation":         newConformanceMutationInvocation(t, scenario.Input, context, client.SendAnimation(), testConnection, scenario.CallID),
+		"sendAudio":             newConformanceMutationInvocation(t, scenario.Input, context, client.SendAudio(), testConnection, scenario.CallID),
+		"sendDocument":          newConformanceMutationInvocation(t, scenario.Input, context, client.SendDocument(), testConnection, scenario.CallID),
+		"sendPhoto":             newConformanceMutationInvocation(t, scenario.Input, context, client.SendPhoto(), testConnection, scenario.CallID),
+		"sendSticker":           newConformanceMutationInvocation(t, scenario.Input, context, client.SendSticker(), testConnection, scenario.CallID),
+		"sendVideo":             newConformanceMutationInvocation(t, scenario.Input, context, client.SendVideo(), testConnection, scenario.CallID),
+		"sendLocation":          newConformanceMutationInvocation(t, scenario.Input, context, client.SendLocation(), testConnection, scenario.CallID),
+		"sendMediaGroup":        newConformanceMutationInvocation(t, scenario.Input, context, client.SendMediaGroup(), testConnection, scenario.CallID),
 		"editMessageText":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.EditMessageText(), testConnection, scenario.CallID),
 		"deleteMessage":         newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteMessage(), testConnection, scenario.CallID),
 		"pinChatMessage":        newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PinChatMessage(), testConnection, scenario.CallID),

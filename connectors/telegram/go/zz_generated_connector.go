@@ -53,6 +53,14 @@ type Operations interface {
 	LeaveChat() sdkgo.Mutation[GetChatInput, ChatActionResult]
 	SetChatDescription() sdkgo.Mutation[SetChatDescriptionInput, ChatActionResult]
 	SetChatTitle() sdkgo.Mutation[SetChatTitleInput, ChatActionResult]
+	SendAnimation() sdkgo.Mutation[SendAnimationInput, SentMessage]
+	SendAudio() sdkgo.Mutation[SendAudioInput, SentMessage]
+	SendDocument() sdkgo.Mutation[SendDocumentInput, SentMessage]
+	SendPhoto() sdkgo.Mutation[SendPhotoInput, SentMessage]
+	SendSticker() sdkgo.Mutation[SendStickerInput, SentMessage]
+	SendVideo() sdkgo.Mutation[SendVideoInput, SentMessage]
+	SendLocation() sdkgo.Mutation[SendLocationInput, SentMessage]
+	SendMediaGroup() sdkgo.Mutation[SendMediaGroupInput, SentMessages]
 	SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage]
 	GetChat() sdkgo.Query[GetChatInput, Chat]
 }
@@ -97,6 +105,30 @@ func (operations clientOperations) SetChatDescription() sdkgo.Mutation[SetChatDe
 }
 func (operations clientOperations) SetChatTitle() sdkgo.Mutation[SetChatTitleInput, ChatActionResult] {
 	return operations.client.SetChatTitle()
+}
+func (operations clientOperations) SendAnimation() sdkgo.Mutation[SendAnimationInput, SentMessage] {
+	return operations.client.SendAnimation()
+}
+func (operations clientOperations) SendAudio() sdkgo.Mutation[SendAudioInput, SentMessage] {
+	return operations.client.SendAudio()
+}
+func (operations clientOperations) SendDocument() sdkgo.Mutation[SendDocumentInput, SentMessage] {
+	return operations.client.SendDocument()
+}
+func (operations clientOperations) SendPhoto() sdkgo.Mutation[SendPhotoInput, SentMessage] {
+	return operations.client.SendPhoto()
+}
+func (operations clientOperations) SendSticker() sdkgo.Mutation[SendStickerInput, SentMessage] {
+	return operations.client.SendSticker()
+}
+func (operations clientOperations) SendVideo() sdkgo.Mutation[SendVideoInput, SentMessage] {
+	return operations.client.SendVideo()
+}
+func (operations clientOperations) SendLocation() sdkgo.Mutation[SendLocationInput, SentMessage] {
+	return operations.client.SendLocation()
+}
+func (operations clientOperations) SendMediaGroup() sdkgo.Mutation[SendMediaGroupInput, SentMessages] {
+	return operations.client.SendMediaGroup()
 }
 func (operations clientOperations) SendMessage() sdkgo.Mutation[SendMessageInput, SentMessage] {
 	return operations.client.SendMessage()
@@ -260,6 +292,7 @@ var EditMessageTextDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type EditMessageTextResult = sdkgo.MutationResult[MessageActionResult]
@@ -331,6 +364,7 @@ var DeleteMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type DeleteMessageResult = sdkgo.MutationResult[MessageActionResult]
@@ -402,6 +436,7 @@ var PinChatMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type PinChatMessageResult = sdkgo.MutationResult[MessageActionResult]
@@ -473,6 +508,7 @@ var UnpinChatMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UnpinChatMessageResult = sdkgo.MutationResult[MessageActionResult]
@@ -544,6 +580,7 @@ var SendChatActionDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type SendChatActionResult = sdkgo.MutationResult[ChatActionResult]
@@ -615,6 +652,7 @@ var AnswerCallbackQueryDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type AnswerCallbackQueryResult = sdkgo.MutationResult[AnsweredQuery]
@@ -686,6 +724,7 @@ var AnswerInlineQueryDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type AnswerInlineQueryResult = sdkgo.MutationResult[AnsweredQuery]
@@ -982,6 +1021,7 @@ var LeaveChatDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type LeaveChatResult = sdkgo.MutationResult[ChatActionResult]
@@ -1053,6 +1093,7 @@ var SetChatDescriptionDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type SetChatDescriptionResult = sdkgo.MutationResult[ChatActionResult]
@@ -1124,6 +1165,7 @@ var SetChatTitleDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type SetChatTitleResult = sdkgo.MutationResult[ChatActionResult]
@@ -1177,6 +1219,614 @@ func NewSetChatTitleStep[IN any](config SetChatTitleStepConfig[IN]) sdkgo.Mutati
 	})
 }
 
+const SendAnimationBranchSent sdkgo.BranchID = "sent"
+const SendAnimationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendAnimationBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendAnimationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendAnimationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendAnimation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendAnimationBranchSent, Description: "Telegram confirmed the sent message identity."},
+		{ID: SendAnimationBranchProviderRejected, Description: "Telegram conclusively rejected the send.", Optional: true},
+		{ID: SendAnimationBranchUncertain, Description: "The send outcome remained unknown after the cap.", Optional: true},
+		{ID: SendAnimationBranchDefect, Description: "Input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendAnimationResult = sdkgo.MutationResult[SentMessage]
+
+type SendAnimationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=telegram"`
+	operationID                       struct{}                                          `connector:"operationId=sendAnimation"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendAnimationInput                       `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendAnimationResult]                 `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendAnimationResult]                 `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendAnimationResult]                 `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendAnimationResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendAnimationStep[IN any](config SendAnimationStepConfig[IN]) sdkgo.MutationStep[IN, SendAnimationInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendAnimationInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendAnimation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendAnimationResult] {
+			branches := make([]sdkgo.BranchTarget[SendAnimationResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendAnimationBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendAnimationBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendAnimationBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendAnimationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendAudioBranchSent sdkgo.BranchID = "sent"
+const SendAudioBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendAudioBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendAudioBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendAudioDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendAudio"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendAudioBranchSent, Description: "Telegram confirmed the sent message identity."},
+		{ID: SendAudioBranchProviderRejected, Description: "Telegram conclusively rejected the send.", Optional: true},
+		{ID: SendAudioBranchUncertain, Description: "The send outcome remained unknown after the cap.", Optional: true},
+		{ID: SendAudioBranchDefect, Description: "Input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendAudioResult = sdkgo.MutationResult[SentMessage]
+
+type SendAudioStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=telegram"`
+	operationID                       struct{}                                          `connector:"operationId=sendAudio"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendAudioInput                           `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendAudioResult]                     `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendAudioResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendAudioResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendAudioResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendAudioStep[IN any](config SendAudioStepConfig[IN]) sdkgo.MutationStep[IN, SendAudioInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendAudioInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendAudio(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendAudioResult] {
+			branches := make([]sdkgo.BranchTarget[SendAudioResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendAudioBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendAudioBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendAudioBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendAudioBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendDocumentBranchSent sdkgo.BranchID = "sent"
+const SendDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendDocumentBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendDocumentBranchSent, Description: "Telegram confirmed the sent message identity."},
+		{ID: SendDocumentBranchProviderRejected, Description: "Telegram conclusively rejected the send.", Optional: true},
+		{ID: SendDocumentBranchUncertain, Description: "The send outcome remained unknown after the cap.", Optional: true},
+		{ID: SendDocumentBranchDefect, Description: "Input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendDocumentResult = sdkgo.MutationResult[SentMessage]
+
+type SendDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=telegram"`
+	operationID                       struct{}                                          `connector:"operationId=sendDocument"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendDocumentInput                        `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendDocumentResult]                  `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendDocumentResult]                  `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendDocumentResult]                  `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendDocumentResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendDocumentStep[IN any](config SendDocumentStepConfig[IN]) sdkgo.MutationStep[IN, SendDocumentInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendDocumentInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[SendDocumentResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendDocumentBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendDocumentBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendDocumentBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendPhotoBranchSent sdkgo.BranchID = "sent"
+const SendPhotoBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendPhotoBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendPhotoBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendPhotoDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendPhoto"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendPhotoBranchSent, Description: "Telegram confirmed the sent message identity."},
+		{ID: SendPhotoBranchProviderRejected, Description: "Telegram conclusively rejected the send.", Optional: true},
+		{ID: SendPhotoBranchUncertain, Description: "The send outcome remained unknown after the cap.", Optional: true},
+		{ID: SendPhotoBranchDefect, Description: "Input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendPhotoResult = sdkgo.MutationResult[SentMessage]
+
+type SendPhotoStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=telegram"`
+	operationID                       struct{}                                          `connector:"operationId=sendPhoto"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendPhotoInput                           `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendPhotoResult]                     `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendPhotoResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendPhotoResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendPhotoResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendPhotoStep[IN any](config SendPhotoStepConfig[IN]) sdkgo.MutationStep[IN, SendPhotoInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendPhotoInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendPhoto(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendPhotoResult] {
+			branches := make([]sdkgo.BranchTarget[SendPhotoResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendPhotoBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendPhotoBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendPhotoBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendPhotoBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendStickerBranchSent sdkgo.BranchID = "sent"
+const SendStickerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendStickerBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendStickerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendStickerDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendSticker"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendStickerBranchSent, Description: "Telegram confirmed the sent message identity."},
+		{ID: SendStickerBranchProviderRejected, Description: "Telegram conclusively rejected the send.", Optional: true},
+		{ID: SendStickerBranchUncertain, Description: "The send outcome remained unknown after the cap.", Optional: true},
+		{ID: SendStickerBranchDefect, Description: "Input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendStickerResult = sdkgo.MutationResult[SentMessage]
+
+type SendStickerStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=telegram"`
+	operationID                       struct{}                                          `connector:"operationId=sendSticker"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendStickerInput                         `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendStickerResult]                   `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendStickerResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendStickerResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendStickerResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendStickerStep[IN any](config SendStickerStepConfig[IN]) sdkgo.MutationStep[IN, SendStickerInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendStickerInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendSticker(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendStickerResult] {
+			branches := make([]sdkgo.BranchTarget[SendStickerResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendStickerBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendStickerBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendStickerBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendStickerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendVideoBranchSent sdkgo.BranchID = "sent"
+const SendVideoBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendVideoBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendVideoBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendVideoDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendVideo"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendVideoBranchSent, Description: "Telegram confirmed the sent message identity."},
+		{ID: SendVideoBranchProviderRejected, Description: "Telegram conclusively rejected the send.", Optional: true},
+		{ID: SendVideoBranchUncertain, Description: "The send outcome remained unknown after the cap.", Optional: true},
+		{ID: SendVideoBranchDefect, Description: "Input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendVideoResult = sdkgo.MutationResult[SentMessage]
+
+type SendVideoStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=telegram"`
+	operationID                       struct{}                                          `connector:"operationId=sendVideo"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendVideoInput                           `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendVideoResult]                     `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendVideoResult]                     `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendVideoResult]                     `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendVideoResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendVideoStep[IN any](config SendVideoStepConfig[IN]) sdkgo.MutationStep[IN, SendVideoInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendVideoInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendVideo(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendVideoResult] {
+			branches := make([]sdkgo.BranchTarget[SendVideoResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendVideoBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendVideoBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendVideoBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendVideoBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendLocationBranchSent sdkgo.BranchID = "sent"
+const SendLocationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendLocationBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendLocationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendLocationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendLocation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendLocationBranchSent, Description: "Telegram confirmed the sent message identity."},
+		{ID: SendLocationBranchProviderRejected, Description: "Telegram conclusively rejected the send.", Optional: true},
+		{ID: SendLocationBranchUncertain, Description: "The send outcome remained unknown after the cap.", Optional: true},
+		{ID: SendLocationBranchDefect, Description: "Input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendLocationResult = sdkgo.MutationResult[SentMessage]
+
+type SendLocationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=telegram"`
+	operationID                       struct{}                                          `connector:"operationId=sendLocation"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendLocationInput                        `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendLocationResult]                  `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendLocationResult]                  `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendLocationResult]                  `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendLocationResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendLocationStep[IN any](config SendLocationStepConfig[IN]) sdkgo.MutationStep[IN, SendLocationInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendLocationInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendLocation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendLocationResult] {
+			branches := make([]sdkgo.BranchTarget[SendLocationResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendLocationBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendLocationBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendLocationBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendLocationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendMediaGroupBranchSent sdkgo.BranchID = "sent"
+const SendMediaGroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendMediaGroupBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendMediaGroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendMediaGroupDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendMediaGroup"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendMediaGroupBranchSent, Description: "Telegram confirmed the sent message identity."},
+		{ID: SendMediaGroupBranchProviderRejected, Description: "Telegram conclusively rejected the send.", Optional: true},
+		{ID: SendMediaGroupBranchUncertain, Description: "The send outcome remained unknown after the cap.", Optional: true},
+		{ID: SendMediaGroupBranchDefect, Description: "Input, bot token, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendMediaGroupResult = sdkgo.MutationResult[SentMessages]
+
+type SendMediaGroupStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=telegram"`
+	operationID                       struct{}                                           `connector:"operationId=sendMediaGroup"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendMediaGroupInput                       `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendMediaGroupResult]                 `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendMediaGroupResult]                 `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendMediaGroupResult]                 `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendMediaGroupResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessages]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendMediaGroupStep[IN any](config SendMediaGroupStepConfig[IN]) sdkgo.MutationStep[IN, SendMediaGroupInput, SentMessages] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("telegram connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendMediaGroupInput, SentMessages]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendMediaGroup(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendMediaGroupResult] {
+			branches := make([]sdkgo.BranchTarget[SendMediaGroupResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendMediaGroupBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendMediaGroupBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendMediaGroupBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendMediaGroupBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const SendMessageBranchSent sdkgo.BranchID = "sent"
 const SendMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const SendMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
@@ -1195,6 +1845,8 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type SendMessageResult = sdkgo.MutationResult[SentMessage]
@@ -1214,6 +1866,8 @@ type SendMessageStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[SendMessageResult]                   `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendMessageInput, SentMessage] {
@@ -1245,6 +1899,7 @@ func NewSendMessageStep[IN any](config SendMessageStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
