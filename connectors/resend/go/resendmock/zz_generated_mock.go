@@ -28,6 +28,7 @@ type Mock struct {
 	updateScheduledEmail *connectormock.Mutation[resend.UpdateScheduledEmailInput, resend.EmailReference]
 	cancelScheduledEmail *connectormock.Mutation[resend.CancelScheduledEmailInput, resend.EmailReference]
 	sendEmail            *connectormock.Mutation[resend.SendEmailInput, resend.SentEmail]
+	sendBatchEmails      *connectormock.Mutation[resend.SendBatchEmailsInput, resend.SentEmailPage]
 	getEmail             *connectormock.Query[resend.GetEmailInput, resend.Email]
 	listEmails           *connectormock.Query[resend.ListEmailsInput, resend.EmailPage]
 	getContact           *connectormock.Query[resend.GetContactInput, resend.Contact]
@@ -51,6 +52,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateScheduledEmail: connectormock.NewMutation[resend.UpdateScheduledEmailInput, resend.EmailReference](t, resend.UpdateScheduledEmailDefinition),
 		cancelScheduledEmail: connectormock.NewMutation[resend.CancelScheduledEmailInput, resend.EmailReference](t, resend.CancelScheduledEmailDefinition),
 		sendEmail:            connectormock.NewMutation[resend.SendEmailInput, resend.SentEmail](t, resend.SendEmailDefinition),
+		sendBatchEmails:      connectormock.NewMutation[resend.SendBatchEmailsInput, resend.SentEmailPage](t, resend.SendBatchEmailsDefinition),
 		getEmail:             connectormock.NewQuery[resend.GetEmailInput, resend.Email](t, resend.GetEmailDefinition),
 		listEmails:           connectormock.NewQuery[resend.ListEmailsInput, resend.EmailPage](t, resend.ListEmailsDefinition),
 		getContact:           connectormock.NewQuery[resend.GetContactInput, resend.Contact](t, resend.GetContactDefinition),
@@ -68,6 +70,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateScheduledEmail.Default(UpdateScheduledEmailDefault())
 	mock.cancelScheduledEmail.Default(CancelScheduledEmailDefault())
 	mock.sendEmail.Default(SendEmailDefault())
+	mock.sendBatchEmails.Default(SendBatchEmailsDefault())
 	mock.getEmail.Default(GetEmailDefault())
 	mock.listEmails.Default(ListEmailsDefault())
 	mock.getContact.Default(GetContactDefault())
@@ -135,6 +138,11 @@ func (mock *Mock) SendEmail() *connectormock.Mutation[resend.SendEmailInput, res
 	return mock.sendEmail
 }
 
+// SendBatchEmails returns the sendBatchEmails script.
+func (mock *Mock) SendBatchEmails() *connectormock.Mutation[resend.SendBatchEmailsInput, resend.SentEmailPage] {
+	return mock.sendBatchEmails
+}
+
 // GetEmail returns the getEmail script.
 func (mock *Mock) GetEmail() *connectormock.Query[resend.GetEmailInput, resend.Email] {
 	return mock.getEmail
@@ -196,6 +204,9 @@ func (operations mockOperations) CancelScheduledEmail() sdkgo.Mutation[resend.Ca
 }
 func (operations mockOperations) SendEmail() sdkgo.Mutation[resend.SendEmailInput, resend.SentEmail] {
 	return operations.mock.sendEmail
+}
+func (operations mockOperations) SendBatchEmails() sdkgo.Mutation[resend.SendBatchEmailsInput, resend.SentEmailPage] {
+	return operations.mock.sendBatchEmails
 }
 func (operations mockOperations) GetEmail() sdkgo.Query[resend.GetEmailInput, resend.Email] {
 	return operations.mock.getEmail
@@ -608,6 +619,42 @@ func SendEmailSendEmailDefault() connectormock.Case[resend.SentEmail] {
 
 // SendEmailDefault is the manifest default, sendEmailDefault, which New installs.
 func SendEmailDefault() connectormock.Case[resend.SentEmail] { return SendEmailSendEmailDefault() }
+
+// SendBatchEmailsSent selects the sent branch: Resend accepted the batch.
+func SendBatchEmailsSent(value resend.SentEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.SentEmailPage] {
+	return connectormock.Branch(resend.SendBatchEmailsBranchSent, value, failure)
+}
+
+// SendBatchEmailsProviderRejected selects the providerRejected branch: Resend definitively rejected the batch.
+func SendBatchEmailsProviderRejected(value resend.SentEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.SentEmailPage] {
+	return connectormock.Branch(resend.SendBatchEmailsBranchProviderRejected, value, failure)
+}
+
+// SendBatchEmailsInvalidResponse selects the invalidResponse branch: Resend returned malformed or oversized JSON.
+func SendBatchEmailsInvalidResponse(value resend.SentEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.SentEmailPage] {
+	return connectormock.Branch(resend.SendBatchEmailsBranchInvalidResponse, value, failure)
+}
+
+// SendBatchEmailsDefect selects the defect branch: Local input or credentials are invalid.
+func SendBatchEmailsDefect(value resend.SentEmailPage, failure *sdkgo.Failure) connectormock.Case[resend.SentEmailPage] {
+	return connectormock.Branch(resend.SendBatchEmailsBranchDefect, value, failure)
+}
+
+// SendBatchEmailsRetry asks Dex to retry the sendBatchEmails Step, after the delay when it is positive.
+func SendBatchEmailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SentEmailPage] {
+	return connectormock.Retry[resend.SentEmailPage](failure, after)
+}
+
+// SendBatchEmailsSendBatchEmailsDefault is the manifest mock sendBatchEmailsDefault: Two emails were queued.
+func SendBatchEmailsSendBatchEmailsDefault() connectormock.Case[resend.SentEmailPage] {
+	value := connectormock.MustDecodeOutput[resend.SentEmailPage](`{"data":[{"id":"email-1"},{"id":"email-2"}]}`)
+	return connectormock.Branch(resend.SendBatchEmailsBranchSent, value, nil)
+}
+
+// SendBatchEmailsDefault is the manifest default, sendBatchEmailsDefault, which New installs.
+func SendBatchEmailsDefault() connectormock.Case[resend.SentEmailPage] {
+	return SendBatchEmailsSendBatchEmailsDefault()
+}
 
 // GetEmailFound selects the found branch: Resend returned the requested result.
 func GetEmailFound(value resend.Email, failure *sdkgo.Failure) connectormock.Case[resend.Email] {

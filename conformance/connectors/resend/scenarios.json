@@ -5931,6 +5931,660 @@
       },
       "name": "verifyDomain-transport",
       "operation": "verifyDomain"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"email-1\"},{\"id\":\"email-2\"}]}",
+          "derivedKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/emails/batch",
+          "requestBody": [
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHello\u003c/p\u003e",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            },
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHi\u003c/p\u003e",
+              "subject": "Follow up",
+              "to": [
+                "second@example.test"
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "id": "email-1"
+            },
+            {
+              "id": "email-2"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": [
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "subject": "Welcome",
+            "to": [
+              "reader@example.test"
+            ]
+          },
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHi\u003c/p\u003e",
+            "subject": "Follow up",
+            "to": [
+              "second@example.test"
+            ]
+          }
+        ]
+      },
+      "name": "sendBatchEmails-success",
+      "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/emails/batch",
+          "requestBody": [
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHello\u003c/p\u003e",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            },
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHi\u003c/p\u003e",
+              "subject": "Follow up",
+              "to": [
+                "second@example.test"
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": [
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "subject": "Welcome",
+            "to": [
+              "reader@example.test"
+            ]
+          },
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHi\u003c/p\u003e",
+            "subject": "Follow up",
+            "to": [
+              "second@example.test"
+            ]
+          }
+        ]
+      },
+      "name": "sendBatchEmails-providerRejected",
+      "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [
+        {
+          "body": "bad-json",
+          "derivedKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/emails/batch",
+          "requestBody": [
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHello\u003c/p\u003e",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            },
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHi\u003c/p\u003e",
+              "subject": "Follow up",
+              "to": [
+                "second@example.test"
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": [
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "subject": "Welcome",
+            "to": [
+              "reader@example.test"
+            ]
+          },
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHi\u003c/p\u003e",
+            "subject": "Follow up",
+            "to": [
+              "second@example.test"
+            ]
+          }
+        ]
+      },
+      "name": "sendBatchEmails-invalidResponse",
+      "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": []
+      },
+      "name": "sendBatchEmails-defect",
+      "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/emails/batch",
+          "requestBody": [
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHello\u003c/p\u003e",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            },
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHi\u003c/p\u003e",
+              "subject": "Follow up",
+              "to": [
+                "second@example.test"
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": [
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "subject": "Welcome",
+            "to": [
+              "reader@example.test"
+            ]
+          },
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHi\u003c/p\u003e",
+            "subject": "Follow up",
+            "to": [
+              "second@example.test"
+            ]
+          }
+        ]
+      },
+      "name": "sendBatchEmails-429",
+      "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/emails/batch",
+          "requestBody": [
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHello\u003c/p\u003e",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            },
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHi\u003c/p\u003e",
+              "subject": "Follow up",
+              "to": [
+                "second@example.test"
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": [
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "subject": "Welcome",
+            "to": [
+              "reader@example.test"
+            ]
+          },
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHi\u003c/p\u003e",
+            "subject": "Follow up",
+            "to": [
+              "second@example.test"
+            ]
+          }
+        ]
+      },
+      "name": "sendBatchEmails-5xx",
+      "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [
+        {
+          "derivedKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/emails/batch",
+          "requestBody": [
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHello\u003c/p\u003e",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            },
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHi\u003c/p\u003e",
+              "subject": "Follow up",
+              "to": [
+                "second@example.test"
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": [
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "subject": "Welcome",
+            "to": [
+              "reader@example.test"
+            ]
+          },
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHi\u003c/p\u003e",
+            "subject": "Follow up",
+            "to": [
+              "second@example.test"
+            ]
+          }
+        ]
+      },
+      "name": "sendBatchEmails-transport",
+      "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"concurrent_idempotent_requests\"}",
+          "derivedKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/emails/batch",
+          "requestBody": [
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHello\u003c/p\u003e",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            },
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHi\u003c/p\u003e",
+              "subject": "Follow up",
+              "to": [
+                "second@example.test"
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": [
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "subject": "Welcome",
+            "to": [
+              "reader@example.test"
+            ]
+          },
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHi\u003c/p\u003e",
+            "subject": "Follow up",
+            "to": [
+              "second@example.test"
+            ]
+          }
+        ]
+      },
+      "name": "sendBatchEmails-concurrent",
+      "operation": "sendBatchEmails"
+    },
+    {
+      "callId": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"invalid_idempotent_request\"}",
+          "derivedKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/emails/batch",
+          "requestBody": [
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHello\u003c/p\u003e",
+              "subject": "Welcome",
+              "to": [
+                "reader@example.test"
+              ]
+            },
+            {
+              "from": "Acme \u003chello@example.test\u003e",
+              "html": "\u003cp\u003eHi\u003c/p\u003e",
+              "subject": "Follow up",
+              "to": [
+                "second@example.test"
+              ]
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a58cccf9-7459-5303-8c9d-0fe4b5499a20",
+      "input": {
+        "emails": [
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHello\u003c/p\u003e",
+            "subject": "Welcome",
+            "to": [
+              "reader@example.test"
+            ]
+          },
+          {
+            "from": "Acme \u003chello@example.test\u003e",
+            "html": "\u003cp\u003eHi\u003c/p\u003e",
+            "subject": "Follow up",
+            "to": [
+              "second@example.test"
+            ]
+          }
+        ]
+      },
+      "name": "sendBatchEmails-invalidIdempotency",
+      "operation": "sendBatchEmails"
     }
   ],
   "schemaVersion": 1

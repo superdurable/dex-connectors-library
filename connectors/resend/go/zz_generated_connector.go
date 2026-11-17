@@ -50,6 +50,7 @@ type Operations interface {
 	UpdateScheduledEmail() sdkgo.Mutation[UpdateScheduledEmailInput, EmailReference]
 	CancelScheduledEmail() sdkgo.Mutation[CancelScheduledEmailInput, EmailReference]
 	SendEmail() sdkgo.Mutation[SendEmailInput, SentEmail]
+	SendBatchEmails() sdkgo.Mutation[SendBatchEmailsInput, SentEmailPage]
 	GetEmail() sdkgo.Query[GetEmailInput, Email]
 	ListEmails() sdkgo.Query[ListEmailsInput, EmailPage]
 	GetContact() sdkgo.Query[GetContactInput, Contact]
@@ -89,6 +90,9 @@ func (operations clientOperations) CancelScheduledEmail() sdkgo.Mutation[CancelS
 }
 func (operations clientOperations) SendEmail() sdkgo.Mutation[SendEmailInput, SentEmail] {
 	return operations.client.SendEmail()
+}
+func (operations clientOperations) SendBatchEmails() sdkgo.Mutation[SendBatchEmailsInput, SentEmailPage] {
+	return operations.client.SendBatchEmails()
 }
 func (operations clientOperations) GetEmail() sdkgo.Query[GetEmailInput, Email] {
 	return operations.client.GetEmail()
@@ -1017,6 +1021,78 @@ func NewSendEmailStep[IN any](config SendEmailStepConfig[IN]) sdkgo.MutationStep
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendBatchEmailsBranchSent sdkgo.BranchID = "sent"
+const SendBatchEmailsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendBatchEmailsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SendBatchEmailsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendBatchEmailsDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendBatchEmails"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendBatchEmailsBranchSent, Description: "Resend accepted the batch."},
+		{ID: SendBatchEmailsBranchProviderRejected, Description: "Resend definitively rejected the batch.", Optional: true},
+		{ID: SendBatchEmailsBranchInvalidResponse, Description: "Resend returned malformed or oversized JSON.", Optional: true},
+		{ID: SendBatchEmailsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SendBatchEmailsResult = sdkgo.MutationResult[SentEmailPage]
+
+type SendBatchEmailsStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=resend"`
+	operationID                       struct{}                                            `connector:"operationId=sendBatchEmails"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendBatchEmailsInput                       `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendBatchEmailsResult]                 `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendBatchEmailsResult]                 `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SendBatchEmailsResult]                 `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SendBatchEmailsResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentEmailPage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewSendBatchEmailsStep[IN any](config SendBatchEmailsStepConfig[IN]) sdkgo.MutationStep[IN, SendBatchEmailsInput, SentEmailPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendBatchEmailsInput, SentEmailPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendBatchEmails(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendBatchEmailsResult] {
+			branches := make([]sdkgo.BranchTarget[SendBatchEmailsResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendBatchEmailsBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendBatchEmailsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SendBatchEmailsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendBatchEmailsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }
 

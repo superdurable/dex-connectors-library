@@ -249,6 +249,22 @@ spec:
       default: true
       output:
         id: 5f9f777d-04e0-482a-bb65-088bb5bd44a4
+  - name: sendBatchEmails
+    goName: SendBatchEmails
+    inputType: SendBatchEmailsInput
+    outputType: SentEmailPage
+    kind: mutation
+    description: Send up to 100 emails with one provider idempotency key.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend accepted the batch.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the batch., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned malformed or oversized JSON., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: sendBatchEmailsDefault, branch: sent, default: true, description: Two emails were queued., output: {data: [{id: email-1}, {id: email-2}]}}
   - name: getEmail
     goName: GetEmail
     inputType: GetEmailInput

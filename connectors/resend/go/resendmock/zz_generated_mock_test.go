@@ -56,6 +56,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.SentEmail](`{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4"}`)
 			return err
 		}},
+		{name: "sendBatchEmails/sendBatchEmailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SentEmailPage](`{"data":[{"id":"email-1"},{"id":"email-2"}]}`)
+			return err
+		}},
 		{name: "getEmail/getEmailDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.Email](`{"id":"5f9f777d-04e0-482a-bb65-088bb5bd44a4","from":"Acme \u003chello@example.test\u003e","to":["reader@example.test"],"subject":"Welcome","created_at":"2026-10-26T12:00:00Z"}`)
 			return err
@@ -119,6 +123,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
 		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.SendBatchEmails().Definition().Operation.OperationID != "sendBatchEmails" {
+		t.Errorf("sendBatchEmails mock has another definition")
 	}
 	if mock.GetEmail().Definition().Operation.OperationID != "getEmail" {
 		t.Errorf("getEmail mock has another definition")

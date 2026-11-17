@@ -42,6 +42,7 @@ unverified.
 | `createDomain` | mutation | DomainReference |
 | `updateDomain` | mutation | DomainReference |
 | `verifyDomain` | mutation | DomainReference |
+| `sendBatchEmails` | mutation | SentEmailPage |
 
 The five new Go queries use the `safe` repeat tier and bounded HTTP responses.
 List inputs accept a 1–100 item `limit`; zero uses Resend's default for emails
@@ -80,6 +81,15 @@ exercises the generated factory through real Dex with a provider mock. Domain
 claim is dashboard-only; Resend has not published a claim API.
 
 `sendEmail` sends the stable Dex call idempotency key in `Idempotency-Key`. Resend documents 24-hour key retention; the connector's default one-hour retry budget stays within that window. Keep any per-Step retry override shorter than 24 hours. A 409 `concurrent_idempotent_requests` retries with the same key, while `invalid_idempotent_request` selects `providerRejected`.
+
+`sendBatchEmails` sends 1–100 complete email messages in one POST with the same
+provider idempotency protection as `sendEmail`. Each message needs a verified
+`from` address, 1–50 `to` recipients, subject, and HTML. The result contains
+the provider ID of every queued email in input order. The operation uses the
+`safe` tier because Resend deduplicates by `Idempotency-Key` for 24 hours; keep
+retry overrides shorter than that retention period. See
+[Resend batch sending](https://resend.com/docs/api-reference/emails/send-batch-emails)
+and the runnable [`send-batch-emails` Flow](go/examples/send-batch-emails/README.md).
 
 ## Authorization
 
