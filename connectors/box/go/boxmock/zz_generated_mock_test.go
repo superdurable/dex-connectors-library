@@ -44,6 +44,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[box.UpdatedBoxItem](`{"id":"54321","type":"folder","name":"Reports","parentId":"0","sharedLinkUrl":"https://app.box.com/s/folder-example"}`)
 			return err
 		}},
+		{name: "createFile/createFileDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.CreatedBoxFile](`{"fileId":"12345","name":"report.txt","sha1":"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0","parentId":"0"}`)
+			return err
+		}},
 		{name: "downloadFile/downloadedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[box.DownloadedFile](`{"fileId":"12345","contentBase64":"SGVsbG8=","contentBytes":5}`)
 			return err
@@ -104,6 +108,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ShareFolder().Definition().Operation.OperationID != "shareFolder" {
 		t.Errorf("shareFolder mock has another definition")
+	}
+	if mock.CreateFile().Definition().Operation.OperationID != "createFile" {
+		t.Errorf("createFile mock has another definition")
 	}
 	if mock.DownloadFile().Definition().Operation.OperationID != "downloadFile" {
 		t.Errorf("downloadFile mock has another definition")

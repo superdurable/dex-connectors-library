@@ -7200,6 +7200,841 @@
       },
       "name": "shareFolder-transport",
       "operation": "shareFolder"
+    },
+    {
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [
+        {
+          "body": "{\"total_count\":1,\"entries\":[{\"id\":\"12345\",\"type\":\"file\",\"name\":\"report.txt\",\"sha1\":\"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0\",\"size\":5}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "fileId": "12345",
+          "name": "report.txt",
+          "parentId": "0",
+          "sha1": "F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "0"
+      },
+      "name": "createFile-success",
+      "operation": "createFile"
+    },
+    {
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "fileId": "",
+          "name": "",
+          "parentId": "",
+          "sha1": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "0"
+      },
+      "name": "createFile-providerRejected",
+      "operation": "createFile"
+    },
+    {
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fileId": "",
+          "name": "",
+          "parentId": "",
+          "sha1": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "invalid"
+      },
+      "name": "createFile-defect",
+      "operation": "createFile"
+    },
+    {
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "0"
+      },
+      "name": "createFile-429",
+      "operation": "createFile"
+    },
+    {
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "0"
+      },
+      "name": "createFile-503",
+      "operation": "createFile"
+    },
+    {
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "0"
+      },
+      "name": "createFile-5xx",
+      "operation": "createFile"
+    },
+    {
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "0"
+      },
+      "name": "createFile-transport",
+      "operation": "createFile"
+    },
+    {
+      "attempts": 2,
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"total_count\":1,\"entries\":[{\"id\":\"12345\",\"type\":\"file\",\"name\":\"report.txt\",\"sha1\":\"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0\",\"size\":5}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name,sha1,size"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "fileId": "12345",
+          "name": "report.txt",
+          "parentId": "0",
+          "sha1": "F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createFile-readBack",
+      "operation": "createFile"
+    },
+    {
+      "attempts": 3,
+      "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"total_count\":0,\"entries\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name,sha1,size"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"total_count\":0,\"entries\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/folders/0/items",
+          "query": {
+            "fields": [
+              "id,type,name,sha1,size"
+            ],
+            "limit": [
+              "1000"
+            ],
+            "offset": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoicmVwb3J0LnR4dCIsInBhcmVudCI6eyJpZCI6IjAifX0=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"report.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "fileId": "",
+          "name": "",
+          "parentId": "",
+          "sha1": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "name": "report.txt",
+        "parentId": "0"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "cf8b7ca5-7c75-592d-abe2-a1b465fa6576",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createFile-uncertain",
+      "operation": "createFile"
     }
   ],
   "schemaVersion": 1

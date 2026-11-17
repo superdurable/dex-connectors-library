@@ -25,6 +25,7 @@ type Mock struct {
 	updateFolder    *connectormock.Mutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem]
 	shareFile       *connectormock.Mutation[box.ShareBoxFileInput, box.UpdatedBoxItem]
 	shareFolder     *connectormock.Mutation[box.ShareBoxFolderInput, box.UpdatedBoxItem]
+	createFile      *connectormock.Mutation[box.CreateBoxFileInput, box.CreatedBoxFile]
 	downloadFile    *connectormock.Query[box.DownloadFileInput, box.DownloadedFile]
 	uploadFile      *connectormock.Mutation[box.UploadFileInput, box.UploadedFile]
 	getFile         *connectormock.Query[box.GetFileInput, box.BoxFile]
@@ -48,6 +49,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateFolder:    connectormock.NewMutation[box.UpdateBoxFolderInput, box.UpdatedBoxItem](t, box.UpdateFolderDefinition),
 		shareFile:       connectormock.NewMutation[box.ShareBoxFileInput, box.UpdatedBoxItem](t, box.ShareFileDefinition),
 		shareFolder:     connectormock.NewMutation[box.ShareBoxFolderInput, box.UpdatedBoxItem](t, box.ShareFolderDefinition),
+		createFile:      connectormock.NewMutation[box.CreateBoxFileInput, box.CreatedBoxFile](t, box.CreateFileDefinition),
 		downloadFile:    connectormock.NewQuery[box.DownloadFileInput, box.DownloadedFile](t, box.DownloadFileDefinition),
 		uploadFile:      connectormock.NewMutation[box.UploadFileInput, box.UploadedFile](t, box.UploadFileDefinition),
 		getFile:         connectormock.NewQuery[box.GetFileInput, box.BoxFile](t, box.GetFileDefinition),
@@ -65,6 +67,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateFolder.Default(UpdateFolderDefault())
 	mock.shareFile.Default(ShareFileDefault())
 	mock.shareFolder.Default(ShareFolderDefault())
+	mock.createFile.Default(CreateFileDefault())
 	mock.downloadFile.Default(DownloadFileDefault())
 	mock.uploadFile.Default(UploadFileDefault())
 	mock.getFile.Default(GetFileDefault())
@@ -118,6 +121,11 @@ func (mock *Mock) ShareFile() *connectormock.Mutation[box.ShareBoxFileInput, box
 // ShareFolder returns the shareFolder script.
 func (mock *Mock) ShareFolder() *connectormock.Mutation[box.ShareBoxFolderInput, box.UpdatedBoxItem] {
 	return mock.shareFolder
+}
+
+// CreateFile returns the createFile script.
+func (mock *Mock) CreateFile() *connectormock.Mutation[box.CreateBoxFileInput, box.CreatedBoxFile] {
+	return mock.createFile
 }
 
 // DownloadFile returns the downloadFile script.
@@ -185,6 +193,9 @@ func (operations mockOperations) ShareFile() sdkgo.Mutation[box.ShareBoxFileInpu
 }
 func (operations mockOperations) ShareFolder() sdkgo.Mutation[box.ShareBoxFolderInput, box.UpdatedBoxItem] {
 	return operations.mock.shareFolder
+}
+func (operations mockOperations) CreateFile() sdkgo.Mutation[box.CreateBoxFileInput, box.CreatedBoxFile] {
+	return operations.mock.createFile
 }
 func (operations mockOperations) DownloadFile() sdkgo.Query[box.DownloadFileInput, box.DownloadedFile] {
 	return operations.mock.downloadFile
@@ -477,6 +488,40 @@ func ShareFolderShareFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
 func ShareFolderDefault() connectormock.Case[box.UpdatedBoxItem] {
 	return ShareFolderShareFolderDefault()
 }
+
+// CreateFileCreated selects the created branch: Box created or confirmed the file.
+func CreateFileCreated(value box.CreatedBoxFile, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxFile] {
+	return connectormock.Branch(box.CreateFileBranchCreated, value, failure)
+}
+
+// CreateFileProviderRejected selects the providerRejected branch: Box definitively rejected creation.
+func CreateFileProviderRejected(value box.CreatedBoxFile, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxFile] {
+	return connectormock.Branch(box.CreateFileBranchProviderRejected, value, failure)
+}
+
+// CreateFileDefect selects the defect branch: Local input or credentials are invalid.
+func CreateFileDefect(value box.CreatedBoxFile, failure *sdkgo.Failure) connectormock.Case[box.CreatedBoxFile] {
+	return connectormock.Branch(box.CreateFileBranchDefect, value, failure)
+}
+
+// CreateFileUncertain returns an uncertain createFile outcome.
+func CreateFileUncertain(value box.CreatedBoxFile, failure sdkgo.Failure) connectormock.Case[box.CreatedBoxFile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateFileRetry asks Dex to retry the createFile Step, after the delay when it is positive.
+func CreateFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.CreatedBoxFile] {
+	return connectormock.Retry[box.CreatedBoxFile](failure, after)
+}
+
+// CreateFileCreateFileDefault is the manifest mock createFileDefault: One file was created.
+func CreateFileCreateFileDefault() connectormock.Case[box.CreatedBoxFile] {
+	value := connectormock.MustDecodeOutput[box.CreatedBoxFile](`{"fileId":"12345","name":"report.txt","sha1":"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0","parentId":"0"}`)
+	return connectormock.Branch(box.CreateFileBranchCreated, value, nil)
+}
+
+// CreateFileDefault is the manifest default, createFileDefault, which New installs.
+func CreateFileDefault() connectormock.Case[box.CreatedBoxFile] { return CreateFileCreateFileDefault() }
 
 // DownloadFileDownloaded selects the downloaded branch: Box returned the selected file content.
 func DownloadFileDownloaded(value box.DownloadedFile, failure *sdkgo.Failure) connectormock.Case[box.DownloadedFile] {

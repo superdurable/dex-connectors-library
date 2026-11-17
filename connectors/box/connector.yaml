@@ -220,6 +220,22 @@ spec:
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
       mocks:
         - {name: shareFolderDefault, branch: shared, default: true, description: One folder has a shared link., output: {id: '54321', type: folder, name: Reports, parentId: '0', sharedLinkUrl: 'https://app.box.com/s/folder-example'}}
+    - name: createFile
+      goName: CreateFile
+      inputType: CreateBoxFileInput
+      outputType: CreatedBoxFile
+      kind: mutation
+      description: Upload one new bounded file under a Box folder.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Box created or confirmed the file.}
+        - {id: providerRejected, goName: ProviderRejected, description: Box definitively rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send cap was reached without confirming creation., optional: true}
+      mocks:
+        - {name: createFileDefault, branch: created, default: true, description: One file was created., output: {fileId: '12345', name: report.txt, sha1: F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0, parentId: '0'}}
     - name: downloadFile
       goName: DownloadFile
       inputType: DownloadFileInput

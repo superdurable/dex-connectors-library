@@ -53,6 +53,7 @@ type Operations interface {
 	UpdateFolder() sdkgo.Mutation[UpdateBoxFolderInput, UpdatedBoxItem]
 	ShareFile() sdkgo.Mutation[ShareBoxFileInput, UpdatedBoxItem]
 	ShareFolder() sdkgo.Mutation[ShareBoxFolderInput, UpdatedBoxItem]
+	CreateFile() sdkgo.Mutation[CreateBoxFileInput, CreatedBoxFile]
 	DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile]
 	UploadFile() sdkgo.Mutation[UploadFileInput, UploadedFile]
 	GetFile() sdkgo.Query[GetFileInput, BoxFile]
@@ -86,6 +87,9 @@ func (operations clientOperations) ShareFile() sdkgo.Mutation[ShareBoxFileInput,
 }
 func (operations clientOperations) ShareFolder() sdkgo.Mutation[ShareBoxFolderInput, UpdatedBoxItem] {
 	return operations.client.ShareFolder()
+}
+func (operations clientOperations) CreateFile() sdkgo.Mutation[CreateBoxFileInput, CreatedBoxFile] {
+	return operations.client.CreateFile()
 }
 func (operations clientOperations) DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile] {
 	return operations.client.DownloadFile()
@@ -876,6 +880,82 @@ func NewShareFolderStep[IN any](config ShareFolderStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateFileBranchCreated sdkgo.BranchID = "created"
+const CreateFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateFileBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateFileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateFileBranchCreated, Description: "Box created or confirmed the file."},
+		{ID: CreateFileBranchProviderRejected, Description: "Box definitively rejected creation.", Optional: true},
+		{ID: CreateFileBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateFileBranchUncertain, Description: "The send cap was reached without confirming creation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateFileResult = sdkgo.MutationResult[CreatedBoxFile]
+
+type CreateFileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=box"`
+	operationID                       struct{}                                             `connector:"operationId=createFile"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateBoxFileInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateFileResult]                       `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateFileResult]                       `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateFileResult]                       `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateFileResult]                       `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedBoxFile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateFileStep[IN any](config CreateFileStepConfig[IN]) sdkgo.MutationStep[IN, CreateBoxFileInput, CreatedBoxFile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("box connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateBoxFileInput, CreatedBoxFile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateFileResult] {
+			branches := make([]sdkgo.BranchTarget[CreateFileResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateFileBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateFileBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateFileBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateFileBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

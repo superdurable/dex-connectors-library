@@ -32,6 +32,14 @@ with a cap of three possible sends. They require a destination parent ID and
 an explicit name. After an unknown result, they list the destination folder
 by name before resending; an unconfirmed result at the cap selects `uncertain`.
 Box does not expose a provider idempotency key for these POST requests.
+Go `createFile` uploads a new file through Box's direct multipart API. Provide
+a destination parent ID, unique name, and bounded Base64 content. It uses the
+`limited` tier with at most three possible sends; after an unknown result it
+lists the destination and compares name, SHA-1, and size before resending. A
+conflicting name is a definite rejection on the first send and an uncertain
+outcome after a possible earlier send. The
+[`file-create` Flow](go/examples/file-create/README.md) exercises it through
+real Dex with a provider mock.
 
 The Box Web URL after `/files/` or `/folders/` supplies the item ID; `0` is
 the root folder and can be listed but cannot be deleted. Search requires text;
@@ -41,7 +49,7 @@ the first page. No item ID or query is a secret.
 
 Create an OAuth 2.0 Platform App in the [Box Developer Console](https://app.box.com/developers/console). In Configuration, enable the `root_readwrite` application scope, register the exact Dex Web redirect URI, and copy the Client ID and secret into the Dex authorization form. Box may require enterprise administrator approval. The user completing consent must have access to the file. Dex stores the access token and each rotated refresh token. See [Box OAuth setup](https://developer.box.com/guides/authentication/oauth2/oauth2-setup/), [scopes](https://developer.box.com/guides/api-calls/permissions-and-errors/scopes/), and the [download endpoint](https://developer.box.com/reference/get-files-id-content/).
 
-The download Query follows only a signed HTTPS `*.boxcloud.com` redirect, without the OAuth token, and selects `invalidResponse` for any other redirect. It retries transport failures, HTTP 429, HTTP 202 (file not ready, honoring `Retry-After`), request timeout, and server failures. HTTP 404 selects the optional `notFound` branch; an oversized file selects `tooLarge`. Upload first reads the file's name and SHA-1; it skips an already identical file, preserving version history. It uses Box's [file-version upload API](https://developer.box.com/reference/post-files-id-content) and reads back ambiguous outcomes. When read-back cannot confirm the content it retries, because the next attempt compares SHA-1 and size before replacing again. Other definitive rejections select `providerRejected`. An unwired optional branch fails the Flow. Box file events and new-file creation remain to be implemented. Live Box authorization and Dex Web setup have not been exercised.
+The download Query follows only a signed HTTPS `*.boxcloud.com` redirect, without the OAuth token, and selects `invalidResponse` for any other redirect. It retries transport failures, HTTP 429, HTTP 202 (file not ready, honoring `Retry-After`), request timeout, and server failures. HTTP 404 selects the optional `notFound` branch; an oversized file selects `tooLarge`. Upload first reads the file's name and SHA-1; it skips an already identical file, preserving version history. It uses Box's [file-version upload API](https://developer.box.com/reference/post-files-id-content) and reads back ambiguous outcomes. When read-back cannot confirm the content it retries, because the next attempt compares SHA-1 and size before replacing again. Other definitive rejections select `providerRejected`. An unwired optional branch fails the Flow. Box file events remain to be implemented. Live Box authorization and Dex Web setup have not been exercised.
 
 The [Go-recorded conformance scenarios](../../conformance/connectors/box/scenarios.json) define the provider request and retry behavior replayed by Python and TypeScript.
 The [`file-update` Go Flow](go/examples/file-update/README.md) exercises
@@ -57,3 +65,5 @@ Provider references: [file metadata](https://developer.box.com/reference/get-fil
 Box [file update](https://developer.box.com/reference/put-files-id/) and
 [folder update](https://developer.box.com/reference/put-folders-id/) document
 the rename, move, and shared link request fields.
+Box [direct file upload](https://developer.box.com/reference/post-files-content/)
+documents the multipart attributes and file parts.
