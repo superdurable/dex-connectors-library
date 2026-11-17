@@ -1,6 +1,6 @@
 # Gorgias TypeScript connector
 
-Install `@superdurable/connector-gorgias@0.2.0` after publication. The package
+Install `@superdurable/connector-gorgias@0.2.1` after publication. The package
 provides `searchTickets`, `getTicket`, `findCustomerByEmail`, `createTicket`,
 `updateTicket`, and `addNote` Step factories and typed mock cases, and the
 `ticketChanged` poll Trigger. It requires `@superdurable/connectors-sdk` 0.12.0,
@@ -14,12 +14,17 @@ the private Dex project configuration with `newProjectConnection`. The runnable
 Worker, and Flow starter with the static `gorgias-helpdesk` connection name.
 
 Gorgias has no idempotency key. `createTicket` and `addNote` write a stable
-external ID and checkpoint dispatch before a provider write; subsequent
-attempts read the resource back and select `uncertain` when it cannot be
-confirmed. Ticket read-back skips malformed entries in an otherwise valid
-page. A public reply reads its ticket before sending; an invalid response or
+external ID and send under the SDK single-dispatch fence with the manifest
+send cap of three. After an unknown outcome the next attempt reads the
+resource back by that external ID, resends while the cap allows, and selects
+`uncertain` only at the cap; the
+[connector README](../README.md#duplicate-safety) has the full rules. Markers
+written by `0.2.0` are untrusted by the SDK fence, so a write in flight during
+the upgrade retries without sending until its retry budget runs out. Ticket
+read-back skips malformed entries in an otherwise valid page. A public reply reads its ticket before sending; an invalid response or
 ambiguous email route selects `providerRejected` without sending. `updateTicket`
-reads current values and applies only requested differences. Unwired optional
+reads current values, applies only requested differences, and retries any
+outcome after a write that is not a definite refusal. Unwired optional
 branches fail the Flow.
 
 The [Gorgias setup instructions](../README.md#gorgias-setup) describe where an

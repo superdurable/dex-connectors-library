@@ -105,12 +105,16 @@ func TestUpdateTicketBranches(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		status  int
+		body    string
 		branch  sdkgo.BranchID
 		isRetry bool
 	}{
 		{name: "missing", status: http.StatusNotFound, branch: gorgias.UpdateTicketBranchNotFound},
 		{name: "rejected", status: http.StatusBadRequest, branch: gorgias.UpdateTicketBranchProviderRejected},
 		{name: "outage", status: http.StatusInternalServerError, isRetry: true},
+		{name: "conflict", status: http.StatusConflict, isRetry: true},
+		{name: "redirect", status: http.StatusMovedPermanently, isRetry: true},
+		{name: "invalid updated ticket", status: http.StatusOK, body: `{"id":"SENTINEL"}`, isRetry: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			provider := newRecordingGorgias(t, func(response http.ResponseWriter, request *http.Request, _ int) {
@@ -118,7 +122,11 @@ func TestUpdateTicketBranches(t *testing.T) {
 					writeValue(t, response, http.StatusOK, ticketJSON(5512, "open", nil, nil))
 					return
 				}
-				writeJSON(t, response, test.status, `{"error":{"msg":"SENTINEL"}}`)
+				body := `{"error":{"msg":"SENTINEL"}}`
+				if test.body != "" {
+					body = test.body
+				}
+				writeJSON(t, response, test.status, body)
 			})
 			result, err := sdkgo.RunMutation(newGorgiasDexContext("update-"+test.name), newGorgiasClient(t, provider.URL).UpdateTicket(), gorgiasConnection,
 				gorgias.UpdateTicketInput{TicketID: 5512, Status: gorgias.TicketStatusClosed})

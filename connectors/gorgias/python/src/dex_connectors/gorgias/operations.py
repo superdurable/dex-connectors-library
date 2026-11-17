@@ -5,7 +5,7 @@
 import html
 import json
 import re
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from functools import cmp_to_key
 from typing import Any
 
@@ -21,7 +21,14 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
-from dex_connectors.sdk.singledispatch import State
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    Decision,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+)
 
 from ._generated import definitions as defs
 from .client import (
@@ -47,17 +54,15 @@ from .models import (
     SearchTicketsOutput,
     Ticket,
     TicketDetails,
+    TicketMessage,
     UpdateTicketInput,
     UpdateTicketOutput,
 )
 
 _ZERO_TICKET = Ticket(status="")
 _RETRY_OUTCOMES = frozenset(("rateLimited", "notSent", "unavailable"))
-
-
-@dataclass(frozen=True, slots=True)
-class _DispatchMarker:
-    dispatched_call_id: CallID = field(metadata={"dex_json_name": "gorgiasDispatchedCallId"})
+# Only these statuses prove Gorgias applied nothing; any other non-2xx answer may follow an applied write.
+_DEFINITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
 _STATUSES = frozenset(("open", "closed"))
 _PRIORITIES = frozenset(("low", "normal", "high", "critical"))
 _CURSOR = re.compile(r"^[A-Za-z0-9+/=_.:-]{1,2048}$")
@@ -487,7 +492,7 @@ class UpdateTicketOperation:
                 call, credentials, operation, method, request_path, payload=payload
             )
             receipt = self.client.receipt(call, result, input.ticket_id)
-            if has_write and result.outcome not in _RETRY_OUTCOMES and result.outcome != "success":
+            if has_write and _is_conclusive_write_failure(result):
                 reread = await self.client.exchange(call, credentials, operation, "GET", path)
                 if reread.outcome == "success":
                     try:
@@ -496,7 +501,7 @@ class UpdateTicketOperation:
                         )
                     except (ValueError, TypeError, KeyError, AttributeError):
                         pass
-            terminal = _mutation_exchange(result, receipt, current_output, True)
+            terminal = _after_write_exchange(result, receipt, current_output)
             if terminal:
                 return terminal
             has_write = True
@@ -504,30 +509,30 @@ class UpdateTicketOperation:
                 try:
                     updated = decode_ticket(json.loads(result.body), input.ticket_id)
                 except (ValueError, TypeError, KeyError, AttributeError) as error:
-                    return MutationAttempt.branch_result(
-                        defs.INVALID_RESPONSE,
-                        current_output,
-                        receipt,
+                    # The PUT sets final values, so an unusable answer repeats it.
+                    return MutationAttempt.retry(
                         failure(
                             FailureKind.PROTOCOL,
                             operation,
-                            "Gorgias returned an invalid updated ticket: " + str(error),
-                        ),
+                            "Gorgias accepted the change but returned an invalid updated ticket: "
+                            + str(error),
+                        )
                     )
                 return MutationAttempt.branch_result(defs.UPDATED, UpdateTicketOutput(updated), receipt)
         reread = await self.client.exchange(call, credentials, operation, "GET", path)
         receipt = self.client.receipt(call, reread, input.ticket_id)
-        terminal = _mutation_exchange(reread, receipt, current_output, True)
+        terminal = _after_write_exchange(reread, receipt, current_output)
         if terminal:
             return terminal
         try:
             updated = decode_ticket(json.loads(reread.body), input.ticket_id)
         except (ValueError, TypeError, KeyError, AttributeError) as error:
-            return MutationAttempt.branch_result(
-                defs.INVALID_RESPONSE,
-                current_output,
-                receipt,
-                failure(FailureKind.PROTOCOL, operation, "Gorgias returned an invalid ticket: " + str(error)),
+            return MutationAttempt.retry(
+                failure(
+                    FailureKind.PROTOCOL,
+                    operation,
+                    "Gorgias returned an invalid ticket after the change: " + str(error),
+                )
             )
         return MutationAttempt.branch_result(
             defs.UPDATED,
@@ -536,54 +541,218 @@ class UpdateTicketOperation:
         )
 
 
-async def _prior_dispatch(call: Call) -> bool:
-    context = call.context
-    if context is None:
+def _is_conclusive_write_failure(exchange: Exchange) -> bool:
+    """Report a definite refusal or a request that was never built."""
+    if exchange.outcome in ("notFound", "defect"):
         return True
+    return exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES
+
+
+def _after_write_exchange(exchange: Exchange, receipt: Receipt, value: Any) -> MutationAttempt[Any] | None:
+    """After a possible write, only a definite refusal selects a branch; anything else retries the change."""
+    if exchange.outcome != "success" and not _is_conclusive_write_failure(exchange):
+        assert exchange.failure is not None
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+    return _mutation_exchange(exchange, receipt, value, True)
+
+
+def _reconcile_delay(retry_after: float, minimum: float) -> float:
+    """Honor a Gorgias Retry-After of at least `minimum` seconds, capped at one minute."""
+    return min(max(retry_after, minimum), 60)
+
+
+@dataclass(frozen=True, slots=True)
+class _WritePermit:
+    """A fence decision that lets this attempt read back and send, with its send-cap facts."""
+
+    fence: Fence
+    decision: Decision
+
+    @property
+    def is_first_send(self) -> bool:
+        return self.decision.prior_send_upper_bound == 0
+
+    @property
+    def needs_read_back(self) -> bool:
+        return self.decision.kind != DecisionKind.SEND_ALLOWED or self.decision.prior_send_upper_bound > 0
+
+    @property
+    def can_send_after_unconfirmed_read_back(self) -> bool:
+        has_saved_id = self.decision.marker is not None and bool(self.decision.marker.provider_id)
+        return self.decision.kind != DecisionKind.READ_BACK_REQUIRED and not has_saved_id
+
+
+async def _begin_write(
+    call: Call, operation: str, definition: MutationDefinition, zero: Any
+) -> tuple[_WritePermit | None, MutationAttempt[Any] | None]:
+    """Start the SDK fence under the manifest send cap; an attempt ends this attempt before any request."""
     try:
-        if not context.has_last_heartbeat_value():
-            return False
-        context.get_last_heartbeat_value(_DispatchMarker)
-        return True
-    except Exception:
-        return True
+        fence = Fence(call, definition.step_defaults.execute_method_timeout, max_sends=call.max_sends)
+    except ValueError:
+        return None, MutationAttempt.branch_result(
+            defs.DEFECT,
+            zero,
+            Receipt(),
+            failure(FailureKind.LOCAL_DEFECT, operation, "single-dispatch fence could not start"),
+        )
+    decision = await fence.decide()
+    if decision.kind == DecisionKind.FAIL_CLOSED:
+        # FailClosed sends nothing, so a later attempt decides again from a readable checkpoint.
+        return None, MutationAttempt.retry(
+            failure(
+                FailureKind.AVAILABILITY,
+                operation,
+                "the dispatch checkpoint could not be read; nothing was sent in this attempt",
+            )
+        )
+    return _WritePermit(fence, decision), None
 
 
-async def _checkpoint(call: Call, state: State) -> bool:
-    if call.context is None:
-        return False
-    try:
-        if state == State.CLAIMED:
-            await call.context.heartbeat(_DispatchMarker(call.id))
-        else:
-            await call.context.heartbeat()
-        return True
-    except Exception:
-        return False
-
-
-async def _reconcile_failure(
-    call: Call,
-    operation: str,
-    reason: Failure,
-    receipt: Receipt,
-    zero: Any,
-    delay: float = 0,
-    can_retry: bool = True,
+async def _credential_failure_attempt(
+    permit: _WritePermit, operation: str, reason: Failure, zero: Any
 ) -> MutationAttempt[Any]:
-    if can_retry and call.context is not None and call.context.attempt < 4:
-        if await _checkpoint(call, State.CLAIMED):
-            return MutationAttempt.retry(reason, min(max(delay, 15), 60))
-    return MutationAttempt.uncertain(
-        zero,
-        failure(
-            reason.kind,
+    if not permit.is_first_send:
+        # notSent would hide the earlier possible send, so nothing is recorded.
+        return MutationAttempt.uncertain(
+            zero,
+            failure(
+                reason.kind,
+                operation,
+                "an earlier attempt of this Step may have sent the request and the connection "
+                "credentials are unavailable to read it back",
+            ),
+            Receipt(),
+        )
+    try:
+        await permit.fence.record_not_sent()
+    except Exception:
+        return MutationAttempt.retry(
+            failure(FailureKind.AVAILABILITY, operation, "Dex did not record the not-sent checkpoint")
+        )
+    return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), reason)
+
+
+def _read_back_attempt(
+    permit: _WritePermit,
+    exchange: Exchange,
+    found: MutationAttempt[Any] | None,
+    receipt: Receipt,
+    operation: str,
+    resource: str,
+    zero: Any,
+) -> MutationAttempt[Any] | None:
+    """Map an external-ID lookup; None means this attempt may send."""
+    if exchange.outcome == "success" and found is not None:
+        return found
+    if exchange.outcome in _RETRY_OUTCOMES:
+        assert exchange.failure is not None
+        return MutationAttempt.retry(exchange.failure, _reconcile_delay(exchange.retry_after, 15))
+    if permit.can_send_after_unconfirmed_read_back:
+        return None
+    if exchange.outcome == "success":
+        reason = failure(
+            FailureKind.TRANSPORT,
             operation,
-            "an earlier attempt of this Step sent the request and Gorgias could not "
-            "confirm it, so it is not sent again: " + reason.message,
-        ),
-        receipt,
-    )
+            "earlier attempts of this Step may have sent the request, the send cap is reached, "
+            f"and Gorgias shows no {resource} with its external ID",
+        )
+    else:
+        assert exchange.failure is not None
+        reason = failure(
+            exchange.failure.kind,
+            operation,
+            "earlier attempts of this Step may have sent the request, the send cap is reached, "
+            "and Gorgias could not confirm it: " + exchange.failure.message,
+        )
+    return MutationAttempt.uncertain(zero, reason, receipt)
+
+
+async def _pre_send_retry(permit: _WritePermit, reason: Failure, retry_after: float) -> MutationAttempt[Any]:
+    if permit.decision.kind == DecisionKind.SEND_ALLOWED:
+        try:
+            await permit.fence.record_not_sent()
+        except Exception:
+            pass  # A lost notSent leaves no marker, so the next attempt reads back before it sends.
+    return MutationAttempt.retry(reason, retry_after)
+
+
+async def _send_write(
+    permit: _WritePermit,
+    client: Client,
+    call: Call,
+    credentials: Any,
+    operation: str,
+    path: str,
+    payload: dict[str, Any],
+) -> tuple[Exchange | None, MutationAttempt[Any] | None]:
+    """Dispatch one POST under the fence; a refused dispatch returns its Retry attempt."""
+    try:
+        exchange = await permit.fence.dispatch(
+            lambda _: client.exchange(call, credentials, operation, "POST", path, payload=payload)
+        )
+    except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+        # Dispatch refused before sending, so nothing reached Gorgias in this attempt.
+        return None, MutationAttempt.retry(
+            failure(
+                FailureKind.AVAILABILITY,
+                operation,
+                "Dex did not record the dispatch checkpoint or too little attempt time remained; "
+                "nothing was sent",
+            )
+        )
+    except TimeoutError:
+        # The claim stays, so the next attempt counts this send and reads back first.
+        return None, MutationAttempt.retry(
+            failure(FailureKind.TRANSPORT, operation, "Gorgias request failed before a response arrived"), 2
+        )
+    return exchange, None
+
+
+async def _write_attempt(
+    permit: _WritePermit, exchange: Exchange, receipt: Receipt, zero: Any, not_found_branch: str
+) -> MutationAttempt[Any] | None:
+    """Map a sent write; any outcome but a definite refusal retries, and the next attempt reads back."""
+    if exchange.outcome == "success":
+        return None
+    assert exchange.failure is not None
+    if exchange.outcome in ("rateLimited", "notSent") or (
+        exchange.outcome == "unavailable" and exchange.status == 503
+    ):
+        try:
+            await permit.fence.record_can_resend()
+        except Exception:
+            pass  # A lost checkpoint leaves the claim, so the next attempt counts this send and reads back.
+        return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+    branch = ""
+    if exchange.outcome == "notFound":
+        branch = not_found_branch
+    elif exchange.outcome == "defect" and permit.is_first_send:
+        branch, receipt = defs.DEFECT, Receipt()
+    elif exchange.outcome == "rejected" and exchange.status in _DEFINITE_REFUSAL_STATUSES:
+        branch = defs.PROVIDER_REJECTED
+    if not branch:
+        # A 3xx, 408, 409, other 5xx, unlisted status, or unusable 2xx may follow an applied write.
+        return MutationAttempt.retry(exchange.failure, _reconcile_delay(exchange.retry_after, 2))
+    if not permit.is_first_send:
+        return MutationAttempt.uncertain(zero, exchange.failure, receipt)
+    try:
+        await permit.fence.record_can_resend()
+    except Exception:
+        return MutationAttempt.retry(
+            failure(
+                FailureKind.AVAILABILITY,
+                exchange.failure.operation,
+                "Dex did not record the refusal checkpoint",
+            )
+        )
+    return MutationAttempt.branch_result(branch, zero, receipt, exchange.failure)
+
+
+async def _record_accepted_write(permit: _WritePermit, provider_id: int) -> None:
+    try:
+        await permit.fence.record_provider_id(str(provider_id))
+    except Exception:
+        pass  # The accepted response already identifies the write.
 
 
 def _html_body(value: str) -> str:
@@ -607,7 +776,7 @@ class CreateTicketOperation:
         return IdempotencyKey("dex-" + str(call_id))
 
     async def invoke(self, call: Call, input: CreateTicketInput) -> MutationAttempt[CreateTicketOutput]:
-        """Checkpoint before POST, then read back any possibly accepted write."""
+        """Read back a possibly accepted write by external ID, then send under the fence and send cap."""
         operation = defs.CREATE_TICKET_OPERATION_ID
         zero = CreateTicketOutput(_ZERO_TICKET)
         requester = input.requester
@@ -633,83 +802,25 @@ class CreateTicketOperation:
             return MutationAttempt.branch_result(
                 defs.DEFECT, zero, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
-        prior_dispatch = await _prior_dispatch(call)
+        permit, ended = await _begin_write(call, operation, defs.CREATE_TICKET_DEFINITION, zero)
+        if ended is not None:
+            return ended
+        assert permit is not None
         credentials, credential_failure = await self.client.resolve_credentials(call, operation)
         if credential_failure:
-            if prior_dispatch:
-                return await _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
-            return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
+            return await _credential_failure_attempt(permit, operation, credential_failure, zero)
         assert credentials is not None
-
-        async def lookup() -> tuple[Ticket | None, Exchange, Receipt]:
-            result = await self.client.exchange(
-                call,
-                credentials,
-                operation,
-                "GET",
-                "/tickets",
-                {"external_id": str(call.idempotency_key), "limit": "5"},
+        if permit.needs_read_back:
+            ticket, lookup, receipt = await self._look_up_ticket(call, credentials)
+            found = (
+                MutationAttempt.branch_result(defs.CREATED, CreateTicketOutput(ticket, True), receipt)
+                if ticket is not None
+                else None
             )
-            receipt = self.client.receipt(call, result)
-            if result.outcome != "success":
-                return None, result, receipt
-            try:
-                records, _ = decode_list(result.body, "ticket")
-                for record in records:
-                    try:
-                        ticket = decode_ticket(record)
-                    except (ValueError, TypeError, KeyError, AttributeError):
-                        continue
-                    if ticket.external_id == str(call.idempotency_key):
-                        return ticket, result, self.client.receipt(call, result, ticket.id)
-            except (ValueError, TypeError, KeyError, AttributeError) as error:
-                result = Exchange(
-                    "invalid",
-                    failure(
-                        FailureKind.PROTOCOL,
-                        operation,
-                        "Gorgias returned an invalid ticket page: " + str(error),
-                    ),
-                    status=result.status,
-                    headers=result.headers,
-                )
-            return None, result, receipt
-
-        if prior_dispatch or (call.context is not None and call.context.attempt > 1):
-            ticket, result, receipt = await lookup()
-            if result.outcome != "success":
-                assert result.failure is not None
-                if prior_dispatch:
-                    return await _reconcile_failure(
-                        call,
-                        operation,
-                        result.failure,
-                        receipt,
-                        zero,
-                        result.retry_after,
-                        result.outcome in ("rateLimited", "notSent", "unavailable", "invalid"),
-                    )
-                terminal = _mutation_exchange(result, receipt, zero, retry_invalid=True)
-                assert terminal is not None
-                return terminal
-            if ticket is not None:
-                return MutationAttempt.branch_result(defs.CREATED, CreateTicketOutput(ticket, True), receipt)
-            if prior_dispatch:
-                reason = failure(
-                    FailureKind.TRANSPORT,
-                    operation,
-                    "an earlier attempt of this Step sent the request and Gorgias shows no ticket "
-                    "with its external ID, so it is not sent again",
-                )
-                return await _reconcile_failure(call, operation, reason, receipt, zero)
-        if not await _checkpoint(call, State.CLAIMED):
-            return MutationAttempt.retry(
-                failure(
-                    FailureKind.AVAILABILITY,
-                    operation,
-                    "Dex did not record the dispatch checkpoint; nothing was sent",
-                )
-            )
+            read_back = _read_back_attempt(permit, lookup, found, receipt, operation, "ticket", zero)
+            if read_back is not None:
+                return read_back
+            # Gorgias shows no ticket with the external ID, so this attempt resends below the cap.
         person = {"email": requester.email}
         if requester.name:
             person["name"] = requester.name
@@ -743,23 +854,18 @@ class CreateTicketOperation:
             payload["assignee_user"] = {"id": input.assignee_user_id}
         if input.assignee_team_id:
             payload["assignee_team"] = {"id": input.assignee_team_id}
-        result = await self.client.exchange(call, credentials, operation, "POST", "/tickets", payload=payload)
+        result, refused = await _send_write(
+            permit, self.client, call, credentials, operation, "/tickets", payload
+        )
+        if refused is not None:
+            return refused
+        assert result is not None
         receipt = self.client.receipt(call, result)
-        if result.outcome != "success":
-            assert result.failure is not None
-        if result.outcome in ("rateLimited", "notSent"):
-            assert result.failure is not None
-            # A failed release leaves the claim, so the next attempt reconciles safely.
-            await _checkpoint(call, State.NOT_SENT)
-            return MutationAttempt.retry(result.failure, result.retry_after)
-        if result.outcome in ("unavailable", "invalid"):
-            assert result.failure is not None
-            return MutationAttempt.retry(result.failure, min(max(result.retry_after, 2), 60))
-        if result.outcome != "success":
-            branch = defs.DEFECT if result.outcome == "defect" else defs.PROVIDER_REJECTED
-            return MutationAttempt.branch_result(branch, zero, receipt, result.failure)
+        terminal = await _write_attempt(permit, result, receipt, zero, defs.PROVIDER_REJECTED)
+        if terminal is not None:
+            return terminal
         try:
-            ticket = decode_ticket(json.loads(result.body))
+            created = decode_ticket(json.loads(result.body))
         except (ValueError, TypeError, KeyError, AttributeError) as error:
             return MutationAttempt.retry(
                 failure(
@@ -769,9 +875,44 @@ class CreateTicketOperation:
                 ),
                 2,
             )
+        await _record_accepted_write(permit, created.id)
         return MutationAttempt.branch_result(
-            defs.CREATED, CreateTicketOutput(ticket), self.client.receipt(call, result, ticket.id)
+            defs.CREATED, CreateTicketOutput(created), self.client.receipt(call, result, created.id)
         )
+
+    async def _look_up_ticket(self, call: Call, credentials: Any) -> tuple[Ticket | None, Exchange, Receipt]:
+        """Find the ticket an earlier attempt may have created, by the external ID it wrote."""
+        operation = defs.CREATE_TICKET_OPERATION_ID
+        result = await self.client.exchange(
+            call,
+            credentials,
+            operation,
+            "GET",
+            "/tickets",
+            {"external_id": str(call.idempotency_key), "limit": "5"},
+        )
+        receipt = self.client.receipt(call, result)
+        if result.outcome != "success":
+            return None, result, receipt
+        try:
+            records, _ = decode_list(result.body, "ticket")
+            for record in records:
+                try:
+                    ticket = decode_ticket(record)
+                except (ValueError, TypeError, KeyError, AttributeError):
+                    continue
+                if ticket.external_id == str(call.idempotency_key):
+                    return ticket, result, self.client.receipt(call, result, ticket.id)
+        except (ValueError, TypeError, KeyError, AttributeError) as error:
+            result = Exchange(
+                "invalid",
+                failure(
+                    FailureKind.PROTOCOL, operation, "Gorgias returned an invalid ticket page: " + str(error)
+                ),
+                status=result.status,
+                headers=result.headers,
+            )
+        return None, result, receipt
 
 
 class AddNoteOperation:
@@ -789,7 +930,7 @@ class AddNoteOperation:
         return IdempotencyKey("dex-" + str(call_id))
 
     async def invoke(self, call: Call, input: AddNoteInput) -> MutationAttempt[AddNoteOutput]:
-        """Read the reply route, checkpoint, send once, and reconcile by external ID."""
+        """Read back by external ID, read the reply route, and send under the fence and send cap."""
         operation = defs.ADD_NOTE_OPERATION_ID
         zero = AddNoteOutput()
         try:
@@ -800,68 +941,26 @@ class AddNoteOperation:
             return MutationAttempt.branch_result(
                 defs.DEFECT, zero, Receipt(), failure(FailureKind.VALIDATION, operation, str(error))
             )
-        prior_dispatch = await _prior_dispatch(call)
+        permit, ended = await _begin_write(call, operation, defs.ADD_NOTE_DEFINITION, zero)
+        if ended is not None:
+            return ended
+        assert permit is not None
         credentials, credential_failure = await self.client.resolve_credentials(call, operation)
         if credential_failure:
-            if prior_dispatch:
-                return await _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
-            return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
+            return await _credential_failure_attempt(permit, operation, credential_failure, zero)
         assert credentials is not None
         path = f"/tickets/{input.ticket_id}"
-
-        async def lookup() -> tuple[Any, Exchange, Receipt]:
-            result = await self.client.exchange(call, credentials, operation, "GET", path)
-            receipt = self.client.receipt(call, result, input.ticket_id)
-            if result.outcome != "success":
-                return None, result, receipt
-            try:
-                record = json.loads(result.body)
-                decode_ticket(record, input.ticket_id)
-                for wire in record.get("messages") or ():
-                    if wire.get("external_id") == str(call.idempotency_key):
-                        try:
-                            message = decode_message(wire, input.ticket_id)
-                            return message, result, self.client.receipt(call, result, message.id)
-                        except (ValueError, TypeError, KeyError, AttributeError):
-                            pass
-            except (ValueError, TypeError, KeyError, AttributeError) as error:
-                result = Exchange(
-                    "invalid",
-                    failure(
-                        FailureKind.PROTOCOL, operation, "Gorgias returned an invalid ticket: " + str(error)
-                    ),
-                    status=result.status,
-                    headers=result.headers,
-                )
-            return None, result, receipt
-
-        if prior_dispatch or (call.context is not None and call.context.attempt > 1):
-            message, result, receipt = await lookup()
-            if result.outcome != "success":
-                assert result.failure is not None
-                if prior_dispatch:
-                    return await _reconcile_failure(
-                        call,
-                        operation,
-                        result.failure,
-                        receipt,
-                        zero,
-                        result.retry_after,
-                        result.outcome in ("rateLimited", "notSent", "unavailable", "invalid"),
-                    )
-                terminal = _mutation_exchange(result, receipt, zero, True, retry_invalid=True)
-                assert terminal is not None
-                return terminal
-            if message is not None:
-                return MutationAttempt.branch_result(defs.ADDED, AddNoteOutput(message, True), receipt)
-            if prior_dispatch:
-                reason = failure(
-                    FailureKind.TRANSPORT,
-                    operation,
-                    "an earlier attempt of this Step sent the request and Gorgias shows no message "
-                    "with its external ID, so it is not sent again",
-                )
-                return await _reconcile_failure(call, operation, reason, receipt, zero)
+        if permit.needs_read_back:
+            message, lookup, receipt = await self._look_up_message(call, credentials, input.ticket_id)
+            found = (
+                MutationAttempt.branch_result(defs.ADDED, AddNoteOutput(message, True), receipt)
+                if message is not None
+                else None
+            )
+            read_back = _read_back_attempt(permit, lookup, found, receipt, operation, "message", zero)
+            if read_back is not None:
+                return read_back
+            # The ticket shows no message with the external ID, so this attempt resends below the cap.
         payload: dict[str, Any] = {
             "channel": "internal-note",
             "via": "api",
@@ -875,31 +974,39 @@ class AddNoteOperation:
         if input.is_public_reply:
             route_exchange = await self.client.exchange(call, credentials, operation, "GET", path)
             receipt = self.client.receipt(call, route_exchange, input.ticket_id)
-            terminal = _mutation_exchange(route_exchange, receipt, zero, True, reject_invalid=True)
-            if terminal:
-                return terminal
+            if route_exchange.outcome in _RETRY_OUTCOMES:
+                assert route_exchange.failure is not None
+                return await _pre_send_retry(permit, route_exchange.failure, route_exchange.retry_after)
+            if route_exchange.outcome != "success":
+                assert route_exchange.failure is not None
+                route_branch = {"notFound": defs.NOT_FOUND, "defect": defs.DEFECT}.get(
+                    route_exchange.outcome, defs.PROVIDER_REJECTED
+                )
+                return _reply_route_failure(permit, route_branch, route_exchange.failure, receipt, zero)
             try:
                 ticket_wire = json.loads(route_exchange.body)
                 ticket = decode_ticket(ticket_wire, input.ticket_id)
             except (ValueError, TypeError, KeyError, AttributeError) as error:
-                return MutationAttempt.branch_result(
+                return _reply_route_failure(
+                    permit,
                     defs.PROVIDER_REJECTED,
-                    zero,
-                    receipt,
                     failure(
                         FailureKind.PROTOCOL,
                         operation,
                         "Gorgias returned an invalid ticket, so the reply could not be routed: " + str(error),
                     ),
+                    receipt,
+                    zero,
                 )
             try:
                 route = _reply_route(list(ticket_wire.get("messages") or ()), ticket.subject)
             except (ValueError, TypeError, KeyError, AttributeError) as error:
-                return MutationAttempt.branch_result(
+                return _reply_route_failure(
+                    permit,
                     defs.PROVIDER_REJECTED,
-                    zero,
-                    receipt,
                     failure(FailureKind.VALIDATION, operation, str(error)),
+                    receipt,
+                    zero,
                 )
             payload.update(
                 {
@@ -912,37 +1019,16 @@ class AddNoteOperation:
             )
             if route[0]:
                 payload["integration_id"] = route[0]
-        if not await _checkpoint(call, State.CLAIMED):
-            return MutationAttempt.retry(
-                failure(
-                    FailureKind.AVAILABILITY,
-                    operation,
-                    "Dex did not record the dispatch checkpoint; nothing was sent",
-                )
-            )
-        result = await self.client.exchange(
-            call, credentials, operation, "POST", path + "/messages", payload=payload
+        result, refused = await _send_write(
+            permit, self.client, call, credentials, operation, path + "/messages", payload
         )
+        if refused is not None:
+            return refused
+        assert result is not None
         receipt = self.client.receipt(call, result)
-        if result.outcome != "success":
-            assert result.failure is not None
-        if result.outcome in ("rateLimited", "notSent"):
-            assert result.failure is not None
-            # A failed release leaves the claim, so the next attempt reconciles safely.
-            await _checkpoint(call, State.NOT_SENT)
-            return MutationAttempt.retry(result.failure, result.retry_after)
-        if result.outcome in ("unavailable", "invalid"):
-            assert result.failure is not None
-            return MutationAttempt.retry(result.failure, min(max(result.retry_after, 2), 60))
-        if result.outcome != "success":
-            branch = (
-                defs.NOT_FOUND
-                if result.outcome == "notFound"
-                else defs.DEFECT
-                if result.outcome == "defect"
-                else defs.PROVIDER_REJECTED
-            )
-            return MutationAttempt.branch_result(branch, zero, receipt, result.failure)
+        terminal = await _write_attempt(permit, result, receipt, zero, defs.NOT_FOUND)
+        if terminal is not None:
+            return terminal
         try:
             record = json.loads(result.body)
             message = decode_message(record)
@@ -960,9 +1046,56 @@ class AddNoteOperation:
                 ),
                 2,
             )
+        await _record_accepted_write(permit, message.id)
         return MutationAttempt.branch_result(
             defs.ADDED, AddNoteOutput(message), self.client.receipt(call, result, message.id)
         )
+
+    async def _look_up_message(
+        self, call: Call, credentials: Any, ticket_id: int
+    ) -> tuple[TicketMessage | None, Exchange, Receipt]:
+        """Find the message an earlier attempt may have added, by the external ID it wrote."""
+        operation = defs.ADD_NOTE_OPERATION_ID
+        result = await self.client.exchange(call, credentials, operation, "GET", f"/tickets/{ticket_id}")
+        receipt = self.client.receipt(call, result, ticket_id)
+        if result.outcome != "success":
+            return None, result, receipt
+        try:
+            record = json.loads(result.body)
+            decode_ticket(record, ticket_id)
+            for wire in record.get("messages") or ():
+                if wire.get("external_id") == str(call.idempotency_key):
+                    try:
+                        message = decode_message(wire, ticket_id)
+                        return message, result, self.client.receipt(call, result, message.id)
+                    except (ValueError, TypeError, KeyError, AttributeError):
+                        pass
+        except (ValueError, TypeError, KeyError, AttributeError) as error:
+            result = Exchange(
+                "invalid",
+                failure(FailureKind.PROTOCOL, operation, "Gorgias returned an invalid ticket: " + str(error)),
+                status=result.status,
+                headers=result.headers,
+            )
+        return None, result, receipt
+
+
+def _reply_route_failure(
+    permit: _WritePermit, branch: str, reason: Failure, receipt: Receipt, zero: AddNoteOutput
+) -> MutationAttempt[AddNoteOutput]:
+    """Select `branch` on a first send; after a possible earlier send, select uncertain."""
+    if not permit.is_first_send:
+        return MutationAttempt.uncertain(
+            zero,
+            failure(
+                reason.kind,
+                defs.ADD_NOTE_OPERATION_ID,
+                "an earlier attempt of this Step may have sent the reply, and the ticket could not be "
+                "read to route it again: " + reason.message,
+            ),
+            receipt,
+        )
+    return MutationAttempt.branch_result(branch, zero, receipt, reason)
 
 
 def _reply_route(messages: list[dict[str, Any]], ticket_subject: str) -> tuple[int, str, str, str]:

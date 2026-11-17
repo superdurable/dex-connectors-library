@@ -91,7 +91,7 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	if failure != nil {
 		return sdkgo.NewMutationBranch(UpdateTicketBranchDefect, UpdateTicketOutput{}, failure, sdkgo.Receipt{})
 	}
-	current, attempt, isTerminal := operation.readTicket(call, credentials, input.TicketID, UpdateTicketOutput{})
+	current, attempt, isTerminal := operation.readTicket(call, credentials, input.TicketID, UpdateTicketOutput{}, false)
 	if isTerminal {
 		return attempt
 	}
@@ -115,18 +115,18 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 	for _, write := range writes {
 		result := operation.client.exchange(call, credentials, updateTicketOperation, write)
 		receipt := operation.client.receipt(call, result.response, input.TicketID)
-		if hasAppliedWrite && isConclusiveExchangeFailure(result.outcome) {
+		if hasAppliedWrite && isConclusiveWriteFailure(result) {
 			currentOutput = operation.rereadAfterPartialChange(call, credentials, input.TicketID, currentOutput)
 		}
-		if attempt, isTerminal := updateTicketAttemptForExchange(result, receipt, currentOutput); isTerminal {
+		if attempt, isTerminal := updateTicketAttemptForExchange(result, receipt, currentOutput, true); isTerminal {
 			return attempt
 		}
 		hasAppliedWrite = true
 		if write.method == http.MethodPut {
-			return operation.decodeUpdatedTicket(call, result, input.TicketID, currentOutput)
+			return operation.decodeUpdatedTicket(call, result, input.TicketID)
 		}
 	}
-	updated, attempt, isTerminal := operation.readTicket(call, credentials, input.TicketID, currentOutput)
+	updated, attempt, isTerminal := operation.readTicket(call, credentials, input.TicketID, currentOutput, true)
 	if isTerminal {
 		return attempt
 	}
@@ -134,14 +134,19 @@ func (operation UpdateTicketOperation) Invoke(call sdkgo.Call, input UpdateTicke
 }
 
 // readTicket reads GET /api/tickets/{id}, returning a terminal attempt for every outcome except a valid ticket.
-func (operation UpdateTicketOperation) readTicket(call sdkgo.Call, credentials Credentials, ticketID int64, currentOutput UpdateTicketOutput) (Ticket, sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
+// After a write, an unknown read outcome retries the absolute change; invalidResponse is only for the first read.
+func (operation UpdateTicketOperation) readTicket(call sdkgo.Call, credentials Credentials, ticketID int64, currentOutput UpdateTicketOutput, isAfterWrite bool) (Ticket, sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
 	result := operation.client.exchange(call, credentials, updateTicketOperation, gorgiasRequest{method: http.MethodGet, path: ticketPath(ticketID)})
 	receipt := operation.client.receipt(call, result.response, ticketID)
-	if attempt, isTerminal := updateTicketAttemptForExchange(result, receipt, currentOutput); isTerminal {
+	if attempt, isTerminal := updateTicketAttemptForExchange(result, receipt, currentOutput, isAfterWrite); isTerminal {
 		return Ticket{}, attempt, true
 	}
 	ticket, _, err := decodeTicketBody(result.response.body, ticketID)
-	if err != nil {
+	switch {
+	case err != nil && isAfterWrite:
+		return Ticket{}, sdkgo.NewMutationRetry[UpdateTicketOutput](gorgiasFailure(sdkgo.FailureProtocol, updateTicketOperation,
+			"Gorgias returned an invalid ticket after the change: "+err.Error()), 0), true
+	case err != nil:
 		return Ticket{}, sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, currentOutput,
 			gorgiasFailurePointer(sdkgo.FailureProtocol, updateTicketOperation, "Gorgias returned an invalid ticket: "+err.Error()), receipt), true
 	}
@@ -150,25 +155,30 @@ func (operation UpdateTicketOperation) readTicket(call sdkgo.Call, credentials C
 
 // rereadAfterPartialChange shows a failure branch the tags already written; an unreadable ticket keeps currentOutput.
 func (operation UpdateTicketOperation) rereadAfterPartialChange(call sdkgo.Call, credentials Credentials, ticketID int64, currentOutput UpdateTicketOutput) UpdateTicketOutput {
-	ticket, _, isTerminal := operation.readTicket(call, credentials, ticketID, currentOutput)
+	ticket, _, isTerminal := operation.readTicket(call, credentials, ticketID, currentOutput, true)
 	if isTerminal {
 		return currentOutput
 	}
 	return UpdateTicketOutput{Ticket: ticket}
 }
 
-func (operation UpdateTicketOperation) decodeUpdatedTicket(call sdkgo.Call, result gorgiasExchange, ticketID int64, currentOutput UpdateTicketOutput) sdkgo.MutationAttempt[UpdateTicketOutput] {
+func (operation UpdateTicketOperation) decodeUpdatedTicket(call sdkgo.Call, result gorgiasExchange, ticketID int64) sdkgo.MutationAttempt[UpdateTicketOutput] {
 	receipt := operation.client.receipt(call, result.response, ticketID)
 	updated, _, err := decodeTicketBody(result.response.body, ticketID)
 	if err != nil {
-		return sdkgo.NewMutationBranch(UpdateTicketBranchInvalidResponse, currentOutput,
-			gorgiasFailurePointer(sdkgo.FailureProtocol, updateTicketOperation, "Gorgias returned an invalid updated ticket: "+err.Error()), receipt)
+		// The PUT sets final values, so an unusable answer repeats it.
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](gorgiasFailure(sdkgo.FailureProtocol, updateTicketOperation,
+			"Gorgias accepted the change but returned an invalid updated ticket: "+err.Error()), 0)
 	}
 	return sdkgo.NewMutationBranch(UpdateTicketBranchUpdated, UpdateTicketOutput{Ticket: updated}, nil, receipt)
 }
 
-// updateTicketAttemptForExchange returns the terminal attempt for every outcome except success.
-func updateTicketAttemptForExchange(result gorgiasExchange, receipt sdkgo.Receipt, currentOutput UpdateTicketOutput) (sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
+// updateTicketAttemptForExchange returns the terminal attempt for every outcome except success. After a
+// write may have been sent, only a definite refusal selects a branch; any other failure retries the change.
+func updateTicketAttemptForExchange(result gorgiasExchange, receipt sdkgo.Receipt, currentOutput UpdateTicketOutput, isAfterWrite bool) (sdkgo.MutationAttempt[UpdateTicketOutput], bool) {
+	if isAfterWrite && result.outcome != exchangeSucceeded && !isConclusiveWriteFailure(result) {
+		return sdkgo.NewMutationRetry[UpdateTicketOutput](result.failure, result.retryAfter), true
+	}
 	switch result.outcome {
 	case exchangeSucceeded:
 		return sdkgo.MutationAttempt[UpdateTicketOutput]{}, false
@@ -185,13 +195,15 @@ func updateTicketAttemptForExchange(result gorgiasExchange, receipt sdkgo.Receip
 	}
 }
 
-// isConclusiveExchangeFailure reports an outcome that selects a failure branch instead of a retry.
-func isConclusiveExchangeFailure(outcome exchangeOutcome) bool {
-	switch outcome {
-	case exchangeSucceeded, exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
-		return false
-	default:
+// isConclusiveWriteFailure reports a definite refusal or a request that was never built.
+func isConclusiveWriteFailure(result gorgiasExchange) bool {
+	switch result.outcome {
+	case exchangeNotFound, exchangeDefect:
 		return true
+	case exchangeRejected:
+		return isDefiniteRefusalStatus(result.response.statusCode)
+	default:
+		return false
 	}
 }
 
