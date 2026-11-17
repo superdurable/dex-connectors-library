@@ -2,6 +2,1506 @@
   "connector": "amazon-sns",
   "scenarios": [
     {
+      "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "exchanges": [
+        {
+          "body": "\u003cCreateTopicResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cCreateTopicResult\u003e\u003cTopicArn\u003earn:aws:sns:eu-west-1:123456789012:alerts\u003c/TopicArn\u003e\u003c/CreateTopicResult\u003e\u003c/CreateTopicResponse\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "CreateTopic"
+            ],
+            "Name": [
+              "alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=bfa59790ec74faf03b38dbde1ddf83006ae4bc907fd13027f9de4bbf98d206f0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "input": {
+        "name": "alerts"
+      },
+      "name": "createTopic-success",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "CreateTopic"
+            ],
+            "Name": [
+              "alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=bfa59790ec74faf03b38dbde1ddf83006ae4bc907fd13027f9de4bbf98d206f0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "topicARN": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "input": {
+        "name": "alerts"
+      },
+      "name": "createTopic-rejected",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "topicARN": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "input": {
+        "name": ""
+      },
+      "name": "createTopic-defect",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "exchanges": [
+        {
+          "body": "\u003cnot-sns/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "CreateTopic"
+            ],
+            "Name": [
+              "alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=bfa59790ec74faf03b38dbde1ddf83006ae4bc907fd13027f9de4bbf98d206f0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "input": {
+        "name": "alerts"
+      },
+      "name": "createTopic-invalid",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "CreateTopic"
+            ],
+            "Name": [
+              "alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=bfa59790ec74faf03b38dbde1ddf83006ae4bc907fd13027f9de4bbf98d206f0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "input": {
+        "name": "alerts"
+      },
+      "name": "createTopic-rate-limit",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "CreateTopic"
+            ],
+            "Name": [
+              "alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=bfa59790ec74faf03b38dbde1ddf83006ae4bc907fd13027f9de4bbf98d206f0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "input": {
+        "name": "alerts"
+      },
+      "name": "createTopic-service-unavailable",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "CreateTopic"
+            ],
+            "Name": [
+              "alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=bfa59790ec74faf03b38dbde1ddf83006ae4bc907fd13027f9de4bbf98d206f0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "input": {
+        "name": "alerts"
+      },
+      "name": "createTopic-server-failure",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "CreateTopic"
+            ],
+            "Name": [
+              "alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=bfa59790ec74faf03b38dbde1ddf83006ae4bc907fd13027f9de4bbf98d206f0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "73ce957d-4565-5d2f-ac92-f4b0f5201960",
+      "input": {
+        "name": "alerts"
+      },
+      "name": "createTopic-transport",
+      "operation": "createTopic"
+    },
+    {
+      "callId": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "exchanges": [
+        {
+          "body": "\u003cDeleteTopicResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DeleteTopic"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=c3d2a349dbe52d4e19399669fca806faa7961e9860a59aa72217368ce9ab1cf4"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "input": {
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "deleteTopic-success",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DeleteTopic"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=c3d2a349dbe52d4e19399669fca806faa7961e9860a59aa72217368ce9ab1cf4"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "topicARN": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "input": {
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "deleteTopic-rejected",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "topicARN": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "input": {
+        "topicARN": ""
+      },
+      "name": "deleteTopic-defect",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DeleteTopic"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=c3d2a349dbe52d4e19399669fca806faa7961e9860a59aa72217368ce9ab1cf4"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "input": {
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "deleteTopic-rate-limit",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DeleteTopic"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=c3d2a349dbe52d4e19399669fca806faa7961e9860a59aa72217368ce9ab1cf4"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "input": {
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "deleteTopic-service-unavailable",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DeleteTopic"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=c3d2a349dbe52d4e19399669fca806faa7961e9860a59aa72217368ce9ab1cf4"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "input": {
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "deleteTopic-server-failure",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "DeleteTopic"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=c3d2a349dbe52d4e19399669fca806faa7961e9860a59aa72217368ce9ab1cf4"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60216ff1-18da-59de-afc8-aac6a98aab39",
+      "input": {
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "deleteTopic-transport",
+      "operation": "deleteTopic"
+    },
+    {
+      "callId": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "exchanges": [
+        {
+          "body": "\u003cSetTopicAttributesResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "SetTopicAttributes"
+            ],
+            "AttributeName": [
+              "DisplayName"
+            ],
+            "AttributeValue": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=de6d5796741f289e33058e9dbb2be96123684482882433cd8634764eeaf253dd"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "input": {
+        "attributeName": "DisplayName",
+        "attributeValue": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "setTopicAttribute-success",
+      "operation": "setTopicAttribute"
+    },
+    {
+      "callId": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "SetTopicAttributes"
+            ],
+            "AttributeName": [
+              "DisplayName"
+            ],
+            "AttributeValue": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=de6d5796741f289e33058e9dbb2be96123684482882433cd8634764eeaf253dd"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "topicARN": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "input": {
+        "attributeName": "DisplayName",
+        "attributeValue": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "setTopicAttribute-rejected",
+      "operation": "setTopicAttribute"
+    },
+    {
+      "callId": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "topicARN": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "input": {
+        "attributeName": "",
+        "attributeValue": "",
+        "topicARN": ""
+      },
+      "name": "setTopicAttribute-defect",
+      "operation": "setTopicAttribute"
+    },
+    {
+      "callId": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "SetTopicAttributes"
+            ],
+            "AttributeName": [
+              "DisplayName"
+            ],
+            "AttributeValue": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=de6d5796741f289e33058e9dbb2be96123684482882433cd8634764eeaf253dd"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "input": {
+        "attributeName": "DisplayName",
+        "attributeValue": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "setTopicAttribute-rate-limit",
+      "operation": "setTopicAttribute"
+    },
+    {
+      "callId": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "SetTopicAttributes"
+            ],
+            "AttributeName": [
+              "DisplayName"
+            ],
+            "AttributeValue": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=de6d5796741f289e33058e9dbb2be96123684482882433cd8634764eeaf253dd"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "input": {
+        "attributeName": "DisplayName",
+        "attributeValue": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "setTopicAttribute-service-unavailable",
+      "operation": "setTopicAttribute"
+    },
+    {
+      "callId": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "SetTopicAttributes"
+            ],
+            "AttributeName": [
+              "DisplayName"
+            ],
+            "AttributeValue": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=de6d5796741f289e33058e9dbb2be96123684482882433cd8634764eeaf253dd"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "input": {
+        "attributeName": "DisplayName",
+        "attributeValue": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "setTopicAttribute-server-failure",
+      "operation": "setTopicAttribute"
+    },
+    {
+      "callId": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "SetTopicAttributes"
+            ],
+            "AttributeName": [
+              "DisplayName"
+            ],
+            "AttributeValue": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=de6d5796741f289e33058e9dbb2be96123684482882433cd8634764eeaf253dd"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "adaad23c-2297-522c-a236-9c28b8b82ac9",
+      "input": {
+        "attributeName": "DisplayName",
+        "attributeValue": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "setTopicAttribute-transport",
+      "operation": "setTopicAttribute"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [
+        {
+          "body": "\u003cPublishResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cPublishResult\u003e\u003cMessageId\u003emessage-123\u003c/MessageId\u003e\u003c/PublishResult\u003e\u003c/PublishResponse\u003e",
+          "form": {
+            "Action": [
+              "Publish"
+            ],
+            "Message": [
+              "Report ready"
+            ],
+            "Subject": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=d70ab0f837c8cc81330831693fb4c2272f74752377ec542ec008fc147d12772f"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "published",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageID": "message-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "Report ready",
+        "subject": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "publishMessage-success",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "form": {
+            "Action": [
+              "Publish"
+            ],
+            "Message": [
+              "Report ready"
+            ],
+            "Subject": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=d70ab0f837c8cc81330831693fb4c2272f74752377ec542ec008fc147d12772f"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "Report ready",
+        "subject": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "publishMessage-rejected",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messageID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "",
+        "subject": "",
+        "topicARN": ""
+      },
+      "name": "publishMessage-defect",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [
+        {
+          "body": "\u003cnot-sns/\u003e",
+          "form": {
+            "Action": [
+              "Publish"
+            ],
+            "Message": [
+              "Report ready"
+            ],
+            "Subject": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=d70ab0f837c8cc81330831693fb4c2272f74752377ec542ec008fc147d12772f"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageID": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "Report ready",
+        "subject": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "publishMessage-invalid",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "form": {
+            "Action": [
+              "Publish"
+            ],
+            "Message": [
+              "Report ready"
+            ],
+            "Subject": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=d70ab0f837c8cc81330831693fb4c2272f74752377ec542ec008fc147d12772f"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "Report ready",
+        "subject": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "publishMessage-rate-limit",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "form": {
+            "Action": [
+              "Publish"
+            ],
+            "Message": [
+              "Report ready"
+            ],
+            "Subject": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=d70ab0f837c8cc81330831693fb4c2272f74752377ec542ec008fc147d12772f"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "Report ready",
+        "subject": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "publishMessage-service-unavailable",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [
+        {
+          "body": "\u003cErrorResponse/\u003e",
+          "form": {
+            "Action": [
+              "Publish"
+            ],
+            "Message": [
+              "Report ready"
+            ],
+            "Subject": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=d70ab0f837c8cc81330831693fb4c2272f74752377ec542ec008fc147d12772f"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "Report ready",
+        "subject": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "publishMessage-server-failure",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [
+        {
+          "form": {
+            "Action": [
+              "Publish"
+            ],
+            "Message": [
+              "Report ready"
+            ],
+            "Subject": [
+              "Operations"
+            ],
+            "TopicArn": [
+              "arn:aws:sns:eu-west-1:123456789012:alerts"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=d70ab0f837c8cc81330831693fb4c2272f74752377ec542ec008fc147d12772f"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "Report ready",
+        "subject": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "publishMessage-transport",
+      "operation": "publishMessage"
+    },
+    {
+      "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "messageID": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1275871d-d315-5d81-9e75-e3df50a87f85",
+      "input": {
+        "message": "Report ready",
+        "subject": "Operations",
+        "topicARN": "arn:aws:sns:eu-west-1:123456789012:alerts"
+      },
+      "name": "publishMessage-uncertain-cap",
+      "operation": "publishMessage",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "1275871d-d315-5d81-9e75-e3df50a87f85",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
       "callId": "f0e4657a-c5de-5456-b5e7-066d411fdc17",
       "exchanges": [
         {

@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted amazon-sns connection. Script each operation through its accessor.
 type Mock struct {
-	connection sns.Connection
-	listTopics *connectormock.Query[sns.ListTopicsInput, sns.TopicPage]
+	connection        sns.Connection
+	createTopic       *connectormock.Mutation[sns.CreateTopicInput, sns.TopicIdentity]
+	deleteTopic       *connectormock.Mutation[sns.TopicARNInput, sns.TopicIdentity]
+	setTopicAttribute *connectormock.Mutation[sns.SetTopicAttributeInput, sns.TopicIdentity]
+	publishMessage    *connectormock.Mutation[sns.PublishMessageInput, sns.PublishedMessage]
+	listTopics        *connectormock.Query[sns.ListTopicsInput, sns.TopicPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +30,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listTopics: connectormock.NewQuery[sns.ListTopicsInput, sns.TopicPage](t, sns.ListTopicsDefinition),
+		createTopic:       connectormock.NewMutation[sns.CreateTopicInput, sns.TopicIdentity](t, sns.CreateTopicDefinition),
+		deleteTopic:       connectormock.NewMutation[sns.TopicARNInput, sns.TopicIdentity](t, sns.DeleteTopicDefinition),
+		setTopicAttribute: connectormock.NewMutation[sns.SetTopicAttributeInput, sns.TopicIdentity](t, sns.SetTopicAttributeDefinition),
+		publishMessage:    connectormock.NewMutation[sns.PublishMessageInput, sns.PublishedMessage](t, sns.PublishMessageDefinition),
+		listTopics:        connectormock.NewQuery[sns.ListTopicsInput, sns.TopicPage](t, sns.ListTopicsDefinition),
 	}
+	mock.createTopic.Default(CreateTopicDefault())
+	mock.deleteTopic.Default(DeleteTopicDefault())
+	mock.setTopicAttribute.Default(SetTopicAttributeDefault())
+	mock.publishMessage.Default(PublishMessageDefault())
 	mock.listTopics.Default(ListTopicsDefault())
 	connection, err := sns.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-sns", Name: connectionName})
 	if err != nil {
@@ -40,6 +52,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sns.Connection { return mock.connection }
 
+// CreateTopic returns the createTopic script.
+func (mock *Mock) CreateTopic() *connectormock.Mutation[sns.CreateTopicInput, sns.TopicIdentity] {
+	return mock.createTopic
+}
+
+// DeleteTopic returns the deleteTopic script.
+func (mock *Mock) DeleteTopic() *connectormock.Mutation[sns.TopicARNInput, sns.TopicIdentity] {
+	return mock.deleteTopic
+}
+
+// SetTopicAttribute returns the setTopicAttribute script.
+func (mock *Mock) SetTopicAttribute() *connectormock.Mutation[sns.SetTopicAttributeInput, sns.TopicIdentity] {
+	return mock.setTopicAttribute
+}
+
+// PublishMessage returns the publishMessage script.
+func (mock *Mock) PublishMessage() *connectormock.Mutation[sns.PublishMessageInput, sns.PublishedMessage] {
+	return mock.publishMessage
+}
+
 // ListTopics returns the listTopics script.
 func (mock *Mock) ListTopics() *connectormock.Query[sns.ListTopicsInput, sns.TopicPage] {
 	return mock.listTopics
@@ -47,8 +79,145 @@ func (mock *Mock) ListTopics() *connectormock.Query[sns.ListTopicsInput, sns.Top
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateTopic() sdkgo.Mutation[sns.CreateTopicInput, sns.TopicIdentity] {
+	return operations.mock.createTopic
+}
+func (operations mockOperations) DeleteTopic() sdkgo.Mutation[sns.TopicARNInput, sns.TopicIdentity] {
+	return operations.mock.deleteTopic
+}
+func (operations mockOperations) SetTopicAttribute() sdkgo.Mutation[sns.SetTopicAttributeInput, sns.TopicIdentity] {
+	return operations.mock.setTopicAttribute
+}
+func (operations mockOperations) PublishMessage() sdkgo.Mutation[sns.PublishMessageInput, sns.PublishedMessage] {
+	return operations.mock.publishMessage
+}
 func (operations mockOperations) ListTopics() sdkgo.Query[sns.ListTopicsInput, sns.TopicPage] {
 	return operations.mock.listTopics
+}
+
+// CreateTopicCreated selects the created branch: AWS created or found the named topic.
+func CreateTopicCreated(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.CreateTopicBranchCreated, value, failure)
+}
+
+// CreateTopicProviderRejected selects the providerRejected branch: AWS conclusively rejected the topic name or permissions.
+func CreateTopicProviderRejected(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.CreateTopicBranchProviderRejected, value, failure)
+}
+
+// CreateTopicDefect selects the defect branch: The topic name or credentials are invalid.
+func CreateTopicDefect(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.CreateTopicBranchDefect, value, failure)
+}
+
+// CreateTopicRetry asks Dex to retry the createTopic Step, after the delay when it is positive.
+func CreateTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Retry[sns.TopicIdentity](failure, after)
+}
+
+// CreateTopicCreatedDefault is the manifest mock createdDefault: The named topic exists.
+func CreateTopicCreatedDefault() connectormock.Case[sns.TopicIdentity] {
+	value := connectormock.MustDecodeOutput[sns.TopicIdentity](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic"}`)
+	return connectormock.Branch(sns.CreateTopicBranchCreated, value, nil)
+}
+
+// CreateTopicDefault is the manifest default, createdDefault, which New installs.
+func CreateTopicDefault() connectormock.Case[sns.TopicIdentity] { return CreateTopicCreatedDefault() }
+
+// DeleteTopicDeleted selects the deleted branch: AWS deleted the topic or it was already absent.
+func DeleteTopicDeleted(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.DeleteTopicBranchDeleted, value, failure)
+}
+
+// DeleteTopicProviderRejected selects the providerRejected branch: AWS conclusively rejected the deletion.
+func DeleteTopicProviderRejected(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.DeleteTopicBranchProviderRejected, value, failure)
+}
+
+// DeleteTopicDefect selects the defect branch: The topic ARN or credentials are invalid.
+func DeleteTopicDefect(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.DeleteTopicBranchDefect, value, failure)
+}
+
+// DeleteTopicRetry asks Dex to retry the deleteTopic Step, after the delay when it is positive.
+func DeleteTopicRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Retry[sns.TopicIdentity](failure, after)
+}
+
+// DeleteTopicDeletedDefault is the manifest mock deletedDefault: The topic is absent.
+func DeleteTopicDeletedDefault() connectormock.Case[sns.TopicIdentity] {
+	value := connectormock.MustDecodeOutput[sns.TopicIdentity](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic"}`)
+	return connectormock.Branch(sns.DeleteTopicBranchDeleted, value, nil)
+}
+
+// DeleteTopicDefault is the manifest default, deletedDefault, which New installs.
+func DeleteTopicDefault() connectormock.Case[sns.TopicIdentity] { return DeleteTopicDeletedDefault() }
+
+// SetTopicAttributeUpdated selects the updated branch: AWS replaced the attribute.
+func SetTopicAttributeUpdated(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.SetTopicAttributeBranchUpdated, value, failure)
+}
+
+// SetTopicAttributeProviderRejected selects the providerRejected branch: AWS conclusively rejected the attribute update.
+func SetTopicAttributeProviderRejected(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.SetTopicAttributeBranchProviderRejected, value, failure)
+}
+
+// SetTopicAttributeDefect selects the defect branch: The topic ARN, attribute, or credentials are invalid.
+func SetTopicAttributeDefect(value sns.TopicIdentity, failure *sdkgo.Failure) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Branch(sns.SetTopicAttributeBranchDefect, value, failure)
+}
+
+// SetTopicAttributeRetry asks Dex to retry the setTopicAttribute Step, after the delay when it is positive.
+func SetTopicAttributeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.TopicIdentity] {
+	return connectormock.Retry[sns.TopicIdentity](failure, after)
+}
+
+// SetTopicAttributeUpdatedDefault is the manifest mock updatedDefault: The display name was replaced.
+func SetTopicAttributeUpdatedDefault() connectormock.Case[sns.TopicIdentity] {
+	value := connectormock.MustDecodeOutput[sns.TopicIdentity](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic"}`)
+	return connectormock.Branch(sns.SetTopicAttributeBranchUpdated, value, nil)
+}
+
+// SetTopicAttributeDefault is the manifest default, updatedDefault, which New installs.
+func SetTopicAttributeDefault() connectormock.Case[sns.TopicIdentity] {
+	return SetTopicAttributeUpdatedDefault()
+}
+
+// PublishMessagePublished selects the published branch: AWS accepted the message.
+func PublishMessagePublished(value sns.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[sns.PublishedMessage] {
+	return connectormock.Branch(sns.PublishMessageBranchPublished, value, failure)
+}
+
+// PublishMessageProviderRejected selects the providerRejected branch: AWS conclusively rejected the message.
+func PublishMessageProviderRejected(value sns.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[sns.PublishedMessage] {
+	return connectormock.Branch(sns.PublishMessageBranchProviderRejected, value, failure)
+}
+
+// PublishMessageUncertain returns an uncertain publishMessage outcome.
+func PublishMessageUncertain(value sns.PublishedMessage, failure sdkgo.Failure) connectormock.Case[sns.PublishedMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PublishMessageDefect selects the defect branch: The topic ARN, message, or credentials are invalid.
+func PublishMessageDefect(value sns.PublishedMessage, failure *sdkgo.Failure) connectormock.Case[sns.PublishedMessage] {
+	return connectormock.Branch(sns.PublishMessageBranchDefect, value, failure)
+}
+
+// PublishMessageRetry asks Dex to retry the publishMessage Step, after the delay when it is positive.
+func PublishMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.PublishedMessage] {
+	return connectormock.Retry[sns.PublishedMessage](failure, after)
+}
+
+// PublishMessagePublishedDefault is the manifest mock publishedDefault: SNS accepted one message.
+func PublishMessagePublishedDefault() connectormock.Case[sns.PublishedMessage] {
+	value := connectormock.MustDecodeOutput[sns.PublishedMessage](`{"messageID":"example-message-id"}`)
+	return connectormock.Branch(sns.PublishMessageBranchPublished, value, nil)
+}
+
+// PublishMessageDefault is the manifest default, publishedDefault, which New installs.
+func PublishMessageDefault() connectormock.Case[sns.PublishedMessage] {
+	return PublishMessagePublishedDefault()
 }
 
 // ListTopicsPage selects the page branch: AWS returned one topic page, which may be empty.

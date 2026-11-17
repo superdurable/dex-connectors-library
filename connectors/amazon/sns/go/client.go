@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package sns exposes Amazon SNS topic listing to Dex Flows.
+// Package sns exposes Amazon SNS topics and publishing to Dex Flows.
 package sns
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -90,6 +91,18 @@ type providerResponse struct {
 }
 
 func (client *Client) listTopics(call sdkgo.Call, nextToken string) providerResponse {
+	query := url.Values{"Action": {"ListTopics"}, "Version": {"2010-03-31"}}
+	if nextToken != "" {
+		query.Set("NextToken", nextToken)
+	}
+	return client.request(call, query)
+}
+
+func (client *Client) request(call sdkgo.Call, query url.Values) providerResponse {
+	return client.requestWithContext(call, call.Context, query)
+}
+
+func (client *Client) requestWithContext(call sdkgo.Call, requestContext context.Context, query url.Values) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -100,15 +113,22 @@ func (client *Client) listTopics(call sdkgo.Call, nextToken string) providerResp
 	if !providerhttp.IsHeaderSafeCredential(accessKey) || !providerhttp.IsHeaderSafeCredential(secretKey) || (sessionToken != "" && !providerhttp.IsHeaderSafeCredential(sessionToken)) {
 		return providerResponse{err: errCredential}
 	}
-	query := url.Values{"Action": {"ListTopics"}, "Version": {"2010-03-31"}}
-	if nextToken != "" {
-		query.Set("NextToken", nextToken)
+	method := http.MethodGet
+	requestURL := client.endpoint + "/?" + query.Encode()
+	var body []byte
+	if query.Get("Action") == "Publish" {
+		method = http.MethodPost
+		requestURL = client.endpoint + "/"
+		body = []byte(query.Encode())
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.endpoint+"/?"+query.Encode(), nil)
+	request, err := http.NewRequestWithContext(requestContext, method, requestURL, bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	digest := sha256.Sum256(nil)
+	if method == http.MethodPost {
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	digest := sha256.Sum256(body)
 	signingCredentials := aws.Credentials{AccessKeyID: accessKey, SecretAccessKey: secretKey, SessionToken: sessionToken}
 	if err := client.signer.SignHTTP(request.Context(), signingCredentials, request, hex.EncodeToString(digest[:]), "sns", client.region, client.now().UTC()); err != nil {
 		return providerResponse{err: errRequest}

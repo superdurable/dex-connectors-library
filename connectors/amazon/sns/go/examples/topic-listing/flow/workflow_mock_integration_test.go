@@ -24,7 +24,8 @@ import (
 func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := snsmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	publishFlow := NewPublishFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, publishFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "arn:aws:sns:us-east-1:123456789012:example-topic", output.TopicARNs[0])
 	require.Len(t, mock.ListTopics().Calls(), 1)
+	publishID := "sns-message-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, publishFlow, publishID, sns.PublishMessageInput{TopicARN: "arn:aws:sns:us-east-1:123456789012:example-topic", Message: "Report ready", Subject: "Operations"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	publishResult, err := client.WaitForFlow(ctx, publishID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, publishResult.Status, publishResult.ErrorMessage)
+	var published sns.PublishedMessage
+	require.NoError(t, publishResult.DecodeSingleOutput(&published))
+	require.Equal(t, "example-message-id", published.MessageID)
+	require.Len(t, mock.PublishMessage().Calls(), 1)
 }
