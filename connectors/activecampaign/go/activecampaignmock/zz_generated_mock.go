@@ -17,27 +17,30 @@ import (
 
 // Mock is a scripted activecampaign connection. Script each operation through its accessor.
 type Mock struct {
-	connection     activecampaign.Connection
-	listDealNotes  *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage]
-	getDealNote    *connectormock.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata]
-	createDealNote *connectormock.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata]
-	updateDealNote *connectormock.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata]
-	listDeals      *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
-	getDeal        *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
-	createDeal     *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
-	updateDeal     *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
-	deleteDeal     *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
-	listTags       *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
-	getTag         *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
-	createTag      *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
-	updateTag      *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
-	deleteTag      *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
-	listLists      *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
-	getList        *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
-	listContacts   *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
-	getContact     *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
-	syncContact    *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
-	updateContact  *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
+	connection           activecampaign.Connection
+	listContactTags      *connectormock.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations]
+	applyTagToContact    *connectormock.Mutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation]
+	removeTagFromContact *connectormock.Mutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval]
+	listDealNotes        *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage]
+	getDealNote          *connectormock.Query[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata]
+	createDealNote       *connectormock.Mutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata]
+	updateDealNote       *connectormock.Mutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata]
+	listDeals            *connectormock.Query[activecampaign.ListDealsInput, activecampaign.DealsPage]
+	getDeal              *connectormock.Query[activecampaign.GetDealInput, activecampaign.DealMetadata]
+	createDeal           *connectormock.Mutation[activecampaign.CreateDealInput, activecampaign.DealMetadata]
+	updateDeal           *connectormock.Mutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata]
+	deleteDeal           *connectormock.Mutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion]
+	listTags             *connectormock.Query[activecampaign.ListTagsInput, activecampaign.TagsPage]
+	getTag               *connectormock.Query[activecampaign.GetTagInput, activecampaign.TagMetadata]
+	createTag            *connectormock.Mutation[activecampaign.CreateTagInput, activecampaign.TagMetadata]
+	updateTag            *connectormock.Mutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata]
+	deleteTag            *connectormock.Mutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion]
+	listLists            *connectormock.Query[activecampaign.ListListsInput, activecampaign.ListsPage]
+	getList              *connectormock.Query[activecampaign.GetListInput, activecampaign.ListMetadata]
+	listContacts         *connectormock.Query[activecampaign.ListContactsInput, activecampaign.ContactsPage]
+	getContact           *connectormock.Query[activecampaign.GetContactInput, activecampaign.ContactMetadata]
+	syncContact          *connectormock.Mutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata]
+	updateContact        *connectormock.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -45,27 +48,33 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listDealNotes:  connectormock.NewQuery[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage](t, activecampaign.ListDealNotesDefinition),
-		getDealNote:    connectormock.NewQuery[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.GetDealNoteDefinition),
-		createDealNote: connectormock.NewMutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.CreateDealNoteDefinition),
-		updateDealNote: connectormock.NewMutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.UpdateDealNoteDefinition),
-		listDeals:      connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
-		getDeal:        connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
-		createDeal:     connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
-		updateDeal:     connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
-		deleteDeal:     connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
-		listTags:       connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
-		getTag:         connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
-		createTag:      connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
-		updateTag:      connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
-		deleteTag:      connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
-		listLists:      connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
-		getList:        connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
-		listContacts:   connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
-		getContact:     connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
-		syncContact:    connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
-		updateContact:  connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
+		listContactTags:      connectormock.NewQuery[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations](t, activecampaign.ListContactTagsDefinition),
+		applyTagToContact:    connectormock.NewMutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation](t, activecampaign.ApplyTagToContactDefinition),
+		removeTagFromContact: connectormock.NewMutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval](t, activecampaign.RemoveTagFromContactDefinition),
+		listDealNotes:        connectormock.NewQuery[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage](t, activecampaign.ListDealNotesDefinition),
+		getDealNote:          connectormock.NewQuery[activecampaign.GetDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.GetDealNoteDefinition),
+		createDealNote:       connectormock.NewMutation[activecampaign.CreateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.CreateDealNoteDefinition),
+		updateDealNote:       connectormock.NewMutation[activecampaign.UpdateDealNoteInput, activecampaign.DealNoteMetadata](t, activecampaign.UpdateDealNoteDefinition),
+		listDeals:            connectormock.NewQuery[activecampaign.ListDealsInput, activecampaign.DealsPage](t, activecampaign.ListDealsDefinition),
+		getDeal:              connectormock.NewQuery[activecampaign.GetDealInput, activecampaign.DealMetadata](t, activecampaign.GetDealDefinition),
+		createDeal:           connectormock.NewMutation[activecampaign.CreateDealInput, activecampaign.DealMetadata](t, activecampaign.CreateDealDefinition),
+		updateDeal:           connectormock.NewMutation[activecampaign.UpdateDealInput, activecampaign.DealMetadata](t, activecampaign.UpdateDealDefinition),
+		deleteDeal:           connectormock.NewMutation[activecampaign.DeleteDealInput, activecampaign.DealDeletion](t, activecampaign.DeleteDealDefinition),
+		listTags:             connectormock.NewQuery[activecampaign.ListTagsInput, activecampaign.TagsPage](t, activecampaign.ListTagsDefinition),
+		getTag:               connectormock.NewQuery[activecampaign.GetTagInput, activecampaign.TagMetadata](t, activecampaign.GetTagDefinition),
+		createTag:            connectormock.NewMutation[activecampaign.CreateTagInput, activecampaign.TagMetadata](t, activecampaign.CreateTagDefinition),
+		updateTag:            connectormock.NewMutation[activecampaign.UpdateTagInput, activecampaign.TagMetadata](t, activecampaign.UpdateTagDefinition),
+		deleteTag:            connectormock.NewMutation[activecampaign.DeleteTagInput, activecampaign.TagDeletion](t, activecampaign.DeleteTagDefinition),
+		listLists:            connectormock.NewQuery[activecampaign.ListListsInput, activecampaign.ListsPage](t, activecampaign.ListListsDefinition),
+		getList:              connectormock.NewQuery[activecampaign.GetListInput, activecampaign.ListMetadata](t, activecampaign.GetListDefinition),
+		listContacts:         connectormock.NewQuery[activecampaign.ListContactsInput, activecampaign.ContactsPage](t, activecampaign.ListContactsDefinition),
+		getContact:           connectormock.NewQuery[activecampaign.GetContactInput, activecampaign.ContactMetadata](t, activecampaign.GetContactDefinition),
+		syncContact:          connectormock.NewMutation[activecampaign.SyncContactInput, activecampaign.ContactMetadata](t, activecampaign.SyncContactDefinition),
+		updateContact:        connectormock.NewMutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata](t, activecampaign.UpdateContactDefinition),
 	}
+	mock.listContactTags.Default(ListContactTagsDefault())
+	mock.applyTagToContact.Default(ApplyTagToContactDefault())
+	mock.removeTagFromContact.Default(RemoveTagFromContactDefault())
 	mock.listDealNotes.Default(ListDealNotesDefault())
 	mock.getDealNote.Default(GetDealNoteDefault())
 	mock.createDealNote.Default(CreateDealNoteDefault())
@@ -96,6 +105,21 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() activecampaign.Connection { return mock.connection }
+
+// ListContactTags returns the listContactTags script.
+func (mock *Mock) ListContactTags() *connectormock.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations] {
+	return mock.listContactTags
+}
+
+// ApplyTagToContact returns the applyTagToContact script.
+func (mock *Mock) ApplyTagToContact() *connectormock.Mutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation] {
+	return mock.applyTagToContact
+}
+
+// RemoveTagFromContact returns the removeTagFromContact script.
+func (mock *Mock) RemoveTagFromContact() *connectormock.Mutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval] {
+	return mock.removeTagFromContact
+}
 
 // ListDealNotes returns the listDealNotes script.
 func (mock *Mock) ListDealNotes() *connectormock.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage] {
@@ -199,6 +223,15 @@ func (mock *Mock) UpdateContact() *connectormock.Mutation[activecampaign.UpdateC
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListContactTags() sdkgo.Query[activecampaign.ListContactTagsInput, activecampaign.ContactTagAssociations] {
+	return operations.mock.listContactTags
+}
+func (operations mockOperations) ApplyTagToContact() sdkgo.Mutation[activecampaign.ApplyTagToContactInput, activecampaign.ContactTagAssociation] {
+	return operations.mock.applyTagToContact
+}
+func (operations mockOperations) RemoveTagFromContact() sdkgo.Mutation[activecampaign.RemoveTagFromContactInput, activecampaign.ContactTagRemoval] {
+	return operations.mock.removeTagFromContact
+}
 func (operations mockOperations) ListDealNotes() sdkgo.Query[activecampaign.ListDealNotesInput, activecampaign.DealNotesPage] {
 	return operations.mock.listDealNotes
 }
@@ -258,6 +291,124 @@ func (operations mockOperations) SyncContact() sdkgo.Mutation[activecampaign.Syn
 }
 func (operations mockOperations) UpdateContact() sdkgo.Mutation[activecampaign.UpdateContactInput, activecampaign.ContactMetadata] {
 	return operations.mock.updateContact
+}
+
+// ListContactTagsListed selects the listed branch: ActiveCampaign completed the contact-tag operation.
+func ListContactTagsListed(value activecampaign.ContactTagAssociations, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociations] {
+	return connectormock.Branch(activecampaign.ListContactTagsBranchListed, value, failure)
+}
+
+// ListContactTagsNotFound selects the notFound branch: The contact does not exist.
+func ListContactTagsNotFound(value activecampaign.ContactTagAssociations, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociations] {
+	return connectormock.Branch(activecampaign.ListContactTagsBranchNotFound, value, failure)
+}
+
+// ListContactTagsProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ListContactTagsProviderRejected(value activecampaign.ContactTagAssociations, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociations] {
+	return connectormock.Branch(activecampaign.ListContactTagsBranchProviderRejected, value, failure)
+}
+
+// ListContactTagsInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ListContactTagsInvalidResponse(value activecampaign.ContactTagAssociations, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociations] {
+	return connectormock.Branch(activecampaign.ListContactTagsBranchInvalidResponse, value, failure)
+}
+
+// ListContactTagsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListContactTagsDefect(value activecampaign.ContactTagAssociations, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociations] {
+	return connectormock.Branch(activecampaign.ListContactTagsBranchDefect, value, failure)
+}
+
+// ListContactTagsRetry asks Dex to retry the listContactTags Step, after the delay when it is positive.
+func ListContactTagsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ContactTagAssociations] {
+	return connectormock.Retry[activecampaign.ContactTagAssociations](failure, after)
+}
+
+// ListContactTagsListedDefault is the manifest mock listedDefault: One sample contact-tag result.
+func ListContactTagsListedDefault() connectormock.Case[activecampaign.ContactTagAssociations] {
+	value := connectormock.MustDecodeOutput[activecampaign.ContactTagAssociations](`{"contactId":"68","tags":[{"associationId":"22","contactId":"68","tagId":"16"}]}`)
+	return connectormock.Branch(activecampaign.ListContactTagsBranchListed, value, nil)
+}
+
+// ListContactTagsDefault is the manifest default, listedDefault, which New installs.
+func ListContactTagsDefault() connectormock.Case[activecampaign.ContactTagAssociations] {
+	return ListContactTagsListedDefault()
+}
+
+// ApplyTagToContactApplied selects the applied branch: ActiveCampaign completed the contact-tag operation.
+func ApplyTagToContactApplied(value activecampaign.ContactTagAssociation, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociation] {
+	return connectormock.Branch(activecampaign.ApplyTagToContactBranchApplied, value, failure)
+}
+
+// ApplyTagToContactNotFound selects the notFound branch: The contact does not exist.
+func ApplyTagToContactNotFound(value activecampaign.ContactTagAssociation, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociation] {
+	return connectormock.Branch(activecampaign.ApplyTagToContactBranchNotFound, value, failure)
+}
+
+// ApplyTagToContactProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func ApplyTagToContactProviderRejected(value activecampaign.ContactTagAssociation, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociation] {
+	return connectormock.Branch(activecampaign.ApplyTagToContactBranchProviderRejected, value, failure)
+}
+
+// ApplyTagToContactInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func ApplyTagToContactInvalidResponse(value activecampaign.ContactTagAssociation, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociation] {
+	return connectormock.Branch(activecampaign.ApplyTagToContactBranchInvalidResponse, value, failure)
+}
+
+// ApplyTagToContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func ApplyTagToContactDefect(value activecampaign.ContactTagAssociation, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagAssociation] {
+	return connectormock.Branch(activecampaign.ApplyTagToContactBranchDefect, value, failure)
+}
+
+// ApplyTagToContactRetry asks Dex to retry the applyTagToContact Step, after the delay when it is positive.
+func ApplyTagToContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ContactTagAssociation] {
+	return connectormock.Retry[activecampaign.ContactTagAssociation](failure, after)
+}
+
+// ApplyTagToContactAppliedDefault is the manifest mock appliedDefault: One sample contact-tag result.
+func ApplyTagToContactAppliedDefault() connectormock.Case[activecampaign.ContactTagAssociation] {
+	value := connectormock.MustDecodeOutput[activecampaign.ContactTagAssociation](`{"associationId":"22","contactId":"68","tagId":"16"}`)
+	return connectormock.Branch(activecampaign.ApplyTagToContactBranchApplied, value, nil)
+}
+
+// ApplyTagToContactDefault is the manifest default, appliedDefault, which New installs.
+func ApplyTagToContactDefault() connectormock.Case[activecampaign.ContactTagAssociation] {
+	return ApplyTagToContactAppliedDefault()
+}
+
+// RemoveTagFromContactRemoved selects the removed branch: ActiveCampaign completed the contact-tag operation.
+func RemoveTagFromContactRemoved(value activecampaign.ContactTagRemoval, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagRemoval] {
+	return connectormock.Branch(activecampaign.RemoveTagFromContactBranchRemoved, value, failure)
+}
+
+// RemoveTagFromContactProviderRejected selects the providerRejected branch: ActiveCampaign conclusively rejected the request.
+func RemoveTagFromContactProviderRejected(value activecampaign.ContactTagRemoval, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagRemoval] {
+	return connectormock.Branch(activecampaign.RemoveTagFromContactBranchProviderRejected, value, failure)
+}
+
+// RemoveTagFromContactInvalidResponse selects the invalidResponse branch: ActiveCampaign returned malformed or oversized JSON.
+func RemoveTagFromContactInvalidResponse(value activecampaign.ContactTagRemoval, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagRemoval] {
+	return connectormock.Branch(activecampaign.RemoveTagFromContactBranchInvalidResponse, value, failure)
+}
+
+// RemoveTagFromContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func RemoveTagFromContactDefect(value activecampaign.ContactTagRemoval, failure *sdkgo.Failure) connectormock.Case[activecampaign.ContactTagRemoval] {
+	return connectormock.Branch(activecampaign.RemoveTagFromContactBranchDefect, value, failure)
+}
+
+// RemoveTagFromContactRetry asks Dex to retry the removeTagFromContact Step, after the delay when it is positive.
+func RemoveTagFromContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[activecampaign.ContactTagRemoval] {
+	return connectormock.Retry[activecampaign.ContactTagRemoval](failure, after)
+}
+
+// RemoveTagFromContactRemovedDefault is the manifest mock removedDefault: One sample contact-tag result.
+func RemoveTagFromContactRemovedDefault() connectormock.Case[activecampaign.ContactTagRemoval] {
+	value := connectormock.MustDecodeOutput[activecampaign.ContactTagRemoval](`{"contactId":"68","tagId":"16","removed":true}`)
+	return connectormock.Branch(activecampaign.RemoveTagFromContactBranchRemoved, value, nil)
+}
+
+// RemoveTagFromContactDefault is the manifest default, removedDefault, which New installs.
+func RemoveTagFromContactDefault() connectormock.Case[activecampaign.ContactTagRemoval] {
+	return RemoveTagFromContactRemovedDefault()
 }
 
 // ListDealNotesListed selects the listed branch: ActiveCampaign completed the note operation.

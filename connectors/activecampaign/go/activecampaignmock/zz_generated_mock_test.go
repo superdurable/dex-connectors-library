@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listContactTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactTagAssociations](`{"contactId":"68","tags":[{"associationId":"22","contactId":"68","tagId":"16"}]}`)
+			return err
+		}},
+		{name: "applyTagToContact/appliedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactTagAssociation](`{"associationId":"22","contactId":"68","tagId":"16"}`)
+			return err
+		}},
+		{name: "removeTagFromContact/removedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.ContactTagRemoval](`{"contactId":"68","tagId":"16","removed":true}`)
+			return err
+		}},
 		{name: "listDealNotes/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.DealNotesPage](`{"notes":[{"id":"91","dealId":"46","text":"Follow up"}],"offset":0,"limit":20,"total":1}`)
 			return err
@@ -106,6 +118,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListContactTags().Definition().Operation.OperationID != "listContactTags" {
+		t.Errorf("listContactTags mock has another definition")
+	}
+	if mock.ApplyTagToContact().Definition().Operation.OperationID != "applyTagToContact" {
+		t.Errorf("applyTagToContact mock has another definition")
+	}
+	if mock.RemoveTagFromContact().Definition().Operation.OperationID != "removeTagFromContact" {
+		t.Errorf("removeTagFromContact mock has another definition")
+	}
 	if mock.ListDealNotes().Definition().Operation.OperationID != "listDealNotes" {
 		t.Errorf("listDealNotes mock has another definition")
 	}

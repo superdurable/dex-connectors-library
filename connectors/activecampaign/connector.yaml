@@ -53,8 +53,70 @@ spec:
       steps:
         - Sign in to the ActiveCampaign account at https://www.activecampaign.com/login, click Settings (gear), then Developer.
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
-        - Ensure this API user can view the intended contacts and lists; tag writes need tag management permission, and deal operations need Deals and pipeline management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Ensure this API user can view and edit the intended contacts and lists; existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, and deal operations need Deals and pipeline management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listContactTags
+      goName: ListContactTags
+      inputType: ListContactTagsInput
+      outputType: ContactTagAssociations
+      kind: query
+      description: List the tag associations of one contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the contact-tag operation.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact-tag result.
+          output: {contactId: '68', tags: [{associationId: '22', contactId: '68', tagId: '16'}]}
+    - name: applyTagToContact
+      goName: ApplyTagToContact
+      inputType: ApplyTagToContactInput
+      outputType: ContactTagAssociation
+      kind: mutation
+      description: Apply one existing contact tag by ID without creating definitions.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: applied, goName: Applied, description: ActiveCampaign completed the contact-tag operation.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: appliedDefault
+          branch: applied
+          default: true
+          description: One sample contact-tag result.
+          output: {associationId: '22', contactId: '68', tagId: '16'}
+    - name: removeTagFromContact
+      goName: RemoveTagFromContact
+      inputType: RemoveTagFromContactInput
+      outputType: ContactTagRemoval
+      kind: mutation
+      description: Remove one tag from one contact by tag ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: removed, goName: Removed, description: ActiveCampaign completed the contact-tag operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: removedDefault
+          branch: removed
+          default: true
+          description: One sample contact-tag result.
+          output: {contactId: '68', tagId: '16', removed: true}
     - name: listDealNotes
       goName: ListDealNotes
       inputType: ListDealNotesInput
