@@ -18,6 +18,11 @@ import (
 // Mock is a scripted copper connection. Script each operation through its accessor.
 type Mock struct {
 	connection       copper.Connection
+	createCompany    *connectormock.Mutation[copper.CreateCompanyInput, copper.CompanyMetadata]
+	getCompany       *connectormock.Query[copper.GetCompanyInput, copper.CompanyMetadata]
+	listCompanies    *connectormock.Query[copper.ListCompaniesInput, copper.CompaniesPage]
+	updateCompany    *connectormock.Mutation[copper.UpdateCompanyInput, copper.CompanyMetadata]
+	deleteCompany    *connectormock.Mutation[copper.DeleteCompanyInput, copper.DeleteCompanyOutput]
 	createPerson     *connectormock.Mutation[copper.CreatePersonInput, copper.PersonMetadata]
 	getPerson        *connectormock.Query[copper.GetPersonInput, copper.PersonMetadata]
 	listPeople       *connectormock.Query[copper.ListPeopleInput, copper.PeoplePage]
@@ -32,6 +37,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createCompany:    connectormock.NewMutation[copper.CreateCompanyInput, copper.CompanyMetadata](t, copper.CreateCompanyDefinition),
+		getCompany:       connectormock.NewQuery[copper.GetCompanyInput, copper.CompanyMetadata](t, copper.GetCompanyDefinition),
+		listCompanies:    connectormock.NewQuery[copper.ListCompaniesInput, copper.CompaniesPage](t, copper.ListCompaniesDefinition),
+		updateCompany:    connectormock.NewMutation[copper.UpdateCompanyInput, copper.CompanyMetadata](t, copper.UpdateCompanyDefinition),
+		deleteCompany:    connectormock.NewMutation[copper.DeleteCompanyInput, copper.DeleteCompanyOutput](t, copper.DeleteCompanyDefinition),
 		createPerson:     connectormock.NewMutation[copper.CreatePersonInput, copper.PersonMetadata](t, copper.CreatePersonDefinition),
 		getPerson:        connectormock.NewQuery[copper.GetPersonInput, copper.PersonMetadata](t, copper.GetPersonDefinition),
 		listPeople:       connectormock.NewQuery[copper.ListPeopleInput, copper.PeoplePage](t, copper.ListPeopleDefinition),
@@ -40,6 +50,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		listLeadStatuses: connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
 		getLead:          connectormock.NewQuery[copper.GetLeadInput, copper.LeadMetadata](t, copper.GetLeadDefinition),
 	}
+	mock.createCompany.Default(CreateCompanyDefault())
+	mock.getCompany.Default(GetCompanyDefault())
+	mock.listCompanies.Default(ListCompaniesDefault())
+	mock.updateCompany.Default(UpdateCompanyDefault())
+	mock.deleteCompany.Default(DeleteCompanyDefault())
 	mock.createPerson.Default(CreatePersonDefault())
 	mock.getPerson.Default(GetPersonDefault())
 	mock.listPeople.Default(ListPeopleDefault())
@@ -57,6 +72,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() copper.Connection { return mock.connection }
+
+// CreateCompany returns the createCompany script.
+func (mock *Mock) CreateCompany() *connectormock.Mutation[copper.CreateCompanyInput, copper.CompanyMetadata] {
+	return mock.createCompany
+}
+
+// GetCompany returns the getCompany script.
+func (mock *Mock) GetCompany() *connectormock.Query[copper.GetCompanyInput, copper.CompanyMetadata] {
+	return mock.getCompany
+}
+
+// ListCompanies returns the listCompanies script.
+func (mock *Mock) ListCompanies() *connectormock.Query[copper.ListCompaniesInput, copper.CompaniesPage] {
+	return mock.listCompanies
+}
+
+// UpdateCompany returns the updateCompany script.
+func (mock *Mock) UpdateCompany() *connectormock.Mutation[copper.UpdateCompanyInput, copper.CompanyMetadata] {
+	return mock.updateCompany
+}
+
+// DeleteCompany returns the deleteCompany script.
+func (mock *Mock) DeleteCompany() *connectormock.Mutation[copper.DeleteCompanyInput, copper.DeleteCompanyOutput] {
+	return mock.deleteCompany
+}
 
 // CreatePerson returns the createPerson script.
 func (mock *Mock) CreatePerson() *connectormock.Mutation[copper.CreatePersonInput, copper.PersonMetadata] {
@@ -95,6 +135,21 @@ func (mock *Mock) GetLead() *connectormock.Query[copper.GetLeadInput, copper.Lea
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateCompany() sdkgo.Mutation[copper.CreateCompanyInput, copper.CompanyMetadata] {
+	return operations.mock.createCompany
+}
+func (operations mockOperations) GetCompany() sdkgo.Query[copper.GetCompanyInput, copper.CompanyMetadata] {
+	return operations.mock.getCompany
+}
+func (operations mockOperations) ListCompanies() sdkgo.Query[copper.ListCompaniesInput, copper.CompaniesPage] {
+	return operations.mock.listCompanies
+}
+func (operations mockOperations) UpdateCompany() sdkgo.Mutation[copper.UpdateCompanyInput, copper.CompanyMetadata] {
+	return operations.mock.updateCompany
+}
+func (operations mockOperations) DeleteCompany() sdkgo.Mutation[copper.DeleteCompanyInput, copper.DeleteCompanyOutput] {
+	return operations.mock.deleteCompany
+}
 func (operations mockOperations) CreatePerson() sdkgo.Mutation[copper.CreatePersonInput, copper.PersonMetadata] {
 	return operations.mock.createPerson
 }
@@ -115,6 +170,189 @@ func (operations mockOperations) ListLeadStatuses() sdkgo.Query[copper.ListLeadS
 }
 func (operations mockOperations) GetLead() sdkgo.Query[copper.GetLeadInput, copper.LeadMetadata] {
 	return operations.mock.getLead
+}
+
+// CreateCompanyCreated selects the created branch: Copper created the company.
+func CreateCompanyCreated(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.CreateCompanyBranchCreated, value, failure)
+}
+
+// CreateCompanyProviderRejected selects the providerRejected branch: Copper rejected creation.
+func CreateCompanyProviderRejected(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.CreateCompanyBranchProviderRejected, value, failure)
+}
+
+// CreateCompanyUncertain returns an uncertain createCompany outcome.
+func CreateCompanyUncertain(value copper.CompanyMetadata, failure sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCompanyDefect selects the defect branch: Input or credentials are invalid.
+func CreateCompanyDefect(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.CreateCompanyBranchDefect, value, failure)
+}
+
+// CreateCompanyRetry asks Dex to retry the createCompany Step, after the delay when it is positive.
+func CreateCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Retry[copper.CompanyMetadata](failure, after)
+}
+
+// CreateCompanyCreatedDefault is the manifest mock createdDefault: A sample company is created.
+func CreateCompanyCreatedDefault() connectormock.Case[copper.CompanyMetadata] {
+	value := connectormock.MustDecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}`)
+	return connectormock.Branch(copper.CreateCompanyBranchCreated, value, nil)
+}
+
+// CreateCompanyDefault is the manifest default, createdDefault, which New installs.
+func CreateCompanyDefault() connectormock.Case[copper.CompanyMetadata] {
+	return CreateCompanyCreatedDefault()
+}
+
+// GetCompanyFound selects the found branch: Copper returned the company.
+func GetCompanyFound(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.GetCompanyBranchFound, value, failure)
+}
+
+// GetCompanyNotFound selects the notFound branch: No company matches the ID.
+func GetCompanyNotFound(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.GetCompanyBranchNotFound, value, failure)
+}
+
+// GetCompanyProviderRejected selects the providerRejected branch: Copper rejected the lookup.
+func GetCompanyProviderRejected(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.GetCompanyBranchProviderRejected, value, failure)
+}
+
+// GetCompanyInvalidResponse selects the invalidResponse branch: Copper returned invalid company JSON.
+func GetCompanyInvalidResponse(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.GetCompanyBranchInvalidResponse, value, failure)
+}
+
+// GetCompanyDefect selects the defect branch: Input or credentials are invalid.
+func GetCompanyDefect(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.GetCompanyBranchDefect, value, failure)
+}
+
+// GetCompanyRetry asks Dex to retry the getCompany Step, after the delay when it is positive.
+func GetCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Retry[copper.CompanyMetadata](failure, after)
+}
+
+// GetCompanyFoundDefault is the manifest mock foundDefault: One sample company is returned.
+func GetCompanyFoundDefault() connectormock.Case[copper.CompanyMetadata] {
+	value := connectormock.MustDecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}`)
+	return connectormock.Branch(copper.GetCompanyBranchFound, value, nil)
+}
+
+// GetCompanyDefault is the manifest default, foundDefault, which New installs.
+func GetCompanyDefault() connectormock.Case[copper.CompanyMetadata] { return GetCompanyFoundDefault() }
+
+// ListCompaniesListed selects the listed branch: Copper returned a page of companies.
+func ListCompaniesListed(value copper.CompaniesPage, failure *sdkgo.Failure) connectormock.Case[copper.CompaniesPage] {
+	return connectormock.Branch(copper.ListCompaniesBranchListed, value, failure)
+}
+
+// ListCompaniesProviderRejected selects the providerRejected branch: Copper rejected the search.
+func ListCompaniesProviderRejected(value copper.CompaniesPage, failure *sdkgo.Failure) connectormock.Case[copper.CompaniesPage] {
+	return connectormock.Branch(copper.ListCompaniesBranchProviderRejected, value, failure)
+}
+
+// ListCompaniesInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized companies JSON.
+func ListCompaniesInvalidResponse(value copper.CompaniesPage, failure *sdkgo.Failure) connectormock.Case[copper.CompaniesPage] {
+	return connectormock.Branch(copper.ListCompaniesBranchInvalidResponse, value, failure)
+}
+
+// ListCompaniesDefect selects the defect branch: Input or credentials are invalid.
+func ListCompaniesDefect(value copper.CompaniesPage, failure *sdkgo.Failure) connectormock.Case[copper.CompaniesPage] {
+	return connectormock.Branch(copper.ListCompaniesBranchDefect, value, failure)
+}
+
+// ListCompaniesRetry asks Dex to retry the listCompanies Step, after the delay when it is positive.
+func ListCompaniesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.CompaniesPage] {
+	return connectormock.Retry[copper.CompaniesPage](failure, after)
+}
+
+// ListCompaniesListedDefault is the manifest mock listedDefault: A sample companies page is returned.
+func ListCompaniesListedDefault() connectormock.Case[copper.CompaniesPage] {
+	value := connectormock.MustDecodeOutput[copper.CompaniesPage](`{"companies":[{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}]}`)
+	return connectormock.Branch(copper.ListCompaniesBranchListed, value, nil)
+}
+
+// ListCompaniesDefault is the manifest default, listedDefault, which New installs.
+func ListCompaniesDefault() connectormock.Case[copper.CompaniesPage] {
+	return ListCompaniesListedDefault()
+}
+
+// UpdateCompanyUpdated selects the updated branch: Copper updated the company.
+func UpdateCompanyUpdated(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.UpdateCompanyBranchUpdated, value, failure)
+}
+
+// UpdateCompanyNotFound selects the notFound branch: No company matches the ID.
+func UpdateCompanyNotFound(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.UpdateCompanyBranchNotFound, value, failure)
+}
+
+// UpdateCompanyProviderRejected selects the providerRejected branch: Copper rejected the update.
+func UpdateCompanyProviderRejected(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.UpdateCompanyBranchProviderRejected, value, failure)
+}
+
+// UpdateCompanyDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCompanyDefect(value copper.CompanyMetadata, failure *sdkgo.Failure) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Branch(copper.UpdateCompanyBranchDefect, value, failure)
+}
+
+// UpdateCompanyRetry asks Dex to retry the updateCompany Step, after the delay when it is positive.
+func UpdateCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.CompanyMetadata] {
+	return connectormock.Retry[copper.CompanyMetadata](failure, after)
+}
+
+// UpdateCompanyUpdatedDefault is the manifest mock updatedDefault: A sample company is updated.
+func UpdateCompanyUpdatedDefault() connectormock.Case[copper.CompanyMetadata] {
+	value := connectormock.MustDecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","details":"Updated"}`)
+	return connectormock.Branch(copper.UpdateCompanyBranchUpdated, value, nil)
+}
+
+// UpdateCompanyDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCompanyDefault() connectormock.Case[copper.CompanyMetadata] {
+	return UpdateCompanyUpdatedDefault()
+}
+
+// DeleteCompanyDeleted selects the deleted branch: Copper deleted the company.
+func DeleteCompanyDeleted(value copper.DeleteCompanyOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteCompanyOutput] {
+	return connectormock.Branch(copper.DeleteCompanyBranchDeleted, value, failure)
+}
+
+// DeleteCompanyNotFound selects the notFound branch: No company matches the ID.
+func DeleteCompanyNotFound(value copper.DeleteCompanyOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteCompanyOutput] {
+	return connectormock.Branch(copper.DeleteCompanyBranchNotFound, value, failure)
+}
+
+// DeleteCompanyProviderRejected selects the providerRejected branch: Copper rejected the deletion.
+func DeleteCompanyProviderRejected(value copper.DeleteCompanyOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteCompanyOutput] {
+	return connectormock.Branch(copper.DeleteCompanyBranchProviderRejected, value, failure)
+}
+
+// DeleteCompanyDefect selects the defect branch: Input or credentials are invalid.
+func DeleteCompanyDefect(value copper.DeleteCompanyOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteCompanyOutput] {
+	return connectormock.Branch(copper.DeleteCompanyBranchDefect, value, failure)
+}
+
+// DeleteCompanyRetry asks Dex to retry the deleteCompany Step, after the delay when it is positive.
+func DeleteCompanyRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.DeleteCompanyOutput] {
+	return connectormock.Retry[copper.DeleteCompanyOutput](failure, after)
+}
+
+// DeleteCompanyDeletedDefault is the manifest mock deletedDefault: A sample company is deleted.
+func DeleteCompanyDeletedDefault() connectormock.Case[copper.DeleteCompanyOutput] {
+	value := connectormock.MustDecodeOutput[copper.DeleteCompanyOutput](`{"id":26443553,"deleted":true}`)
+	return connectormock.Branch(copper.DeleteCompanyBranchDeleted, value, nil)
+}
+
+// DeleteCompanyDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCompanyDefault() connectormock.Case[copper.DeleteCompanyOutput] {
+	return DeleteCompanyDeletedDefault()
 }
 
 // CreatePersonCreated selects the created branch: Copper created the person.

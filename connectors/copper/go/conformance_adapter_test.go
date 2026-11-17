@@ -38,6 +38,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"createCompany":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateCompany(), reference, scenario.CallID),
+		"getCompany":       newConformanceQueryInvocation(t, scenario.Input, context, client.GetCompany(), reference),
+		"listCompanies":    newConformanceQueryInvocation(t, scenario.Input, context, client.ListCompanies(), reference),
+		"updateCompany":    newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateCompany(), reference, scenario.CallID),
+		"deleteCompany":    newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteCompany(), reference, scenario.CallID),
 		"listLeadStatuses": newConformanceQueryInvocation(t, scenario.Input, context, client.ListLeadStatuses(), reference),
 		"getLead":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetLead(), reference),
 		"createPerson":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreatePerson(), reference, scenario.CallID),

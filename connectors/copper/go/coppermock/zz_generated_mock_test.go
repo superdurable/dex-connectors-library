@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createCompany/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}`)
+			return err
+		}},
+		{name: "getCompany/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}`)
+			return err
+		}},
+		{name: "listCompanies/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CompaniesPage](`{"companies":[{"id":26443553,"name":"Sample Company","emailDomain":"example.com"}]}`)
+			return err
+		}},
+		{name: "updateCompany/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.CompanyMetadata](`{"id":26443553,"name":"Sample Company","details":"Updated"}`)
+			return err
+		}},
+		{name: "deleteCompany/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[copper.DeleteCompanyOutput](`{"id":26443553,"deleted":true}`)
+			return err
+		}},
 		{name: "createPerson/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[copper.PersonMetadata](`{"id":26443553,"name":"Sample Person","email":"sample@example.com"}`)
 			return err
@@ -54,6 +74,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateCompany().Definition().Operation.OperationID != "createCompany" {
+		t.Errorf("createCompany mock has another definition")
+	}
+	if mock.GetCompany().Definition().Operation.OperationID != "getCompany" {
+		t.Errorf("getCompany mock has another definition")
+	}
+	if mock.ListCompanies().Definition().Operation.OperationID != "listCompanies" {
+		t.Errorf("listCompanies mock has another definition")
+	}
+	if mock.UpdateCompany().Definition().Operation.OperationID != "updateCompany" {
+		t.Errorf("updateCompany mock has another definition")
+	}
+	if mock.DeleteCompany().Definition().Operation.OperationID != "deleteCompany" {
+		t.Errorf("deleteCompany mock has another definition")
+	}
 	if mock.CreatePerson().Definition().Operation.OperationID != "createPerson" {
 		t.Errorf("createPerson mock has another definition")
 	}

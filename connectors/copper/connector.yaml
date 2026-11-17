@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: copper
   displayName: Copper CRM
-  description: Read Copper leads and manage people without custom fields.
+  description: Read Copper leads and manage people and companies without custom fields.
   company: Copper
   categories: [crm-sales]
   version: v0.2.0
@@ -60,6 +60,107 @@ spec:
         - Use the Copper login email address of the user who generated the key. Save it in user_email as a full email address; the key and user must match.
         - Copper sends the secret key and owner email in request headers. Revoke the key at Settings > Integrations > API Keys when retired. Leave configuration fields blank for the displayed defaults.
   operations:
+    - name: createCompany
+      goName: CreateCompany
+      inputType: CreateCompanyInput
+      outputType: CompanyMetadata
+      kind: mutation
+      description: Create a Copper company with a unique email domain for read-back.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Copper created the company.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample company is created.
+          output: {id: 26443553, name: Sample Company, emailDomain: example.com}
+    - name: getCompany
+      goName: GetCompany
+      inputType: GetCompanyInput
+      outputType: CompanyMetadata
+      kind: query
+      description: Read a Copper company by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Copper returned the company.}
+        - {id: notFound, goName: NotFound, description: No company matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned invalid company JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample company is returned.
+          output: {id: 26443553, name: Sample Company, emailDomain: example.com}
+    - name: listCompanies
+      goName: ListCompanies
+      inputType: ListCompaniesInput
+      outputType: CompaniesPage
+      kind: query
+      description: Search one bounded page of companies by name or email domain.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Copper returned a page of companies.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized companies JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample companies page is returned.
+          output: {companies: [{id: 26443553, name: Sample Company, emailDomain: example.com}]}
+    - name: updateCompany
+      goName: UpdateCompany
+      inputType: UpdateCompanyInput
+      outputType: CompanyMetadata
+      kind: mutation
+      description: Replace a Copper company's name and details without changing other fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Copper updated the company.}
+        - {id: notFound, goName: NotFound, description: No company matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample company is updated.
+          output: {id: 26443553, name: Sample Company, details: Updated}
+    - name: deleteCompany
+      goName: DeleteCompany
+      inputType: DeleteCompanyInput
+      outputType: DeleteCompanyOutput
+      kind: mutation
+      description: Permanently delete a Copper company by numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Copper deleted the company.}
+        - {id: notFound, goName: NotFound, description: No company matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample company is deleted.
+          output: {id: 26443553, deleted: true}
     - name: createPerson
       goName: CreatePerson
       inputType: CreatePersonInput
