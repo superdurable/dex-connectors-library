@@ -45,6 +45,11 @@ type Operations interface {
 	CreateOrder() sdkgo.Mutation[CreateOrderInput, Order]
 	UpdateOrder() sdkgo.Mutation[UpdateOrderInput, Order]
 	DeleteOrder() sdkgo.Mutation[DeleteOrderInput, DeletedOrder]
+	GetProduct() sdkgo.Query[GetProductInput, Product]
+	ListProducts() sdkgo.Query[ListProductsInput, ProductPage]
+	CreateProduct() sdkgo.Mutation[CreateProductInput, Product]
+	UpdateProduct() sdkgo.Mutation[UpdateProductInput, Product]
+	DeleteProduct() sdkgo.Mutation[DeleteProductInput, DeletedProduct]
 }
 
 type clientOperations struct{ client *Client }
@@ -66,6 +71,21 @@ func (operations clientOperations) UpdateOrder() sdkgo.Mutation[UpdateOrderInput
 }
 func (operations clientOperations) DeleteOrder() sdkgo.Mutation[DeleteOrderInput, DeletedOrder] {
 	return operations.client.DeleteOrder()
+}
+func (operations clientOperations) GetProduct() sdkgo.Query[GetProductInput, Product] {
+	return operations.client.GetProduct()
+}
+func (operations clientOperations) ListProducts() sdkgo.Query[ListProductsInput, ProductPage] {
+	return operations.client.ListProducts()
+}
+func (operations clientOperations) CreateProduct() sdkgo.Mutation[CreateProductInput, Product] {
+	return operations.client.CreateProduct()
+}
+func (operations clientOperations) UpdateProduct() sdkgo.Mutation[UpdateProductInput, Product] {
+	return operations.client.UpdateProduct()
+}
+func (operations clientOperations) DeleteProduct() sdkgo.Mutation[DeleteProductInput, DeletedProduct] {
+	return operations.client.DeleteProduct()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -647,6 +667,386 @@ func NewDeleteOrderStep[IN any](config DeleteOrderStepConfig[IN]) sdkgo.Mutation
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteOrderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetProductBranchFound sdkgo.BranchID = "found"
+const GetProductBranchNotFound sdkgo.BranchID = "notFound"
+const GetProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetProductDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetProductBranchFound, Description: "Shopify returned the product."},
+		{ID: GetProductBranchNotFound, Description: "The product was not found.", Optional: true},
+		{ID: GetProductBranchProviderRejected, Description: "Shopify rejected the read.", Optional: true},
+		{ID: GetProductBranchInvalidResponse, Description: "Shopify returned invalid product JSON.", Optional: true},
+		{ID: GetProductBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetProductResult = sdkgo.QueryResult[Product]
+
+type GetProductStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=shopify"`
+	operationID                    struct{}                                   `connector:"operationId=getProduct"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetProductInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetProductResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetProductResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetProductResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetProductResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetProductResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Product]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetProductStep[IN any](config GetProductStepConfig[IN]) sdkgo.QueryStep[IN, GetProductInput, Product] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shopify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetProductInput, Product]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetProductResult] {
+			branches := make([]sdkgo.BranchTarget[GetProductResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetProductBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListProductsBranchListed sdkgo.BranchID = "listed"
+const ListProductsBranchNotFound sdkgo.BranchID = "notFound"
+const ListProductsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListProductsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListProductsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListProductsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listProducts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListProductsBranchListed, Description: "Shopify returned one product page."},
+		{ID: ListProductsBranchNotFound, Description: "The product collection was not found.", Optional: true},
+		{ID: ListProductsBranchProviderRejected, Description: "Shopify rejected the read.", Optional: true},
+		{ID: ListProductsBranchInvalidResponse, Description: "Shopify returned invalid product JSON.", Optional: true},
+		{ID: ListProductsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListProductsResult = sdkgo.QueryResult[ProductPage]
+
+type ListProductsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=shopify"`
+	operationID                    struct{}                                       `connector:"operationId=listProducts"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListProductsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListProductsResult]               `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListProductsResult]               `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListProductsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListProductsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListProductsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ProductPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListProductsStep[IN any](config ListProductsStepConfig[IN]) sdkgo.QueryStep[IN, ListProductsInput, ProductPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shopify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListProductsInput, ProductPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListProducts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListProductsResult] {
+			branches := make([]sdkgo.BranchTarget[ListProductsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListProductsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListProductsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListProductsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListProductsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListProductsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateProductBranchCreated sdkgo.BranchID = "created"
+const CreateProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateProductBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateProductBranchCreated, Description: "Shopify created the product."},
+		{ID: CreateProductBranchProviderRejected, Description: "Shopify rejected creation.", Optional: true},
+		{ID: CreateProductBranchUncertain, Description: "A product may have been created but could not be confirmed.", Optional: true},
+		{ID: CreateProductBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateProductResult = sdkgo.MutationResult[Product]
+
+type CreateProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=shopify"`
+	operationID                       struct{}                                      `connector:"operationId=createProduct"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateProductInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateProductResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateProductResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateProductResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateProductResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Product]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateProductStep[IN any](config CreateProductStepConfig[IN]) sdkgo.MutationStep[IN, CreateProductInput, Product] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shopify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateProductInput, Product]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateProductResult] {
+			branches := make([]sdkgo.BranchTarget[CreateProductResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateProductBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateProductBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateProductBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateProductBranchUpdated sdkgo.BranchID = "updated"
+const UpdateProductBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateProductBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateProductBranchUpdated, Description: "Shopify updated the product."},
+		{ID: UpdateProductBranchNotFound, Description: "The product was not found.", Optional: true},
+		{ID: UpdateProductBranchProviderRejected, Description: "Shopify rejected the update.", Optional: true},
+		{ID: UpdateProductBranchInvalidResponse, Description: "Shopify returned invalid product JSON.", Optional: true},
+		{ID: UpdateProductBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateProductResult = sdkgo.MutationResult[Product]
+
+type UpdateProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=shopify"`
+	operationID                       struct{}                                      `connector:"operationId=updateProduct"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateProductInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateProductResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateProductResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateProductResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateProductResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateProductResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Product]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateProductStep[IN any](config UpdateProductStepConfig[IN]) sdkgo.MutationStep[IN, UpdateProductInput, Product] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shopify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateProductInput, Product]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateProductResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateProductResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateProductBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateProductBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateProductBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateProductBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteProductBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteProductBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteProductBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteProductBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteProductDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteProduct"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteProductBranchDeleted, Description: "Shopify deleted the product."},
+		{ID: DeleteProductBranchNotFound, Description: "The product was already absent.", Optional: true},
+		{ID: DeleteProductBranchProviderRejected, Description: "Shopify rejected deletion.", Optional: true},
+		{ID: DeleteProductBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteProductResult = sdkgo.MutationResult[DeletedProduct]
+
+type DeleteProductStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=shopify"`
+	operationID                       struct{}                                             `connector:"operationId=deleteProduct"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteProductInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteProductResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteProductResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteProductResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteProductResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedProduct]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteProductStep[IN any](config DeleteProductStepConfig[IN]) sdkgo.MutationStep[IN, DeleteProductInput, DeletedProduct] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("shopify connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteProductInput, DeletedProduct]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteProduct(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteProductResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteProductResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteProductBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteProductBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteProductBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteProductBranchDefect))
 			}
 			return branches
 		}(),

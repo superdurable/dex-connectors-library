@@ -17,13 +17,18 @@ import (
 
 // Mock is a scripted shopify connection. Script each operation through its accessor.
 type Mock struct {
-	connection  shopify.Connection
-	getOrder    *connectormock.Query[shopify.GetOrderInput, shopify.Order]
-	listOrders  *connectormock.Query[shopify.ListOrdersInput, shopify.OrderPage]
-	countOrders *connectormock.Query[shopify.CountOrdersInput, shopify.OrderCount]
-	createOrder *connectormock.Mutation[shopify.CreateOrderInput, shopify.Order]
-	updateOrder *connectormock.Mutation[shopify.UpdateOrderInput, shopify.Order]
-	deleteOrder *connectormock.Mutation[shopify.DeleteOrderInput, shopify.DeletedOrder]
+	connection    shopify.Connection
+	getOrder      *connectormock.Query[shopify.GetOrderInput, shopify.Order]
+	listOrders    *connectormock.Query[shopify.ListOrdersInput, shopify.OrderPage]
+	countOrders   *connectormock.Query[shopify.CountOrdersInput, shopify.OrderCount]
+	createOrder   *connectormock.Mutation[shopify.CreateOrderInput, shopify.Order]
+	updateOrder   *connectormock.Mutation[shopify.UpdateOrderInput, shopify.Order]
+	deleteOrder   *connectormock.Mutation[shopify.DeleteOrderInput, shopify.DeletedOrder]
+	getProduct    *connectormock.Query[shopify.GetProductInput, shopify.Product]
+	listProducts  *connectormock.Query[shopify.ListProductsInput, shopify.ProductPage]
+	createProduct *connectormock.Mutation[shopify.CreateProductInput, shopify.Product]
+	updateProduct *connectormock.Mutation[shopify.UpdateProductInput, shopify.Product]
+	deleteProduct *connectormock.Mutation[shopify.DeleteProductInput, shopify.DeletedProduct]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,12 +36,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getOrder:    connectormock.NewQuery[shopify.GetOrderInput, shopify.Order](t, shopify.GetOrderDefinition),
-		listOrders:  connectormock.NewQuery[shopify.ListOrdersInput, shopify.OrderPage](t, shopify.ListOrdersDefinition),
-		countOrders: connectormock.NewQuery[shopify.CountOrdersInput, shopify.OrderCount](t, shopify.CountOrdersDefinition),
-		createOrder: connectormock.NewMutation[shopify.CreateOrderInput, shopify.Order](t, shopify.CreateOrderDefinition),
-		updateOrder: connectormock.NewMutation[shopify.UpdateOrderInput, shopify.Order](t, shopify.UpdateOrderDefinition),
-		deleteOrder: connectormock.NewMutation[shopify.DeleteOrderInput, shopify.DeletedOrder](t, shopify.DeleteOrderDefinition),
+		getOrder:      connectormock.NewQuery[shopify.GetOrderInput, shopify.Order](t, shopify.GetOrderDefinition),
+		listOrders:    connectormock.NewQuery[shopify.ListOrdersInput, shopify.OrderPage](t, shopify.ListOrdersDefinition),
+		countOrders:   connectormock.NewQuery[shopify.CountOrdersInput, shopify.OrderCount](t, shopify.CountOrdersDefinition),
+		createOrder:   connectormock.NewMutation[shopify.CreateOrderInput, shopify.Order](t, shopify.CreateOrderDefinition),
+		updateOrder:   connectormock.NewMutation[shopify.UpdateOrderInput, shopify.Order](t, shopify.UpdateOrderDefinition),
+		deleteOrder:   connectormock.NewMutation[shopify.DeleteOrderInput, shopify.DeletedOrder](t, shopify.DeleteOrderDefinition),
+		getProduct:    connectormock.NewQuery[shopify.GetProductInput, shopify.Product](t, shopify.GetProductDefinition),
+		listProducts:  connectormock.NewQuery[shopify.ListProductsInput, shopify.ProductPage](t, shopify.ListProductsDefinition),
+		createProduct: connectormock.NewMutation[shopify.CreateProductInput, shopify.Product](t, shopify.CreateProductDefinition),
+		updateProduct: connectormock.NewMutation[shopify.UpdateProductInput, shopify.Product](t, shopify.UpdateProductDefinition),
+		deleteProduct: connectormock.NewMutation[shopify.DeleteProductInput, shopify.DeletedProduct](t, shopify.DeleteProductDefinition),
 	}
 	mock.getOrder.Default(GetOrderDefault())
 	mock.listOrders.Default(ListOrdersDefault())
@@ -44,6 +54,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createOrder.Default(CreateOrderDefault())
 	mock.updateOrder.Default(UpdateOrderDefault())
 	mock.deleteOrder.Default(DeleteOrderDefault())
+	mock.getProduct.Default(GetProductDefault())
+	mock.listProducts.Default(ListProductsDefault())
+	mock.createProduct.Default(CreateProductDefault())
+	mock.updateProduct.Default(UpdateProductDefault())
+	mock.deleteProduct.Default(DeleteProductDefault())
 	connection, err := shopify.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "shopify", Name: connectionName})
 	if err != nil {
 		t.Fatalf("shopify mock connection: %v", err)
@@ -85,6 +100,31 @@ func (mock *Mock) DeleteOrder() *connectormock.Mutation[shopify.DeleteOrderInput
 	return mock.deleteOrder
 }
 
+// GetProduct returns the getProduct script.
+func (mock *Mock) GetProduct() *connectormock.Query[shopify.GetProductInput, shopify.Product] {
+	return mock.getProduct
+}
+
+// ListProducts returns the listProducts script.
+func (mock *Mock) ListProducts() *connectormock.Query[shopify.ListProductsInput, shopify.ProductPage] {
+	return mock.listProducts
+}
+
+// CreateProduct returns the createProduct script.
+func (mock *Mock) CreateProduct() *connectormock.Mutation[shopify.CreateProductInput, shopify.Product] {
+	return mock.createProduct
+}
+
+// UpdateProduct returns the updateProduct script.
+func (mock *Mock) UpdateProduct() *connectormock.Mutation[shopify.UpdateProductInput, shopify.Product] {
+	return mock.updateProduct
+}
+
+// DeleteProduct returns the deleteProduct script.
+func (mock *Mock) DeleteProduct() *connectormock.Mutation[shopify.DeleteProductInput, shopify.DeletedProduct] {
+	return mock.deleteProduct
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetOrder() sdkgo.Query[shopify.GetOrderInput, shopify.Order] {
@@ -104,6 +144,21 @@ func (operations mockOperations) UpdateOrder() sdkgo.Mutation[shopify.UpdateOrde
 }
 func (operations mockOperations) DeleteOrder() sdkgo.Mutation[shopify.DeleteOrderInput, shopify.DeletedOrder] {
 	return operations.mock.deleteOrder
+}
+func (operations mockOperations) GetProduct() sdkgo.Query[shopify.GetProductInput, shopify.Product] {
+	return operations.mock.getProduct
+}
+func (operations mockOperations) ListProducts() sdkgo.Query[shopify.ListProductsInput, shopify.ProductPage] {
+	return operations.mock.listProducts
+}
+func (operations mockOperations) CreateProduct() sdkgo.Mutation[shopify.CreateProductInput, shopify.Product] {
+	return operations.mock.createProduct
+}
+func (operations mockOperations) UpdateProduct() sdkgo.Mutation[shopify.UpdateProductInput, shopify.Product] {
+	return operations.mock.updateProduct
+}
+func (operations mockOperations) DeleteProduct() sdkgo.Mutation[shopify.DeleteProductInput, shopify.DeletedProduct] {
+	return operations.mock.deleteProduct
 }
 
 // GetOrderFound selects the found branch: Read one Shopify order.
@@ -329,3 +384,192 @@ func DeleteOrderDeletedOrder() connectormock.Case[shopify.DeletedOrder] {
 
 // DeleteOrderDefault is the manifest default, deletedOrder, which New installs.
 func DeleteOrderDefault() connectormock.Case[shopify.DeletedOrder] { return DeleteOrderDeletedOrder() }
+
+// GetProductFound selects the found branch: Shopify returned the product.
+func GetProductFound(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.GetProductBranchFound, value, failure)
+}
+
+// GetProductNotFound selects the notFound branch: The product was not found.
+func GetProductNotFound(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.GetProductBranchNotFound, value, failure)
+}
+
+// GetProductProviderRejected selects the providerRejected branch: Shopify rejected the read.
+func GetProductProviderRejected(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.GetProductBranchProviderRejected, value, failure)
+}
+
+// GetProductInvalidResponse selects the invalidResponse branch: Shopify returned invalid product JSON.
+func GetProductInvalidResponse(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.GetProductBranchInvalidResponse, value, failure)
+}
+
+// GetProductDefect selects the defect branch: Local input or credentials are invalid.
+func GetProductDefect(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.GetProductBranchDefect, value, failure)
+}
+
+// GetProductRetry asks Dex to retry the getProduct Step, after the delay when it is positive.
+func GetProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.Product] {
+	return connectormock.Retry[shopify.Product](failure, after)
+}
+
+// GetProductFoundProduct is the manifest mock foundProduct: Shopify returned a product.
+func GetProductFoundProduct() connectormock.Case[shopify.Product] {
+	value := connectormock.MustDecodeOutput[shopify.Product](`{"id":201,"title":"Sample Product","status":"active"}`)
+	return connectormock.Branch(shopify.GetProductBranchFound, value, nil)
+}
+
+// GetProductDefault is the manifest default, foundProduct, which New installs.
+func GetProductDefault() connectormock.Case[shopify.Product] { return GetProductFoundProduct() }
+
+// ListProductsListed selects the listed branch: Shopify returned one product page.
+func ListProductsListed(value shopify.ProductPage, failure *sdkgo.Failure) connectormock.Case[shopify.ProductPage] {
+	return connectormock.Branch(shopify.ListProductsBranchListed, value, failure)
+}
+
+// ListProductsNotFound selects the notFound branch: The product collection was not found.
+func ListProductsNotFound(value shopify.ProductPage, failure *sdkgo.Failure) connectormock.Case[shopify.ProductPage] {
+	return connectormock.Branch(shopify.ListProductsBranchNotFound, value, failure)
+}
+
+// ListProductsProviderRejected selects the providerRejected branch: Shopify rejected the read.
+func ListProductsProviderRejected(value shopify.ProductPage, failure *sdkgo.Failure) connectormock.Case[shopify.ProductPage] {
+	return connectormock.Branch(shopify.ListProductsBranchProviderRejected, value, failure)
+}
+
+// ListProductsInvalidResponse selects the invalidResponse branch: Shopify returned invalid product JSON.
+func ListProductsInvalidResponse(value shopify.ProductPage, failure *sdkgo.Failure) connectormock.Case[shopify.ProductPage] {
+	return connectormock.Branch(shopify.ListProductsBranchInvalidResponse, value, failure)
+}
+
+// ListProductsDefect selects the defect branch: Local input or credentials are invalid.
+func ListProductsDefect(value shopify.ProductPage, failure *sdkgo.Failure) connectormock.Case[shopify.ProductPage] {
+	return connectormock.Branch(shopify.ListProductsBranchDefect, value, failure)
+}
+
+// ListProductsRetry asks Dex to retry the listProducts Step, after the delay when it is positive.
+func ListProductsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.ProductPage] {
+	return connectormock.Retry[shopify.ProductPage](failure, after)
+}
+
+// ListProductsListedProducts is the manifest mock listedProducts: Shopify returned a product page.
+func ListProductsListedProducts() connectormock.Case[shopify.ProductPage] {
+	value := connectormock.MustDecodeOutput[shopify.ProductPage](`{"products":[{"id":201,"title":"Sample Product","status":"active"}]}`)
+	return connectormock.Branch(shopify.ListProductsBranchListed, value, nil)
+}
+
+// ListProductsDefault is the manifest default, listedProducts, which New installs.
+func ListProductsDefault() connectormock.Case[shopify.ProductPage] {
+	return ListProductsListedProducts()
+}
+
+// CreateProductCreated selects the created branch: Shopify created the product.
+func CreateProductCreated(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.CreateProductBranchCreated, value, failure)
+}
+
+// CreateProductProviderRejected selects the providerRejected branch: Shopify rejected creation.
+func CreateProductProviderRejected(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.CreateProductBranchProviderRejected, value, failure)
+}
+
+// CreateProductUncertain returns an uncertain createProduct outcome.
+func CreateProductUncertain(value shopify.Product, failure sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateProductDefect selects the defect branch: Local input or credentials are invalid.
+func CreateProductDefect(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.CreateProductBranchDefect, value, failure)
+}
+
+// CreateProductRetry asks Dex to retry the createProduct Step, after the delay when it is positive.
+func CreateProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.Product] {
+	return connectormock.Retry[shopify.Product](failure, after)
+}
+
+// CreateProductCreatedProduct is the manifest mock createdProduct: Shopify created a product.
+func CreateProductCreatedProduct() connectormock.Case[shopify.Product] {
+	value := connectormock.MustDecodeOutput[shopify.Product](`{"id":202,"title":"New Product","status":"draft"}`)
+	return connectormock.Branch(shopify.CreateProductBranchCreated, value, nil)
+}
+
+// CreateProductDefault is the manifest default, createdProduct, which New installs.
+func CreateProductDefault() connectormock.Case[shopify.Product] { return CreateProductCreatedProduct() }
+
+// UpdateProductUpdated selects the updated branch: Shopify updated the product.
+func UpdateProductUpdated(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.UpdateProductBranchUpdated, value, failure)
+}
+
+// UpdateProductNotFound selects the notFound branch: The product was not found.
+func UpdateProductNotFound(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.UpdateProductBranchNotFound, value, failure)
+}
+
+// UpdateProductProviderRejected selects the providerRejected branch: Shopify rejected the update.
+func UpdateProductProviderRejected(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.UpdateProductBranchProviderRejected, value, failure)
+}
+
+// UpdateProductInvalidResponse selects the invalidResponse branch: Shopify returned invalid product JSON.
+func UpdateProductInvalidResponse(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.UpdateProductBranchInvalidResponse, value, failure)
+}
+
+// UpdateProductDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateProductDefect(value shopify.Product, failure *sdkgo.Failure) connectormock.Case[shopify.Product] {
+	return connectormock.Branch(shopify.UpdateProductBranchDefect, value, failure)
+}
+
+// UpdateProductRetry asks Dex to retry the updateProduct Step, after the delay when it is positive.
+func UpdateProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.Product] {
+	return connectormock.Retry[shopify.Product](failure, after)
+}
+
+// UpdateProductUpdatedProduct is the manifest mock updatedProduct: Shopify updated a product.
+func UpdateProductUpdatedProduct() connectormock.Case[shopify.Product] {
+	value := connectormock.MustDecodeOutput[shopify.Product](`{"id":201,"title":"Updated Product","status":"active"}`)
+	return connectormock.Branch(shopify.UpdateProductBranchUpdated, value, nil)
+}
+
+// UpdateProductDefault is the manifest default, updatedProduct, which New installs.
+func UpdateProductDefault() connectormock.Case[shopify.Product] { return UpdateProductUpdatedProduct() }
+
+// DeleteProductDeleted selects the deleted branch: Shopify deleted the product.
+func DeleteProductDeleted(value shopify.DeletedProduct, failure *sdkgo.Failure) connectormock.Case[shopify.DeletedProduct] {
+	return connectormock.Branch(shopify.DeleteProductBranchDeleted, value, failure)
+}
+
+// DeleteProductNotFound selects the notFound branch: The product was already absent.
+func DeleteProductNotFound(value shopify.DeletedProduct, failure *sdkgo.Failure) connectormock.Case[shopify.DeletedProduct] {
+	return connectormock.Branch(shopify.DeleteProductBranchNotFound, value, failure)
+}
+
+// DeleteProductProviderRejected selects the providerRejected branch: Shopify rejected deletion.
+func DeleteProductProviderRejected(value shopify.DeletedProduct, failure *sdkgo.Failure) connectormock.Case[shopify.DeletedProduct] {
+	return connectormock.Branch(shopify.DeleteProductBranchProviderRejected, value, failure)
+}
+
+// DeleteProductDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteProductDefect(value shopify.DeletedProduct, failure *sdkgo.Failure) connectormock.Case[shopify.DeletedProduct] {
+	return connectormock.Branch(shopify.DeleteProductBranchDefect, value, failure)
+}
+
+// DeleteProductRetry asks Dex to retry the deleteProduct Step, after the delay when it is positive.
+func DeleteProductRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[shopify.DeletedProduct] {
+	return connectormock.Retry[shopify.DeletedProduct](failure, after)
+}
+
+// DeleteProductDeletedProduct is the manifest mock deletedProduct: Shopify deleted a product.
+func DeleteProductDeletedProduct() connectormock.Case[shopify.DeletedProduct] {
+	value := connectormock.MustDecodeOutput[shopify.DeletedProduct](`{"productId":201}`)
+	return connectormock.Branch(shopify.DeleteProductBranchDeleted, value, nil)
+}
+
+// DeleteProductDefault is the manifest default, deletedProduct, which New installs.
+func DeleteProductDefault() connectormock.Case[shopify.DeletedProduct] {
+	return DeleteProductDeletedProduct()
+}

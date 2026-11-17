@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: shopify
   displayName: Shopify
-  description: "Read and count Shopify orders through typed Dex Query Steps."
+  description: "Read and manage Shopify orders and products through typed Dex Steps."
   company: Shopify
   categories: [ecommerce]
   version: v0.3.0
@@ -51,7 +51,7 @@ spec:
     guide:
       startURL: https://admin.shopify.com/
       steps:
-        - "This static-token connector is for an existing admin-created custom app; Shopify no longer allows creating new ones. In https://admin.shopify.com open Settings > Apps and sales channels > Develop apps > the existing app > Configuration > Admin API access scopes, verify read_orders for reads or write_orders for order writes; in API credentials copy its secret Admin API access token into access_token. Enter the matching shop subdomain in shopSubdomain; blank credentials prevent calls."
+        - "This static-token connector is for an existing admin-created custom app; Shopify no longer allows creating new ones. In https://admin.shopify.com open Settings > Apps and sales channels > Develop apps > the existing app > Configuration > Admin API access scopes, verify read_orders or write_orders for order operations and read_products or write_products for product operations. In API credentials copy its secret Admin API access token into access_token. Enter the matching shop subdomain in shopSubdomain; blank credentials prevent calls."
         - "Set shopSubdomain, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: getOrder
@@ -174,3 +174,86 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       mocks:
         - {name: deletedOrder, branch: deleted, description: Shopify deleted the order., default: true, output: {orderId: 101}}
+    - name: getProduct
+      goName: GetProduct
+      inputType: GetProductInput
+      outputType: Product
+      kind: query
+      description: "Read one Shopify product. Requires read_products or write_products."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Shopify returned the product.}
+        - {id: notFound, goName: NotFound, description: The product was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shopify rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shopify returned invalid product JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: foundProduct, branch: found, description: Shopify returned a product., default: true, output: {id: 201, title: Sample Product, status: active}}
+    - name: listProducts
+      goName: ListProducts
+      inputType: ListProductsInput
+      outputType: ProductPage
+      kind: query
+      description: "List one filtered page of Shopify products. Requires read_products or write_products."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: Shopify returned one product page.}
+        - {id: notFound, goName: NotFound, description: The product collection was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shopify rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shopify returned invalid product JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: listedProducts, branch: listed, description: Shopify returned a product page., default: true, output: {products: [{id: 201, title: Sample Product, status: active}]}}
+    - name: createProduct
+      goName: CreateProduct
+      inputType: CreateProductInput
+      outputType: Product
+      kind: mutation
+      description: "Create a Shopify product. Requires write_products."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Shopify created the product.}
+        - {id: providerRejected, goName: ProviderRejected, description: Shopify rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A product may have been created but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      mocks:
+        - {name: createdProduct, branch: created, description: Shopify created a product., default: true, output: {id: 202, title: New Product, status: draft}}
+    - name: updateProduct
+      goName: UpdateProduct
+      inputType: UpdateProductInput
+      outputType: Product
+      kind: mutation
+      description: "Replace selected Shopify product fields. Requires write_products."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Shopify updated the product.}
+        - {id: notFound, goName: NotFound, description: The product was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shopify rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shopify returned invalid product JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: updatedProduct, branch: updated, description: Shopify updated a product., default: true, output: {id: 201, title: Updated Product, status: active}}
+    - name: deleteProduct
+      goName: DeleteProduct
+      inputType: DeleteProductInput
+      outputType: DeletedProduct
+      kind: mutation
+      description: "Delete one Shopify product. Requires write_products."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Shopify deleted the product.}
+        - {id: notFound, goName: NotFound, description: The product was already absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shopify rejected deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: deletedProduct, branch: deleted, description: Shopify deleted a product., default: true, output: {productId: 201}}

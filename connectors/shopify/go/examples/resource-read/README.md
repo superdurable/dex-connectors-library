@@ -1,6 +1,6 @@
 # Shopify resource-read example
 
-This example registers three Flows on the static `shopify` connection. `ShopifyResourceRead` reads one order; `ShopifyOrderCount` counts orders; `ShopifyCreateOrder` creates an unpaid order with bounded retries. Optional error branches are unwired and fail the Flow.
+This example registers four Flows on the static `shopify` connection. `ShopifyResourceRead` reads one order; `ShopifyOrderCount` counts orders; `ShopifyCreateOrder` creates an unpaid order; `ShopifyCreateProduct` creates a product. Both creates use bounded retries. Optional error branches are unwired and fail the Flow.
 
 ## Generate strict FDG 2.0
 
@@ -41,5 +41,7 @@ The Flow completes with the provider value. A missing resource selects the unwir
 To count closed orders, start `ShopifyOrderCount` with a unique Flow ID and input `{"status":"closed"}`. Blank status counts every order status.
 
 With an existing app token granted `write_orders`, start `ShopifyCreateOrder` with a unique Flow ID and input such as `{"lineItems":[{"title":"Sample item","quantity":1,"price":"29.00"}]}`. Shopify creates the order without collecting payment, sending a receipt, or claiming inventory.
+
+With `write_products`, start `ShopifyCreateProduct` with a unique Flow ID and input such as `{"title":"New Product","status":"draft"}`.
 
 The deterministic unit test checks input mapping and Flow identity. `workflow_mock_integration_test.go` runs the manifest defaults through a real Dex Worker in CI and can be run locally against `dexcli dev -open=false`.

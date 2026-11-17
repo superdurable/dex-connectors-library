@@ -189,7 +189,7 @@ func (operation ListOrdersOperation) Invoke(call sdkgo.Call, input ListOrdersInp
 		}
 		query.Set("page_info", input.PageInfo)
 	} else {
-		if !isValidOrderStatus(input.Status) || !isValidFinancialStatus(input.FinancialStatus) || !isValidFulfillmentStatus(input.FulfillmentStatus) || !isValidOrderTimestamps(input) || input.SinceID < 0 || !isValidOrderIDs(input.IDs) || !isValidAttributionAppID(input.AttributionAppID) {
+		if !isValidOrderStatus(input.Status) || !isValidFinancialStatus(input.FinancialStatus) || !isValidFulfillmentStatus(input.FulfillmentStatus) || !isValidOrderTimestamps(input) || input.SinceID < 0 || !isValidNumericIDList(input.IDs) || !isValidAttributionAppID(input.AttributionAppID) {
 			return failedAttempt[OrderPage]("listOrders", ListOrdersBranchDefect, sdkgo.FailureValidation, "order filters are invalid")
 		}
 		query.Set("status", orderStatusOrAny(input.Status))
@@ -296,7 +296,7 @@ func isValidOrderTimestamps(input ListOrdersInput) bool {
 	return true
 }
 
-func isValidOrderIDs(value string) bool {
+func isValidNumericIDList(value string) bool {
 	if value == "" {
 		return true
 	}

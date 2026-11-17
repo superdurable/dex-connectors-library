@@ -37,6 +37,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[shopify.DeletedOrder](`{"orderId":101}`)
 			return err
 		}},
+		{name: "getProduct/foundProduct/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shopify.Product](`{"id":201,"title":"Sample Product","status":"active"}`)
+			return err
+		}},
+		{name: "listProducts/listedProducts/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shopify.ProductPage](`{"products":[{"id":201,"title":"Sample Product","status":"active"}]}`)
+			return err
+		}},
+		{name: "createProduct/createdProduct/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shopify.Product](`{"id":202,"title":"New Product","status":"draft"}`)
+			return err
+		}},
+		{name: "updateProduct/updatedProduct/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shopify.Product](`{"id":201,"title":"Updated Product","status":"active"}`)
+			return err
+		}},
+		{name: "deleteProduct/deletedProduct/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shopify.DeletedProduct](`{"productId":201}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -64,5 +84,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteOrder().Definition().Operation.OperationID != "deleteOrder" {
 		t.Errorf("deleteOrder mock has another definition")
+	}
+	if mock.GetProduct().Definition().Operation.OperationID != "getProduct" {
+		t.Errorf("getProduct mock has another definition")
+	}
+	if mock.ListProducts().Definition().Operation.OperationID != "listProducts" {
+		t.Errorf("listProducts mock has another definition")
+	}
+	if mock.CreateProduct().Definition().Operation.OperationID != "createProduct" {
+		t.Errorf("createProduct mock has another definition")
+	}
+	if mock.UpdateProduct().Definition().Operation.OperationID != "updateProduct" {
+		t.Errorf("updateProduct mock has another definition")
+	}
+	if mock.DeleteProduct().Definition().Operation.OperationID != "deleteProduct" {
+		t.Errorf("deleteProduct mock has another definition")
 	}
 }
