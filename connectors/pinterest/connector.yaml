@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: pinterest
   displayName: Pinterest
-  description: List Pins owned by the connected Pinterest account.
+  description: Read Pins and boards available to the connected Pinterest account.
   company: Pinterest
   categories: [social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: pinterest
   languages:
@@ -88,6 +88,26 @@ spec:
         storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
+    - name: listBoards
+      goName: ListBoards
+      inputType: ListBoardsInput
+      outputType: BoardsPage
+      kind: query
+      description: List one page of board identities and names owned by the authorized user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Pinterest returned the selected board page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pinterest conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pinterest returned malformed or oversized board JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example board is visible.
+          output: {boards: [{id: '987654321', name: Example Board}], nextBookmark: ''}
     - name: listPins
       goName: ListPins
       inputType: ListPinsInput
@@ -96,7 +116,7 @@ spec:
       description: List one page of Pin IDs, board IDs, and titles owned by the authorized user.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Pinterest returned the selected Pin page.}
         - {id: providerRejected, goName: ProviderRejected, description: Pinterest conclusively rejected the read., optional: true}

@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listBoards/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pinterest.BoardsPage](`{"boards":[{"id":"987654321","name":"Example Board"}],"nextBookmark":""}`)
+			return err
+		}},
 		{name: "listPins/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[pinterest.PinsPage](`{"pins":[{"id":"123456789","boardId":"987654321","title":"Example Pin"}],"nextBookmark":""}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListBoards().Definition().Operation.OperationID != "listBoards" {
+		t.Errorf("listBoards mock has another definition")
+	}
 	if mock.ListPins().Definition().Operation.OperationID != "listPins" {
 		t.Errorf("listPins mock has another definition")
 	}
