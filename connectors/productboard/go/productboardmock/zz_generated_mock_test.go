@@ -36,6 +36,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[productboard.FeaturesPage](`{"features":[{"id":"123e4567-e89b-12d3-a456-426614174000","name":"Example feature"}],"nextCursor":""}`)
 			return err
 		}},
+		{name: "listNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.NotesPage](`{"notes":[{"id":"323e4567-e89b-12d3-a456-426614174000","type":"textNote","name":"Example note"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "getNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.NoteMetadata](`{"id":"323e4567-e89b-12d3-a456-426614174000","type":"textNote","name":"Example note"}`)
+			return err
+		}},
+		{name: "createTextNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.NoteMetadata](`{"id":"323e4567-e89b-12d3-a456-426614174000","type":"textNote","name":"Example note"}`)
+			return err
+		}},
+		{name: "renameNote/renamedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.RenamedNote](`{"id":"323e4567-e89b-12d3-a456-426614174000","name":"Renamed note"}`)
+			return err
+		}},
+		{name: "archiveNote/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.ArchivedNote](`{"id":"323e4567-e89b-12d3-a456-426614174000"}`)
+			return err
+		}},
+		{name: "deleteNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[productboard.DeletedNote](`{"id":"323e4567-e89b-12d3-a456-426614174000"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -60,5 +84,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListFeatures().Definition().Operation.OperationID != "listFeatures" {
 		t.Errorf("listFeatures mock has another definition")
+	}
+	if mock.ListNotes().Definition().Operation.OperationID != "listNotes" {
+		t.Errorf("listNotes mock has another definition")
+	}
+	if mock.GetNote().Definition().Operation.OperationID != "getNote" {
+		t.Errorf("getNote mock has another definition")
+	}
+	if mock.CreateTextNote().Definition().Operation.OperationID != "createTextNote" {
+		t.Errorf("createTextNote mock has another definition")
+	}
+	if mock.RenameNote().Definition().Operation.OperationID != "renameNote" {
+		t.Errorf("renameNote mock has another definition")
+	}
+	if mock.ArchiveNote().Definition().Operation.OperationID != "archiveNote" {
+		t.Errorf("archiveNote mock has another definition")
+	}
+	if mock.DeleteNote().Definition().Operation.OperationID != "deleteNote" {
+		t.Errorf("deleteNote mock has another definition")
 	}
 }

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: productboard
   displayName: Productboard
-  description: List, read, create, rename, and delete features through Productboard REST API v2.
+  description: Manage features and notes through Productboard REST API v2.
   company: Productboard
   categories: [project-management]
   version: v0.3.0
@@ -55,6 +55,7 @@ spec:
         - Sign in to your Productboard workspace and open Settings > Integrations > Public APIs > Access Token. If the option is unavailable, ask the workspace administrator about Public API access. Click plus to create a token and copy its one-time opaque value into secret api_token. Revoke or rotate it from the same page.
         - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The connector requests only feature names; it never places the token in Flow state.
         - Run listFeatures with a blank pageCursor for the first page. For the next page, copy the non-secret nextCursor returned by the previous call into pageCursor; it is an opaque string, not a URL. Blank always starts again from the first page.
+        - For feature or note lookups, find the non-secret UUID in the Productboard item URL or a list operation result. For createFeature, select the parent component in Productboard Features > Hierarchy and use its UUID; for createTextNote, provide the note title and Productboard-supported rich-text content. No operation stores the API token in Flow state.
   operations:
     - name: getFeature
       goName: GetFeature
@@ -158,3 +159,126 @@ spec:
           default: true
           description: One example feature is returned.
           output: {features: [{id: "123e4567-e89b-12d3-a456-426614174000", name: Example feature}], nextCursor: ""}
+    - name: listNotes
+      goName: ListNotes
+      inputType: ListNotesInput
+      outputType: NotesPage
+      kind: query
+      description: List one page of note IDs, names, and types without note content.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Productboard returned one note page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Productboard returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The page cursor or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example text note is returned.
+          output: {notes: [{id: "323e4567-e89b-12d3-a456-426614174000", type: textNote, name: Example note}], nextCursor: ""}
+    - name: getNote
+      goName: GetNote
+      inputType: GetNoteInput
+      outputType: NoteMetadata
+      kind: query
+      description: Read a note ID, name, and type without note content.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Productboard returned the note.}
+        - {id: notFound, goName: NotFound, description: Productboard did not expose the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Productboard returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The note ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example text note is returned.
+          output: {id: "323e4567-e89b-12d3-a456-426614174000", type: textNote, name: Example note}
+    - name: createTextNote
+      goName: CreateTextNote
+      inputType: CreateTextNoteInput
+      outputType: NoteMetadata
+      kind: mutation
+      description: Create one text note with a name and rich-text content.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Productboard created the text note.}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the note., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Productboard may have created the note but its ID is unconfirmed., optional: true}
+        - {id: defect, goName: Defect, description: The note input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One example text note was created.
+          output: {id: "323e4567-e89b-12d3-a456-426614174000", type: textNote, name: Example note}
+    - name: renameNote
+      goName: RenameNote
+      inputType: RenameNoteInput
+      outputType: RenamedNote
+      kind: mutation
+      description: Replace a note's name with an absolute value.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: renamed, goName: Renamed, description: Productboard renamed the note.}
+        - {id: notFound, goName: NotFound, description: Productboard did not expose the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the rename., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Productboard returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The note ID, name, or credentials are invalid.", optional: true}
+      mocks:
+        - name: renamedDefault
+          branch: renamed
+          default: true
+          description: One example note was renamed.
+          output: {id: "323e4567-e89b-12d3-a456-426614174000", name: Renamed note}
+    - name: archiveNote
+      goName: ArchiveNote
+      inputType: ArchiveNoteInput
+      outputType: ArchivedNote
+      kind: mutation
+      description: Set a note's archived field to true.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: archived, goName: Archived, description: Productboard archived the note.}
+        - {id: notFound, goName: NotFound, description: Productboard did not expose the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the archive., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Productboard returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: The note ID or credentials are invalid., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: archived
+          default: true
+          description: One example note was archived.
+          output: {id: "323e4567-e89b-12d3-a456-426614174000"}
+    - name: deleteNote
+      goName: DeleteNote
+      inputType: DeleteNoteInput
+      outputType: DeletedNote
+      kind: mutation
+      description: Permanently delete a note and its relationships.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Productboard deleted the note.}
+        - {id: notFound, goName: NotFound, description: Productboard did not expose the note., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: The note ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example note was deleted.
+          output: {id: "323e4567-e89b-12d3-a456-426614174000"}

@@ -35,10 +35,16 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"listFeatures":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListFeatures(), reference),
-		"getFeature":    newConformanceQueryInvocation(t, scenario.Input, context, client.GetFeature(), reference),
-		"createFeature": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateFeature(), reference, scenario.CallID),
-		"renameFeature": newConformanceMutationInvocation(t, scenario.Input, context, client.RenameFeature(), reference, scenario.CallID),
-		"deleteFeature": newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteFeature(), reference, scenario.CallID),
+		"listFeatures":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListFeatures(), reference),
+		"getFeature":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetFeature(), reference),
+		"createFeature":  newConformanceMutationInvocation(t, scenario.Input, context, client.CreateFeature(), reference, scenario.CallID),
+		"renameFeature":  newConformanceMutationInvocation(t, scenario.Input, context, client.RenameFeature(), reference, scenario.CallID),
+		"deleteFeature":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteFeature(), reference, scenario.CallID),
+		"listNotes":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListNotes(), reference),
+		"getNote":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetNote(), reference),
+		"createTextNote": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTextNote(), reference, scenario.CallID),
+		"renameNote":     newConformanceMutationInvocation(t, scenario.Input, context, client.RenameNote(), reference, scenario.CallID),
+		"archiveNote":    newConformanceMutationInvocation(t, scenario.Input, context, client.ArchiveNote(), reference, scenario.CallID),
+		"deleteNote":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteNote(), reference, scenario.CallID),
 	}}
 }
