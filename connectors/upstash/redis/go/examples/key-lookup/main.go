@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{keylookup.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{keylookup.NewFlow(connection), keylookup.NewWriteFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Upstash Redis key lookup Flow: %w", err)
 	}
