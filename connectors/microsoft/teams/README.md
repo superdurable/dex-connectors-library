@@ -1,6 +1,6 @@
 # Microsoft Teams Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go@v0.25.0`.
 
 The TypeScript package `@superdurable/connector-microsoft-teams@0.1.0`
 implements all four operations with the generated manifest OAuth refresh
@@ -22,7 +22,7 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/
 > is not verified.
 
 This module posts Microsoft Teams channel messages, thread replies, and chat
-messages, and reads the replies to a channel message, through Microsoft Graph
+messages, and reads channels, channel messages, chats, and replies through Microsoft Graph
 v1.0 with delegated OAuth. A Flow can post an update, ask for an answer in the
 thread, and wait on a durable Timer until a person replies.
 
@@ -39,6 +39,15 @@ when the sender should not be a person.
 | `PostThreadReply` | `POST /teams/{team-id}/channels/{channel-id}/messages/{message-id}/replies` | Mutation | `ChannelMessage.Send` |
 | `ListThreadReplies` | `GET /teams/{team-id}/channels/{channel-id}/messages/{message-id}/replies` | Query | `ChannelMessage.Read.All` |
 | `PostChatMessage` | `POST /chats/{chat-id}/messages` | Mutation | `ChatMessage.Send` |
+| `ListChannels`, `GetChannel` | `GET /teams/{team-id}/channels[/{channel-id}]` | Query | `Channel.ReadBasic.All` |
+| `ListChannelMessages`, `GetChannelMessage` | `GET /teams/{team-id}/channels/{channel-id}/messages[/{message-id}]` | Query | `ChannelMessage.Read.All` |
+| `ListChats`, `GetChat` | `GET /me/chats[/{chat-id}]` | Query | `Chat.ReadBasic` |
+
+These reads return one bounded page or one resource. The six new Go queries use
+the existing connection scopes. Channel creation, editing, and deletion need
+additional channel permissions; chat creation, member changes, message
+deletion, and meeting or task actions likewise need scopes this connection
+does not request. The Go example checks its picked channel before posting.
 
 The names follow the Slack connector's `PostChannelMessage` and
 `PostThreadReply`. Posts accept `text` or `html` content, an optional
