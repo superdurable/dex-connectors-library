@@ -19,7 +19,7 @@ mkdir -p /tmp/harvest-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/harvest/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/harvest/go \
-  --version v0.2.0 --tag connectors/harvest/go/v0.2.0 \
+  --version v0.3.0 --tag connectors/harvest/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/harvest-release/connector-release.json \
   --digest-output /tmp/harvest-release/connector-release.json.sha256

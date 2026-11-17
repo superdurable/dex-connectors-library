@@ -15,7 +15,8 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/gusto/scenarios.json")
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/gusto/scenarios.json")
     if scenario["operation"] == "getEmployee"
 ]
 CONNECTION = sdk.ConnectionRef("gusto", "gusto")

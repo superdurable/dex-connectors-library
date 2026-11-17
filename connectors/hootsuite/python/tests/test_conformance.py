@@ -16,7 +16,8 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay, static_credentials  # type: ignore[import-not-found]  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in load_scenarios(ROOT / "conformance/connectors/hootsuite/scenarios.json")
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/hootsuite/scenarios.json")
     if scenario["operation"] in {"listSocialProfiles", "listScheduledPosts", "schedulePost"}
 ]
 CONNECTION = sdk.ConnectionRef("hootsuite", "hootsuite")

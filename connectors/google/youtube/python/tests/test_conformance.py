@@ -17,7 +17,8 @@ from connector_scenarios import ExchangeRecorder, PythonOperationAdapter, load_s
 SCENARIOS = [
     scenario
     for scenario in load_scenarios(ROOT / "conformance/connectors/google/youtube/scenarios.json")
-    if scenario["operation"] in {"searchVideos", "getVideo", "getChannel", "listPlaylistItems", "addPlaylistItem"}
+    if scenario["operation"]
+    in {"searchVideos", "getVideo", "getChannel", "listPlaylistItems", "addPlaylistItem"}
 ]
 CONNECTION = sdk.ConnectionRef("google", "youtube")
 

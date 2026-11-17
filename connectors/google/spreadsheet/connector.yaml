@@ -25,11 +25,6 @@ spec:
       package: spreadsheet
   configuration:
     fields:
-      - name: driveBaseUrl
-        goName: DriveBaseURL
-        type: url
-        description: Google Drive API HTTPS origin for deleting a spreadsheet file. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
-        default: https://www.googleapis.com
       - name: endpoint
         goName: Endpoint
         type: url
@@ -60,6 +55,11 @@ spec:
         description: Rows after the last processed row that one rowAdded poll request reads, from 1 to 500; a poll that finds only blank rows in this window waits there, so increase it when people leave runs of blank rows below the data, not for busy tabs, since further rows are read by an immediate follow-up request.
         required: false
         default: 100
+      - name: driveBaseUrl
+        goName: DriveBaseURL
+        type: url
+        description: Google Drive API HTTPS origin for deleting a spreadsheet file. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://www.googleapis.com
   auth:
     refreshable: true
     type: oauth2
@@ -191,7 +191,7 @@ spec:
       description: Create a spreadsheet with a title; duplicate creation is bounded by a send cap.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: created, goName: Created, description: Google created the spreadsheet.}
         - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the create., optional: true}
@@ -346,7 +346,7 @@ spec:
       description: Append one row to a worksheet, allowing bounded repeats when the outcome is unknown.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
       branches:
         - {id: appended, goName: Appended, description: Google appended the row.}
         - {id: notFound, goName: NotFound, description: The spreadsheet or sheet does not exist., optional: true}

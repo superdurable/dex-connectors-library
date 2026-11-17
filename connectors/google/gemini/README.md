@@ -97,13 +97,13 @@ full `fileSearchStores/{id}` name. Deleting an absent store succeeds; set
 display name and optionally `models/{model-id}` as `EmbeddingModel`. The
 provider chooses the resource name.
 
-Queries and deletion are safe to repeat. Creation uses a three-send cap and
-searches the store list after an unknown outcome; if it cannot confirm the
-store after the cap, the `uncertain` branch requires reconciliation. Because
-Gemini does not accept a create idempotency key and display names are not
-unique, inspect the provider's store list before treating a matching display
-name as the intended resource. The connector does not put the API key in a URL
-or return it in a result.
+Queries and deletion are safe to repeat. Creation uses a three-send cap.
+After an unknown outcome it reads back by a checkpointed provider resource ID
+when one is available. Otherwise it may resend while below the cap; at the cap
+it selects `uncertain` for manual reconciliation. Gemini does not accept a
+create idempotency key, and display names are not unique, so another store with
+the same name never confirms this create. The connector does not put the API
+key in a URL or return it in a result.
 
 The connection's API key also authorizes these operations. No additional
 OAuth scopes or fields are required. The example has no new Dex Web

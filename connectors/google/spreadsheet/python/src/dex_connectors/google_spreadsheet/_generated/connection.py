@@ -172,14 +172,9 @@ setattr(new_project_connection, '__module__', 'dex_connectors.google_spreadsheet
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"driveBaseUrl", "endpoint", "maxResponseBytes", "maxRows", "pollInterval", "pollPageSize"}:
+    if set(value) - {"endpoint", "maxResponseBytes", "maxRows", "pollInterval", "pollPageSize", "driveBaseUrl"}:
         raise ValueError("Google Sheets configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
-    if "driveBaseUrl" in value:
-        drive_base_url = value["driveBaseUrl"]
-        if not (isinstance(drive_base_url, str)):
-            raise ValueError("Google Sheets configuration driveBaseUrl has an invalid type")
-        config_arguments['drive_base_url'] = drive_base_url
     if "endpoint" in value:
         endpoint = value["endpoint"]
         if not (isinstance(endpoint, str)):
@@ -205,4 +200,9 @@ def _decode_config(value: dict[str, Any]) -> Config:
         if not (type(poll_page_size) is int):
             raise ValueError("Google Sheets configuration pollPageSize has an invalid type")
         config_arguments['poll_page_size'] = poll_page_size
+    if "driveBaseUrl" in value:
+        drive_base_url = value["driveBaseUrl"]
+        if not (isinstance(drive_base_url, str)):
+            raise ValueError("Google Sheets configuration driveBaseUrl has an invalid type")
+        config_arguments['drive_base_url'] = drive_base_url
     return Config(**config_arguments)

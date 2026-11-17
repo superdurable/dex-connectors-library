@@ -15,7 +15,11 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay, static_credentials  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = [scenario for scenario in load_scenarios(ROOT / "conformance/connectors/google/search-console/scenarios.json") if scenario["operation"] == "listSites"]
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/google/search-console/scenarios.json")
+    if scenario["operation"] == "listSites"
+]
 CONNECTION = sdk.ConnectionRef("google-search-console", "google-search-console")
 
 

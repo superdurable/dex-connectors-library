@@ -15,12 +15,15 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/heap/scenarios.json")
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/heap/scenarios.json")
     if scenario["operation"] == "setUserProperties"
 ]
 CONNECTION = sdk.ConnectionRef("heap", "heap")
 ADAPTER = conformance.PythonOperationAdapter(
-    "heap", CONNECTION, heap,
+    "heap",
+    CONNECTION,
+    heap,
     lambda client, _: heap.Client(
         heap.Config(app_id="12345", base_url="http://127.0.0.1:8848", max_response_bytes=8), client
     ),

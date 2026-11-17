@@ -5,16 +5,11 @@
       "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
       "exchanges": [
         {
-          "body": "{\"fileSearchStores\":[{\"name\":\"fileSearchStores/team-docs-abc123def456\",\"displayName\":\"Team docs\",\"embeddingModel\":\"models/gemini-embedding-2\",\"createTime\":\"2026-11-16T00:00:00Z\"}]}",
+          "body": "{\"name\":\"fileSearchStores/team-docs-abc123def456\",\"displayName\":\"Team docs\",\"embeddingModel\":\"models/gemini-embedding-2\",\"createTime\":\"2026-11-16T00:00:00Z\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1beta/fileSearchStores",
-          "query": {
-            "pageSize": [
-              "20"
-            ]
-          },
+          "path": "/v1beta/fileSearchStores/team-docs-abc123def456",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -45,11 +40,12 @@
         "displayName": "Team docs",
         "embeddingModel": "models/gemini-embedding-2"
       },
-      "name": "createFileSearchStore-read-back",
+      "name": "createFileSearchStore-provider-id-read-back",
       "operation": "createFileSearchStore",
       "priorHeartbeat": {
         "attempt": 1,
         "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
+        "providerId": "fileSearchStores/team-docs-abc123def456",
         "sendCount": 1,
         "state": "claimed"
       }
@@ -57,27 +53,6 @@
     {
       "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
       "exchanges": [
-        {
-          "body": "{\"fileSearchStores\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v1beta/fileSearchStores",
-          "query": {
-            "pageSize": [
-              "20"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "X-Goog-Api-Key": [
-              "AIzaSENTINEL-test-key_0123456789"
-            ]
-          },
-          "status": 200
-        },
         {
           "body": "{\"name\":\"fileSearchStores/team-docs-abc123def456\",\"displayName\":\"Team docs\",\"embeddingModel\":\"models/gemini-embedding-2\",\"createTime\":\"2026-11-16T00:00:00Z\"}",
           "headers": {},
@@ -118,7 +93,7 @@
           "embeddingModel": "models/gemini-embedding-2",
           "name": "fileSearchStores/team-docs-abc123def456"
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
@@ -128,7 +103,7 @@
         "displayName": "Team docs",
         "embeddingModel": "models/gemini-embedding-2"
       },
-      "name": "createFileSearchStore-resend",
+      "name": "createFileSearchStore-concurrent-same-name",
       "operation": "createFileSearchStore",
       "priorHeartbeat": {
         "attempt": 1,
@@ -344,36 +319,14 @@
     },
     {
       "callId": "0257f663-6d67-53f4-bc04-067ec2309ecc",
-      "exchanges": [
-        {
-          "body": "{\"fileSearchStores\":[]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v1beta/fileSearchStores",
-          "query": {
-            "pageSize": [
-              "20"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "X-Goog-Api-Key": [
-              "AIzaSENTINEL-test-key_0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
         "output": {
           "name": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true

@@ -10,12 +10,12 @@ from dex_connectors.sdk import SecretString
 @dataclass(frozen=True, slots=True)
 class Config:
 
-    drive_base_url: str = "https://www.googleapis.com"
     endpoint: str = "https://sheets.googleapis.com/v4"
     max_response_bytes: int = 4194304
     max_rows: int = 10000
     poll_interval_seconds: float = 30
     poll_page_size: int = 100
+    drive_base_url: str = "https://www.googleapis.com"
 
 setattr(Config, '__module__', 'dex_connectors.google_spreadsheet.client')
 

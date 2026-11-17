@@ -30,12 +30,12 @@ const (
 )
 
 type Config struct {
-	DriveBaseURL     string        `json:"driveBaseUrl,omitempty" yaml:"driveBaseUrl,omitempty"`
 	Endpoint         string        `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
 	MaxRows          int64         `json:"maxRows,omitempty" yaml:"maxRows,omitempty"`
 	PollInterval     time.Duration `json:"pollInterval,omitempty" yaml:"pollInterval,omitempty"`
 	PollPageSize     int64         `json:"pollPageSize,omitempty" yaml:"pollPageSize,omitempty"`
+	DriveBaseURL     string        `json:"driveBaseUrl,omitempty" yaml:"driveBaseUrl,omitempty"`
 }
 
 type Credentials struct {
@@ -243,20 +243,17 @@ func (Connection) GoString() string { return "spreadsheet.Connection{[REDACTED]}
 
 func DefaultConfig() Config {
 	return Config{
-		DriveBaseURL:     "https://www.googleapis.com",
 		Endpoint:         "https://sheets.googleapis.com/v4",
 		MaxResponseBytes: 4194304,
 		MaxRows:          10000,
 		PollInterval:     time.Duration(30000000000),
 		PollPageSize:     100,
+		DriveBaseURL:     "https://www.googleapis.com",
 	}
 }
 
 func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
-	if config.DriveBaseURL == "" {
-		config.DriveBaseURL = defaults.DriveBaseURL
-	}
 	if config.Endpoint == "" {
 		config.Endpoint = defaults.Endpoint
 	}
@@ -272,16 +269,13 @@ func withConfigDefaults(config Config) Config {
 	if config.PollPageSize == 0 {
 		config.PollPageSize = defaults.PollPageSize
 	}
+	if config.DriveBaseURL == "" {
+		config.DriveBaseURL = defaults.DriveBaseURL
+	}
 	return config
 }
 
 func (config Config) Validate() error {
-	if config.DriveBaseURL != "" {
-		parsed, err := url.Parse(config.DriveBaseURL)
-		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
-			return fmt.Errorf("configuration driveBaseUrl must be an absolute URL")
-		}
-	}
 	if config.Endpoint != "" {
 		parsed, err := url.Parse(config.Endpoint)
 		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
@@ -299,6 +293,12 @@ func (config Config) Validate() error {
 	}
 	if config.PollPageSize < 0 {
 		return fmt.Errorf("configuration pollPageSize cannot be negative")
+	}
+	if config.DriveBaseURL != "" {
+		parsed, err := url.Parse(config.DriveBaseURL)
+		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
+			return fmt.Errorf("configuration driveBaseUrl must be an absolute URL")
+		}
 	}
 	return nil
 }
@@ -471,7 +471,7 @@ var CreateSpreadsheetDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
 	MaxSends:        3,
@@ -1019,7 +1019,7 @@ var AppendRowDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilitySync,
+		ExecuteDurability: dex.StepDurabilityAsync,
 	},
 	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
 	MaxSends:        3,

@@ -17,9 +17,13 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import ExchangeRecorder, HeartbeatContext, replay  # noqa: E402
 
-SCENARIOS = [scenario for scenario in json.loads(
-    (ROOT / "conformance/connectors/google/gemini/scenarios.json").read_text()
-)["scenarios"] if scenario["operation"] == "generateContent"]
+SCENARIOS = [
+    scenario
+    for scenario in json.loads((ROOT / "conformance/connectors/google/gemini/scenarios.json").read_text())[
+        "scenarios"
+    ]
+    if scenario["operation"] == "generateContent"
+]
 CONNECTION = sdk.ConnectionRef("google", "gemini-api")
 
 
