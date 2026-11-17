@@ -5,7 +5,7 @@ import { it } from 'vitest';
 import { type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { HackerNewsClient } from '../src/client.js';
-import { GetItemInputSchema, ListStoryIDsInputSchema } from '../src/generated/models.js';
+import { GetItemInputSchema, ListStoryIDsInputSchema, SearchStoriesInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, withScenarioHTTPServer, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/hackernews/scenarios.json', import.meta.url));
@@ -21,11 +21,12 @@ async function invokeHackerNews(scenario: Scenario, recorder: ExchangeRecorder) 
 }
 
 async function invokeAtBaseUrl(scenario: Scenario, baseUrl: string, send?: (request: ProviderRequest) => Promise<{ status: number; headers: Record<string, string>; body: Uint8Array }>) {
-    const client = new HackerNewsClient({ baseUrl: baseUrl, maxResponseBytes: 300 }, { now: () => new Date(scenario.fixedClock ?? "2026-10-26T12:00:00Z"), send });
+    const client = new HackerNewsClient({ baseUrl: baseUrl, searchBaseUrl: baseUrl }, { now: () => new Date(scenario.fixedClock ?? "2026-10-26T12:00:00Z"), send });
     const call = scenarioCall(scenario, connection, 'hacker-news-daily', {
       flowId: 'hackernews-conformance', cancellationSignal: new AbortController().signal,
     }, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
     if (scenario.operation === 'listStoryIDs') return client.listStoryIDs().invoke(call, ListStoryIDsInputSchema.parse(scenario.input));
     if (scenario.operation === 'getItem') return client.getItem().invoke(call, GetItemInputSchema.parse(scenario.input));
+    if (scenario.operation === 'searchStories') return client.searchStories().invoke(call, SearchStoriesInputSchema.parse(scenario.input));
     throw new Error(`unknown operation ${scenario.operation}`);
 }

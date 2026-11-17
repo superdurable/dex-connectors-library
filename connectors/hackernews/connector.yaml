@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: hacker-news-daily
   displayName: Hacker News Daily
-  description: Read public Hacker News feeds, stories, and discussions for a daily developer digest with direct source links.
+  description: Read and search public Hacker News feeds, stories, and discussions for a daily developer digest with direct source links.
   company: Hacker News
   categories: [data-search]
-  version: v0.25.0
+  version: v0.26.0
 spec:
   provider: hacker-news
   languages:
@@ -15,9 +15,9 @@ spec:
       operations: [listStoryIDs, getItem]
       triggers: []
     typescript:
-      version: v0.3.0
+      version: v0.4.0
       package: '@superdurable/connector-hackernews'
-      operations: [listStoryIDs, getItem]
+      operations: [listStoryIDs, getItem, searchStories]
       triggers: []
   codegen:
     go:
@@ -27,7 +27,7 @@ spec:
       - name: baseUrl
         goName: BaseURL
         type: url
-        description: Hacker News Firebase API base URL; this is a fixed public endpoint, so leave the field blank unless a loopback test server is being used.
+        description: Hacker News Firebase API base URL that listStoryIDs and getItem read; this is a fixed public endpoint, so leave the field blank unless a loopback test server is being used.
         default: https://hacker-news.firebaseio.com/v0
       - name: timeout
         goName: Timeout
@@ -39,6 +39,11 @@ spec:
         type: integer
         description: Maximum bytes accepted from one Hacker News response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
         default: 1048576
+      - name: searchBaseUrl
+        goName: SearchBaseURL
+        type: url
+        description: Hacker News Search API base URL that searchStories reads, documented at https://hn.algolia.com/api; this is a fixed public endpoint that needs no key and is not secret, so leave the field blank unless a loopback test server is being used.
+        default: https://hn.algolia.com/api/v1
   auth:
     type: none
     connectionKind: none
@@ -115,3 +120,60 @@ spec:
           branch: providerRejected
           description: Hacker News rejects the requested item read.
           failure: {kind: PROVIDER_REJECTION, message: Hacker News rejected the item request.}
+    - name: searchStories
+      goName: SearchStories
+      inputType: SearchStoriesInput
+      outputType: StorySearchPage
+      kind: query
+      description: Search public Hacker News stories, including Ask HN and Show HN posts, by keyword through the official Hacker News Search API, sorted by relevance or date and filtered by tag, creation time, and minimum points, one zero-based page at a time.
+      idempotency: none
+      authorization: none
+      pagination: {inputField: page, nextField: nextPage}
+      agent:
+        exposed: true
+        # A read changes nothing. providerRejected follows a definite non-200 refusal and defect local
+        # validation before the request is sent. invalidResponse is a provider malfunction the model cannot fix.
+        branches: {providerRejected: rejected, defect: rejected}
+        description: Search Hacker News stories, including Ask HN and Show HN posts, by keyword. Give query words; optionally sortBy date for newest first, tags show_hn, ask_hn, or front_page, createdAfter and createdBefore as RFC 3339 times, minPoints, and a zero-based page with hitsPerPage from 1 to 100. Returns story IDs, titles, source and discussion URLs, authors, points, comment counts, creation times, plain story text, and the next page number, which is zero after the last page.
+      branches:
+        - {id: searched, goName: Searched, description: One page of matching stories was read; it can be empty.}
+        - {id: providerRejected, goName: ProviderRejected, description: Hacker News Search rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hacker News Search returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: compilerStories
+          branch: searched
+          description: A newest-first search for compiler stories spans three zero-based pages; a story repeats across a page boundary as a newer story arrives, an Ask HN text post has no URL, and a one-point story is a candidate for a minimum-points filter.
+          default: true
+          pages:
+            - stories:
+                - {id: 42003, title: "Show HN: A compiler explorer for small languages", url: "https://example.com/explorer", discussionUrl: "https://news.ycombinator.com/item?id=42003", author: langtools, points: 12, commentCount: 3, createdAt: "2026-10-26T11:50:00Z", tags: [story, show_hn]}
+                - {id: 42001, title: A compiler release, url: "https://example.com/compiler", discussionUrl: "https://news.ycombinator.com/item?id=42001", author: compilerdev, points: 100, commentCount: 40, createdAt: "2026-10-26T11:00:00Z", tags: [story, front_page]}
+              page: 0
+              pages: 3
+              totalHits: 5
+              hitsPerPage: 2
+              nextPage: 1
+            - stories:
+                - {id: 42001, title: A compiler release, url: "https://example.com/compiler", discussionUrl: "https://news.ycombinator.com/item?id=42001", author: compilerdev, points: 100, commentCount: 40, createdAt: "2026-10-26T11:00:00Z", tags: [story, front_page]}
+                - {id: 41990, title: "Ask HN: How do you test a compiler?", discussionUrl: "https://news.ycombinator.com/item?id=41990", author: testwriter, points: 8, commentCount: 5, createdAt: "2026-10-26T09:30:00Z", tags: [story, ask_hn], storyText: "We fuzz the parser.\n\nWhat else catches miscompilations early?"}
+              page: 1
+              pages: 3
+              totalHits: 5
+              hitsPerPage: 2
+              nextPage: 2
+            - stories:
+                - {id: 41980, title: Notes on compiler passes, url: "https://example.com/passes", discussionUrl: "https://news.ycombinator.com/item?id=41980", author: notetaker, points: 1, commentCount: 0, createdAt: "2026-10-26T08:15:00Z", tags: [story]}
+              page: 2
+              pages: 3
+              totalHits: 5
+              hitsPerPage: 2
+              nextPage: 0
+        - name: searchRejected
+          branch: providerRejected
+          description: Hacker News Search rejects the requested story search.
+          failure: {kind: PROVIDER_REJECTION, message: Hacker News Search rejected the story search.}

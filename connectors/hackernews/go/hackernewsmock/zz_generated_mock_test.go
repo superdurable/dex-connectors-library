@@ -24,6 +24,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[hackernews.Item](`{"id":42001,"type":"story","by":"compilerdev","time":1793016000,"title":"A compiler release","url":"https://example.com/compiler","discussionUrl":"https://news.ycombinator.com/item?id=42001","score":100,"descendants":0}`)
 			return err
 		}},
+		{name: "searchStories/compilerStories/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hackernews.StorySearchPage](`{"stories":[{"id":42003,"title":"Show HN: A compiler explorer for small languages","url":"https://example.com/explorer","discussionUrl":"https://news.ycombinator.com/item?id=42003","author":"langtools","points":12,"commentCount":3,"createdAt":"2026-10-26T11:50:00Z","tags":["story","show_hn"]},{"id":42001,"title":"A compiler release","url":"https://example.com/compiler","discussionUrl":"https://news.ycombinator.com/item?id=42001","author":"compilerdev","points":100,"commentCount":40,"createdAt":"2026-10-26T11:00:00Z","tags":["story","front_page"]}],"page":0,"pages":3,"totalHits":5,"hitsPerPage":2,"nextPage":1}`)
+			return err
+		}},
+		{name: "searchStories/compilerStories/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[hackernews.StorySearchPage](`{"stories":[{"id":42001,"title":"A compiler release","url":"https://example.com/compiler","discussionUrl":"https://news.ycombinator.com/item?id=42001","author":"compilerdev","points":100,"commentCount":40,"createdAt":"2026-10-26T11:00:00Z","tags":["story","front_page"]},{"id":41990,"title":"Ask HN: How do you test a compiler?","discussionUrl":"https://news.ycombinator.com/item?id=41990","author":"testwriter","points":8,"commentCount":5,"createdAt":"2026-10-26T09:30:00Z","tags":["story","ask_hn"],"storyText":"We fuzz the parser.\n\nWhat else catches miscompilations early?"}],"page":1,"pages":3,"totalHits":5,"hitsPerPage":2,"nextPage":2}`)
+			return err
+		}},
+		{name: "searchStories/compilerStories/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[hackernews.StorySearchPage](`{"stories":[{"id":41980,"title":"Notes on compiler passes","url":"https://example.com/passes","discussionUrl":"https://news.ycombinator.com/item?id=41980","author":"notetaker","points":1,"commentCount":0,"createdAt":"2026-10-26T08:15:00Z","tags":["story"]}],"page":2,"pages":3,"totalHits":5,"hitsPerPage":2,"nextPage":0}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +51,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetItem().Definition().Operation.OperationID != "getItem" {
 		t.Errorf("getItem mock has another definition")
+	}
+	if mock.SearchStories().Definition().Operation.OperationID != "searchStories" {
+		t.Errorf("searchStories mock has another definition")
 	}
 }

@@ -18,6 +18,7 @@ func ExposedAgentTools() []sdkgo.AgentToolMetadata {
 	return []sdkgo.AgentToolMetadata{
 		listStoryIDsAgentToolMetadata(),
 		getItemAgentToolMetadata(),
+		searchStoriesAgentToolMetadata(),
 	}
 }
 
@@ -37,7 +38,11 @@ func (connection Connection) AgentTools() ([]sdkgo.AgentTool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("hacker-news-daily agent tool getItem: %w", err)
 	}
-	return []sdkgo.AgentTool{listStoryIDsAgentTool, getItemAgentTool}, nil
+	searchStoriesAgentTool, err := sdkgo.NewQueryAgentTool(connection.operations.SearchStories(), connection.reference, searchStoriesAgentToolMetadata())
+	if err != nil {
+		return nil, fmt.Errorf("hacker-news-daily agent tool searchStories: %w", err)
+	}
+	return []sdkgo.AgentTool{listStoryIDsAgentTool, getItemAgentTool, searchStoriesAgentTool}, nil
 }
 
 // Operations returns the operations this connection's Step factories and agent tools invoke.
@@ -83,5 +88,24 @@ func getItemAgentToolMetadata() sdkgo.AgentToolMetadata {
 		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"GetItemInput identifies one story, comment, job, poll, or poll option.\",\"properties\":{\"id\":{\"description\":\"ID is a positive Hacker News item ID.\",\"type\":\"integer\"}},\"required\":[\"id\"],\"type\":\"object\"}"),
 		Branches:     GetItemDefinition.Branches,
 		StepDefaults: GetItemDefinition.StepDefaults,
+	}
+}
+
+func searchStoriesAgentToolMetadata() sdkgo.AgentToolMetadata {
+	return sdkgo.AgentToolMetadata{
+		Operation:             SearchStoriesDefinition.Operation,
+		Kind:                  sdkgo.AgentOperationKindQuery,
+		ToolName:              "hacker-news-daily_search_stories",
+		Description:           "Search Hacker News stories, including Ask HN and Show HN posts, by keyword. Give query words; optionally sortBy date for newest first, tags show_hn, ask_hn, or front_page, createdAfter and createdBefore as RFC 3339 times, minPoints, and a zero-based page with hitsPerPage from 1 to 100. Returns story IDs, titles, source and discussion URLs, authors, points, comment counts, creation times, plain story text, and the next page number, which is zero after the last page.",
+		IsApprovalRecommended: false,
+		IsRetrySafe:           false,
+		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
+			SearchStoriesBranchProviderRejected: sdkgo.AgentBranchOutcomeRejected,
+			SearchStoriesBranchDefect:           sdkgo.AgentBranchOutcomeRejected,
+		},
+		InputType:    "SearchStoriesInput",
+		InputSchema:  json.RawMessage("{\"additionalProperties\":false,\"description\":\"SearchStoriesInput selects one page of a keyword story search. Every field is optional.\",\"properties\":{\"createdAfter\":{\"description\":\"CreatedAfter keeps stories submitted strictly after this time. Zero sets no lower bound.\",\"format\":\"date-time\",\"type\":\"string\"},\"createdBefore\":{\"description\":\"CreatedBefore keeps stories submitted strictly before this time. Zero sets no upper bound. When both bounds are set, CreatedBefore must be later than CreatedAfter.\",\"format\":\"date-time\",\"type\":\"string\"},\"hitsPerPage\":{\"description\":\"HitsPerPage is the page size from 1 through 100. Zero selects 20.\",\"type\":\"integer\"},\"minPoints\":{\"description\":\"MinPoints keeps stories with at least this many points. Zero sets no minimum; negative is invalid.\",\"type\":\"integer\"},\"page\":{\"description\":\"Page is the zero-based result page. Zero selects the first page. Page times HitsPerPage must stay below 1000, because the Search API serves only the first 1000 hits of a query.\",\"type\":\"integer\"},\"query\":{\"description\":\"Query is the full-text keyword query, at most 512 bytes, matched against story titles, URLs, authors, and submitted text. Quoted phrases and -excluded words follow the Search API syntax. Empty matches every story that the other filters allow.\",\"type\":\"string\"},\"sortBy\":{\"description\":\"SortBy is relevance or date. Empty selects relevance; date returns the newest stories first.\",\"enum\":[\"date\",\"relevance\"],\"type\":\"string\"},\"tags\":{\"description\":\"Tags lists story, show_hn, ask_hn, or front_page. A story must carry every listed tag. The story tag is always applied, so empty searches all stories, including Ask HN and Show HN posts.\",\"items\":{\"enum\":[\"ask_hn\",\"front_page\",\"show_hn\",\"story\"],\"type\":\"string\"},\"type\":\"array\"}},\"type\":\"object\"}"),
+		Branches:     SearchStoriesDefinition.Branches,
+		StepDefaults: SearchStoriesDefinition.StepDefaults,
 	}
 }
