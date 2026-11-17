@@ -28,9 +28,6 @@ func (option clockOption) applyClientOption(client *Client) {
 // WithHTTPClient supplies an HTTP client for provider tests or approved proxies. Redirects are disabled.
 func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{httpClient} }
 
-// WithClock supplies the clock for REST signatures; production uses the current UTC time.
-func WithClock(now func() time.Time) Option { return clockOption{now} }
-
 // Client owns immutable Cloopen configuration and resolves credentials for each call. It is safe for concurrent Steps.
 type Client struct {
 	baseURL          string

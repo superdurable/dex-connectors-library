@@ -24,7 +24,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		credentials = Credentials{}
 	}
 	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials},
-		WithHTTPClient(transport), WithClock(conformanceFixedClock(t, scenario)))
+		WithHTTPClient(transport), clockOption{now: conformanceFixedClock(t, scenario)})
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"getBalance": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetBalance(), testConnection),
