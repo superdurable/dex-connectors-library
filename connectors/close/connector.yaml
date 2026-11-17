@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: close
   displayName: Close
-  description: Create, read, and maintain Close leads, contacts, opportunities, tasks, notes, calls, emails, SMS, and meetings with a connection-owned API key.
+  description: Create, read, and maintain Close CRM records and activities, including sending email and SMS drafts, with a connection-owned API key.
   company: Close
   categories: [crm-sales]
   version: v0.3.0
@@ -56,6 +56,38 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "To revoke access, delete the token on the same provider page."
   operations:
+    - name: sendEmailDraft
+      goName: SendEmailDraft
+      inputType: SendEmailDraftInput
+      outputType: EmailActivity
+      kind: mutation
+      description: Move an existing draft email to the outbox for sending.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Close accepted the email into outbox or sent it.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected sending., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been sent but confirmation is unavailable., optional: true}
+        - {id: defect, goName: Defect, description: The draft ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: sentDefault, branch: sent, default: true, description: Meridian draft email entered outbox., output: {id: acti_email_meridian1, leadId: lead_meridian1, status: outbox, subject: Follow-up}}
+    - name: sendSMSDraft
+      goName: SendSMSDraft
+      inputType: SendSMSDraftInput
+      outputType: SMSActivity
+      kind: mutation
+      description: Move an existing draft SMS to the outbox for sending.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Close accepted the SMS into outbox or sent it.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected sending., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The SMS may have been sent but confirmation is unavailable., optional: true}
+        - {id: defect, goName: Defect, description: The draft ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: sentDefault, branch: sent, default: true, description: Meridian draft SMS entered outbox., output: {id: acti_sms_meridian1, leadId: lead_meridian1, status: outbox, text: Hello}}
     - name: listMeetings
       goName: ListMeetings
       inputType: ListMeetingsInput

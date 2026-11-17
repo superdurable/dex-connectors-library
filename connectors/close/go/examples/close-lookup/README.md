@@ -2,6 +2,8 @@
 
 This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads`, `getLead`, Go `createContact`, Go `listContacts`, Go `listOpportunities`, Go `listTasks`, Go `listNotes`, Go `listCalls`, Go `listEmails`, Go `listSMS`, and Go `listMeetings` in one typed Flow. Each real run creates a new contact named `Ada Example` under the first lead.
 
+The same Worker registers `CloseSendDraftMessages`. Start it with `{"emailId":"acti_...","smsId":"acti_..."}` using the IDs of an existing draft email and draft SMS. It moves both drafts to Close outbox, which sends them; verify the recipient and content in Close before starting. The mock-backed real Dex test exercises both send Steps without delivering messages.
+
 ## Generate and run
 
 From `connectors/close/go`, generate strict FDG 2.0 from the checked-in Flow source:

@@ -18,6 +18,8 @@ import (
 // Mock is a scripted close connection. Script each operation through its accessor.
 type Mock struct {
 	connection        close.Connection
+	sendEmailDraft    *connectormock.Mutation[close.SendEmailDraftInput, close.EmailActivity]
+	sendSMSDraft      *connectormock.Mutation[close.SendSMSDraftInput, close.SMSActivity]
 	listMeetings      *connectormock.Query[close.ListMeetingsInput, close.MeetingPage]
 	getMeeting        *connectormock.Query[close.GetMeetingInput, close.MeetingActivity]
 	updateMeeting     *connectormock.Mutation[close.UpdateMeetingInput, close.MeetingActivity]
@@ -69,6 +71,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		sendEmailDraft:    connectormock.NewMutation[close.SendEmailDraftInput, close.EmailActivity](t, close.SendEmailDraftDefinition),
+		sendSMSDraft:      connectormock.NewMutation[close.SendSMSDraftInput, close.SMSActivity](t, close.SendSMSDraftDefinition),
 		listMeetings:      connectormock.NewQuery[close.ListMeetingsInput, close.MeetingPage](t, close.ListMeetingsDefinition),
 		getMeeting:        connectormock.NewQuery[close.GetMeetingInput, close.MeetingActivity](t, close.GetMeetingDefinition),
 		updateMeeting:     connectormock.NewMutation[close.UpdateMeetingInput, close.MeetingActivity](t, close.UpdateMeetingDefinition),
@@ -114,6 +118,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteContact:     connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
 		getLead:           connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
 	}
+	mock.sendEmailDraft.Default(SendEmailDraftDefault())
+	mock.sendSMSDraft.Default(SendSMSDraftDefault())
 	mock.listMeetings.Default(ListMeetingsDefault())
 	mock.getMeeting.Default(GetMeetingDefault())
 	mock.updateMeeting.Default(UpdateMeetingDefault())
@@ -168,6 +174,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() close.Connection { return mock.connection }
+
+// SendEmailDraft returns the sendEmailDraft script.
+func (mock *Mock) SendEmailDraft() *connectormock.Mutation[close.SendEmailDraftInput, close.EmailActivity] {
+	return mock.sendEmailDraft
+}
+
+// SendSMSDraft returns the sendSMSDraft script.
+func (mock *Mock) SendSMSDraft() *connectormock.Mutation[close.SendSMSDraftInput, close.SMSActivity] {
+	return mock.sendSMSDraft
+}
 
 // ListMeetings returns the listMeetings script.
 func (mock *Mock) ListMeetings() *connectormock.Query[close.ListMeetingsInput, close.MeetingPage] {
@@ -385,6 +401,12 @@ func (mock *Mock) GetLead() *connectormock.Query[close.GetLeadInput, close.Lead]
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) SendEmailDraft() sdkgo.Mutation[close.SendEmailDraftInput, close.EmailActivity] {
+	return operations.mock.sendEmailDraft
+}
+func (operations mockOperations) SendSMSDraft() sdkgo.Mutation[close.SendSMSDraftInput, close.SMSActivity] {
+	return operations.mock.sendSMSDraft
+}
 func (operations mockOperations) ListMeetings() sdkgo.Query[close.ListMeetingsInput, close.MeetingPage] {
 	return operations.mock.listMeetings
 }
@@ -517,6 +539,76 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[close.DeleteCont
 func (operations mockOperations) GetLead() sdkgo.Query[close.GetLeadInput, close.Lead] {
 	return operations.mock.getLead
 }
+
+// SendEmailDraftSent selects the sent branch: Close accepted the email into outbox or sent it.
+func SendEmailDraftSent(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.SendEmailDraftBranchSent, value, failure)
+}
+
+// SendEmailDraftProviderRejected selects the providerRejected branch: Close conclusively rejected sending.
+func SendEmailDraftProviderRejected(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.SendEmailDraftBranchProviderRejected, value, failure)
+}
+
+// SendEmailDraftUncertain returns an uncertain sendEmailDraft outcome.
+func SendEmailDraftUncertain(value close.EmailActivity, failure sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEmailDraftDefect selects the defect branch: The draft ID or credentials are invalid.
+func SendEmailDraftDefect(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.SendEmailDraftBranchDefect, value, failure)
+}
+
+// SendEmailDraftRetry asks Dex to retry the sendEmailDraft Step, after the delay when it is positive.
+func SendEmailDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.EmailActivity] {
+	return connectormock.Retry[close.EmailActivity](failure, after)
+}
+
+// SendEmailDraftSentDefault is the manifest mock sentDefault: Meridian draft email entered outbox.
+func SendEmailDraftSentDefault() connectormock.Case[close.EmailActivity] {
+	value := connectormock.MustDecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"outbox","subject":"Follow-up"}`)
+	return connectormock.Branch(close.SendEmailDraftBranchSent, value, nil)
+}
+
+// SendEmailDraftDefault is the manifest default, sentDefault, which New installs.
+func SendEmailDraftDefault() connectormock.Case[close.EmailActivity] {
+	return SendEmailDraftSentDefault()
+}
+
+// SendSMSDraftSent selects the sent branch: Close accepted the SMS into outbox or sent it.
+func SendSMSDraftSent(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.SendSMSDraftBranchSent, value, failure)
+}
+
+// SendSMSDraftProviderRejected selects the providerRejected branch: Close conclusively rejected sending.
+func SendSMSDraftProviderRejected(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.SendSMSDraftBranchProviderRejected, value, failure)
+}
+
+// SendSMSDraftUncertain returns an uncertain sendSMSDraft outcome.
+func SendSMSDraftUncertain(value close.SMSActivity, failure sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendSMSDraftDefect selects the defect branch: The draft ID or credentials are invalid.
+func SendSMSDraftDefect(value close.SMSActivity, failure *sdkgo.Failure) connectormock.Case[close.SMSActivity] {
+	return connectormock.Branch(close.SendSMSDraftBranchDefect, value, failure)
+}
+
+// SendSMSDraftRetry asks Dex to retry the sendSMSDraft Step, after the delay when it is positive.
+func SendSMSDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.SMSActivity] {
+	return connectormock.Retry[close.SMSActivity](failure, after)
+}
+
+// SendSMSDraftSentDefault is the manifest mock sentDefault: Meridian draft SMS entered outbox.
+func SendSMSDraftSentDefault() connectormock.Case[close.SMSActivity] {
+	value := connectormock.MustDecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"outbox","text":"Hello"}`)
+	return connectormock.Branch(close.SendSMSDraftBranchSent, value, nil)
+}
+
+// SendSMSDraftDefault is the manifest default, sentDefault, which New installs.
+func SendSMSDraftDefault() connectormock.Case[close.SMSActivity] { return SendSMSDraftSentDefault() }
 
 // ListMeetingsListed selects the listed branch: Close returned the listMeetings result.
 func ListMeetingsListed(value close.MeetingPage, failure *sdkgo.Failure) connectormock.Case[close.MeetingPage] {

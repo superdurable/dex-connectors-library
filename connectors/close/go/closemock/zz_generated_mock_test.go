@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "sendEmailDraft/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"outbox","subject":"Follow-up"}`)
+			return err
+		}},
+		{name: "sendSMSDraft/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.SMSActivity](`{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"outbox","text":"Hello"}`)
+			return err
+		}},
 		{name: "listMeetings/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.MeetingPage](`{"meetings":[{"id":"acti_meeting_meridian1","leadId":"lead_meridian1","title":"Review","status":"completed"}],"hasMore":false}`)
 			return err
@@ -202,6 +210,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.SendEmailDraft().Definition().Operation.OperationID != "sendEmailDraft" {
+		t.Errorf("sendEmailDraft mock has another definition")
+	}
+	if mock.SendSMSDraft().Definition().Operation.OperationID != "sendSMSDraft" {
+		t.Errorf("sendSMSDraft mock has another definition")
+	}
 	if mock.ListMeetings().Definition().Operation.OperationID != "listMeetings" {
 		t.Errorf("listMeetings mock has another definition")
 	}

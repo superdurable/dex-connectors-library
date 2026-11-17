@@ -40,6 +40,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	SendEmailDraft() sdkgo.Mutation[SendEmailDraftInput, EmailActivity]
+	SendSMSDraft() sdkgo.Mutation[SendSMSDraftInput, SMSActivity]
 	ListMeetings() sdkgo.Query[ListMeetingsInput, MeetingPage]
 	GetMeeting() sdkgo.Query[GetMeetingInput, MeetingActivity]
 	UpdateMeeting() sdkgo.Mutation[UpdateMeetingInput, MeetingActivity]
@@ -88,6 +90,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) SendEmailDraft() sdkgo.Mutation[SendEmailDraftInput, EmailActivity] {
+	return operations.client.SendEmailDraft()
+}
+func (operations clientOperations) SendSMSDraft() sdkgo.Mutation[SendSMSDraftInput, SMSActivity] {
+	return operations.client.SendSMSDraft()
+}
 func (operations clientOperations) ListMeetings() sdkgo.Query[ListMeetingsInput, MeetingPage] {
 	return operations.client.ListMeetings()
 }
@@ -356,6 +364,158 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const SendEmailDraftBranchSent sdkgo.BranchID = "sent"
+const SendEmailDraftBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendEmailDraftBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendEmailDraftBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendEmailDraftDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendEmailDraft"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendEmailDraftBranchSent, Description: "Close accepted the email into outbox or sent it."},
+		{ID: SendEmailDraftBranchProviderRejected, Description: "Close conclusively rejected sending.", Optional: true},
+		{ID: SendEmailDraftBranchUncertain, Description: "The email may have been sent but confirmation is unavailable.", Optional: true},
+		{ID: SendEmailDraftBranchDefect, Description: "The draft ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendEmailDraftResult = sdkgo.MutationResult[EmailActivity]
+
+type SendEmailDraftStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=close"`
+	operationID                       struct{}                                            `connector:"operationId=sendEmailDraft"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendEmailDraftInput                        `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendEmailDraftResult]                  `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendEmailDraftResult]                  `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendEmailDraftResult]                  `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendEmailDraftResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendEmailDraftStep[IN any](config SendEmailDraftStepConfig[IN]) sdkgo.MutationStep[IN, SendEmailDraftInput, EmailActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendEmailDraftInput, EmailActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendEmailDraft(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendEmailDraftResult] {
+			branches := make([]sdkgo.BranchTarget[SendEmailDraftResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendEmailDraftBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendEmailDraftBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendEmailDraftBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendEmailDraftBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SendSMSDraftBranchSent sdkgo.BranchID = "sent"
+const SendSMSDraftBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendSMSDraftBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendSMSDraftBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendSMSDraftDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendSMSDraft"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendSMSDraftBranchSent, Description: "Close accepted the SMS into outbox or sent it."},
+		{ID: SendSMSDraftBranchProviderRejected, Description: "Close conclusively rejected sending.", Optional: true},
+		{ID: SendSMSDraftBranchUncertain, Description: "The SMS may have been sent but confirmation is unavailable.", Optional: true},
+		{ID: SendSMSDraftBranchDefect, Description: "The draft ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendSMSDraftResult = sdkgo.MutationResult[SMSActivity]
+
+type SendSMSDraftStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=close"`
+	operationID                       struct{}                                          `connector:"operationId=sendSMSDraft"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendSMSDraftInput                        `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendSMSDraftResult]                  `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendSMSDraftResult]                  `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendSMSDraftResult]                  `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendSMSDraftResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SMSActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendSMSDraftStep[IN any](config SendSMSDraftStepConfig[IN]) sdkgo.MutationStep[IN, SendSMSDraftInput, SMSActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendSMSDraftInput, SMSActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendSMSDraft(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendSMSDraftResult] {
+			branches := make([]sdkgo.BranchTarget[SendSMSDraftResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendSMSDraftBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendSMSDraftBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendSMSDraftBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendSMSDraftBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
 }
 
 const ListMeetingsBranchListed sdkgo.BranchID = "listed"

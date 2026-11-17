@@ -23,7 +23,8 @@ import (
 func TestMockAnswersWithRealDex(t *testing.T) {
 	mock := closemock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	sendFlow := NewSendDraftsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, sendFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -79,4 +80,16 @@ func TestMockAnswersWithRealDex(t *testing.T) {
 	require.Len(t, outcome.Emails, 1)
 	require.Len(t, outcome.Messages, 1)
 	require.Len(t, outcome.Meetings, 1)
+	sendFlowID := "close-send-drafts-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, sendFlow, sendFlowID, SendDraftsRequest{EmailID: "acti_email_meridian1", SMSID: "acti_sms_meridian1"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	sendResult, err := client.WaitForFlow(ctx, sendFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, sendResult.Status, sendResult.ErrorMessage)
+	var sentDrafts SendDraftsOutcome
+	require.NoError(t, sendResult.DecodeSingleOutput(&sentDrafts))
+	require.Equal(t, "outbox", sentDrafts.Email.Status)
+	require.Equal(t, "outbox", sentDrafts.Message.Status)
+	require.Len(t, mock.SendEmailDraft().Calls(), 1)
+	require.Len(t, mock.SendSMSDraft().Calls(), 1)
 }

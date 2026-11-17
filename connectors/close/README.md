@@ -55,11 +55,13 @@ imported with operation-specific `newListLeadsStep` and `newGetLeadStep` factori
 | `createEmail` (Go) | [Close create or send email](https://developer.close.com/api/resources/activities/emails/create) |
 | `updateEmailDraft` (Go) | [Close update draft email](https://developer.close.com/api/resources/activities/emails/update) |
 | `deleteEmail` (Go) | [Close delete email](https://developer.close.com/api/resources/activities/emails/delete) |
+| `sendEmailDraft` (Go) | [Close update draft email to outbox](https://developer.close.com/api/resources/activities/emails/update) |
 | `listSMS` (Go) | [Close list SMS](https://developer.close.com/api/resources/activities/sms/list) |
 | `getSMS` (Go) | [Close get SMS](https://developer.close.com/api/resources/activities/sms/get) |
 | `createSMS` (Go) | [Close create or send SMS](https://developer.close.com/api/resources/activities/sms/create) |
 | `updateSMSDraft` (Go) | [Close update draft SMS](https://developer.close.com/api/resources/activities/sms/update) |
 | `deleteSMS` (Go) | [Close delete SMS](https://developer.close.com/api/resources/activities/sms/delete) |
+| `sendSMSDraft` (Go) | [Close update draft SMS to outbox](https://developer.close.com/api/resources/activities/sms/update) |
 | `listMeetings` (Go) | [Close list meetings](https://developer.close.com/api/resources/activities/meetings/list) |
 | `getMeeting` (Go) | [Close get meeting](https://developer.close.com/api/resources/activities/meetings/get) |
 | `updateMeeting` (Go) | [Close update meeting](https://developer.close.com/api/resources/activities/meetings/update) |
@@ -69,7 +71,7 @@ Close's published meeting API documents list, get, update, and delete operations
 
 Each operation returns a bounded, typed response. A 404 on a single-resource read or update selects `notFound`; a 404 on delete confirms that the record is absent. Definitive 4xx select `providerRejected`; 429 and 503 Retry. Absolute updates and deletes are repeat safe. Malformed and oversized read or update JSON selects `invalidResponse`; an unusable create response selects `uncertain`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
-Lead, contact, opportunity, task, note, external call, email, and SMS creation use the `limited` repeat tier and a default cap of three possible sends. Setting `createEmail.status` or `createSMS.status` to `outbox` sends the message through Close; `draft` saves it for review. Draft updates cannot change status or send. If a response contains a created ID, a later attempt reads that resource before resending. When the outcome stays unknown at the cap, the operation selects `uncertain`; an application must reconcile possible duplicates. Close does not document server-side deduplication for these POST requests. Other activity and webhook subscription operations remain outside this release.
+Lead, contact, opportunity, task, note, external call, email, and SMS creation use the `limited` repeat tier and a default cap of three possible sends. Setting `createEmail.status` or `createSMS.status` to `outbox` sends the message through Close; `draft` saves it for review. `sendEmailDraft` and `sendSMSDraft` move an existing draft to outbox with the same bounded retry cap. After an uncertain attempt they read the known activity ID; `outbox` or `sent` confirms success. Draft content updates cannot change status or send. If a response contains a created ID, a later attempt reads that resource before resending. When the outcome stays unknown at the cap, the operation selects `uncertain`; an application must reconcile possible duplicates. Close does not document server-side deduplication for these POST requests. Other activity and webhook subscription operations remain outside this release.
 
 ## Mocks
 
@@ -77,7 +79,7 @@ The generated `closemock` package includes one default Meridian answer per opera
 
 ## Example
 
-The runnable [example](go/examples/close-lookup/README.md) registers a Worker and a Flow using the static `close` connection. It reads leads, creates a sample contact on the selected lead, and lists its contacts, opportunities, tasks, notes, calls, emails, SMS, and meetings. Each real run creates a new contact. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/close-lookup/README.md) registers a Worker and two Flows using the static `close` connection. The lookup Flow reads leads, creates a sample contact on the selected lead, and lists its contacts, opportunities, tasks, notes, calls, emails, SMS, and meetings. The send Flow moves a chosen email and SMS draft to outbox. CI runs their mock-backed real-Dex integration tests; local unit tests verify deterministic mapping.
 
 The [TypeScript lookup example](typescript/examples/close-lookup/README.md) lists
 leads, fetches the first lead, and verifies both provider reads through a real
