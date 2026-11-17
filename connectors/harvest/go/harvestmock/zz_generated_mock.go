@@ -45,6 +45,11 @@ type Mock struct {
 	createExpense                    *connectormock.Mutation[harvest.CreateExpenseInput, harvest.ExpenseRecord]
 	updateExpense                    *connectormock.Mutation[harvest.UpdateExpenseInput, harvest.ExpenseRecord]
 	deleteExpense                    *connectormock.Mutation[harvest.DeleteExpenseInput, harvest.DeletedExpense]
+	listEstimates                    *connectormock.Query[harvest.ListEstimatesInput, harvest.EstimatePage]
+	getEstimate                      *connectormock.Query[harvest.GetEstimateInput, harvest.EstimateRecord]
+	createEstimate                   *connectormock.Mutation[harvest.CreateEstimateInput, harvest.EstimateRecord]
+	updateEstimate                   *connectormock.Mutation[harvest.UpdateEstimateInput, harvest.EstimateRecord]
+	deleteEstimate                   *connectormock.Mutation[harvest.DeleteEstimateInput, harvest.DeletedEstimate]
 	listUsers                        *connectormock.Query[harvest.ListUsersInput, harvest.UserPage]
 	getUser                          *connectormock.Query[harvest.GetUserInput, harvest.UserRecord]
 	getCurrentUser                   *connectormock.Query[harvest.GetCurrentUserInput, harvest.UserRecord]
@@ -98,6 +103,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createExpense:                    connectormock.NewMutation[harvest.CreateExpenseInput, harvest.ExpenseRecord](t, harvest.CreateExpenseDefinition),
 		updateExpense:                    connectormock.NewMutation[harvest.UpdateExpenseInput, harvest.ExpenseRecord](t, harvest.UpdateExpenseDefinition),
 		deleteExpense:                    connectormock.NewMutation[harvest.DeleteExpenseInput, harvest.DeletedExpense](t, harvest.DeleteExpenseDefinition),
+		listEstimates:                    connectormock.NewQuery[harvest.ListEstimatesInput, harvest.EstimatePage](t, harvest.ListEstimatesDefinition),
+		getEstimate:                      connectormock.NewQuery[harvest.GetEstimateInput, harvest.EstimateRecord](t, harvest.GetEstimateDefinition),
+		createEstimate:                   connectormock.NewMutation[harvest.CreateEstimateInput, harvest.EstimateRecord](t, harvest.CreateEstimateDefinition),
+		updateEstimate:                   connectormock.NewMutation[harvest.UpdateEstimateInput, harvest.EstimateRecord](t, harvest.UpdateEstimateDefinition),
+		deleteEstimate:                   connectormock.NewMutation[harvest.DeleteEstimateInput, harvest.DeletedEstimate](t, harvest.DeleteEstimateDefinition),
 		listUsers:                        connectormock.NewQuery[harvest.ListUsersInput, harvest.UserPage](t, harvest.ListUsersDefinition),
 		getUser:                          connectormock.NewQuery[harvest.GetUserInput, harvest.UserRecord](t, harvest.GetUserDefinition),
 		getCurrentUser:                   connectormock.NewQuery[harvest.GetCurrentUserInput, harvest.UserRecord](t, harvest.GetCurrentUserDefinition),
@@ -145,6 +155,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createExpense.Default(CreateExpenseDefault())
 	mock.updateExpense.Default(UpdateExpenseDefault())
 	mock.deleteExpense.Default(DeleteExpenseDefault())
+	mock.listEstimates.Default(ListEstimatesDefault())
+	mock.getEstimate.Default(GetEstimateDefault())
+	mock.createEstimate.Default(CreateEstimateDefault())
+	mock.updateEstimate.Default(UpdateEstimateDefault())
+	mock.deleteEstimate.Default(DeleteEstimateDefault())
 	mock.listUsers.Default(ListUsersDefault())
 	mock.getUser.Default(GetUserDefault())
 	mock.getCurrentUser.Default(GetCurrentUserDefault())
@@ -308,6 +323,31 @@ func (mock *Mock) UpdateExpense() *connectormock.Mutation[harvest.UpdateExpenseI
 // DeleteExpense returns the deleteExpense script.
 func (mock *Mock) DeleteExpense() *connectormock.Mutation[harvest.DeleteExpenseInput, harvest.DeletedExpense] {
 	return mock.deleteExpense
+}
+
+// ListEstimates returns the listEstimates script.
+func (mock *Mock) ListEstimates() *connectormock.Query[harvest.ListEstimatesInput, harvest.EstimatePage] {
+	return mock.listEstimates
+}
+
+// GetEstimate returns the getEstimate script.
+func (mock *Mock) GetEstimate() *connectormock.Query[harvest.GetEstimateInput, harvest.EstimateRecord] {
+	return mock.getEstimate
+}
+
+// CreateEstimate returns the createEstimate script.
+func (mock *Mock) CreateEstimate() *connectormock.Mutation[harvest.CreateEstimateInput, harvest.EstimateRecord] {
+	return mock.createEstimate
+}
+
+// UpdateEstimate returns the updateEstimate script.
+func (mock *Mock) UpdateEstimate() *connectormock.Mutation[harvest.UpdateEstimateInput, harvest.EstimateRecord] {
+	return mock.updateEstimate
+}
+
+// DeleteEstimate returns the deleteEstimate script.
+func (mock *Mock) DeleteEstimate() *connectormock.Mutation[harvest.DeleteEstimateInput, harvest.DeletedEstimate] {
+	return mock.deleteEstimate
 }
 
 // ListUsers returns the listUsers script.
@@ -487,6 +527,21 @@ func (operations mockOperations) UpdateExpense() sdkgo.Mutation[harvest.UpdateEx
 }
 func (operations mockOperations) DeleteExpense() sdkgo.Mutation[harvest.DeleteExpenseInput, harvest.DeletedExpense] {
 	return operations.mock.deleteExpense
+}
+func (operations mockOperations) ListEstimates() sdkgo.Query[harvest.ListEstimatesInput, harvest.EstimatePage] {
+	return operations.mock.listEstimates
+}
+func (operations mockOperations) GetEstimate() sdkgo.Query[harvest.GetEstimateInput, harvest.EstimateRecord] {
+	return operations.mock.getEstimate
+}
+func (operations mockOperations) CreateEstimate() sdkgo.Mutation[harvest.CreateEstimateInput, harvest.EstimateRecord] {
+	return operations.mock.createEstimate
+}
+func (operations mockOperations) UpdateEstimate() sdkgo.Mutation[harvest.UpdateEstimateInput, harvest.EstimateRecord] {
+	return operations.mock.updateEstimate
+}
+func (operations mockOperations) DeleteEstimate() sdkgo.Mutation[harvest.DeleteEstimateInput, harvest.DeletedEstimate] {
+	return operations.mock.deleteEstimate
 }
 func (operations mockOperations) ListUsers() sdkgo.Query[harvest.ListUsersInput, harvest.UserPage] {
 	return operations.mock.listUsers
@@ -1514,6 +1569,191 @@ func DeleteExpenseDefaultAnswer() connectormock.Case[harvest.DeletedExpense] {
 // DeleteExpenseDefault is the manifest default, defaultAnswer, which New installs.
 func DeleteExpenseDefault() connectormock.Case[harvest.DeletedExpense] {
 	return DeleteExpenseDefaultAnswer()
+}
+
+// ListEstimatesListed selects the listed branch: Harvest confirmed the estimate result.
+func ListEstimatesListed(value harvest.EstimatePage, failure *sdkgo.Failure) connectormock.Case[harvest.EstimatePage] {
+	return connectormock.Branch(harvest.ListEstimatesBranchListed, value, failure)
+}
+
+// ListEstimatesProviderRejected selects the providerRejected branch: Harvest rejected the estimate operation.
+func ListEstimatesProviderRejected(value harvest.EstimatePage, failure *sdkgo.Failure) connectormock.Case[harvest.EstimatePage] {
+	return connectormock.Branch(harvest.ListEstimatesBranchProviderRejected, value, failure)
+}
+
+// ListEstimatesInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func ListEstimatesInvalidResponse(value harvest.EstimatePage, failure *sdkgo.Failure) connectormock.Case[harvest.EstimatePage] {
+	return connectormock.Branch(harvest.ListEstimatesBranchInvalidResponse, value, failure)
+}
+
+// ListEstimatesDefect selects the defect branch: Local input or credentials are invalid.
+func ListEstimatesDefect(value harvest.EstimatePage, failure *sdkgo.Failure) connectormock.Case[harvest.EstimatePage] {
+	return connectormock.Branch(harvest.ListEstimatesBranchDefect, value, failure)
+}
+
+// ListEstimatesRetry asks Dex to retry the listEstimates Step, after the delay when it is positive.
+func ListEstimatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.EstimatePage] {
+	return connectormock.Retry[harvest.EstimatePage](failure, after)
+}
+
+// ListEstimatesDefaultAnswer is the manifest mock defaultAnswer: A Meridian estimate result.
+func ListEstimatesDefaultAnswer() connectormock.Case[harvest.EstimatePage] {
+	value := connectormock.MustDecodeOutput[harvest.EstimatePage](`{"estimates":[{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}]}`)
+	return connectormock.Branch(harvest.ListEstimatesBranchListed, value, nil)
+}
+
+// ListEstimatesDefault is the manifest default, defaultAnswer, which New installs.
+func ListEstimatesDefault() connectormock.Case[harvest.EstimatePage] {
+	return ListEstimatesDefaultAnswer()
+}
+
+// GetEstimateFound selects the found branch: Harvest confirmed the estimate result.
+func GetEstimateFound(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.GetEstimateBranchFound, value, failure)
+}
+
+// GetEstimateNotFound selects the notFound branch: The estimate ID does not exist.
+func GetEstimateNotFound(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.GetEstimateBranchNotFound, value, failure)
+}
+
+// GetEstimateProviderRejected selects the providerRejected branch: Harvest rejected the estimate operation.
+func GetEstimateProviderRejected(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.GetEstimateBranchProviderRejected, value, failure)
+}
+
+// GetEstimateInvalidResponse selects the invalidResponse branch: Harvest returned unusable JSON.
+func GetEstimateInvalidResponse(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.GetEstimateBranchInvalidResponse, value, failure)
+}
+
+// GetEstimateDefect selects the defect branch: Local input or credentials are invalid.
+func GetEstimateDefect(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.GetEstimateBranchDefect, value, failure)
+}
+
+// GetEstimateRetry asks Dex to retry the getEstimate Step, after the delay when it is positive.
+func GetEstimateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Retry[harvest.EstimateRecord](failure, after)
+}
+
+// GetEstimateDefaultAnswer is the manifest mock defaultAnswer: A Meridian estimate result.
+func GetEstimateDefaultAnswer() connectormock.Case[harvest.EstimateRecord] {
+	value := connectormock.MustDecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+	return connectormock.Branch(harvest.GetEstimateBranchFound, value, nil)
+}
+
+// GetEstimateDefault is the manifest default, defaultAnswer, which New installs.
+func GetEstimateDefault() connectormock.Case[harvest.EstimateRecord] {
+	return GetEstimateDefaultAnswer()
+}
+
+// CreateEstimateCreated selects the created branch: Harvest confirmed the estimate result.
+func CreateEstimateCreated(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.CreateEstimateBranchCreated, value, failure)
+}
+
+// CreateEstimateProviderRejected selects the providerRejected branch: Harvest rejected the estimate operation.
+func CreateEstimateProviderRejected(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.CreateEstimateBranchProviderRejected, value, failure)
+}
+
+// CreateEstimateUncertain returns an uncertain createEstimate outcome.
+func CreateEstimateUncertain(value harvest.EstimateRecord, failure sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateEstimateDefect selects the defect branch: Local input or credentials are invalid.
+func CreateEstimateDefect(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.CreateEstimateBranchDefect, value, failure)
+}
+
+// CreateEstimateRetry asks Dex to retry the createEstimate Step, after the delay when it is positive.
+func CreateEstimateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Retry[harvest.EstimateRecord](failure, after)
+}
+
+// CreateEstimateDefaultAnswer is the manifest mock defaultAnswer: A Meridian estimate result.
+func CreateEstimateDefaultAnswer() connectormock.Case[harvest.EstimateRecord] {
+	value := connectormock.MustDecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+	return connectormock.Branch(harvest.CreateEstimateBranchCreated, value, nil)
+}
+
+// CreateEstimateDefault is the manifest default, defaultAnswer, which New installs.
+func CreateEstimateDefault() connectormock.Case[harvest.EstimateRecord] {
+	return CreateEstimateDefaultAnswer()
+}
+
+// UpdateEstimateUpdated selects the updated branch: Harvest confirmed the estimate result.
+func UpdateEstimateUpdated(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.UpdateEstimateBranchUpdated, value, failure)
+}
+
+// UpdateEstimateNotFound selects the notFound branch: The estimate ID does not exist.
+func UpdateEstimateNotFound(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.UpdateEstimateBranchNotFound, value, failure)
+}
+
+// UpdateEstimateProviderRejected selects the providerRejected branch: Harvest rejected the estimate operation.
+func UpdateEstimateProviderRejected(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.UpdateEstimateBranchProviderRejected, value, failure)
+}
+
+// UpdateEstimateDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateEstimateDefect(value harvest.EstimateRecord, failure *sdkgo.Failure) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Branch(harvest.UpdateEstimateBranchDefect, value, failure)
+}
+
+// UpdateEstimateRetry asks Dex to retry the updateEstimate Step, after the delay when it is positive.
+func UpdateEstimateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.EstimateRecord] {
+	return connectormock.Retry[harvest.EstimateRecord](failure, after)
+}
+
+// UpdateEstimateDefaultAnswer is the manifest mock defaultAnswer: A Meridian estimate result.
+func UpdateEstimateDefaultAnswer() connectormock.Case[harvest.EstimateRecord] {
+	value := connectormock.MustDecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+	return connectormock.Branch(harvest.UpdateEstimateBranchUpdated, value, nil)
+}
+
+// UpdateEstimateDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateEstimateDefault() connectormock.Case[harvest.EstimateRecord] {
+	return UpdateEstimateDefaultAnswer()
+}
+
+// DeleteEstimateDeleted selects the deleted branch: Harvest confirmed the estimate result.
+func DeleteEstimateDeleted(value harvest.DeletedEstimate, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedEstimate] {
+	return connectormock.Branch(harvest.DeleteEstimateBranchDeleted, value, failure)
+}
+
+// DeleteEstimateNotFound selects the notFound branch: The estimate ID does not exist.
+func DeleteEstimateNotFound(value harvest.DeletedEstimate, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedEstimate] {
+	return connectormock.Branch(harvest.DeleteEstimateBranchNotFound, value, failure)
+}
+
+// DeleteEstimateProviderRejected selects the providerRejected branch: Harvest rejected the estimate operation.
+func DeleteEstimateProviderRejected(value harvest.DeletedEstimate, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedEstimate] {
+	return connectormock.Branch(harvest.DeleteEstimateBranchProviderRejected, value, failure)
+}
+
+// DeleteEstimateDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteEstimateDefect(value harvest.DeletedEstimate, failure *sdkgo.Failure) connectormock.Case[harvest.DeletedEstimate] {
+	return connectormock.Branch(harvest.DeleteEstimateBranchDefect, value, failure)
+}
+
+// DeleteEstimateRetry asks Dex to retry the deleteEstimate Step, after the delay when it is positive.
+func DeleteEstimateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[harvest.DeletedEstimate] {
+	return connectormock.Retry[harvest.DeletedEstimate](failure, after)
+}
+
+// DeleteEstimateDefaultAnswer is the manifest mock defaultAnswer: A Meridian estimate result.
+func DeleteEstimateDefaultAnswer() connectormock.Case[harvest.DeletedEstimate] {
+	value := connectormock.MustDecodeOutput[harvest.DeletedEstimate](`{"id":12001}`)
+	return connectormock.Branch(harvest.DeleteEstimateBranchDeleted, value, nil)
+}
+
+// DeleteEstimateDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteEstimateDefault() connectormock.Case[harvest.DeletedEstimate] {
+	return DeleteEstimateDefaultAnswer()
 }
 
 // ListUsersListed selects the listed branch: Harvest confirmed the user result.

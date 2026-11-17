@@ -71,5 +71,6 @@ func TestMockAnswersWithRealDex(t *testing.T) {
 	require.Len(t, mock.ListTasks().Calls(), 1)
 	require.Len(t, mock.ListInvoices().Calls(), 1)
 	require.Len(t, mock.ListExpenses().Calls(), 1)
-	require.Len(t, outcome.Expenses, 1)
+	require.Len(t, mock.ListEstimates().Calls(), 1)
+	require.Len(t, outcome.Estimates, 1)
 }

@@ -68,6 +68,11 @@ type Operations interface {
 	CreateExpense() sdkgo.Mutation[CreateExpenseInput, ExpenseRecord]
 	UpdateExpense() sdkgo.Mutation[UpdateExpenseInput, ExpenseRecord]
 	DeleteExpense() sdkgo.Mutation[DeleteExpenseInput, DeletedExpense]
+	ListEstimates() sdkgo.Query[ListEstimatesInput, EstimatePage]
+	GetEstimate() sdkgo.Query[GetEstimateInput, EstimateRecord]
+	CreateEstimate() sdkgo.Mutation[CreateEstimateInput, EstimateRecord]
+	UpdateEstimate() sdkgo.Mutation[UpdateEstimateInput, EstimateRecord]
+	DeleteEstimate() sdkgo.Mutation[DeleteEstimateInput, DeletedEstimate]
 	ListUsers() sdkgo.Query[ListUsersInput, UserPage]
 	GetUser() sdkgo.Query[GetUserInput, UserRecord]
 	GetCurrentUser() sdkgo.Query[GetCurrentUserInput, UserRecord]
@@ -171,6 +176,21 @@ func (operations clientOperations) UpdateExpense() sdkgo.Mutation[UpdateExpenseI
 }
 func (operations clientOperations) DeleteExpense() sdkgo.Mutation[DeleteExpenseInput, DeletedExpense] {
 	return operations.client.DeleteExpense()
+}
+func (operations clientOperations) ListEstimates() sdkgo.Query[ListEstimatesInput, EstimatePage] {
+	return operations.client.ListEstimates()
+}
+func (operations clientOperations) GetEstimate() sdkgo.Query[GetEstimateInput, EstimateRecord] {
+	return operations.client.GetEstimate()
+}
+func (operations clientOperations) CreateEstimate() sdkgo.Mutation[CreateEstimateInput, EstimateRecord] {
+	return operations.client.CreateEstimate()
+}
+func (operations clientOperations) UpdateEstimate() sdkgo.Mutation[UpdateEstimateInput, EstimateRecord] {
+	return operations.client.UpdateEstimate()
+}
+func (operations clientOperations) DeleteEstimate() sdkgo.Mutation[DeleteEstimateInput, DeletedEstimate] {
+	return operations.client.DeleteEstimate()
 }
 func (operations clientOperations) ListUsers() sdkgo.Query[ListUsersInput, UserPage] {
 	return operations.client.ListUsers()
@@ -2339,6 +2359,374 @@ func NewDeleteExpenseStep[IN any](config DeleteExpenseStepConfig[IN]) sdkgo.Muta
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteExpenseBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEstimatesBranchListed sdkgo.BranchID = "listed"
+const ListEstimatesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEstimatesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEstimatesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEstimatesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEstimates"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEstimatesBranchListed, Description: "Harvest confirmed the estimate result."},
+		{ID: ListEstimatesBranchProviderRejected, Description: "Harvest rejected the estimate operation.", Optional: true},
+		{ID: ListEstimatesBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: ListEstimatesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEstimatesResult = sdkgo.QueryResult[EstimatePage]
+
+type ListEstimatesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                        `connector:"connectorId=harvest"`
+	operationID                    struct{}                                        `connector:"operationId=listEstimates"`
+	StepType                       string                                          `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                     Connection                                      `connector:"connection"`
+	ConnectionName                 string                                          `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEstimatesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEstimatesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListEstimatesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEstimatesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEstimatesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EstimatePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewListEstimatesStep[IN any](config ListEstimatesStepConfig[IN]) sdkgo.QueryStep[IN, ListEstimatesInput, EstimatePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEstimatesInput, EstimatePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEstimates(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEstimatesResult] {
+			branches := make([]sdkgo.BranchTarget[ListEstimatesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEstimatesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEstimatesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEstimatesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEstimatesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetEstimateBranchFound sdkgo.BranchID = "found"
+const GetEstimateBranchNotFound sdkgo.BranchID = "notFound"
+const GetEstimateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEstimateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEstimateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEstimateDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEstimate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEstimateBranchFound, Description: "Harvest confirmed the estimate result."},
+		{ID: GetEstimateBranchNotFound, Description: "The estimate ID does not exist.", Optional: true},
+		{ID: GetEstimateBranchProviderRejected, Description: "Harvest rejected the estimate operation.", Optional: true},
+		{ID: GetEstimateBranchInvalidResponse, Description: "Harvest returned unusable JSON.", Optional: true},
+		{ID: GetEstimateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEstimateResult = sdkgo.QueryResult[EstimateRecord]
+
+type GetEstimateStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=harvest"`
+	operationID                    struct{}                                          `connector:"operationId=getEstimate"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEstimateInput                         `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEstimateResult]                   `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetEstimateResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetEstimateResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEstimateResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEstimateResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EstimateRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetEstimateStep[IN any](config GetEstimateStepConfig[IN]) sdkgo.QueryStep[IN, GetEstimateInput, EstimateRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEstimateInput, EstimateRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEstimate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEstimateResult] {
+			branches := make([]sdkgo.BranchTarget[GetEstimateResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEstimateBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetEstimateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEstimateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEstimateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEstimateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateEstimateBranchCreated sdkgo.BranchID = "created"
+const CreateEstimateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateEstimateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateEstimateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateEstimateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createEstimate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateEstimateBranchCreated, Description: "Harvest confirmed the estimate result."},
+		{ID: CreateEstimateBranchProviderRejected, Description: "Harvest rejected the estimate operation.", Optional: true},
+		{ID: CreateEstimateBranchUncertain, Description: "A submitted estimate may have been created.", Optional: true},
+		{ID: CreateEstimateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateEstimateResult = sdkgo.MutationResult[EstimateRecord]
+
+type CreateEstimateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=harvest"`
+	operationID                       struct{}                                             `connector:"operationId=createEstimate"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateEstimateInput                         `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateEstimateResult]                   `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateEstimateResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateEstimateResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateEstimateResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EstimateRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateEstimateStep[IN any](config CreateEstimateStepConfig[IN]) sdkgo.MutationStep[IN, CreateEstimateInput, EstimateRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateEstimateInput, EstimateRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateEstimate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateEstimateResult] {
+			branches := make([]sdkgo.BranchTarget[CreateEstimateResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateEstimateBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateEstimateBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateEstimateBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateEstimateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateEstimateBranchUpdated sdkgo.BranchID = "updated"
+const UpdateEstimateBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateEstimateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateEstimateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateEstimateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateEstimate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateEstimateBranchUpdated, Description: "Harvest confirmed the estimate result."},
+		{ID: UpdateEstimateBranchNotFound, Description: "The estimate ID does not exist.", Optional: true},
+		{ID: UpdateEstimateBranchProviderRejected, Description: "Harvest rejected the estimate operation.", Optional: true},
+		{ID: UpdateEstimateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateEstimateResult = sdkgo.MutationResult[EstimateRecord]
+
+type UpdateEstimateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=harvest"`
+	operationID                       struct{}                                             `connector:"operationId=updateEstimate"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateEstimateInput                         `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateEstimateResult]                   `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateEstimateResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateEstimateResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateEstimateResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EstimateRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateEstimateStep[IN any](config UpdateEstimateStepConfig[IN]) sdkgo.MutationStep[IN, UpdateEstimateInput, EstimateRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateEstimateInput, EstimateRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateEstimate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateEstimateResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateEstimateResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateEstimateBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateEstimateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateEstimateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateEstimateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteEstimateBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteEstimateBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteEstimateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteEstimateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteEstimateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteEstimate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteEstimateBranchDeleted, Description: "Harvest confirmed the estimate result."},
+		{ID: DeleteEstimateBranchNotFound, Description: "The estimate ID does not exist.", Optional: true},
+		{ID: DeleteEstimateBranchProviderRejected, Description: "Harvest rejected the estimate operation.", Optional: true},
+		{ID: DeleteEstimateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteEstimateResult = sdkgo.MutationResult[DeletedEstimate]
+
+type DeleteEstimateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=harvest"`
+	operationID                       struct{}                                              `connector:"operationId=deleteEstimate"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteEstimateInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteEstimateResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteEstimateResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteEstimateResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteEstimateResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedEstimate]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteEstimateStep[IN any](config DeleteEstimateStepConfig[IN]) sdkgo.MutationStep[IN, DeleteEstimateInput, DeletedEstimate] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("harvest connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteEstimateInput, DeletedEstimate]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteEstimate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteEstimateResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteEstimateResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteEstimateBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteEstimateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteEstimateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteEstimateBranchDefect))
 			}
 			return branches
 		}(),

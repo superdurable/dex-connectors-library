@@ -109,6 +109,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "deleteExpense/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedExpense](`{"id":10001}`); return err }},
+		{name: "listEstimates/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.EstimatePage](`{"estimates":[{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}]}`)
+			return err
+		}},
+		{name: "getEstimate/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "createEstimate/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "updateEstimate/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.EstimateRecord](`{"id":12001,"clientId":2001,"number":"EST-1001","subject":"Planning","state":"draft","amount":100}`)
+			return err
+		}},
+		{name: "deleteEstimate/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.DeletedEstimate](`{"id":12001}`)
+			return err
+		}},
 		{name: "listUsers/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.UserPage](`{"users":[{"id":6001,"firstName":"Ada","lastName":"Lee","email":"ada@example.com","isActive":true}]}`)
 			return err
@@ -269,6 +289,21 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteExpense().Definition().Operation.OperationID != "deleteExpense" {
 		t.Errorf("deleteExpense mock has another definition")
+	}
+	if mock.ListEstimates().Definition().Operation.OperationID != "listEstimates" {
+		t.Errorf("listEstimates mock has another definition")
+	}
+	if mock.GetEstimate().Definition().Operation.OperationID != "getEstimate" {
+		t.Errorf("getEstimate mock has another definition")
+	}
+	if mock.CreateEstimate().Definition().Operation.OperationID != "createEstimate" {
+		t.Errorf("createEstimate mock has another definition")
+	}
+	if mock.UpdateEstimate().Definition().Operation.OperationID != "updateEstimate" {
+		t.Errorf("updateEstimate mock has another definition")
+	}
+	if mock.DeleteEstimate().Definition().Operation.OperationID != "deleteEstimate" {
+		t.Errorf("deleteEstimate mock has another definition")
 	}
 	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
 		t.Errorf("listUsers mock has another definition")
