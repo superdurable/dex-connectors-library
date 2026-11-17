@@ -158,4 +158,19 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, inventoryFlowID, inventoryCalls[0].FlowID)
 	require.Equal(t, MapToSetInventoryPhysicalCountInput(inventoryInput), inventoryCalls[0].Input)
 	require.Equal(t, square.SetInventoryPhysicalCountBranchReconciled, inventoryCalls[0].Branch)
+	invoiceFlowID := "square-invoice-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	invoiceInput := Request{InvoiceOrderID: "order_101", InvoiceLocationID: "loc_101", InvoiceCustomerID: "customer_101", InvoiceDueDate: "2030-01-24"}
+	_, err = client.StartFlow(ctx, flow, invoiceFlowID, invoiceInput, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	invoiceResult, err := client.WaitForFlow(ctx, invoiceFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, invoiceResult.Status, invoiceResult.ErrorMessage)
+	var invoiceOutcome Outcome
+	require.NoError(t, invoiceResult.DecodeSingleOutput(&invoiceOutcome))
+	require.Equal(t, "invoice_101", invoiceOutcome.Invoice.Invoice["id"])
+	invoiceCalls := mock.CreateInvoice().Calls()
+	require.Len(t, invoiceCalls, 1)
+	require.Equal(t, invoiceFlowID, invoiceCalls[0].FlowID)
+	require.Equal(t, MapToCreateInvoiceInput(invoiceInput), invoiceCalls[0].Input)
+	require.Equal(t, square.CreateInvoiceBranchCreated, invoiceCalls[0].Branch)
 }

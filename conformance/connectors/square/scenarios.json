@@ -10378,6 +10378,2663 @@
       },
       "name": "setInventoryPhysicalCount-defect",
       "operation": "setInventoryPhysicalCount"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"invoices\":[{\"id\":\"invoice_101\",\"version\":1,\"order_id\":\"order_101\",\"location_id\":\"loc_101\",\"status\":\"DRAFT\"}],\"cursor\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "location_id": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "",
+          "invoices": [
+            {
+              "id": "invoice_101",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "status": "DRAFT",
+              "version": 1
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "locationId": "loc_101"
+      },
+      "name": "listInvoices-success",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "location_id": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cursor": "",
+          "invoices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "locationId": "loc_101"
+      },
+      "name": "listInvoices-rejected",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "location_id": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "invoices": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "locationId": "loc_101"
+      },
+      "name": "listInvoices-invalid",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "location_id": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "locationId": "loc_101"
+      },
+      "name": "listInvoices-rate-limit",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "location_id": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "locationId": "loc_101"
+      },
+      "name": "listInvoices-unavailable",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "location_id": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "locationId": "loc_101"
+      },
+      "name": "listInvoices-server-error",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "location_id": [
+              "loc_101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "locationId": "loc_101"
+      },
+      "name": "listInvoices-transport",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cursor": "",
+          "invoices": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "locationId": ""
+      },
+      "name": "listInvoices-defect",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"invoice\":{\"id\":\"invoice_101\",\"version\":1,\"order_id\":\"order_101\",\"location_id\":\"loc_101\",\"status\":\"DRAFT\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "invoice": {
+            "id": "invoice_101",
+            "location_id": "loc_101",
+            "order_id": "order_101",
+            "status": "DRAFT",
+            "version": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice_101"
+      },
+      "name": "getInvoice-success",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice_101"
+      },
+      "name": "getInvoice-rejected",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice_101"
+      },
+      "name": "getInvoice-invalid",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice_101"
+      },
+      "name": "getInvoice-rate-limit",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice_101"
+      },
+      "name": "getInvoice-unavailable",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice_101"
+      },
+      "name": "getInvoice-server-error",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice_101"
+      },
+      "name": "getInvoice-transport",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": ""
+      },
+      "name": "getInvoice-defect",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "00000000-0000-0000-0000-000000000001",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoices/invoice_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "invoice_101"
+      },
+      "name": "getInvoice-not-found",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{\"invoice\":{\"id\":\"invoice_101\",\"version\":1,\"order_id\":\"order_101\",\"location_id\":\"loc_101\",\"status\":\"DRAFT\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "invoice": {
+            "id": "invoice_101",
+            "location_id": "loc_101",
+            "order_id": "order_101",
+            "status": "DRAFT",
+            "version": 1
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-success",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-rejected",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-invalid",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-rate-limit",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-unavailable",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-server-error",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices",
+          "requestBody": {
+            "idempotency_key": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+            "invoice": {
+              "accepted_payment_methods": {
+                "card": true
+              },
+              "delivery_method": "EMAIL",
+              "location_id": "loc_101",
+              "order_id": "order_101",
+              "payment_requests": [
+                {
+                  "due_date": "2030-01-24",
+                  "request_type": "BALANCE"
+                }
+              ],
+              "primary_recipient": {
+                "customer_id": "customer_101"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": "order_101"
+      },
+      "name": "createInvoice-transport",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "461b80e2-187f-50ce-ac49-a8060fa00df6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-6e2c3cdfd3974328ea562aae12cdb22e2dc0465b",
+      "input": {
+        "customerId": "customer_101",
+        "dueDate": "2030-01-24",
+        "locationId": "loc_101",
+        "orderId": ""
+      },
+      "name": "createInvoice-defect",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{\"invoice\":{\"id\":\"invoice_101\",\"version\":2,\"order_id\":\"order_101\",\"location_id\":\"loc_101\",\"status\":\"DRAFT\",\"description\":\"Services\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "invoice": {
+            "description": "Services",
+            "id": "invoice_101",
+            "location_id": "loc_101",
+            "order_id": "order_101",
+            "status": "DRAFT",
+            "version": 2
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-success",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-rejected",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-invalid",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-rate-limit",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-unavailable",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-server-error",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/invoices/invoice_101",
+          "requestBody": {
+            "idempotency_key": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+            "invoice": {
+              "description": "Services",
+              "version": 1
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "updateInvoice-transport",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "14d6df20-fff9-573d-b91c-e50e48df845d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-ba57693675f8a44af8aae0c0ab5ed4fc664e37b2",
+      "input": {
+        "description": "Services",
+        "invoiceId": "",
+        "version": 1
+      },
+      "name": "updateInvoice-defect",
+      "operation": "updateInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{\"invoice\":{\"id\":\"invoice_101\",\"version\":2,\"order_id\":\"order_101\",\"location_id\":\"loc_101\",\"status\":\"UNPAID\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "published",
+        "failureKind": "",
+        "output": {
+          "invoice": {
+            "id": "invoice_101",
+            "location_id": "loc_101",
+            "order_id": "order_101",
+            "status": "UNPAID",
+            "version": 2
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-success",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-rejected",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-invalid",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-rate-limit",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-unavailable",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-server-error",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/publish",
+          "requestBody": {
+            "idempotency_key": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "publishInvoice-transport",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "5ec0725b-2d00-5768-a91c-6d317fe0a5ad",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-8a0b2a69af0fd1830a8ba0cbe557687449f6dd34",
+      "input": {
+        "invoiceId": "",
+        "version": 1
+      },
+      "name": "publishInvoice-defect",
+      "operation": "publishInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{\"invoice\":{\"id\":\"invoice_101\",\"version\":2,\"order_id\":\"order_101\",\"location_id\":\"loc_101\",\"status\":\"CANCELED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "invoice": {
+            "id": "invoice_101",
+            "location_id": "loc_101",
+            "order_id": "order_101",
+            "status": "CANCELED",
+            "version": 2
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-success",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-rejected",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-invalid",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-rate-limit",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-unavailable",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-server-error",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoices/invoice_101/cancel",
+          "requestBody": {
+            "version": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "cancelInvoice-transport",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "6b44f375-66b1-5456-98ac-0cb8654117b4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoice": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-5da127ebf7b72711988459d7bc45a4e92b8c6254",
+      "input": {
+        "invoiceId": "",
+        "version": 1
+      },
+      "name": "cancelInvoice-defect",
+      "operation": "cancelInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "invoiceId": "invoice_101"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-success",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invoiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-rejected",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-invalid",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-rate-limit",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-unavailable",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-server-error",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-transport",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoiceId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "",
+        "version": 1
+      },
+      "name": "deleteInvoice-defect",
+      "operation": "deleteInvoice"
+    },
+    {
+      "callId": "43978f51-6b07-5476-b6d0-ca580c2ccbd5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/invoices/invoice_101",
+          "query": {
+            "version": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "invoiceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-562c84db9fe318cb232db22492f657bd40c37b5f",
+      "input": {
+        "invoiceId": "invoice_101",
+        "version": 1
+      },
+      "name": "deleteInvoice-not-found",
+      "operation": "deleteInvoice"
     }
   ],
   "schemaVersion": 1

@@ -116,6 +116,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
 			return err
 		}},
+		{name: "listInvoices/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.InvoicePage](`{"invoices":[{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}],"cursor":""}`)
+			return err
+		}},
+		{name: "getInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "createInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "updateInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "publishInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "cancelInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+			return err
+		}},
+		{name: "deleteInvoice/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[square.DeletedInvoice](`{"invoiceId":"invoice_101"}`)
+			return err
+		}},
 		{name: "setInventoryPhysicalCount/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[square.InventoryCounts](`{"counts":[{"catalog_object_id":"variation_101","location_id":"loc_101","state":"IN_STOCK","quantity":"5"}],"cursor":""}`)
 			return err
@@ -204,6 +232,27 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.RetrieveInventoryCount().Definition().Operation.OperationID != "retrieveInventoryCount" {
 		t.Errorf("retrieveInventoryCount mock has another definition")
+	}
+	if mock.ListInvoices().Definition().Operation.OperationID != "listInvoices" {
+		t.Errorf("listInvoices mock has another definition")
+	}
+	if mock.GetInvoice().Definition().Operation.OperationID != "getInvoice" {
+		t.Errorf("getInvoice mock has another definition")
+	}
+	if mock.CreateInvoice().Definition().Operation.OperationID != "createInvoice" {
+		t.Errorf("createInvoice mock has another definition")
+	}
+	if mock.UpdateInvoice().Definition().Operation.OperationID != "updateInvoice" {
+		t.Errorf("updateInvoice mock has another definition")
+	}
+	if mock.PublishInvoice().Definition().Operation.OperationID != "publishInvoice" {
+		t.Errorf("publishInvoice mock has another definition")
+	}
+	if mock.CancelInvoice().Definition().Operation.OperationID != "cancelInvoice" {
+		t.Errorf("cancelInvoice mock has another definition")
+	}
+	if mock.DeleteInvoice().Definition().Operation.OperationID != "deleteInvoice" {
+		t.Errorf("deleteInvoice mock has another definition")
 	}
 	if mock.SetInventoryPhysicalCount().Definition().Operation.OperationID != "setInventoryPhysicalCount" {
 		t.Errorf("setInventoryPhysicalCount mock has another definition")

@@ -23,6 +23,7 @@ const (
 	createOrderStepType    = "CreateSquareOrder"
 	upsertCatalogStepType  = "CreateSquareCatalogItem"
 	setInventoryStepType   = "SetSquareInventoryPhysicalCount"
+	createInvoiceStepType  = "CreateSquareDraftInvoice"
 )
 
 // Request is the typed start input for this example.
@@ -57,6 +58,14 @@ type Request struct {
 	InventoryQuantity string `json:"inventoryQuantity,omitempty"`
 	// InventoryOccurredAt is the RFC3339 observation time.
 	InventoryOccurredAt string `json:"inventoryOccurredAt,omitempty"`
+	// InvoiceOrderID selects an open Square order for draft invoice creation.
+	InvoiceOrderID string `json:"invoiceOrderId,omitempty"`
+	// InvoiceLocationID is the order's seller location.
+	InvoiceLocationID string `json:"invoiceLocationId,omitempty"`
+	// InvoiceCustomerID is a customer with an email address.
+	InvoiceCustomerID string `json:"invoiceCustomerId,omitempty"`
+	// InvoiceDueDate is the balance due date in YYYY-MM-DD format.
+	InvoiceDueDate string `json:"invoiceDueDate,omitempty"`
 }
 
 // Outcome is the completed resource read.
@@ -75,6 +84,8 @@ type Outcome struct {
 	CatalogObject square.CatalogObject `json:"catalogObject,omitempty"`
 	// InventoryCounts reports the reconciled physical count.
 	InventoryCounts square.InventoryCounts `json:"inventoryCounts,omitempty"`
+	// Invoice is the newly created Square draft invoice.
+	Invoice square.Invoice `json:"invoice,omitempty"`
 }
 
 var outcomeAttribute = dex.DefineAttribute[Outcome]("square-resource-read-outcome")
@@ -136,6 +147,12 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: MapToSetInventoryPhysicalCountInput,
 			Reconciled:          sdkgo.GoTo(completeInventoryCount{}),
 		})),
+		dex.DefineStep(square.NewCreateInvoiceStep(square.CreateInvoiceStepConfig[Request]{
+			StepType: createInvoiceStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "square", GroupLabel: "Square", Explanation: "Create a draft email invoice for the selected open order."},
+			MapToOperationInput: MapToCreateInvoiceInput,
+			Created:             sdkgo.GoTo(completeInvoice{}),
+		})),
 		dex.DefineStep(completeRead{}),
 		dex.DefineStep(completeCashPayment{}),
 		dex.DefineStep(completeRefund{}),
@@ -143,6 +160,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(completeOrder{}),
 		dex.DefineStep(completeCatalogItem{}),
 		dex.DefineStep(completeInventoryCount{}),
+		dex.DefineStep(completeInvoice{}),
 	}
 }
 
@@ -210,6 +228,11 @@ func MapToSetInventoryPhysicalCountInput(request Request) square.SetInventoryPhy
 	return square.SetInventoryPhysicalCountInput{CatalogObjectID: request.InventoryVariationID, LocationID: request.InventoryLocationID, Quantity: request.InventoryQuantity, OccurredAt: request.InventoryOccurredAt}
 }
 
+// MapToCreateInvoiceInput selects one open order and a customer email recipient.
+func MapToCreateInvoiceInput(request Request) square.CreateInvoiceInput {
+	return square.CreateInvoiceInput{OrderID: request.InvoiceOrderID, LocationID: request.InvoiceLocationID, CustomerID: request.InvoiceCustomerID, DueDate: request.InvoiceDueDate}
+}
+
 // PrepareRequest rejects invalid local input before a provider call.
 func PrepareRequest(request Request) (Request, error) {
 	if request.RecordCashPayment && (request.AmountMoney.Amount <= 0 || request.AmountMoney.Currency == "") {
@@ -241,11 +264,19 @@ func PrepareRequest(request Request) (Request, error) {
 		return Request{}, errors.New("choose one Square action")
 	}
 	if request.InventoryVariationID != "" {
-		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "" || request.CatalogItemName != "" {
+		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "" || request.CatalogItemName != "" || request.InvoiceOrderID != "" {
 			return Request{}, errors.New("choose one Square action")
 		}
 		if request.InventoryLocationID == "" || request.InventoryQuantity == "" || request.InventoryOccurredAt == "" {
 			return Request{}, errors.New("inventory location, quantity, and observation time are required")
+		}
+	}
+	if request.InvoiceOrderID != "" {
+		if request.RecordCashPayment || request.RefundPaymentID != "" || request.CreateCustomer || request.OrderLocationID != "" || request.CatalogItemName != "" || request.InventoryVariationID != "" {
+			return Request{}, errors.New("choose one Square action")
+		}
+		if request.InvoiceLocationID == "" || request.InvoiceCustomerID == "" || request.InvoiceDueDate == "" {
+			return Request{}, errors.New("invoice location, customer, and due date are required")
 		}
 	}
 	return request, nil
@@ -281,6 +312,9 @@ func (prepareRequest) Execute(ctx dex.Context, request Request) (*dex.StepDecisi
 	}
 	if prepared.InventoryVariationID != "" {
 		return dex.GoTo(sdkgo.StepRef[Request](setInventoryStepType), prepared), nil
+	}
+	if prepared.InvoiceOrderID != "" {
+		return dex.GoTo(sdkgo.StepRef[Request](createInvoiceStepType), prepared), nil
 	}
 	return dex.GoTo(sdkgo.StepRef[Request](readStepType), prepared), nil
 }
@@ -384,6 +418,21 @@ type completeInventoryCount struct {
 func (completeInventoryCount) GetStepType() string { return "CompleteInventoryCount" }
 func (completeInventoryCount) Execute(ctx dex.Context, result square.SetInventoryPhysicalCountResult) (*dex.StepDecision, error) {
 	outcome := Outcome{InventoryCounts: result.Value}
+	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(outcome), nil
+}
+
+// dex:group group-id:resource-result group-label:"Resource result"
+// dex:explanation text:"Persist the draft invoice as the Flow outcome."
+type completeInvoice struct {
+	dex.StepDefaultsNoWaitFor[square.CreateInvoiceResult]
+}
+
+func (completeInvoice) GetStepType() string { return "CompleteInvoice" }
+func (completeInvoice) Execute(ctx dex.Context, result square.CreateInvoiceResult) (*dex.StepDecision, error) {
+	outcome := Outcome{Invoice: result.Value}
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

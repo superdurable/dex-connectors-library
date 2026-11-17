@@ -46,12 +46,12 @@ spec:
       - name: access_token
         goName: AccessToken
         type: secretString
-        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, and INVENTORY_READ/WRITE for the corresponding operations. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
+        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token; enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, INVENTORY_READ/WRITE, and INVOICES_READ/WRITE for the corresponding operations. Invoice writes also need ORDERS_WRITE. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
         required: true
     guide:
       startURL: https://developer.squareup.com/apps
       steps:
-        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, and INVENTORY_READ/WRITE for the corresponding operation families. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
+        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Enable PAYMENTS_READ/WRITE, CUSTOMERS_READ/WRITE, ORDERS_READ/WRITE, ITEMS_READ/WRITE, INVENTORY_READ/WRITE, and INVOICES_READ/WRITE for the corresponding operation families; invoice writes also require ORDERS_WRITE. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
         - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: listPayments
@@ -572,6 +572,148 @@ spec:
           description: A synthetic Square inventory count.
           default: true
           output: {counts: [{catalog_object_id: variation_101, location_id: loc_101, state: IN_STOCK, quantity: "5"}], cursor: ""}
+    - name: listInvoices
+      goName: ListInvoices
+      inputType: ListInvoicesInput
+      outputType: InvoicePage
+      kind: query
+      description: List one page of invoices at a Square location.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: List one page of invoices at a Square location.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: A synthetic Square invoice response.
+          default: true
+          output: {invoices: [{id: invoice_101, version: 0, order_id: order_101, location_id: loc_101, status: DRAFT}], cursor: ""}
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: Invoice
+      kind: query
+      description: Read one Square invoice.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Read one Square invoice.}
+        - {id: notFound, goName: NotFound, description: The invoice was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: A synthetic Square invoice response.
+          default: true
+          output: {invoice: {id: invoice_101, version: 0, order_id: order_101, location_id: loc_101, status: DRAFT}}
+    - name: createInvoice
+      goName: CreateInvoice
+      inputType: CreateInvoiceInput
+      outputType: Invoice
+      kind: mutation
+      description: Create a draft email invoice for an open order.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Create a draft email invoice for an open order.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          description: A synthetic Square invoice response.
+          default: true
+          output: {invoice: {id: invoice_101, version: 0, order_id: order_101, location_id: loc_101, status: DRAFT}}
+    - name: updateInvoice
+      goName: UpdateInvoice
+      inputType: UpdateInvoiceInput
+      outputType: Invoice
+      kind: mutation
+      description: Update the description of a Square invoice by version.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: Update the description of a Square invoice by version.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          description: A synthetic Square invoice response.
+          default: true
+          output: {invoice: {id: invoice_101, version: 0, order_id: order_101, location_id: loc_101, status: DRAFT}}
+    - name: publishInvoice
+      goName: PublishInvoice
+      inputType: PublishInvoiceInput
+      outputType: Invoice
+      kind: mutation
+      description: Publish a draft Square invoice using a stable idempotency key.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: published, goName: Published, description: Square published the invoice.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: published
+          description: A synthetic Square invoice response.
+          default: true
+          output: {invoice: {id: invoice_101, version: 0, order_id: order_101, location_id: loc_101, status: DRAFT}}
+    - name: cancelInvoice
+      goName: CancelInvoice
+      inputType: CancelInvoiceInput
+      outputType: Invoice
+      kind: mutation
+      description: Cancel a published Square invoice.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: canceled, goName: Canceled, description: Square canceled the invoice.}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: canceled
+          description: A synthetic Square invoice response.
+          default: true
+          output: {invoice: {id: invoice_101, version: 0, order_id: order_101, location_id: loc_101, status: DRAFT}}
+    - name: deleteInvoice
+      goName: DeleteInvoice
+      inputType: DeleteInvoiceInput
+      outputType: DeletedInvoice
+      kind: mutation
+      description: Delete a draft Square invoice.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Square deleted the invoice.}
+        - {id: notFound, goName: NotFound, description: The invoice was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Square conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Square returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          description: A synthetic Square invoice response.
+          default: true
+          output: {invoiceId: invoice_101}
     - name: setInventoryPhysicalCount
       goName: SetInventoryPhysicalCount
       inputType: SetInventoryPhysicalCountInput

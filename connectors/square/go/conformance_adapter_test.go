@@ -50,5 +50,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"deleteCatalogObject":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCatalogObject(), connection, scenario.CallID),
 		"retrieveInventoryCount":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.RetrieveInventoryCount(), connection),
 		"setInventoryPhysicalCount": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.SetInventoryPhysicalCount(), connection, scenario.CallID),
+		"listInvoices":              newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListInvoices(), connection),
+		"getInvoice":                newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetInvoice(), connection),
+		"createInvoice":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateInvoice(), connection, scenario.CallID),
+		"updateInvoice":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateInvoice(), connection, scenario.CallID),
+		"publishInvoice":            newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.PublishInvoice(), connection, scenario.CallID),
+		"cancelInvoice":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelInvoice(), connection, scenario.CallID),
+		"deleteInvoice":             newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteInvoice(), connection, scenario.CallID),
 	}}
 }

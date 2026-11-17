@@ -43,6 +43,13 @@ type Mock struct {
 	upsertCatalogObject       *connectormock.Mutation[square.UpsertCatalogObjectInput, square.CatalogObject]
 	deleteCatalogObject       *connectormock.Mutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects]
 	retrieveInventoryCount    *connectormock.Query[square.RetrieveInventoryCountInput, square.InventoryCounts]
+	listInvoices              *connectormock.Query[square.ListInvoicesInput, square.InvoicePage]
+	getInvoice                *connectormock.Query[square.GetInvoiceInput, square.Invoice]
+	createInvoice             *connectormock.Mutation[square.CreateInvoiceInput, square.Invoice]
+	updateInvoice             *connectormock.Mutation[square.UpdateInvoiceInput, square.Invoice]
+	publishInvoice            *connectormock.Mutation[square.PublishInvoiceInput, square.Invoice]
+	cancelInvoice             *connectormock.Mutation[square.CancelInvoiceInput, square.Invoice]
+	deleteInvoice             *connectormock.Mutation[square.DeleteInvoiceInput, square.DeletedInvoice]
 	setInventoryPhysicalCount *connectormock.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts]
 }
 
@@ -76,6 +83,13 @@ func New(t testing.TB, connectionName string) *Mock {
 		upsertCatalogObject:       connectormock.NewMutation[square.UpsertCatalogObjectInput, square.CatalogObject](t, square.UpsertCatalogObjectDefinition),
 		deleteCatalogObject:       connectormock.NewMutation[square.DeleteCatalogObjectInput, square.DeletedCatalogObjects](t, square.DeleteCatalogObjectDefinition),
 		retrieveInventoryCount:    connectormock.NewQuery[square.RetrieveInventoryCountInput, square.InventoryCounts](t, square.RetrieveInventoryCountDefinition),
+		listInvoices:              connectormock.NewQuery[square.ListInvoicesInput, square.InvoicePage](t, square.ListInvoicesDefinition),
+		getInvoice:                connectormock.NewQuery[square.GetInvoiceInput, square.Invoice](t, square.GetInvoiceDefinition),
+		createInvoice:             connectormock.NewMutation[square.CreateInvoiceInput, square.Invoice](t, square.CreateInvoiceDefinition),
+		updateInvoice:             connectormock.NewMutation[square.UpdateInvoiceInput, square.Invoice](t, square.UpdateInvoiceDefinition),
+		publishInvoice:            connectormock.NewMutation[square.PublishInvoiceInput, square.Invoice](t, square.PublishInvoiceDefinition),
+		cancelInvoice:             connectormock.NewMutation[square.CancelInvoiceInput, square.Invoice](t, square.CancelInvoiceDefinition),
+		deleteInvoice:             connectormock.NewMutation[square.DeleteInvoiceInput, square.DeletedInvoice](t, square.DeleteInvoiceDefinition),
 		setInventoryPhysicalCount: connectormock.NewMutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts](t, square.SetInventoryPhysicalCountDefinition),
 	}
 	mock.listPayments.Default(ListPaymentsDefault())
@@ -103,6 +117,13 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.upsertCatalogObject.Default(UpsertCatalogObjectDefault())
 	mock.deleteCatalogObject.Default(DeleteCatalogObjectDefault())
 	mock.retrieveInventoryCount.Default(RetrieveInventoryCountDefault())
+	mock.listInvoices.Default(ListInvoicesDefault())
+	mock.getInvoice.Default(GetInvoiceDefault())
+	mock.createInvoice.Default(CreateInvoiceDefault())
+	mock.updateInvoice.Default(UpdateInvoiceDefault())
+	mock.publishInvoice.Default(PublishInvoiceDefault())
+	mock.cancelInvoice.Default(CancelInvoiceDefault())
+	mock.deleteInvoice.Default(DeleteInvoiceDefault())
 	mock.setInventoryPhysicalCount.Default(SetInventoryPhysicalCountDefault())
 	connection, err := square.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "square", Name: connectionName})
 	if err != nil {
@@ -240,6 +261,41 @@ func (mock *Mock) RetrieveInventoryCount() *connectormock.Query[square.RetrieveI
 	return mock.retrieveInventoryCount
 }
 
+// ListInvoices returns the listInvoices script.
+func (mock *Mock) ListInvoices() *connectormock.Query[square.ListInvoicesInput, square.InvoicePage] {
+	return mock.listInvoices
+}
+
+// GetInvoice returns the getInvoice script.
+func (mock *Mock) GetInvoice() *connectormock.Query[square.GetInvoiceInput, square.Invoice] {
+	return mock.getInvoice
+}
+
+// CreateInvoice returns the createInvoice script.
+func (mock *Mock) CreateInvoice() *connectormock.Mutation[square.CreateInvoiceInput, square.Invoice] {
+	return mock.createInvoice
+}
+
+// UpdateInvoice returns the updateInvoice script.
+func (mock *Mock) UpdateInvoice() *connectormock.Mutation[square.UpdateInvoiceInput, square.Invoice] {
+	return mock.updateInvoice
+}
+
+// PublishInvoice returns the publishInvoice script.
+func (mock *Mock) PublishInvoice() *connectormock.Mutation[square.PublishInvoiceInput, square.Invoice] {
+	return mock.publishInvoice
+}
+
+// CancelInvoice returns the cancelInvoice script.
+func (mock *Mock) CancelInvoice() *connectormock.Mutation[square.CancelInvoiceInput, square.Invoice] {
+	return mock.cancelInvoice
+}
+
+// DeleteInvoice returns the deleteInvoice script.
+func (mock *Mock) DeleteInvoice() *connectormock.Mutation[square.DeleteInvoiceInput, square.DeletedInvoice] {
+	return mock.deleteInvoice
+}
+
 // SetInventoryPhysicalCount returns the setInventoryPhysicalCount script.
 func (mock *Mock) SetInventoryPhysicalCount() *connectormock.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts] {
 	return mock.setInventoryPhysicalCount
@@ -321,6 +377,27 @@ func (operations mockOperations) DeleteCatalogObject() sdkgo.Mutation[square.Del
 }
 func (operations mockOperations) RetrieveInventoryCount() sdkgo.Query[square.RetrieveInventoryCountInput, square.InventoryCounts] {
 	return operations.mock.retrieveInventoryCount
+}
+func (operations mockOperations) ListInvoices() sdkgo.Query[square.ListInvoicesInput, square.InvoicePage] {
+	return operations.mock.listInvoices
+}
+func (operations mockOperations) GetInvoice() sdkgo.Query[square.GetInvoiceInput, square.Invoice] {
+	return operations.mock.getInvoice
+}
+func (operations mockOperations) CreateInvoice() sdkgo.Mutation[square.CreateInvoiceInput, square.Invoice] {
+	return operations.mock.createInvoice
+}
+func (operations mockOperations) UpdateInvoice() sdkgo.Mutation[square.UpdateInvoiceInput, square.Invoice] {
+	return operations.mock.updateInvoice
+}
+func (operations mockOperations) PublishInvoice() sdkgo.Mutation[square.PublishInvoiceInput, square.Invoice] {
+	return operations.mock.publishInvoice
+}
+func (operations mockOperations) CancelInvoice() sdkgo.Mutation[square.CancelInvoiceInput, square.Invoice] {
+	return operations.mock.cancelInvoice
+}
+func (operations mockOperations) DeleteInvoice() sdkgo.Mutation[square.DeleteInvoiceInput, square.DeletedInvoice] {
+	return operations.mock.deleteInvoice
 }
 func (operations mockOperations) SetInventoryPhysicalCount() sdkgo.Mutation[square.SetInventoryPhysicalCountInput, square.InventoryCounts] {
 	return operations.mock.setInventoryPhysicalCount
@@ -1268,6 +1345,256 @@ func RetrieveInventoryCountDefaultAnswer() connectormock.Case[square.InventoryCo
 // RetrieveInventoryCountDefault is the manifest default, defaultAnswer, which New installs.
 func RetrieveInventoryCountDefault() connectormock.Case[square.InventoryCounts] {
 	return RetrieveInventoryCountDefaultAnswer()
+}
+
+// ListInvoicesListed selects the listed branch: List one page of invoices at a Square location.
+func ListInvoicesListed(value square.InvoicePage, failure *sdkgo.Failure) connectormock.Case[square.InvoicePage] {
+	return connectormock.Branch(square.ListInvoicesBranchListed, value, failure)
+}
+
+// ListInvoicesProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func ListInvoicesProviderRejected(value square.InvoicePage, failure *sdkgo.Failure) connectormock.Case[square.InvoicePage] {
+	return connectormock.Branch(square.ListInvoicesBranchProviderRejected, value, failure)
+}
+
+// ListInvoicesInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func ListInvoicesInvalidResponse(value square.InvoicePage, failure *sdkgo.Failure) connectormock.Case[square.InvoicePage] {
+	return connectormock.Branch(square.ListInvoicesBranchInvalidResponse, value, failure)
+}
+
+// ListInvoicesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListInvoicesDefect(value square.InvoicePage, failure *sdkgo.Failure) connectormock.Case[square.InvoicePage] {
+	return connectormock.Branch(square.ListInvoicesBranchDefect, value, failure)
+}
+
+// ListInvoicesRetry asks Dex to retry the listInvoices Step, after the delay when it is positive.
+func ListInvoicesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.InvoicePage] {
+	return connectormock.Retry[square.InvoicePage](failure, after)
+}
+
+// ListInvoicesDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func ListInvoicesDefaultAnswer() connectormock.Case[square.InvoicePage] {
+	value := connectormock.MustDecodeOutput[square.InvoicePage](`{"invoices":[{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}],"cursor":""}`)
+	return connectormock.Branch(square.ListInvoicesBranchListed, value, nil)
+}
+
+// ListInvoicesDefault is the manifest default, defaultAnswer, which New installs.
+func ListInvoicesDefault() connectormock.Case[square.InvoicePage] { return ListInvoicesDefaultAnswer() }
+
+// GetInvoiceFound selects the found branch: Read one Square invoice.
+func GetInvoiceFound(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchFound, value, failure)
+}
+
+// GetInvoiceNotFound selects the notFound branch: The invoice was not found.
+func GetInvoiceNotFound(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchNotFound, value, failure)
+}
+
+// GetInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func GetInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchProviderRejected, value, failure)
+}
+
+// GetInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func GetInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchInvalidResponse, value, failure)
+}
+
+// GetInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.GetInvoiceBranchDefect, value, failure)
+}
+
+// GetInvoiceRetry asks Dex to retry the getInvoice Step, after the delay when it is positive.
+func GetInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// GetInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func GetInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.GetInvoiceBranchFound, value, nil)
+}
+
+// GetInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func GetInvoiceDefault() connectormock.Case[square.Invoice] { return GetInvoiceDefaultAnswer() }
+
+// CreateInvoiceCreated selects the created branch: Create a draft email invoice for an open order.
+func CreateInvoiceCreated(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CreateInvoiceBranchCreated, value, failure)
+}
+
+// CreateInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func CreateInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CreateInvoiceBranchProviderRejected, value, failure)
+}
+
+// CreateInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CreateInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CreateInvoiceBranchInvalidResponse, value, failure)
+}
+
+// CreateInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CreateInvoiceBranchDefect, value, failure)
+}
+
+// CreateInvoiceRetry asks Dex to retry the createInvoice Step, after the delay when it is positive.
+func CreateInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// CreateInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func CreateInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.CreateInvoiceBranchCreated, value, nil)
+}
+
+// CreateInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func CreateInvoiceDefault() connectormock.Case[square.Invoice] { return CreateInvoiceDefaultAnswer() }
+
+// UpdateInvoiceUpdated selects the updated branch: Update the description of a Square invoice by version.
+func UpdateInvoiceUpdated(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.UpdateInvoiceBranchUpdated, value, failure)
+}
+
+// UpdateInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func UpdateInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.UpdateInvoiceBranchProviderRejected, value, failure)
+}
+
+// UpdateInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func UpdateInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.UpdateInvoiceBranchInvalidResponse, value, failure)
+}
+
+// UpdateInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.UpdateInvoiceBranchDefect, value, failure)
+}
+
+// UpdateInvoiceRetry asks Dex to retry the updateInvoice Step, after the delay when it is positive.
+func UpdateInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// UpdateInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func UpdateInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.UpdateInvoiceBranchUpdated, value, nil)
+}
+
+// UpdateInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func UpdateInvoiceDefault() connectormock.Case[square.Invoice] { return UpdateInvoiceDefaultAnswer() }
+
+// PublishInvoicePublished selects the published branch: Square published the invoice.
+func PublishInvoicePublished(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.PublishInvoiceBranchPublished, value, failure)
+}
+
+// PublishInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func PublishInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.PublishInvoiceBranchProviderRejected, value, failure)
+}
+
+// PublishInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func PublishInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.PublishInvoiceBranchInvalidResponse, value, failure)
+}
+
+// PublishInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func PublishInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.PublishInvoiceBranchDefect, value, failure)
+}
+
+// PublishInvoiceRetry asks Dex to retry the publishInvoice Step, after the delay when it is positive.
+func PublishInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// PublishInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func PublishInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.PublishInvoiceBranchPublished, value, nil)
+}
+
+// PublishInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func PublishInvoiceDefault() connectormock.Case[square.Invoice] { return PublishInvoiceDefaultAnswer() }
+
+// CancelInvoiceCanceled selects the canceled branch: Square canceled the invoice.
+func CancelInvoiceCanceled(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CancelInvoiceBranchCanceled, value, failure)
+}
+
+// CancelInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func CancelInvoiceProviderRejected(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CancelInvoiceBranchProviderRejected, value, failure)
+}
+
+// CancelInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func CancelInvoiceInvalidResponse(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CancelInvoiceBranchInvalidResponse, value, failure)
+}
+
+// CancelInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func CancelInvoiceDefect(value square.Invoice, failure *sdkgo.Failure) connectormock.Case[square.Invoice] {
+	return connectormock.Branch(square.CancelInvoiceBranchDefect, value, failure)
+}
+
+// CancelInvoiceRetry asks Dex to retry the cancelInvoice Step, after the delay when it is positive.
+func CancelInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.Invoice] {
+	return connectormock.Retry[square.Invoice](failure, after)
+}
+
+// CancelInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func CancelInvoiceDefaultAnswer() connectormock.Case[square.Invoice] {
+	value := connectormock.MustDecodeOutput[square.Invoice](`{"invoice":{"id":"invoice_101","version":0,"order_id":"order_101","location_id":"loc_101","status":"DRAFT"}}`)
+	return connectormock.Branch(square.CancelInvoiceBranchCanceled, value, nil)
+}
+
+// CancelInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func CancelInvoiceDefault() connectormock.Case[square.Invoice] { return CancelInvoiceDefaultAnswer() }
+
+// DeleteInvoiceDeleted selects the deleted branch: Square deleted the invoice.
+func DeleteInvoiceDeleted(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchDeleted, value, failure)
+}
+
+// DeleteInvoiceNotFound selects the notFound branch: The invoice was not found.
+func DeleteInvoiceNotFound(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchNotFound, value, failure)
+}
+
+// DeleteInvoiceProviderRejected selects the providerRejected branch: Square conclusively rejected the request.
+func DeleteInvoiceProviderRejected(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchProviderRejected, value, failure)
+}
+
+// DeleteInvoiceInvalidResponse selects the invalidResponse branch: Square returned malformed or oversized JSON.
+func DeleteInvoiceInvalidResponse(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchInvalidResponse, value, failure)
+}
+
+// DeleteInvoiceDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteInvoiceDefect(value square.DeletedInvoice, failure *sdkgo.Failure) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Branch(square.DeleteInvoiceBranchDefect, value, failure)
+}
+
+// DeleteInvoiceRetry asks Dex to retry the deleteInvoice Step, after the delay when it is positive.
+func DeleteInvoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[square.DeletedInvoice] {
+	return connectormock.Retry[square.DeletedInvoice](failure, after)
+}
+
+// DeleteInvoiceDefaultAnswer is the manifest mock defaultAnswer: A synthetic Square invoice response.
+func DeleteInvoiceDefaultAnswer() connectormock.Case[square.DeletedInvoice] {
+	value := connectormock.MustDecodeOutput[square.DeletedInvoice](`{"invoiceId":"invoice_101"}`)
+	return connectormock.Branch(square.DeleteInvoiceBranchDeleted, value, nil)
+}
+
+// DeleteInvoiceDefault is the manifest default, defaultAnswer, which New installs.
+func DeleteInvoiceDefault() connectormock.Case[square.DeletedInvoice] {
+	return DeleteInvoiceDefaultAnswer()
 }
 
 // SetInventoryPhysicalCountReconciled selects the reconciled branch: Square reconciled the physical count.
