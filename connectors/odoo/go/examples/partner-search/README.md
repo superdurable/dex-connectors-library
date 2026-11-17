@@ -1,6 +1,6 @@
 # Odoo partner search Flow
 
-This runnable Flow calls `searchPartners` through the static `odoo` connection, reads the first matched contact with `getContact` when the page is non-empty, persists bounded partner IDs and names in an Attribute, and exposes the result through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Flow calls `searchPartners` and `listOpportunities` through the static `odoo` connection, reads the first matched contact with `getContact` when the page is non-empty, persists bounded partner IDs and names in an Attribute, and exposes the result through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 

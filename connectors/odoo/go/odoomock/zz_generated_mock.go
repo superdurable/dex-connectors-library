@@ -17,13 +17,18 @@ import (
 
 // Mock is a scripted odoo connection. Script each operation through its accessor.
 type Mock struct {
-	connection     odoo.Connection
-	searchPartners *connectormock.Query[odoo.SearchPartnersInput, odoo.PartnerSearchPage]
-	listContacts   *connectormock.Query[odoo.ListContactsInput, odoo.ContactsPage]
-	getContact     *connectormock.Query[odoo.GetContactInput, odoo.Contact]
-	createContact  *connectormock.Mutation[odoo.CreateContactInput, odoo.CreatedContact]
-	updateContact  *connectormock.Mutation[odoo.UpdateContactInput, odoo.UpdatedContact]
-	deleteContact  *connectormock.Mutation[odoo.DeleteContactInput, odoo.DeletedContact]
+	connection        odoo.Connection
+	searchPartners    *connectormock.Query[odoo.SearchPartnersInput, odoo.PartnerSearchPage]
+	listContacts      *connectormock.Query[odoo.ListContactsInput, odoo.ContactsPage]
+	getContact        *connectormock.Query[odoo.GetContactInput, odoo.Contact]
+	createContact     *connectormock.Mutation[odoo.CreateContactInput, odoo.CreatedContact]
+	updateContact     *connectormock.Mutation[odoo.UpdateContactInput, odoo.UpdatedContact]
+	deleteContact     *connectormock.Mutation[odoo.DeleteContactInput, odoo.DeletedContact]
+	listOpportunities *connectormock.Query[odoo.ListOpportunitiesInput, odoo.OpportunitiesPage]
+	getOpportunity    *connectormock.Query[odoo.GetOpportunityInput, odoo.Opportunity]
+	createOpportunity *connectormock.Mutation[odoo.CreateOpportunityInput, odoo.CreatedOpportunity]
+	updateOpportunity *connectormock.Mutation[odoo.UpdateOpportunityInput, odoo.UpdatedOpportunity]
+	deleteOpportunity *connectormock.Mutation[odoo.DeleteOpportunityInput, odoo.DeletedOpportunity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -31,12 +36,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		searchPartners: connectormock.NewQuery[odoo.SearchPartnersInput, odoo.PartnerSearchPage](t, odoo.SearchPartnersDefinition),
-		listContacts:   connectormock.NewQuery[odoo.ListContactsInput, odoo.ContactsPage](t, odoo.ListContactsDefinition),
-		getContact:     connectormock.NewQuery[odoo.GetContactInput, odoo.Contact](t, odoo.GetContactDefinition),
-		createContact:  connectormock.NewMutation[odoo.CreateContactInput, odoo.CreatedContact](t, odoo.CreateContactDefinition),
-		updateContact:  connectormock.NewMutation[odoo.UpdateContactInput, odoo.UpdatedContact](t, odoo.UpdateContactDefinition),
-		deleteContact:  connectormock.NewMutation[odoo.DeleteContactInput, odoo.DeletedContact](t, odoo.DeleteContactDefinition),
+		searchPartners:    connectormock.NewQuery[odoo.SearchPartnersInput, odoo.PartnerSearchPage](t, odoo.SearchPartnersDefinition),
+		listContacts:      connectormock.NewQuery[odoo.ListContactsInput, odoo.ContactsPage](t, odoo.ListContactsDefinition),
+		getContact:        connectormock.NewQuery[odoo.GetContactInput, odoo.Contact](t, odoo.GetContactDefinition),
+		createContact:     connectormock.NewMutation[odoo.CreateContactInput, odoo.CreatedContact](t, odoo.CreateContactDefinition),
+		updateContact:     connectormock.NewMutation[odoo.UpdateContactInput, odoo.UpdatedContact](t, odoo.UpdateContactDefinition),
+		deleteContact:     connectormock.NewMutation[odoo.DeleteContactInput, odoo.DeletedContact](t, odoo.DeleteContactDefinition),
+		listOpportunities: connectormock.NewQuery[odoo.ListOpportunitiesInput, odoo.OpportunitiesPage](t, odoo.ListOpportunitiesDefinition),
+		getOpportunity:    connectormock.NewQuery[odoo.GetOpportunityInput, odoo.Opportunity](t, odoo.GetOpportunityDefinition),
+		createOpportunity: connectormock.NewMutation[odoo.CreateOpportunityInput, odoo.CreatedOpportunity](t, odoo.CreateOpportunityDefinition),
+		updateOpportunity: connectormock.NewMutation[odoo.UpdateOpportunityInput, odoo.UpdatedOpportunity](t, odoo.UpdateOpportunityDefinition),
+		deleteOpportunity: connectormock.NewMutation[odoo.DeleteOpportunityInput, odoo.DeletedOpportunity](t, odoo.DeleteOpportunityDefinition),
 	}
 	mock.searchPartners.Default(SearchPartnersDefault())
 	mock.listContacts.Default(ListContactsDefault())
@@ -44,6 +54,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createContact.Default(CreateContactDefault())
 	mock.updateContact.Default(UpdateContactDefault())
 	mock.deleteContact.Default(DeleteContactDefault())
+	mock.listOpportunities.Default(ListOpportunitiesDefault())
+	mock.getOpportunity.Default(GetOpportunityDefault())
+	mock.createOpportunity.Default(CreateOpportunityDefault())
+	mock.updateOpportunity.Default(UpdateOpportunityDefault())
+	mock.deleteOpportunity.Default(DeleteOpportunityDefault())
 	connection, err := odoo.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "odoo", Name: connectionName})
 	if err != nil {
 		t.Fatalf("odoo mock connection: %v", err)
@@ -85,6 +100,31 @@ func (mock *Mock) DeleteContact() *connectormock.Mutation[odoo.DeleteContactInpu
 	return mock.deleteContact
 }
 
+// ListOpportunities returns the listOpportunities script.
+func (mock *Mock) ListOpportunities() *connectormock.Query[odoo.ListOpportunitiesInput, odoo.OpportunitiesPage] {
+	return mock.listOpportunities
+}
+
+// GetOpportunity returns the getOpportunity script.
+func (mock *Mock) GetOpportunity() *connectormock.Query[odoo.GetOpportunityInput, odoo.Opportunity] {
+	return mock.getOpportunity
+}
+
+// CreateOpportunity returns the createOpportunity script.
+func (mock *Mock) CreateOpportunity() *connectormock.Mutation[odoo.CreateOpportunityInput, odoo.CreatedOpportunity] {
+	return mock.createOpportunity
+}
+
+// UpdateOpportunity returns the updateOpportunity script.
+func (mock *Mock) UpdateOpportunity() *connectormock.Mutation[odoo.UpdateOpportunityInput, odoo.UpdatedOpportunity] {
+	return mock.updateOpportunity
+}
+
+// DeleteOpportunity returns the deleteOpportunity script.
+func (mock *Mock) DeleteOpportunity() *connectormock.Mutation[odoo.DeleteOpportunityInput, odoo.DeletedOpportunity] {
+	return mock.deleteOpportunity
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchPartners() sdkgo.Query[odoo.SearchPartnersInput, odoo.PartnerSearchPage] {
@@ -104,6 +144,21 @@ func (operations mockOperations) UpdateContact() sdkgo.Mutation[odoo.UpdateConta
 }
 func (operations mockOperations) DeleteContact() sdkgo.Mutation[odoo.DeleteContactInput, odoo.DeletedContact] {
 	return operations.mock.deleteContact
+}
+func (operations mockOperations) ListOpportunities() sdkgo.Query[odoo.ListOpportunitiesInput, odoo.OpportunitiesPage] {
+	return operations.mock.listOpportunities
+}
+func (operations mockOperations) GetOpportunity() sdkgo.Query[odoo.GetOpportunityInput, odoo.Opportunity] {
+	return operations.mock.getOpportunity
+}
+func (operations mockOperations) CreateOpportunity() sdkgo.Mutation[odoo.CreateOpportunityInput, odoo.CreatedOpportunity] {
+	return operations.mock.createOpportunity
+}
+func (operations mockOperations) UpdateOpportunity() sdkgo.Mutation[odoo.UpdateOpportunityInput, odoo.UpdatedOpportunity] {
+	return operations.mock.updateOpportunity
+}
+func (operations mockOperations) DeleteOpportunity() sdkgo.Mutation[odoo.DeleteOpportunityInput, odoo.DeletedOpportunity] {
+	return operations.mock.deleteOpportunity
 }
 
 // SearchPartnersFound selects the found branch: Odoo returned a bounded list of matching company partners.
@@ -331,4 +386,199 @@ func DeleteContactDeletedDefault() connectormock.Case[odoo.DeletedContact] {
 // DeleteContactDefault is the manifest default, deletedDefault, which New installs.
 func DeleteContactDefault() connectormock.Case[odoo.DeletedContact] {
 	return DeleteContactDeletedDefault()
+}
+
+// ListOpportunitiesListed selects the listed branch: Odoo returned the opportunity outcome.
+func ListOpportunitiesListed(value odoo.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[odoo.OpportunitiesPage] {
+	return connectormock.Branch(odoo.ListOpportunitiesBranchListed, value, failure)
+}
+
+// ListOpportunitiesProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func ListOpportunitiesProviderRejected(value odoo.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[odoo.OpportunitiesPage] {
+	return connectormock.Branch(odoo.ListOpportunitiesBranchProviderRejected, value, failure)
+}
+
+// ListOpportunitiesInvalidResponse selects the invalidResponse branch: Odoo returned invalid opportunity data.
+func ListOpportunitiesInvalidResponse(value odoo.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[odoo.OpportunitiesPage] {
+	return connectormock.Branch(odoo.ListOpportunitiesBranchInvalidResponse, value, failure)
+}
+
+// ListOpportunitiesDefect selects the defect branch: Invalid input or credentials.
+func ListOpportunitiesDefect(value odoo.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[odoo.OpportunitiesPage] {
+	return connectormock.Branch(odoo.ListOpportunitiesBranchDefect, value, failure)
+}
+
+// ListOpportunitiesRetry asks Dex to retry the listOpportunities Step, after the delay when it is positive.
+func ListOpportunitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.OpportunitiesPage] {
+	return connectormock.Retry[odoo.OpportunitiesPage](failure, after)
+}
+
+// ListOpportunitiesListedDefault is the manifest mock listedDefault: Example opportunity outcome.
+func ListOpportunitiesListedDefault() connectormock.Case[odoo.OpportunitiesPage] {
+	value := connectormock.MustDecodeOutput[odoo.OpportunitiesPage](`{"opportunities":[{"id":73,"name":"Example opportunity","emailFrom":"lead@example.com","phone":"4155550100"}]}`)
+	return connectormock.Branch(odoo.ListOpportunitiesBranchListed, value, nil)
+}
+
+// ListOpportunitiesDefault is the manifest default, listedDefault, which New installs.
+func ListOpportunitiesDefault() connectormock.Case[odoo.OpportunitiesPage] {
+	return ListOpportunitiesListedDefault()
+}
+
+// GetOpportunityFound selects the found branch: Odoo returned the opportunity outcome.
+func GetOpportunityFound(value odoo.Opportunity, failure *sdkgo.Failure) connectormock.Case[odoo.Opportunity] {
+	return connectormock.Branch(odoo.GetOpportunityBranchFound, value, failure)
+}
+
+// GetOpportunityNotFound selects the notFound branch: Odoo did not find the opportunity.
+func GetOpportunityNotFound(value odoo.Opportunity, failure *sdkgo.Failure) connectormock.Case[odoo.Opportunity] {
+	return connectormock.Branch(odoo.GetOpportunityBranchNotFound, value, failure)
+}
+
+// GetOpportunityProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func GetOpportunityProviderRejected(value odoo.Opportunity, failure *sdkgo.Failure) connectormock.Case[odoo.Opportunity] {
+	return connectormock.Branch(odoo.GetOpportunityBranchProviderRejected, value, failure)
+}
+
+// GetOpportunityInvalidResponse selects the invalidResponse branch: Odoo returned invalid opportunity data.
+func GetOpportunityInvalidResponse(value odoo.Opportunity, failure *sdkgo.Failure) connectormock.Case[odoo.Opportunity] {
+	return connectormock.Branch(odoo.GetOpportunityBranchInvalidResponse, value, failure)
+}
+
+// GetOpportunityDefect selects the defect branch: Invalid input or credentials.
+func GetOpportunityDefect(value odoo.Opportunity, failure *sdkgo.Failure) connectormock.Case[odoo.Opportunity] {
+	return connectormock.Branch(odoo.GetOpportunityBranchDefect, value, failure)
+}
+
+// GetOpportunityRetry asks Dex to retry the getOpportunity Step, after the delay when it is positive.
+func GetOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.Opportunity] {
+	return connectormock.Retry[odoo.Opportunity](failure, after)
+}
+
+// GetOpportunityFoundDefault is the manifest mock foundDefault: Example opportunity outcome.
+func GetOpportunityFoundDefault() connectormock.Case[odoo.Opportunity] {
+	value := connectormock.MustDecodeOutput[odoo.Opportunity](`{"id":73,"name":"Example opportunity","emailFrom":"lead@example.com","phone":"4155550100"}`)
+	return connectormock.Branch(odoo.GetOpportunityBranchFound, value, nil)
+}
+
+// GetOpportunityDefault is the manifest default, foundDefault, which New installs.
+func GetOpportunityDefault() connectormock.Case[odoo.Opportunity] {
+	return GetOpportunityFoundDefault()
+}
+
+// CreateOpportunityCreated selects the created branch: Odoo returned the opportunity outcome.
+func CreateOpportunityCreated(value odoo.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedOpportunity] {
+	return connectormock.Branch(odoo.CreateOpportunityBranchCreated, value, failure)
+}
+
+// CreateOpportunityProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func CreateOpportunityProviderRejected(value odoo.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedOpportunity] {
+	return connectormock.Branch(odoo.CreateOpportunityBranchProviderRejected, value, failure)
+}
+
+// CreateOpportunityDefect selects the defect branch: Invalid input or credentials.
+func CreateOpportunityDefect(value odoo.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.CreatedOpportunity] {
+	return connectormock.Branch(odoo.CreateOpportunityBranchDefect, value, failure)
+}
+
+// CreateOpportunityUncertain returns an uncertain createOpportunity outcome.
+func CreateOpportunityUncertain(value odoo.CreatedOpportunity, failure sdkgo.Failure) connectormock.Case[odoo.CreatedOpportunity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOpportunityRetry asks Dex to retry the createOpportunity Step, after the delay when it is positive.
+func CreateOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.CreatedOpportunity] {
+	return connectormock.Retry[odoo.CreatedOpportunity](failure, after)
+}
+
+// CreateOpportunityCreatedDefault is the manifest mock createdDefault: Example opportunity outcome.
+func CreateOpportunityCreatedDefault() connectormock.Case[odoo.CreatedOpportunity] {
+	value := connectormock.MustDecodeOutput[odoo.CreatedOpportunity](`{"id":73}`)
+	return connectormock.Branch(odoo.CreateOpportunityBranchCreated, value, nil)
+}
+
+// CreateOpportunityDefault is the manifest default, createdDefault, which New installs.
+func CreateOpportunityDefault() connectormock.Case[odoo.CreatedOpportunity] {
+	return CreateOpportunityCreatedDefault()
+}
+
+// UpdateOpportunityUpdated selects the updated branch: Odoo returned the opportunity outcome.
+func UpdateOpportunityUpdated(value odoo.UpdatedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedOpportunity] {
+	return connectormock.Branch(odoo.UpdateOpportunityBranchUpdated, value, failure)
+}
+
+// UpdateOpportunityNotFound selects the notFound branch: Odoo did not find the opportunity.
+func UpdateOpportunityNotFound(value odoo.UpdatedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedOpportunity] {
+	return connectormock.Branch(odoo.UpdateOpportunityBranchNotFound, value, failure)
+}
+
+// UpdateOpportunityProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func UpdateOpportunityProviderRejected(value odoo.UpdatedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedOpportunity] {
+	return connectormock.Branch(odoo.UpdateOpportunityBranchProviderRejected, value, failure)
+}
+
+// UpdateOpportunityInvalidResponse selects the invalidResponse branch: Odoo returned invalid opportunity data.
+func UpdateOpportunityInvalidResponse(value odoo.UpdatedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedOpportunity] {
+	return connectormock.Branch(odoo.UpdateOpportunityBranchInvalidResponse, value, failure)
+}
+
+// UpdateOpportunityDefect selects the defect branch: Invalid input or credentials.
+func UpdateOpportunityDefect(value odoo.UpdatedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.UpdatedOpportunity] {
+	return connectormock.Branch(odoo.UpdateOpportunityBranchDefect, value, failure)
+}
+
+// UpdateOpportunityRetry asks Dex to retry the updateOpportunity Step, after the delay when it is positive.
+func UpdateOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.UpdatedOpportunity] {
+	return connectormock.Retry[odoo.UpdatedOpportunity](failure, after)
+}
+
+// UpdateOpportunityUpdatedDefault is the manifest mock updatedDefault: Example opportunity outcome.
+func UpdateOpportunityUpdatedDefault() connectormock.Case[odoo.UpdatedOpportunity] {
+	value := connectormock.MustDecodeOutput[odoo.UpdatedOpportunity](`{"id":73}`)
+	return connectormock.Branch(odoo.UpdateOpportunityBranchUpdated, value, nil)
+}
+
+// UpdateOpportunityDefault is the manifest default, updatedDefault, which New installs.
+func UpdateOpportunityDefault() connectormock.Case[odoo.UpdatedOpportunity] {
+	return UpdateOpportunityUpdatedDefault()
+}
+
+// DeleteOpportunityDeleted selects the deleted branch: Odoo returned the opportunity outcome.
+func DeleteOpportunityDeleted(value odoo.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedOpportunity] {
+	return connectormock.Branch(odoo.DeleteOpportunityBranchDeleted, value, failure)
+}
+
+// DeleteOpportunityNotFound selects the notFound branch: Odoo did not find the opportunity.
+func DeleteOpportunityNotFound(value odoo.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedOpportunity] {
+	return connectormock.Branch(odoo.DeleteOpportunityBranchNotFound, value, failure)
+}
+
+// DeleteOpportunityProviderRejected selects the providerRejected branch: Odoo rejected the request.
+func DeleteOpportunityProviderRejected(value odoo.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedOpportunity] {
+	return connectormock.Branch(odoo.DeleteOpportunityBranchProviderRejected, value, failure)
+}
+
+// DeleteOpportunityInvalidResponse selects the invalidResponse branch: Odoo returned invalid opportunity data.
+func DeleteOpportunityInvalidResponse(value odoo.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedOpportunity] {
+	return connectormock.Branch(odoo.DeleteOpportunityBranchInvalidResponse, value, failure)
+}
+
+// DeleteOpportunityDefect selects the defect branch: Invalid input or credentials.
+func DeleteOpportunityDefect(value odoo.DeletedOpportunity, failure *sdkgo.Failure) connectormock.Case[odoo.DeletedOpportunity] {
+	return connectormock.Branch(odoo.DeleteOpportunityBranchDefect, value, failure)
+}
+
+// DeleteOpportunityRetry asks Dex to retry the deleteOpportunity Step, after the delay when it is positive.
+func DeleteOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[odoo.DeletedOpportunity] {
+	return connectormock.Retry[odoo.DeletedOpportunity](failure, after)
+}
+
+// DeleteOpportunityDeletedDefault is the manifest mock deletedDefault: Example opportunity outcome.
+func DeleteOpportunityDeletedDefault() connectormock.Case[odoo.DeletedOpportunity] {
+	value := connectormock.MustDecodeOutput[odoo.DeletedOpportunity](`{"id":73}`)
+	return connectormock.Branch(odoo.DeleteOpportunityBranchDeleted, value, nil)
+}
+
+// DeleteOpportunityDefault is the manifest default, deletedDefault, which New installs.
+func DeleteOpportunityDefault() connectormock.Case[odoo.DeletedOpportunity] {
+	return DeleteOpportunityDeletedDefault()
 }

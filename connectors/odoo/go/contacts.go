@@ -136,8 +136,8 @@ type contactQueryBranches struct {
 	defect   sdkgo.BranchID
 }
 
-func invokeContactQuery[T any](call sdkgo.Call, client *Client, operation, method string, body []byte, branches contactQueryBranches, decode func([]byte) (T, bool, error)) sdkgo.QueryAttempt[T] {
-	response := client.callModel(call, call.Context, "res.partner", method, body)
+func invokeContactQuery[T any](call sdkgo.Call, client *Client, operation, model, method string, body []byte, branches contactQueryBranches, decode func([]byte) (T, bool, error)) sdkgo.QueryAttempt[T] {
+	response := client.callModel(call, call.Context, model, method, body)
 	if errors.Is(response.err, errCredential) {
 		return contactQueryBranch[T](operation, branches.defect, sdkgo.FailureAuthentication, "Odoo credentials are unavailable")
 	}
@@ -224,7 +224,7 @@ func (operation ListContactsOperation) Invoke(call sdkgo.Call, input ListContact
 		return contactQueryBranch[ContactsPage]("listContacts", branches.defect, sdkgo.FailureValidation, "limit or offset is invalid")
 	}
 	body, _ := json.Marshal(map[string]any{"domain": []any{}, "fields": []string{"id", "name", "email", "phone"}, "limit": input.Limit, "offset": input.Offset})
-	return invokeContactQuery(call, operation.client, "listContacts", "search_read", body, branches, func(body []byte) (ContactsPage, bool, error) {
+	return invokeContactQuery(call, operation.client, "listContacts", "res.partner", "search_read", body, branches, func(body []byte) (ContactsPage, bool, error) {
 		contacts, err := decodeContacts(body)
 		if len(contacts) > input.Limit {
 			return ContactsPage{}, false, errors.New("contact page exceeds limit")
@@ -249,7 +249,7 @@ func (operation GetContactOperation) Invoke(call sdkgo.Call, input GetContactInp
 		return contactQueryBranch[Contact]("getContact", branches.defect, sdkgo.FailureValidation, "contact ID is invalid")
 	}
 	body, _ := json.Marshal(map[string]any{"ids": []int64{input.ID}, "fields": []string{"id", "name", "email", "phone"}})
-	return invokeContactQuery(call, operation.client, "getContact", "read", body, branches, func(body []byte) (Contact, bool, error) {
+	return invokeContactQuery(call, operation.client, "getContact", "res.partner", "read", body, branches, func(body []byte) (Contact, bool, error) {
 		contacts, err := decodeContacts(body)
 		if err != nil {
 			return Contact{}, false, err
@@ -378,8 +378,8 @@ func validContactWrite(name, email, phone string) bool {
 	return validNamePattern(name) && len(email) <= 320 && len(phone) <= 64 && !strings.ContainsAny(email+phone, "\r\n\x00")
 }
 
-func invokeContactBooleanMutation[T any](call sdkgo.Call, client *Client, operation, method string, body []byte, id int64, success, notFound, rejected, invalid, defect sdkgo.BranchID, value T) sdkgo.MutationAttempt[T] {
-	response := client.callModel(call, call.Context, "res.partner", method, body)
+func invokeContactBooleanMutation[T any](call sdkgo.Call, client *Client, operation, model, method string, body []byte, id int64, success, notFound, rejected, invalid, defect sdkgo.BranchID, value T) sdkgo.MutationAttempt[T] {
+	response := client.callModel(call, call.Context, model, method, body)
 	if errors.Is(response.err, errCredential) {
 		return contactMutationBranch[T](operation, defect, sdkgo.FailureAuthentication, "credentials are unavailable")
 	}
@@ -434,7 +434,7 @@ func (operation UpdateContactOperation) Invoke(call sdkgo.Call, input UpdateCont
 		return contactMutationBranch[UpdatedContact]("updateContact", UpdateContactBranchDefect, sdkgo.FailureValidation, "contact fields are invalid")
 	}
 	body, _ := json.Marshal(map[string]any{"ids": []int64{input.ID}, "vals": map[string]any{"name": input.Name, "email": input.Email, "phone": input.Phone}})
-	return invokeContactBooleanMutation(call, operation.client, "updateContact", "write", body, input.ID, UpdateContactBranchUpdated, UpdateContactBranchNotFound, UpdateContactBranchProviderRejected, UpdateContactBranchInvalidResponse, UpdateContactBranchDefect, UpdatedContact{ID: input.ID})
+	return invokeContactBooleanMutation(call, operation.client, "updateContact", "res.partner", "write", body, input.ID, UpdateContactBranchUpdated, UpdateContactBranchNotFound, UpdateContactBranchProviderRejected, UpdateContactBranchInvalidResponse, UpdateContactBranchDefect, UpdatedContact{ID: input.ID})
 }
 
 // DeleteContactOperation deletes a contact.
@@ -457,5 +457,5 @@ func (operation DeleteContactOperation) Invoke(call sdkgo.Call, input DeleteCont
 		return contactMutationBranch[DeletedContact]("deleteContact", DeleteContactBranchDefect, sdkgo.FailureValidation, "contact ID is invalid")
 	}
 	body, _ := json.Marshal(map[string]any{"ids": []int64{input.ID}})
-	return invokeContactBooleanMutation(call, operation.client, "deleteContact", "unlink", body, input.ID, DeleteContactBranchDeleted, DeleteContactBranchNotFound, DeleteContactBranchProviderRejected, DeleteContactBranchInvalidResponse, DeleteContactBranchDefect, DeletedContact{ID: input.ID})
+	return invokeContactBooleanMutation(call, operation.client, "deleteContact", "res.partner", "unlink", body, input.ID, DeleteContactBranchDeleted, DeleteContactBranchNotFound, DeleteContactBranchProviderRejected, DeleteContactBranchInvalidResponse, DeleteContactBranchDefect, DeletedContact{ID: input.ID})
 }

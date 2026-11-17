@@ -50,14 +50,28 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(odoo.NewGetContactStep(odoo.GetContactStepConfig[odoo.SearchPartnersResult]{
 			StepType: "GetContact", ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "Read the first matching contact's communication fields."},
-			Connection: flow.connection,
+			Connection:  flow.connection,
 			MapToOperationInput: func(result odoo.SearchPartnersResult) odoo.GetContactInput {
 				return odoo.GetContactInput{ID: result.Value.Partners[0].ID}
 			},
 			Found: sdkgo.GoTo(contactRead{}),
 		})),
+		dex.DefineStep(odoo.NewListOpportunitiesStep(odoo.ListOpportunitiesStepConfig[odoo.SearchPartnersInput]{
+			StepType: "ListOpportunities", ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Odoo", Explanation: "List a bounded page of CRM opportunities."},
+			Connection:  flow.connection,
+			MapToOperationInput: func(input odoo.SearchPartnersInput) odoo.ListOpportunitiesInput {
+				limit := input.Limit
+				if limit == 0 {
+					limit = 20
+				}
+				return odoo.ListOpportunitiesInput{Limit: limit, Offset: 0}
+			},
+			Listed: sdkgo.GoTo(opportunitiesListed{}),
+		})),
 		dex.DefineStep(partnersFound{}),
 		dex.DefineStep(contactRead{}),
+		dex.DefineStep(opportunitiesListed{}),
 		dex.DefineStep(completeResult{}),
 	}
 }
@@ -110,7 +124,20 @@ func (startRequest) WaitFor(dex.Context, odoo.SearchPartnersInput) (*dex.Wait, e
 	return dex.SkipWaitImmediately(), nil
 }
 func (startRequest) Execute(_ dex.Context, input odoo.SearchPartnersInput) (*dex.StepDecision, error) {
-	return dex.GoTo(sdkgo.StepRef[odoo.SearchPartnersInput](operationStepType), input), nil
+	return dex.GoToMany(
+		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersInput](operationStepType), input),
+		dex.MovementOf(sdkgo.StepRef[odoo.SearchPartnersInput]("ListOpportunities"), input),
+	), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Finish the opportunity list after Odoo responds."
+type opportunitiesListed struct {
+	dex.StepDefaultsNoWaitFor[odoo.ListOpportunitiesResult]
+}
+
+func (opportunitiesListed) Execute(_ dex.Context, _ odoo.ListOpportunitiesResult) (*dex.StepDecision, error) {
+	return dex.DeadEnd(), nil
 }
 
 // dex:group group-id:result group-label:"Result"

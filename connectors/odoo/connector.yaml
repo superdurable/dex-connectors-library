@@ -164,3 +164,86 @@ spec:
         - {id: defect, goName: Defect, description: Invalid ID or credentials., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Example deleted contact., output: {id: 42}}
+    - name: listOpportunities
+      goName: ListOpportunities
+      inputType: ListOpportunitiesInput
+      outputType: OpportunitiesPage
+      kind: query
+      description: List a bounded page of CRM opportunities.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Odoo returned the opportunity outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid opportunity data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example opportunity outcome., output: {opportunities: [{id: 73, name: Example opportunity, emailFrom: lead@example.com, phone: '4155550100'}]}}
+    - name: getOpportunity
+      goName: GetOpportunity
+      inputType: GetOpportunityInput
+      outputType: Opportunity
+      kind: query
+      description: Read one CRM opportunity.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Odoo returned the opportunity outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid opportunity data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example opportunity outcome., output: {id: 73, name: Example opportunity, emailFrom: lead@example.com, phone: '4155550100'}}
+    - name: createOpportunity
+      goName: CreateOpportunity
+      inputType: CreateOpportunityInput
+      outputType: CreatedOpportunity
+      kind: mutation
+      description: Create one CRM opportunity.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: created, goName: Created, description: Odoo returned the opportunity outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Odoo may have created the opportunity but it could not be confirmed., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example opportunity outcome., output: {id: 73}}
+    - name: updateOpportunity
+      goName: UpdateOpportunity
+      inputType: UpdateOpportunityInput
+      outputType: UpdatedOpportunity
+      kind: mutation
+      description: Set an opportunity's title, email, and phone.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Odoo returned the opportunity outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid opportunity data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example opportunity outcome., output: {id: 73}}
+    - name: deleteOpportunity
+      goName: DeleteOpportunity
+      inputType: DeleteOpportunityInput
+      outputType: DeletedOpportunity
+      kind: mutation
+      description: Delete one CRM opportunity.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Odoo returned the opportunity outcome.}
+        - {id: notFound, goName: NotFound, description: Odoo did not find the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned invalid opportunity data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or credentials., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example opportunity outcome., output: {id: 73}}
