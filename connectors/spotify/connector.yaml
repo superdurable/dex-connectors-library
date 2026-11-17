@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: spotify
   displayName: Spotify
-  description: Read Spotify artists, albums, and playlists with bounded catalog and track pages for the authenticated user.
+  description: Read Spotify tracks, artists, albums, and playlists with bounded catalog pages for the authenticated user.
   company: Spotify
   categories: [data-search]
   version: v0.25.0
@@ -94,6 +94,56 @@ spec:
         exactScopes: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, access_denied]
   operations:
+    - name: getTrack
+      goName: GetTrack
+      inputType: GetTrackInput
+      outputType: TrackSummary
+      kind: query
+      description: Read one Spotify track's title, artists, album, duration, and attribution link.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: The track was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: Spotify denied access to this track., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not find this track., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the track query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized track metadata., optional: true}
+        - {id: defect, goName: Defect, description: "The track ID, market, or local connection is invalid.", optional: true}
+      mocks:
+        - name: sampleTrack
+          branch: found
+          default: true
+          description: A sample Spotify track with an album and one artist.
+          output: {id: 4iV5W9uYEdYUVa79Axb7Rh, name: A Song, spotifyUrl: https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh, durationMilliseconds: 213000, artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist}], album: {id: 1ATL5GLyefJaxhQzSPVrLX, name: An Album, spotifyUrl: https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX, releaseDate: '2026-08-14', totalTracks: 10, artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist}]}}
+    - name: searchTracks
+      goName: SearchTracks
+      inputType: SearchTracksInput
+      outputType: TrackSummaryPage
+      kind: query
+      description: Search Spotify's track catalog and return one bounded result page.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: The track search page was loaded.}
+        - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
+        - {id: accessDenied, goName: AccessDenied, description: Spotify denied the track search., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not resolve the track search., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the track search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized track results., optional: true}
+        - {id: defect, goName: Defect, description: "The query, market, page settings, or local connection is invalid.", optional: true}
+      pagination: {inputField: offset, nextField: nextOffset}
+      mocks:
+        - name: sampleTrackSearch
+          branch: listed
+          default: true
+          description: Three sample tracks across three search pages.
+          pages:
+            - {tracks: [{id: 4iV5W9uYEdYUVa79Axb7Rh, name: A Song, spotifyUrl: https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh, durationMilliseconds: 213000, artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist}]}], limit: 1, offset: 0, total: 3, nextOffset: 1}
+            - {tracks: [{id: 7ouMYWpwJ422jRcDASZB7P, name: Another Song, spotifyUrl: https://open.spotify.com/track/7ouMYWpwJ422jRcDASZB7P, durationMilliseconds: 180000, artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist}]}], limit: 1, offset: 1, total: 3, nextOffset: 2}
+            - {tracks: [{id: 3n3Ppam7vgaVa1iaRUc9Lp, name: Final Song, spotifyUrl: https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp, durationMilliseconds: 200000, artists: [{id: 0OdUWJ0sBjDrqHygGUXeCF, name: An Artist}]}], limit: 1, offset: 2, total: 3}
     - name: getArtist
       goName: GetArtist
       inputType: GetArtistInput

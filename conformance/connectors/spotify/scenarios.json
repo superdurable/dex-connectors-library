@@ -2,6 +2,1078 @@
   "connector": "spotify",
   "scenarios": [
     {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000302",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"4iV5W9uYEdYUVa79Axb7Rh\",\"name\":\"A Song\",\"type\":\"track\",\"uri\":\"spotify:track:4iV5W9uYEdYUVa79Axb7Rh\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh\"},\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"name\":\"An Artist\",\"type\":\"artist\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"}}],\"album\":{\"id\":\"1ATL5GLyefJaxhQzSPVrLX\",\"name\":\"An Album\",\"type\":\"album\",\"uri\":\"spotify:album:1ATL5GLyefJaxhQzSPVrLX\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX\"},\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"name\":\"An Artist\",\"type\":\"artist\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"}}],\"release_date\":\"2026-08-14\",\"release_date_precision\":\"day\",\"total_tracks\":10},\"duration_ms\":213000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "album": {
+            "artists": [
+              {
+                "id": "0OdUWJ0sBjDrqHygGUXeCF",
+                "name": "An Artist",
+                "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+                "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+              }
+            ],
+            "id": "1ATL5GLyefJaxhQzSPVrLX",
+            "name": "An Album",
+            "releaseDate": "2026-08-14",
+            "spotifyUrl": "https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX",
+            "totalTracks": 10,
+            "uri": "spotify:album:1ATL5GLyefJaxhQzSPVrLX"
+          },
+          "artists": [
+            {
+              "id": "0OdUWJ0sBjDrqHygGUXeCF",
+              "name": "An Artist",
+              "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+              "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+            }
+          ],
+          "durationMilliseconds": 213000,
+          "id": "4iV5W9uYEdYUVa79Axb7Rh",
+          "name": "A Song",
+          "spotifyUrl": "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh",
+          "uri": "spotify:track:4iV5W9uYEdYUVa79Axb7Rh"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackSuccess",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000303",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "artists": [],
+          "durationMilliseconds": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackAuthorizationRevoked",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000304",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "accessDenied",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "artists": [],
+          "durationMilliseconds": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackAccessDenied",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000305",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "artists": [],
+          "durationMilliseconds": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackNotFound",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000306",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "artists": [],
+          "durationMilliseconds": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackProviderRejected",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000307",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "artists": [],
+          "durationMilliseconds": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackInvalidResponse",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000308",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackRateLimit",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000309",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackAvailability",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000310",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/tracks/4iV5W9uYEdYUVa79Axb7Rh",
+          "query": {
+            "market": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "market": "US",
+        "trackId": "4iV5W9uYEdYUVa79Axb7Rh"
+      },
+      "name": "getTrackTransport",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000311",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "artists": [],
+          "durationMilliseconds": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "trackId": "bad"
+      },
+      "name": "getTrackDefect",
+      "operation": "getTrack"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000312",
+      "exchanges": [
+        {
+          "body": "{\"tracks\":{\"limit\":1,\"offset\":1,\"total\":3,\"items\":[{\"id\":\"4iV5W9uYEdYUVa79Axb7Rh\",\"name\":\"A Song\",\"type\":\"track\",\"uri\":\"spotify:track:4iV5W9uYEdYUVa79Axb7Rh\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh\"},\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"name\":\"An Artist\",\"type\":\"artist\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"}}],\"album\":{\"id\":\"1ATL5GLyefJaxhQzSPVrLX\",\"name\":\"An Album\",\"type\":\"album\",\"uri\":\"spotify:album:1ATL5GLyefJaxhQzSPVrLX\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX\"},\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"name\":\"An Artist\",\"type\":\"artist\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"}}],\"release_date\":\"2026-08-14\",\"release_date_precision\":\"day\",\"total_tracks\":10},\"duration_ms\":213000}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "limit": 1,
+          "nextOffset": 2,
+          "offset": 1,
+          "total": 3,
+          "tracks": [
+            {
+              "album": {
+                "artists": [
+                  {
+                    "id": "0OdUWJ0sBjDrqHygGUXeCF",
+                    "name": "An Artist",
+                    "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+                    "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+                  }
+                ],
+                "id": "1ATL5GLyefJaxhQzSPVrLX",
+                "name": "An Album",
+                "releaseDate": "2026-08-14",
+                "spotifyUrl": "https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX",
+                "totalTracks": 10,
+                "uri": "spotify:album:1ATL5GLyefJaxhQzSPVrLX"
+              },
+              "artists": [
+                {
+                  "id": "0OdUWJ0sBjDrqHygGUXeCF",
+                  "name": "An Artist",
+                  "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+                  "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+                }
+              ],
+              "durationMilliseconds": 213000,
+              "id": "4iV5W9uYEdYUVa79Axb7Rh",
+              "name": "A Song",
+              "spotifyUrl": "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh",
+              "uri": "spotify:track:4iV5W9uYEdYUVa79Axb7Rh"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksSuccess",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000313",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksAuthorizationRevoked",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000314",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "accessDenied",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksAccessDenied",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000315",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksNotFound",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000316",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksProviderRejected",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000317",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksInvalidResponse",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000318",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksRateLimit",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000319",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksAvailability",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000320",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/search",
+          "query": {
+            "limit": [
+              "1"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "1"
+            ],
+            "q": [
+              "A Song"
+            ],
+            "type": [
+              "track"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1,
+        "market": "US",
+        "offset": 1,
+        "query": "A Song"
+      },
+      "name": "searchTracksTransport",
+      "operation": "searchTracks"
+    },
+    {
+      "callId": "0a014bb1-3e4f-4c87-923a-000000000321",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": ""
+      },
+      "name": "searchTracksDefect",
+      "operation": "searchTracks"
+    },
+    {
       "callId": "0a014bb1-3e4f-4c87-923a-000000000202",
       "exchanges": [
         {

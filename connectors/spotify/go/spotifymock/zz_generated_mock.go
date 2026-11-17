@@ -18,6 +18,8 @@ import (
 // Mock is a scripted spotify connection. Script each operation through its accessor.
 type Mock struct {
 	connection         spotify.Connection
+	getTrack           *connectormock.Query[spotify.GetTrackInput, spotify.TrackSummary]
+	searchTracks       *connectormock.Query[spotify.SearchTracksInput, spotify.TrackSummaryPage]
 	getArtist          *connectormock.Query[spotify.GetArtistInput, spotify.ArtistSummary]
 	listArtistAlbums   *connectormock.Query[spotify.ListArtistAlbumsInput, spotify.AlbumSummaryPage]
 	searchArtists      *connectormock.Query[spotify.SearchArtistsInput, spotify.ArtistSummaryPage]
@@ -35,6 +37,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		getTrack:           connectormock.NewQuery[spotify.GetTrackInput, spotify.TrackSummary](t, spotify.GetTrackDefinition),
+		searchTracks:       connectormock.NewQuery[spotify.SearchTracksInput, spotify.TrackSummaryPage](t, spotify.SearchTracksDefinition),
 		getArtist:          connectormock.NewQuery[spotify.GetArtistInput, spotify.ArtistSummary](t, spotify.GetArtistDefinition),
 		listArtistAlbums:   connectormock.NewQuery[spotify.ListArtistAlbumsInput, spotify.AlbumSummaryPage](t, spotify.ListArtistAlbumsDefinition),
 		searchArtists:      connectormock.NewQuery[spotify.SearchArtistsInput, spotify.ArtistSummaryPage](t, spotify.SearchArtistsDefinition),
@@ -46,6 +50,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		getPlaylist:        connectormock.NewQuery[spotify.GetPlaylistInput, spotify.PlaylistSummary](t, spotify.GetPlaylistDefinition),
 		listPlaylistTracks: connectormock.NewQuery[spotify.ListPlaylistTracksInput, spotify.PlaylistTrackPage](t, spotify.ListPlaylistTracksDefinition),
 	}
+	mock.getTrack.Default(GetTrackDefault())
+	mock.searchTracks.Default(SearchTracksDefault())
 	mock.getArtist.Default(GetArtistDefault())
 	mock.listArtistAlbums.Default(ListArtistAlbumsDefault())
 	mock.searchArtists.Default(SearchArtistsDefault())
@@ -66,6 +72,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() spotify.Connection { return mock.connection }
+
+// GetTrack returns the getTrack script.
+func (mock *Mock) GetTrack() *connectormock.Query[spotify.GetTrackInput, spotify.TrackSummary] {
+	return mock.getTrack
+}
+
+// SearchTracks returns the searchTracks script.
+func (mock *Mock) SearchTracks() *connectormock.Query[spotify.SearchTracksInput, spotify.TrackSummaryPage] {
+	return mock.searchTracks
+}
 
 // GetArtist returns the getArtist script.
 func (mock *Mock) GetArtist() *connectormock.Query[spotify.GetArtistInput, spotify.ArtistSummary] {
@@ -119,6 +135,12 @@ func (mock *Mock) ListPlaylistTracks() *connectormock.Query[spotify.ListPlaylist
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetTrack() sdkgo.Query[spotify.GetTrackInput, spotify.TrackSummary] {
+	return operations.mock.getTrack
+}
+func (operations mockOperations) SearchTracks() sdkgo.Query[spotify.SearchTracksInput, spotify.TrackSummaryPage] {
+	return operations.mock.searchTracks
+}
 func (operations mockOperations) GetArtist() sdkgo.Query[spotify.GetArtistInput, spotify.ArtistSummary] {
 	return operations.mock.getArtist
 }
@@ -148,6 +170,111 @@ func (operations mockOperations) GetPlaylist() sdkgo.Query[spotify.GetPlaylistIn
 }
 func (operations mockOperations) ListPlaylistTracks() sdkgo.Query[spotify.ListPlaylistTracksInput, spotify.PlaylistTrackPage] {
 	return operations.mock.listPlaylistTracks
+}
+
+// GetTrackFound selects the found branch: The track was loaded.
+func GetTrackFound(value spotify.TrackSummary, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummary] {
+	return connectormock.Branch(spotify.GetTrackBranchFound, value, failure)
+}
+
+// GetTrackAuthorizationRevoked selects the authorizationRevoked branch: The Spotify OAuth grant is invalid or revoked.
+func GetTrackAuthorizationRevoked(value spotify.TrackSummary, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummary] {
+	return connectormock.Branch(spotify.GetTrackBranchAuthorizationRevoked, value, failure)
+}
+
+// GetTrackAccessDenied selects the accessDenied branch: Spotify denied access to this track.
+func GetTrackAccessDenied(value spotify.TrackSummary, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummary] {
+	return connectormock.Branch(spotify.GetTrackBranchAccessDenied, value, failure)
+}
+
+// GetTrackNotFound selects the notFound branch: Spotify could not find this track.
+func GetTrackNotFound(value spotify.TrackSummary, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummary] {
+	return connectormock.Branch(spotify.GetTrackBranchNotFound, value, failure)
+}
+
+// GetTrackProviderRejected selects the providerRejected branch: Spotify conclusively rejected the track query.
+func GetTrackProviderRejected(value spotify.TrackSummary, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummary] {
+	return connectormock.Branch(spotify.GetTrackBranchProviderRejected, value, failure)
+}
+
+// GetTrackInvalidResponse selects the invalidResponse branch: Spotify returned invalid or oversized track metadata.
+func GetTrackInvalidResponse(value spotify.TrackSummary, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummary] {
+	return connectormock.Branch(spotify.GetTrackBranchInvalidResponse, value, failure)
+}
+
+// GetTrackDefect selects the defect branch: The track ID, market, or local connection is invalid.
+func GetTrackDefect(value spotify.TrackSummary, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummary] {
+	return connectormock.Branch(spotify.GetTrackBranchDefect, value, failure)
+}
+
+// GetTrackRetry asks Dex to retry the getTrack Step, after the delay when it is positive.
+func GetTrackRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spotify.TrackSummary] {
+	return connectormock.Retry[spotify.TrackSummary](failure, after)
+}
+
+// GetTrackSampleTrack is the manifest mock sampleTrack: A sample Spotify track with an album and one artist.
+func GetTrackSampleTrack() connectormock.Case[spotify.TrackSummary] {
+	value := connectormock.MustDecodeOutput[spotify.TrackSummary](`{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","durationMilliseconds":213000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}],"album":{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}}`)
+	return connectormock.Branch(spotify.GetTrackBranchFound, value, nil)
+}
+
+// GetTrackDefault is the manifest default, sampleTrack, which New installs.
+func GetTrackDefault() connectormock.Case[spotify.TrackSummary] { return GetTrackSampleTrack() }
+
+// SearchTracksListed selects the listed branch: The track search page was loaded.
+func SearchTracksListed(value spotify.TrackSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummaryPage] {
+	return connectormock.Branch(spotify.SearchTracksBranchListed, value, failure)
+}
+
+// SearchTracksAuthorizationRevoked selects the authorizationRevoked branch: The Spotify OAuth grant is invalid or revoked.
+func SearchTracksAuthorizationRevoked(value spotify.TrackSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummaryPage] {
+	return connectormock.Branch(spotify.SearchTracksBranchAuthorizationRevoked, value, failure)
+}
+
+// SearchTracksAccessDenied selects the accessDenied branch: Spotify denied the track search.
+func SearchTracksAccessDenied(value spotify.TrackSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummaryPage] {
+	return connectormock.Branch(spotify.SearchTracksBranchAccessDenied, value, failure)
+}
+
+// SearchTracksNotFound selects the notFound branch: Spotify could not resolve the track search.
+func SearchTracksNotFound(value spotify.TrackSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummaryPage] {
+	return connectormock.Branch(spotify.SearchTracksBranchNotFound, value, failure)
+}
+
+// SearchTracksProviderRejected selects the providerRejected branch: Spotify conclusively rejected the track search.
+func SearchTracksProviderRejected(value spotify.TrackSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummaryPage] {
+	return connectormock.Branch(spotify.SearchTracksBranchProviderRejected, value, failure)
+}
+
+// SearchTracksInvalidResponse selects the invalidResponse branch: Spotify returned invalid or oversized track results.
+func SearchTracksInvalidResponse(value spotify.TrackSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummaryPage] {
+	return connectormock.Branch(spotify.SearchTracksBranchInvalidResponse, value, failure)
+}
+
+// SearchTracksDefect selects the defect branch: The query, market, page settings, or local connection is invalid.
+func SearchTracksDefect(value spotify.TrackSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.TrackSummaryPage] {
+	return connectormock.Branch(spotify.SearchTracksBranchDefect, value, failure)
+}
+
+// SearchTracksRetry asks Dex to retry the searchTracks Step, after the delay when it is positive.
+func SearchTracksRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[spotify.TrackSummaryPage] {
+	return connectormock.Retry[spotify.TrackSummaryPage](failure, after)
+}
+
+// SearchTracksSampleTrackSearch is the manifest mock sampleTrackSearch: Three sample tracks across three search pages.
+func SearchTracksSampleTrackSearch() connectormock.Case[spotify.TrackSummaryPage] {
+	pages := []spotify.TrackSummaryPage{
+		connectormock.MustDecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","durationMilliseconds":213000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`),
+		connectormock.MustDecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"7ouMYWpwJ422jRcDASZB7P","name":"Another Song","spotifyUrl":"https://open.spotify.com/track/7ouMYWpwJ422jRcDASZB7P","durationMilliseconds":180000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`),
+		connectormock.MustDecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"3n3Ppam7vgaVa1iaRUc9Lp","name":"Final Song","spotifyUrl":"https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp","durationMilliseconds":200000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[spotify.SearchTracksInput]("offset", "nextOffset", pages)
+	return connectormock.Paged(spotify.SearchTracksBranchListed, pageNumber, pages...)
+}
+
+// SearchTracksDefault is the manifest default, sampleTrackSearch, which New installs.
+func SearchTracksDefault() connectormock.Case[spotify.TrackSummaryPage] {
+	return SearchTracksSampleTrackSearch()
 }
 
 // GetArtistFound selects the found branch: The artist was loaded.

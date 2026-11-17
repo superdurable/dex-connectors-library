@@ -19,6 +19,8 @@ Album Queries are `getAlbum`, `listAlbumTracks`, and `searchAlbums`. They return
 
 Artist Queries are `getArtist`, `listArtistAlbums`, and `searchArtists`. They return artist identity, genres, attribution link, and bounded album pages. `listArtistAlbums` accepts an artist ID, optional `includeGroups` from `album`, `single`, `appears_on`, and `compilation`, market, limit up to 50, and offset. `searchArtists` accepts query text, market, limit up to 10, and offset. Spotify removed the n8n node's artist top tracks endpoint in February 2026; related artists is unavailable to new and development-mode apps since November 2024.
 
+Track Queries are `getTrack` and `searchTracks`. They return bounded title, artist, album, duration, URI, and Spotify attribution link metadata. `getTrack` accepts a track ID and optional market; `searchTracks` accepts query text, market, limit up to 10, and offset. Spotify's audio-features endpoint is unavailable to new and development-mode apps, so the n8n node's `getAudioFeatures` action is omitted.
+
 The Spotify connector lists one bounded page of tracks from a playlist through
 Spotify's official [Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)
 endpoint. Spotify currently permits that endpoint only for playlists the

@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getTrack/sampleTrack/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.TrackSummary](`{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","durationMilliseconds":213000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}],"album":{"id":"1ATL5GLyefJaxhQzSPVrLX","name":"An Album","spotifyUrl":"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX","releaseDate":"2026-08-14","totalTracks":10,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}}`)
+			return err
+		}},
+		{name: "searchTracks/sampleTrackSearch/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"4iV5W9uYEdYUVa79Axb7Rh","name":"A Song","spotifyUrl":"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh","durationMilliseconds":213000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":0,"total":3,"nextOffset":1}`)
+			return err
+		}},
+		{name: "searchTracks/sampleTrackSearch/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"7ouMYWpwJ422jRcDASZB7P","name":"Another Song","spotifyUrl":"https://open.spotify.com/track/7ouMYWpwJ422jRcDASZB7P","durationMilliseconds":180000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":1,"total":3,"nextOffset":2}`)
+			return err
+		}},
+		{name: "searchTracks/sampleTrackSearch/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[spotify.TrackSummaryPage](`{"tracks":[{"id":"3n3Ppam7vgaVa1iaRUc9Lp","name":"Final Song","spotifyUrl":"https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp","durationMilliseconds":200000,"artists":[{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist"}]}],"limit":1,"offset":2,"total":3}`)
+			return err
+		}},
 		{name: "getArtist/sampleArtist/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[spotify.ArtistSummary](`{"id":"0OdUWJ0sBjDrqHygGUXeCF","name":"An Artist","spotifyUrl":"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF","genres":["pop"]}`)
 			return err
@@ -122,6 +138,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetTrack().Definition().Operation.OperationID != "getTrack" {
+		t.Errorf("getTrack mock has another definition")
+	}
+	if mock.SearchTracks().Definition().Operation.OperationID != "searchTracks" {
+		t.Errorf("searchTracks mock has another definition")
+	}
 	if mock.GetArtist().Definition().Operation.OperationID != "getArtist" {
 		t.Errorf("getArtist mock has another definition")
 	}

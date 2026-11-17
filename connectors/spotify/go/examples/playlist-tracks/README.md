@@ -10,9 +10,11 @@ This example runs a Flow from Dex Web **Start Flow**:
 6. `GetAlbum` calls `spotify.NewGetAlbumStep` for that album;
 7. `CompleteAlbumMetadata` persists its metadata and requests its first artist;
 8. `GetArtist` calls `spotify.NewGetArtistStep`;
-9. `CompleteArtistMetadata` persists artist metadata and completes the Flow.
+9. `CompleteArtistMetadata` persists artist metadata and requests the first playlist track;
+10. `GetTrack` calls `spotify.NewGetTrackStep`;
+11. `CompleteTrackMetadata` persists full track metadata and completes the Flow.
 
-The summary and display RPCs expose the request, playlist, album, and artist metadata, and page in Dex Web. Only the
+The summary and display RPCs expose the request, playlist, album, artist, and track metadata, and page in Dex Web. Only the
 `found` and `listed` branches are wired. Revoked authorization, access denial, not-found,
 provider rejection, invalid response, and defect branches fail the Flow when
 selected.
