@@ -24,5 +24,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"getEntry": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetEntry(), reference),
 		"listEntries": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListEntries(), reference),
+		"getAsset": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetAsset(), reference),
+		"listAssets": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListAssets(), reference),
+		"getContentType": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetContentType(), reference),
+		"listContentTypes": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListContentTypes(), reference),
+		"getSpace": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetSpace(), reference),
+		"listLocales": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListLocales(), reference),
 	}}
 }
