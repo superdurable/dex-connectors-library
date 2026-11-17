@@ -1778,6 +1778,1288 @@
       },
       "name": "getRefund-transportFailure",
       "operation": "getRefund"
+    },
+    {
+      "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"createCustomer\":{\"customer\":{\"id\":\"customer-1\",\"firstName\":\"Ada\",\"lastName\":\"Lovelace\",\"email\":\"ada@example.com\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CreateCustomerInput!) { createCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Lovelace"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": "customer-1",
+          "lastName": "Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createCustomer-success",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CreateCustomerInput!) { createCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Lovelace"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createCustomer-providerRejected",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CreateCustomerInput!) { createCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Lovelace"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createCustomer-final429",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CreateCustomerInput!) { createCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Lovelace"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createCustomer-final503",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CreateCustomerInput!) { createCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Lovelace"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createCustomer-transportFailure",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CreateCustomerInput!) { createCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Lovelace"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createCustomer-invalidResponse",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "input": {
+        "email": "bad",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createCustomer-defect",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"updateCustomer\":{\"customer\":{\"id\":\"customer-1\",\"firstName\":\"Ada\",\"lastName\":\"Byron\",\"email\":\"ada@example.com\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: UpdateCustomerInput!) { updateCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Byron"
+                },
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": "customer-1",
+          "lastName": "Byron"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "input": {
+        "customerId": "customer-1",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Byron"
+      },
+      "name": "updateCustomer-success",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: UpdateCustomerInput!) { updateCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Byron"
+                },
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "input": {
+        "customerId": "customer-1",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Byron"
+      },
+      "name": "updateCustomer-providerRejected",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: UpdateCustomerInput!) { updateCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Byron"
+                },
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "input": {
+        "customerId": "customer-1",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Byron"
+      },
+      "name": "updateCustomer-final429",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: UpdateCustomerInput!) { updateCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Byron"
+                },
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "input": {
+        "customerId": "customer-1",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Byron"
+      },
+      "name": "updateCustomer-final503",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: UpdateCustomerInput!) { updateCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Byron"
+                },
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "input": {
+        "customerId": "customer-1",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Byron"
+      },
+      "name": "updateCustomer-transportFailure",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: UpdateCustomerInput!) { updateCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Byron"
+                },
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "input": {
+        "customerId": "customer-1",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Byron"
+      },
+      "name": "updateCustomer-invalidResponse",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "input": {
+        "customerId": "",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Byron"
+      },
+      "name": "updateCustomer-defect",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: UpdateCustomerInput!) { updateCustomer(input: $input) { customer { id firstName lastName email } } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "9f155955-5f06-5af5-8813-93002f27dfa5",
+                "customer": {
+                  "email": "ada@example.com",
+                  "firstName": "Ada",
+                  "lastName": "Byron"
+                },
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9f155955-5f06-5af5-8813-93002f27dfa5",
+      "input": {
+        "customerId": "customer-1",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Byron"
+      },
+      "name": "updateCustomer-notFound",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"deleteCustomer\":{\"clientMutationId\":\"done\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: DeleteCustomerInput!) { deleteCustomer(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "5b251c01-1614-5225-852b-dcdd067f622d",
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "customerId": "customer-1",
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-success",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"VALIDATION\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: DeleteCustomerInput!) { deleteCustomer(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "5b251c01-1614-5225-852b-dcdd067f622d",
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customerId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-providerRejected",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: DeleteCustomerInput!) { deleteCustomer(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "5b251c01-1614-5225-852b-dcdd067f622d",
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-final429",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: DeleteCustomerInput!) { deleteCustomer(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "5b251c01-1614-5225-852b-dcdd067f622d",
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-final503",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: DeleteCustomerInput!) { deleteCustomer(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "5b251c01-1614-5225-852b-dcdd067f622d",
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-transportFailure",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: DeleteCustomerInput!) { deleteCustomer(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "5b251c01-1614-5225-852b-dcdd067f622d",
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customerId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-invalidResponse",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customerId": "",
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "input": {
+        "customerId": ""
+      },
+      "name": "deleteCustomer-defect",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"errorClass\":\"NOT_FOUND\"},\"message\":\"synthetic\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: DeleteCustomerInput!) { deleteCustomer(input: $input) { clientMutationId } }",
+            "variables": {
+              "input": {
+                "clientMutationId": "5b251c01-1614-5225-852b-dcdd067f622d",
+                "customerId": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "customerId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5b251c01-1614-5225-852b-dcdd067f622d",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-notFound",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+      "input": {
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "createCustomer-uncertain",
+      "operation": "createCustomer",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "3eb2adef-ead7-5e22-b1c4-c9b4f837bce7",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

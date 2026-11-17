@@ -64,7 +64,70 @@ spec:
       steps:
         - Choose the sandbox or production Control Panel, open the gear icon > API > API Keys, and generate an API key if needed. Copy its Public Key into publicKey and open View under Private Key to copy the secret into privateKey. Blank prevents calls; never mix sandbox and production keys.
         - Leave baseUrl blank for sandbox, or enter https://payments.braintree-api.com for production. Leave apiVersion, timeout, and maxResponseBytes blank for their displayed defaults. Copy a transaction, customer, payment method, or refund GraphQL ID from a Braintree API result into the matching operation field; blank is invalid. Legacy SDK IDs may differ from GraphQL IDs.
+        - For customers, open the matching Braintree Control Panel > Customers or use the GraphQL customer result. Supply optional first and last names as plain text and email in address format; blank on create omits contact data, and blank on update clears those fields. Customer IDs are GraphQL IDs from getCustomer or search, not legacy IDs. Delete requires removing vaulted payment methods first and breaks the customer's transaction association. These are personal data, not credentials; Dex Flow results retain customer details. A repeated create may create a second customer because clientMutationId is only a response correlation ID.
   operations:
+    - name: createCustomer
+      goName: CreateCustomer
+      inputType: CreateCustomerInput
+      outputType: CustomerProfile
+      kind: mutation
+      description: Create a customer with contact details.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Braintree created the customer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected creation., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The customer outcome cannot be confirmed after the send cap., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample customer is created.
+          output: {id: customer-1, firstName: Ada, lastName: Lovelace, email: ada@example.com}
+    - name: updateCustomer
+      goName: UpdateCustomer
+      inputType: UpdateCustomerInput
+      outputType: CustomerProfile
+      kind: mutation
+      description: Replace a customer's selected contact details.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Braintree updated the customer.}
+        - {id: notFound, goName: NotFound, description: The customer was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample customer is updated.
+          output: {id: customer-1, firstName: Ada, lastName: Lovelace, email: ada@example.com}
+    - name: deleteCustomer
+      goName: DeleteCustomer
+      inputType: GetCustomerInput
+      outputType: CustomerDeleteResult
+      kind: mutation
+      description: Delete a customer without vaulted payment methods.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Braintree deleted the customer.}
+        - {id: notFound, goName: NotFound, description: The customer was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree rejected deletion because payment methods may remain., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed deletion JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample customer is deleted.
+          output: {customerId: customer-1, deleted: true}
     - name: getCustomer
       goName: GetCustomer
       inputType: GetCustomerInput

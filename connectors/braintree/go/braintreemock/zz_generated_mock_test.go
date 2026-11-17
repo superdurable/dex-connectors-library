@@ -16,6 +16,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createCustomer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateCustomer/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "deleteCustomer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[braintree.CustomerDeleteResult](`{"customerId":"customer-1","deleted":true}`)
+			return err
+		}},
 		{name: "getCustomer/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[braintree.CustomerProfile](`{"id":"customer-1","firstName":"Ada","lastName":"Lovelace","email":"ada@example.com"}`)
 			return err
@@ -42,6 +54,15 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
+	}
 	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
 		t.Errorf("getCustomer mock has another definition")
 	}

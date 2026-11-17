@@ -28,3 +28,7 @@ CI runs the fixture-backed real-Dex integration test. Local provider and determi
 # Customer read
 
 The same worker registers `BraintreeCustomerRead`. Start it with a `GetCustomerInput` containing a GraphQL `customerId` from a Braintree API result. Its `CallGetCustomer` Step reads the customer and completes with a `CustomerProfile`. It uses the static `braintree` Dex Web connection.
+
+# Customer creation
+
+The worker registers `BraintreeCustomerCreate`. Start it with `CreateCustomerInput{FirstName: "Ada", LastName: "Lovelace", Email: "ada@example.com"}`. Its `CallCreateCustomer` Step bounds possible duplicate sends and completes with the new `CustomerProfile`. From the connector directory, validate the FDG with `dexcli visualize go/examples/transaction-read/flow/customer_create.go --schema-version 2.0 --lint app --json --out /tmp/braintree-customer-create-fdg --open=false`. With local Dex running and `DEX_FLOW_SERVICE_ADDRESS` set, run `GOWORK=off go test -tags=integration ./examples/transaction-read/flow -run '^TestCustomerCreateUsesDefaultMockWithRealDex$'`.

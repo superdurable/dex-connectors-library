@@ -6,6 +6,7 @@ package braintree
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -80,6 +81,10 @@ func (client *Client) get(call sdkgo.Call, input GetTransactionInput) providerRe
 }
 
 func (client *Client) getNode(call sdkgo.Call, query, nodeID string) providerResponse {
+	return client.graphQL(call, call.Context, query, map[string]any{"id": nodeID})
+}
+
+func (client *Client) graphQL(call sdkgo.Call, requestContext context.Context, query string, variables any) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -91,16 +96,12 @@ func (client *Client) getNode(call sdkgo.Call, query, nodeID string) providerRes
 	}
 	body, err := json.Marshal(struct {
 		Query     string `json:"query"`
-		Variables struct {
-			ID string `json:"id"`
-		} `json:"variables"`
-	}{Query: query, Variables: struct {
-		ID string `json:"id"`
-	}{ID: nodeID}})
+		Variables any    `json:"variables"`
+	}{Query: query, Variables: variables})
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/graphql", bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+"/graphql", bytes.NewReader(body))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
