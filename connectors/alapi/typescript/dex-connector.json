@@ -1,0 +1,60 @@
+{
+  "connectorId": "alapi",
+  "releaseTag": "connectors/alapi/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-alapi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newLookupIPLocationStep",
+      "kind": "query",
+      "operationId": "lookupIPLocation",
+      "inputType": "LookupIPLocationInput",
+      "description": "Look up country, province, city, district, and operator for one public IPv4 address.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "LookupIPLocationInput identifies one public IPv4 address.",
+        "properties": {
+          "ipAddress": {
+            "description": "IPAddress is an IPv4 address, not a hostname or CIDR range.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ipAddress"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
