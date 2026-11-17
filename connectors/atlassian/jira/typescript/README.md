@@ -1,6 +1,6 @@
 # Jira Cloud TypeScript connector
 
-`@superdurable/connector-atlassian-jira` provides Dex Query and Mutation operations for Jira Cloud. Its manifest-generated Step factories cover `searchIssues`, `getIssue`, `createIssue`, `transitionIssue`, and `addComment`, and from 0.2.0 it implements the `issueChanged` poll Trigger. The package version is `0.2.0`, independent of the Go connector version. Install it with `@superdurable/connectors-sdk@0.12.0`, whose poll Trigger kit the Trigger is built on, and `@superdurable/dex` 1.45.4 or newer.
+`@superdurable/connector-atlassian-jira` provides Dex Query and Mutation operations for Jira Cloud. Its manifest-generated Step factories cover `searchIssues`, `getIssue`, `createIssue`, `transitionIssue`, and `addComment`, and from 0.2.0 it implements the `issueChanged` poll Trigger. The package version is `0.2.1`, independent of the Go connector version. Install it with `@superdurable/connectors-sdk@0.12.0`, whose poll Trigger kit the Trigger is built on, and `@superdurable/dex` 1.45.4 or newer.
 
 Set up the Atlassian OAuth 2.0 application and Dex Web connection using the [connector guide](../README.md#atlassian-setup). The generated OAuth driver refreshes rotating tokens, and the project connection uses generated private and shared credential decoders. Credentials stay in project storage and outside Flow input and persisted output.
 

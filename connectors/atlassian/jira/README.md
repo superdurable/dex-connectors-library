@@ -1,6 +1,6 @@
 # Jira Cloud Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/jira`.
 
@@ -13,7 +13,7 @@ issues through Atlassian's OAuth 2.0 (3LO) gateway,
 `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3`:
 
 The [Python package](python/README.md) implements the same five operations at
-`v0.2.0`, with generated OAuth refresh, Go-recorded conformance, and a
+`v0.2.1`, with generated OAuth refresh, Go-recorded conformance, and a
 [runnable Dex Flow](python/examples/issue_lookup/README.md), and from `v0.2.0`
 the `issueChanged` Trigger, with a
 [runnable issue-changed Flow](python/examples/issue_changed/README.md). Its
@@ -55,7 +55,7 @@ It also exposes one Go Trigger:
 ## TypeScript package
 
 The `@superdurable/connector-atlassian-jira` package at `typescript/` is version
-`0.2.0` and implements all five operations in this manifest and the
+`0.2.1` and implements all five operations in this manifest and the
 `issueChanged` Trigger, with a
 [runnable issue-changed example](typescript/examples/issue-changed/README.md). Its generated
 OAuth driver and project credential source refresh rotating Atlassian tokens;
@@ -312,29 +312,34 @@ and an optional `AssigneeAccountID`. The description is converted to a minimal
 Atlassian Document Format document: blank lines separate paragraphs, other line
 breaks become `hardBreak` nodes, and the text is never read as markup.
 
-Jira has no idempotency key. The shared single-dispatch fence checkpoints each
-POST and permits a later send only after the preceding attempt recorded
-`notSent` or `canResend`:
+Jira has no idempotency key, so `createIssue` and `addComment` are `limited`
+Mutations with the default send cap of 3 possibly effective POSTs per Call ID.
+The shared single-dispatch fence counts each POST. A later attempt after a
+possible earlier POST first reads back by the Call ID property, and sends again
+only when nothing is found and the cap allows another POST:
 
 | Outcome | Result |
 | --- | --- |
 | 201 with an issue ID and key | `created` |
-| 400, 403, 404, 413, 422, or another definite 4xx except 401, 409, and 429 | `providerRejected`, with `RejectedFieldIDs` |
+| 400, 401, 403, 404, 411, 413, 414, 415, or 422 on the first POST | Checkpoint `canResend`, then `providerRejected`, with `RejectedFieldIDs` |
 | 401 with a refreshable credential | Refresh the credential, checkpoint `canResend`, then Retry |
-| 401 without a usable refresh | `providerRejected` with authentication failure |
-| 409 | Read back by the Call ID property; confirmed creation selects `created`, otherwise `uncertain` |
+| One of those refusals after an earlier possible POST | `uncertain`, because the earlier POST may have created the issue |
 | 429 | Checkpoint `canResend`, then Retry after `Retry-After` |
 | DNS, connect, or TLS failure before any connection opened | Checkpoint `canResend`, then Retry |
 | 503 | Checkpoint `canResend`, then Retry after `Retry-After` |
-| Timeout, dropped connection, 408, 3xx, or another 5xx after dispatch | Read back; confirmed creation selects `created`, otherwise `uncertain` |
-| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Read back; confirmed creation selects `created`, otherwise `uncertain` |
+| Timeout, dropped connection, 3xx, 408, 409, another 4xx, or another 5xx after dispatch | Read back; confirmed creation selects `created`, otherwise Retry and resend below the cap, or `uncertain` at the cap |
+| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Read back; confirmed creation selects `created`, otherwise Retry and resend below the cap, or `uncertain` at the cap |
+| Unreadable or untrusted dispatch checkpoint | Retry without sending |
 
-During read-back, a transient 429, 5xx, transport error, interrupted response,
-or temporarily unavailable credential returns Retry without another POST. A
-transient credential lookup failure before a write also retries after recording
+Once Jira has returned an issue ID, a later attempt reads that issue back and
+never sends again; a failed confirmation selects `uncertain`. During read-back,
+a transient 429, 5xx, transport error, interrupted response, or temporarily
+unavailable credential returns Retry without another POST. A transient
+credential lookup failure before a write also retries after recording
 `notSent`. Reauthorization-required or invalid credentials select `defect`
-before dispatch and `uncertain` when an earlier write requires read-back. If
-the retry budget is exhausted, the Flow fails.
+before the first dispatch and `uncertain` after an earlier possible POST.
+Set the Step's `MaxSends` to 1 to forbid any resend. If the retry budget is
+exhausted, the Flow fails.
 
 On `providerRejected` and `uncertain`, the Value echoes the requested project
 and summary without an issue key.
@@ -378,8 +383,8 @@ description. The branch table matches `createIssue`, except that a 404 selects
 request is usually fast. Sync persists a result before the Flow advances;
 async may replay one lost before its batched commit. Both modes use the same
 attempt and retry rules. The create test records one request and one issue;
-the timeout and lost-Worker tests check uncertain outcomes without a second
-write. Keep these Steps sync to reduce replay risk.
+the timeout tests check that an unconfirmed write is resent at most up to the
+send cap before `uncertain`. Keep these Steps sync to reduce replay risk.
 
 `transitionIssue` keeps the async default. A lost Worker after Jira applies
 the transition causes another Execute; it reads the destination status and
@@ -387,13 +392,16 @@ does not send the transition again. The integration test checks one POST.
 
 Each create and comment includes a non-secret hash of the stable Call ID in a
 Jira entity property. The released `sdkgo/singledispatch` fence owns the Dex
-heartbeat claim and send window. A missing, foreign, stale, or unreadable
-checkpoint never permits another POST. When a response supplies a resource ID,
-the fence saves it for direct read-back; otherwise the connector searches a
+heartbeat claim, send count, and send window. A missing or stale checkpoint
+counts each earlier attempt as a possible POST, so another POST follows only
+an empty read-back below the send cap; a foreign or unreadable checkpoint
+returns Retry without sending. When a response supplies a resource ID, the
+fence saves it for direct read-back; otherwise the connector searches a
 bounded page for the property. A transient lookup retries without sending.
-The property is not an Atlassian idempotency key. Dex does not acknowledge
-heartbeat persistence before the POST, so a crash may still leave a write that
-the bounded read-back cannot confirm. That outcome selects `uncertain`.
+The property is not an Atlassian idempotency key, and the bounded search can
+miss a write Jira has not indexed yet, so a resend may duplicate an issue or
+comment; at most the send cap of them exist. When the cap is reached and
+read-back cannot confirm the write, the Step selects `uncertain`.
 
 A traced DNS, connect, or TLS failure before any connection is obtained, HTTP
 429, and HTTP 503 select Retry after the fence records permission for the next

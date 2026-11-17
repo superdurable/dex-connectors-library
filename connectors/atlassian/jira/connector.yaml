@@ -6,17 +6,17 @@ metadata:
   description: Search and read Jira Cloud issues with bounded JQL, create issues and comments without silent duplicates, move issues through their workflow, and start Flows when issues are created or updated.
   company: Atlassian
   categories: [project-management, developer-tools]
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: atlassian
   languages:
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-atlassian-jira"
       operations: [searchIssues, getIssue, createIssue, transitionIssue, addComment]
       triggers: [issueChanged]
     python:
-      version: v0.2.0
+      version: v0.2.1
       package: dex-connector-atlassian-jira
       operations: [searchIssues, getIssue, createIssue, transitionIssue, addComment]
       triggers: [issueChanged]
@@ -221,13 +221,13 @@ spec:
       inputType: CreateIssueInput
       outputType: CreateIssueOutput
       kind: mutation
-      description: Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted issue.
+      description: Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee. A synchronous single-dispatch fence counts each send, and an unknown outcome is read back by a Call ID property before a resend within the send cap.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: Jira created the issue and returned its key and ID.}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira but could not be confirmed; the issue may exist and must not be created again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and read-back could not confirm the issue; it may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Jira has no idempotency key; the shared fence needs durable sync heartbeats before dispatch.
       execution:
@@ -291,14 +291,14 @@ spec:
       inputType: AddCommentInput
       outputType: AddCommentOutput
       kind: mutation
-      description: Add one plain-text comment, converted to Atlassian Document Format, to an issue. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted comment.
+      description: Add one plain-text comment, converted to Atlassian Document Format, to an issue. A synchronous single-dispatch fence counts each send, and an unknown outcome is read back by a Call ID property before a resend within the send cap.
       idempotency: required
       authorization: required
       branches:
         - {id: added, goName: Added, description: Jira added the comment and returned its ID.}
         - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it; nothing was added., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira but could not be confirmed; the comment may exist and must not be added again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The send cap is reached and read-back could not confirm the comment; it may exist and must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s

@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const jiraCallPropertyKey = "dex.connector.call"
@@ -62,6 +64,49 @@ func readbackExchangeStatus(result exchangeResult) writeReadbackStatus {
 		return writeReadbackMissing
 	}
 	return writeReadbackFound
+}
+
+// sendCapPolicy holds one fenced attempt's send-cap facts from its Fence decision.
+type sendCapPolicy struct {
+	// canResendUnknownOutcome is true while another send stays within the cap.
+	canResendUnknownOutcome bool
+	// hasPossibleEarlierSend is true when an earlier send of this call may have taken effect.
+	hasPossibleEarlierSend bool
+}
+
+func newSendCapPolicy(call sdkgo.Call, decision singledispatch.Decision) sendCapPolicy {
+	return sendCapPolicy{
+		canResendUnknownOutcome: decision.MaximumPriorSends+1 < call.MaxSends(),
+		hasPossibleEarlierSend:  decision.MaximumPriorSends > 0,
+	}
+}
+
+// resendOrSelectUncertain retries an unknown outcome while the send cap allows another send.
+func resendOrSelectUncertain[T any](policy sendCapPolicy, value T, failure sdkgo.Failure, retryAfter time.Duration, receipt sdkgo.Receipt) sdkgo.MutationAttempt[T] {
+	if policy.canResendUnknownOutcome {
+		// The claim stays the last marker, so the next attempt counts this send.
+		return sdkgo.NewMutationRetry[T](failure, retryAfter)
+	}
+	return sdkgo.NewMutationUncertain(value, failure, receipt)
+}
+
+// rejectOrSelectUncertain selects a refusal branch only when no earlier send may have written.
+func rejectOrSelectUncertain[T any](fence *singledispatch.Fence, policy sendCapPolicy, operationID string, branch sdkgo.BranchID, value T, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[T] {
+	if policy.hasPossibleEarlierSend {
+		return sdkgo.NewMutationUncertain(value, failure, receipt)
+	}
+	if err := fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[T](newFailure(operationID, sdkgo.FailureAvailability, "Jira rejection checkpoint could not be recorded"), 0)
+	}
+	return sdkgo.NewMutationBranch(branch, value, &failure, receipt)
+}
+
+// defectOrSelectUncertain selects defect only when no earlier send may have written.
+func defectOrSelectUncertain[T any](policy sendCapPolicy, defect sdkgo.BranchID, value T, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[T] {
+	if policy.hasPossibleEarlierSend {
+		return sdkgo.NewMutationUncertain(value, failure, receipt)
+	}
+	return sdkgo.NewMutationBranch(defect, value, &failure, receipt)
 }
 
 func matchesJiraCallProperty(raw json.RawMessage, expected string) bool {

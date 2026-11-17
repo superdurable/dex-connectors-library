@@ -25,27 +25,163 @@ func laterFenceContext(step string) *singledispatchtest.Context {
 	return ctx
 }
 
-func TestLaterCreateAttemptWithoutDispatchCheckpointDoesNotResend(t *testing.T) {
-	provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+func fenceContextAtAttempt(step string, attempt int32) *singledispatchtest.Context {
+	ctx := singledispatchtest.NewContext("jira-flow", step)
+	for ctx.Attempt() < attempt {
+		ctx.AdvanceAttempt()
+	}
+	return ctx
+}
+
+func TestLaterCreateAttemptWithoutDispatchCheckpointReadsBackThenResends(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.URL.Path == testSitePrefix+"/search/jql" {
+			writeJSON(t, response, http.StatusOK, `{"issues":[]}`)
+			return
+		}
 		writeJSON(t, response, http.StatusCreated, `{"id":"10043","key":"OPS-43"}`)
 	})
 	client := newJiraClient(t, provider.URL)
 	result, err := sdkgo.RunMutation(laterFenceContext("create-later"), client.CreateIssue(), jiraConnection, validCreateIssueInput())
 	require.NoError(t, err)
+	require.Equal(t, jira.CreateIssueBranchCreated, result.Branch)
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/search/jql"), "the earlier possible send is read back first")
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
+}
+
+func TestCreateAttemptAtTheSendCapWithoutDispatchCheckpointIsUncertain(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.URL.Path == testSitePrefix+"/search/jql" {
+			writeJSON(t, response, http.StatusOK, `{"issues":[]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusCreated, `{"id":"10043","key":"OPS-43"}`)
+	})
+	client := newJiraClient(t, provider.URL)
+	result, err := sdkgo.RunMutation(fenceContextAtAttempt("create-at-cap", jira.CreateIssueDefinition.MaxSends+1), client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	require.NoError(t, err)
 	require.Equal(t, jira.CreateIssueBranchUncertain, result.Branch)
 	require.Zero(t, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
 }
 
-func TestLaterCommentAttemptWithoutDispatchCheckpointDoesNotResend(t *testing.T) {
-	provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+func TestLaterCommentAttemptWithoutDispatchCheckpointReadsBackThenResends(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"comments":[]}`)
+			return
+		}
 		writeJSON(t, response, http.StatusCreated, `{"id":"10500"}`)
 	})
 	client := newJiraClient(t, provider.URL)
-	result, err := sdkgo.RunMutation(laterFenceContext("comment-later"), client.AddComment(), jiraConnection,
-		jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."})
+	input := jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."}
+	result, err := sdkgo.RunMutation(laterFenceContext("comment-later"), client.AddComment(), jiraConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jira.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, 1, provider.requestCountFor(http.MethodGet, testSitePrefix+"/issue/OPS-43/comment"), "the earlier possible send is read back first")
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
+	atCap, err := sdkgo.RunMutation(fenceContextAtAttempt("comment-at-cap", jira.AddCommentDefinition.MaxSends+1), client.AddComment(), jiraConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, jira.AddCommentBranchUncertain, atCap.Branch)
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
+}
+
+func TestUnknownIssueOutcomeResendsBelowTheSendCapThenIsUncertain(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.URL.Path == testSitePrefix+"/search/jql" {
+			writeJSON(t, response, http.StatusOK, `{"issues":[]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusInternalServerError, `{}`)
+	})
+	client := newJiraClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("jira-flow", "create-unknown")
+	for attempt := int32(1); attempt < jira.CreateIssueDefinition.MaxSends; attempt++ {
+		_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		require.Equal(t, int(attempt), provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
+		ctx.AdvanceAttempt()
+	}
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	require.NoError(t, err)
+	require.Equal(t, jira.CreateIssueBranchUncertain, result.Branch)
+	ctx.AdvanceAttempt()
+	result, err = sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	require.NoError(t, err)
+	require.Equal(t, jira.CreateIssueBranchUncertain, result.Branch)
+	require.Equal(t, 3, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"), "the send cap forbids a fourth send")
+}
+
+func TestUnknownCommentOutcomeWithSendCapOneIsUncertain(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		if request.Method == http.MethodGet {
+			writeJSON(t, response, http.StatusOK, `{"comments":[]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusConflict, `{}`)
+	})
+	client := newJiraClient(t, provider.URL)
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("jira-flow", "comment-cap-one"), client.AddComment(), jiraConnection,
+		jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."}, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, jira.AddCommentBranchUncertain, result.Branch)
-	require.Zero(t, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
+}
+
+func TestDefiniteIssueRefusalRecordsCanResendAndIsNeverResent(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusBadRequest, `{"errors":{"summary":"Summary is required."}}`)
+	})
+	client := newJiraClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("jira-flow", "create-refused")
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	require.NoError(t, err)
+	require.Equal(t, jira.CreateIssueBranchProviderRejected, result.Branch)
+	frames := ctx.Heartbeats()
+	var lastMarker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(frames[len(frames)-1], &lastMarker))
+	require.Equal(t, singledispatch.StateCanResend, lastMarker.State)
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
+}
+
+func TestRefusalOfAResendIsUncertain(t *testing.T) {
+	posts := 0
+	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
+		switch {
+		case request.URL.Path == testSitePrefix+"/search/jql":
+			writeJSON(t, response, http.StatusOK, `{"issues":[]}`)
+		case posts == 0:
+			posts++
+			writeJSON(t, response, http.StatusBadGateway, `{}`)
+		default:
+			posts++
+			writeJSON(t, response, http.StatusForbidden, `{}`)
+		}
+	})
+	client := newJiraClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("jira-flow", "create-resend-refused")
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	require.NoError(t, err)
+	require.Equal(t, jira.CreateIssueBranchUncertain, result.Branch, "the first send may have created the issue")
+	require.Equal(t, 2, posts)
+}
+
+func TestUntrustedDispatchCheckpointRetriesWithoutSending(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":"10043","key":"OPS-43"}`)
+	})
+	client := newJiraClient(t, provider.URL)
+	ctx := laterFenceContext("create-untrusted")
+	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{CallID: "another-call", Attempt: 1, State: singledispatch.StateClaimed}))
+	_, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	commentContext := laterFenceContext("comment-unreadable")
+	commentContext.SetReadError(errors.New("heartbeat unavailable"))
+	_, err = sdkgo.RunMutation(commentContext, client.AddComment(), jiraConnection, jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Zero(t, provider.requestCount())
 }
 
 func TestAcceptedIssueIsReadBackWithoutResending(t *testing.T) {
@@ -261,8 +397,9 @@ func TestWriteDoesNotStartWhenExecuteDeadlineIsTooNear(t *testing.T) {
 	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
 }
 
-func TestStaleCanResendMarkerNeverAuthorizesThirdIssueWrite(t *testing.T) {
+func TestStaleCanResendMarkerReadsBackBeforeAThirdIssueWrite(t *testing.T) {
 	posts := 0
+	var markerValue string
 	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPost && request.URL.Path == testSitePrefix+"/issue" {
 			posts++
@@ -270,10 +407,21 @@ func TestStaleCanResendMarkerNeverAuthorizesThirdIssueWrite(t *testing.T) {
 				writeJSON(t, response, http.StatusTooManyRequests, `{}`)
 				return
 			}
+			var body struct {
+				Properties []struct {
+					Value string `json:"value"`
+				} `json:"properties"`
+			}
+			require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+			markerValue = body.Properties[0].Value
 			writeJSON(t, response, http.StatusCreated, `{"id":"10043","key":"OPS-43"}`)
 			return
 		}
-		writeJSON(t, response, http.StatusOK, `{"issues":[]}`)
+		if posts < 2 {
+			writeJSON(t, response, http.StatusOK, `{"issues":[]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, `{"issues":[{"id":"10043","key":"OPS-43","properties":{"dex.connector.call":"`+markerValue+`"},"fields":{"summary":"Fire panel wiring"}}]}`)
 	})
 	client := newJiraClient(t, provider.URL)
 	ctx := singledispatchtest.NewContext("jira-flow", "stale-marker")
@@ -291,12 +439,13 @@ func TestStaleCanResendMarkerNeverAuthorizesThirdIssueWrite(t *testing.T) {
 	require.NoError(t, ctx.SetPersistedCheckpoint(firstMarker))
 	third, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
 	require.NoError(t, err)
-	require.Equal(t, jira.CreateIssueBranchUncertain, third.Branch)
+	require.Equal(t, jira.CreateIssueBranchCreated, third.Branch, "the stale marker counts the second send, which read-back finds")
 	require.Equal(t, 2, posts)
 }
 
-func TestStaleCanResendMarkerNeverAuthorizesThirdCommentWrite(t *testing.T) {
+func TestStaleCanResendMarkerReadsBackBeforeAThirdCommentWrite(t *testing.T) {
 	postCount := 0
+	var markerValue string
 	provider := newRecordingJira(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPost && request.URL.Path == testSitePrefix+"/issue/OPS-43/comment" {
 			postCount++
@@ -304,10 +453,21 @@ func TestStaleCanResendMarkerNeverAuthorizesThirdCommentWrite(t *testing.T) {
 				writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
 				return
 			}
+			var body struct {
+				Properties []struct {
+					Value string `json:"value"`
+				} `json:"properties"`
+			}
+			require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+			markerValue = body.Properties[0].Value
 			writeJSON(t, response, http.StatusCreated, `{"id":"10500"}`)
 			return
 		}
-		writeJSON(t, response, http.StatusOK, `{"comments":[]}`)
+		if postCount < 2 {
+			writeJSON(t, response, http.StatusOK, `{"comments":[]}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, `{"comments":[{"id":"10500","properties":[{"key":"dex.connector.call","value":"`+markerValue+`"}]}]}`)
 	})
 	client := newJiraClient(t, provider.URL)
 	ctx := singledispatchtest.NewContext("jira-flow", "stale-comment-marker")
@@ -326,7 +486,7 @@ func TestStaleCanResendMarkerNeverAuthorizesThirdCommentWrite(t *testing.T) {
 	require.NoError(t, ctx.SetPersistedCheckpoint(firstMarker))
 	third, err := sdkgo.RunMutation(ctx, client.AddComment(), jiraConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, jira.AddCommentBranchUncertain, third.Branch)
+	require.Equal(t, jira.AddCommentBranchAdded, third.Branch, "the stale marker counts the second send, which read-back finds")
 	require.Equal(t, 2, postCount)
 }
 

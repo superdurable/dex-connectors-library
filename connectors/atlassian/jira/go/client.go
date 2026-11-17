@@ -527,7 +527,7 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira "+subject+" is temporarily unavailable")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, nil)}
-	case isConclusiveRejectionStatus(response.statusCode):
+	case isDefiniteWriteRefusalStatus(response.statusCode):
 		rejectedFieldIDs := readJiraRejectedFieldIDs(response.body)
 		return writeClassification{outcome: writeRejected, rejectedFieldIDs: rejectedFieldIDs, failure: rejectionFailure(operationID, subject, response.statusCode, rejectedFieldIDs)}
 	default:
@@ -658,7 +658,9 @@ func (client *Client) hasMatchingJiraCallProperty(session *operationSession, pat
 	return writeReadbackMissing
 }
 
-func (client *Client) reconcileCreatedIssue(session *operationSession, requested CreateIssueOutput, marker jiraCallProperty, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateIssueOutput] {
+// reconcileCreatedIssue reads back a possibly created issue. A missing issue resends while the
+// policy allows, except that an issue Jira already identified is never sent again.
+func (client *Client) reconcileCreatedIssue(session *operationSession, requested CreateIssueOutput, marker jiraCallProperty, providerID string, policy sendCapPolicy, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateIssueOutput] {
 	created, status := client.findCreatedIssue(session, requested, marker, providerID)
 	switch status {
 	case writeReadbackFound:
@@ -666,11 +668,16 @@ func (client *Client) reconcileCreatedIssue(session *operationSession, requested
 	case writeReadbackRetry:
 		return sdkgo.NewMutationRetry[CreateIssueOutput](newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira issue read-back is temporarily unavailable"), 0)
 	default:
-		return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		if providerID != "" {
+			return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		}
+		return resendOrSelectUncertain(policy, requested, failure, 0, receipt)
 	}
 }
 
-func (client *Client) reconcileAddedComment(session *operationSession, requested AddCommentOutput, issueIDOrKey string, marker jiraCallProperty, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
+// reconcileAddedComment reads back a possibly added comment. A missing comment resends while the
+// policy allows, except that a comment Jira already identified is never sent again.
+func (client *Client) reconcileAddedComment(session *operationSession, requested AddCommentOutput, issueIDOrKey string, marker jiraCallProperty, providerID string, policy sendCapPolicy, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
 	comment, status := client.findAddedComment(session, issueIDOrKey, marker, providerID)
 	switch status {
 	case writeReadbackFound:
@@ -678,7 +685,10 @@ func (client *Client) reconcileAddedComment(session *operationSession, requested
 	case writeReadbackRetry:
 		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira comment read-back is temporarily unavailable"), 0)
 	default:
-		return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		if providerID != "" {
+			return sdkgo.NewMutationUncertain(requested, failure, receipt)
+		}
+		return resendOrSelectUncertain(policy, requested, failure, 0, receipt)
 	}
 }
 
@@ -753,9 +763,16 @@ func statusFailureKind(statusCode int) sdkgo.FailureKind {
 
 func isSuccessStatus(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
-// isConclusiveRejectionStatus reports a 4xx other than 408 and 429: Jira refused before changing anything.
-func isConclusiveRejectionStatus(statusCode int) bool {
-	return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusRequestTimeout && statusCode != http.StatusTooManyRequests
+// isDefiniteWriteRefusalStatus reports a status proving Jira refused a write; other statuses leave it unknown.
+func isDefiniteWriteRefusalStatus(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound,
+		http.StatusLengthRequired, http.StatusRequestEntityTooLarge, http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 func isRetryableReadStatus(statusCode int) bool {

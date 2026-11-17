@@ -76,7 +76,7 @@ export interface CreateIssueStepConfig<StepInput, OperationInput = CreateIssueIn
   created: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request may have reached Jira but could not be confirmed; the issue may exist and must not be created again automatically. */
+  /** The send cap is reached and read-back could not confirm the issue; it may exist and must not be created again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;
@@ -140,7 +140,7 @@ export interface AddCommentStepConfig<StepInput, OperationInput = AddCommentInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The request may have reached Jira but could not be confirmed; the comment may exist and must not be added again automatically. */
+  /** The send cap is reached and read-back could not confirm the comment; it may exist and must not be added again automatically. */
   uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<OperationOutput>>;

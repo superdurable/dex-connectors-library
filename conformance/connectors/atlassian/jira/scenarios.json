@@ -254,6 +254,7 @@
           "attempt": 1,
           "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
           "providerId": "10043",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -433,6 +434,7 @@
           "attempt": 1,
           "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
           "providerId": "10500",
+          "sendCount": 1,
           "state": "claimed"
         },
         "output": {
@@ -1410,7 +1412,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "projectId": "10000",
@@ -1857,18 +1859,69 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+          "sendCount": 1,
           "state": "claimed"
         },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "issueTypeId": "10001",
+        "projectId": "10000",
+        "summary": "Fire panel wiring"
+      },
+      "name": "create_unknown_resends",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [
+        {
+          "body": "{\"issues\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary"
+            ],
+            "jql": "project = 10000 AND summary ~ \"\\\"Fire panel wiring\\\"\" ORDER BY created DESC",
+            "maxResults": 50,
+            "properties": [
+              "dex.connector.call"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
         "output": {
           "projectId": "10000",
           "summary": "Fire panel wiring"
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -1879,8 +1932,119 @@
         "projectId": "10000",
         "summary": "Fire panel wiring"
       },
-      "name": "create_uncertain",
-      "operation": "createIssue"
+      "name": "create_uncertain_at_send_cap",
+      "operation": "createIssue",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+        "sendCount": 3,
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [
+        {
+          "body": "{\"issues\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary"
+            ],
+            "jql": "project = 10000 AND summary ~ \"\\\"Fire panel wiring\\\"\" ORDER BY created DESC",
+            "maxResults": 50,
+            "properties": [
+              "dex.connector.call"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue",
+          "requestBody": {
+            "fields": {
+              "issuetype": {
+                "id": "10001"
+              },
+              "project": {
+                "id": "10000"
+              },
+              "summary": "Fire panel wiring"
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "f8e4e6c9568fd3740d262235c184c5107fde46cb554aa3a748b4c57257a11f57"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+          "providerId": "10043",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "projectId": "10000",
+          "summary": "Fire panel wiring"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "issueTypeId": "10001",
+        "projectId": "10000",
+        "summary": "Fire panel wiring"
+      },
+      "name": "create_read_back_then_resend",
+      "operation": "createIssue",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+        "sendCount": 1,
+        "state": "claimed"
+      }
     },
     {
       "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
@@ -2294,7 +2458,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
@@ -2365,7 +2529,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
-          "state": "claimed"
+          "state": "canResend"
         },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
@@ -2458,18 +2622,66 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "PROTOCOL",
         "heartbeat": {
           "attempt": 1,
           "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+          "sendCount": 1,
           "state": "claimed"
         },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "Triage started.",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "comment_unknown_resends",
+      "operation": "addComment"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [
+        {
+          "body": "{\"comments\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43/comment",
+          "query": {
+            "expand": [
+              "properties"
+            ],
+            "maxResults": [
+              "50"
+            ],
+            "orderBy": [
+              "-created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "issueIdOrKey": "OPS-43"
         },
-        "requestCount": 2,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": true
@@ -2479,8 +2691,14 @@
         "body": "Triage started.",
         "issueIdOrKey": "OPS-43"
       },
-      "name": "comment_uncertain",
-      "operation": "addComment"
+      "name": "comment_uncertain_at_send_cap",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+        "sendCount": 3,
+        "state": "claimed"
+      }
     },
     {
       "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",

@@ -535,7 +535,7 @@ class Client:
         fields = rejected_fields(response.body)
         if status == 404:
             return Classification("notFound", rejection_failure(operation, subject, status, ()))
-        if 400 <= status < 500 and status != 408:
+        if status in DEFINITE_WRITE_REFUSAL_STATUSES:
             return Classification(
                 "rejected", rejection_failure(operation, subject, status, fields), rejected_fields=fields
             )
@@ -545,6 +545,10 @@ class Client:
                 operation, FailureKind.AVAILABILITY, f"Jira {subject} outcome is unknown after HTTP {status}"
             ),
         )
+
+
+DEFINITE_WRITE_REFUSAL_STATUSES = frozenset({400, 401, 403, 404, 411, 413, 414, 415, 422})
+"""Statuses proving Jira refused a write; any other status leaves its outcome unknown."""
 
 
 def status_failure_kind(status: int) -> FailureKind:

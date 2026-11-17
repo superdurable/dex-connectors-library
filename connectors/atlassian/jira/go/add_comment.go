@@ -78,39 +78,45 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
 	}
-	fence, err := singledispatch.NewFence(call, AddCommentDefinition.StepDefaults.ExecuteMethodTimeout)
+	fence, err := singledispatch.NewFence(call, AddCommentDefinition.StepDefaults.ExecuteMethodTimeout, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureLocalDefect, "Jira dispatch fence could not be constructed"), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Jira dispatch checkpoint cannot be trusted"), sdkgo.Receipt{})
+		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira dispatch checkpoint is unreadable, so nothing was sent in this attempt"), 0)
 	}
+	policy := newSendCapPolicy(call, decision)
 	session, cancel, sessionErr := client.startSession(call, addCommentOperationID)
 	if sessionErr != nil {
 		if decision.Kind == singledispatch.SendAllowed {
 			if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
 				return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira setup failed and the not-sent checkpoint could not be recorded"), sessionErr.retryAfter)
 			}
-			if sessionErr.isRetryable {
-				return sdkgo.NewMutationRetry[AddCommentOutput](sessionErr.failure, sessionErr.retryAfter)
-			}
-			return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 		}
 		if sessionErr.isRetryable {
 			return sdkgo.NewMutationRetry[AddCommentOutput](sessionErr.failure, sessionErr.retryAfter)
 		}
-		return sdkgo.NewMutationUncertain(requested, sessionErr.failure, sdkgo.Receipt{})
+		return defectOrSelectUncertain(policy, AddCommentBranchDefect, requested, sessionErr.failure, sdkgo.Receipt{})
 	}
 	defer cancel()
 	marker := jiraCallPropertyForCall(call)
 	receipt := client.emptyReceipt(session)
-	if decision.Kind == singledispatch.ReadBackRequired {
-		providerID := ""
-		if decision.Marker.CallID == call.ID {
-			providerID = decision.Marker.ProviderID
+	possibleEarlierSendFailure := newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira comment dispatch may have succeeded")
+	switch decision.Kind {
+	case singledispatch.ReadBackRequired:
+		return client.reconcileAddedComment(session, requested, issueIDOrKey, marker, decision.Marker.ProviderID, sendCapPolicy{}, possibleEarlierSendFailure, receipt)
+	case singledispatch.ReadBackThenResendAllowed:
+		if decision.Marker.ProviderID != "" {
+			return client.reconcileAddedComment(session, requested, issueIDOrKey, marker, decision.Marker.ProviderID, sendCapPolicy{}, possibleEarlierSendFailure, receipt)
 		}
-		return client.reconcileAddedComment(session, requested, issueIDOrKey, marker, providerID, newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira comment dispatch may have succeeded"), receipt)
+		comment, status := client.findAddedComment(session, issueIDOrKey, marker, "")
+		switch status {
+		case writeReadbackFound:
+			return addedCommentBranch(requested, comment, receipt)
+		case writeReadbackRetry:
+			return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira comment read-back is temporarily unavailable"), 0)
+		}
 	}
 	attempt := &jiraWriteAttempt{client: client, session: session, request: jiraRequest{
 		method: http.MethodPost, path: issuePath(issueIDOrKey) + "/comment",
@@ -120,7 +126,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira dispatch checkpoint or request budget is unavailable"), 0)
 		}
-		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, failurePointer(addCommentOperationID, sdkgo.FailureLocalDefect, "Jira dispatch was not allowed"), receipt)
+		return defectOrSelectUncertain(policy, AddCommentBranchDefect, requested, newFailure(addCommentOperationID, sdkgo.FailureLocalDefect, "Jira dispatch was not allowed"), receipt)
 	}
 	result := attempt.result
 	classification := client.classifyUnkeyedWrite(addCommentOperationID, addCommentFailureSubject, result)
@@ -132,11 +138,11 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 		}
 		return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, classification.retryAfter)
 	case writeDefect:
-		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, &classification.failure, receipt)
+		return defectOrSelectUncertain(policy, AddCommentBranchDefect, requested, classification.failure, receipt)
 	case writeUncertain:
-		return client.reconcileAddedComment(session, requested, issueIDOrKey, marker, "", classification.failure, receipt)
+		return client.reconcileAddedComment(session, requested, issueIDOrKey, marker, "", policy, classification.failure, receipt)
 	case writeNotFound:
-		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, requested, &classification.failure, receipt)
+		return rejectOrSelectUncertain(fence, policy, addCommentOperationID, AddCommentBranchNotFound, requested, classification.failure, receipt)
 	case writeRejected:
 		if result.response.statusCode == http.StatusUnauthorized && client.refreshRejectedCredential(session) {
 			if err := fence.RecordCanResend(); err != nil {
@@ -144,11 +150,8 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 			}
 			return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAuthentication, "Jira access token was refreshed for retry"), 0)
 		}
-		if result.response.statusCode == http.StatusConflict {
-			return client.reconcileAddedComment(session, requested, issueIDOrKey, marker, "", classification.failure, receipt)
-		}
 		requested.RejectedFieldIDs = classification.rejectedFieldIDs
-		return sdkgo.NewMutationBranch(AddCommentBranchProviderRejected, requested, &classification.failure, receipt)
+		return rejectOrSelectUncertain(fence, policy, addCommentOperationID, AddCommentBranchProviderRejected, requested, classification.failure, receipt)
 	}
 	var comment commentResource
 	if json.Unmarshal(result.response.body, &comment) == nil && numericIDPattern.MatchString(comment.ID) {
@@ -156,7 +159,7 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 		_ = fence.RecordProviderID(comment.ID)
 		return addedCommentBranch(requested, comment, receipt)
 	}
-	return client.reconcileAddedComment(session, requested, issueIDOrKey, marker, "", newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Jira accepted the comment but returned an unusable comment reference"), receipt)
+	return client.reconcileAddedComment(session, requested, issueIDOrKey, marker, "", policy, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Jira accepted the comment but returned an unusable comment reference"), receipt)
 }
 
 func addedCommentBranch(requested AddCommentOutput, comment commentResource, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {

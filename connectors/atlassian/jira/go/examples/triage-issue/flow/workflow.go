@@ -3,8 +3,8 @@
 
 // Package triageissue demonstrates every Jira operation in one Flow started from Dex Web Start Flow:
 // search for an open issue with the same summary, create one only when none exists, read it back,
-// comment on it, and move it to a destination status. An uncertain create is parked for an operator
-// instead of being created again.
+// comment on it, and move it to a destination status. A create still uncertain after the connector's
+// bounded resends is parked for an operator instead of being created again.
 package triageissue
 
 import (
@@ -232,7 +232,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: createTriageIssueStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "jira", GroupLabel: "Jira",
-				Explanation: "Create the issue once; an unknown outcome is reconciled, never created again automatically.",
+				Explanation: "Create the issue; an unknown outcome is read back and resent up to the send cap, then reconciled by an operator.",
 			},
 			ConfigurationUI: sdkgo.ConnectorConfigurationUI{Units: []sdkgo.ConnectorUIUnit{{
 				ID: "triageProject", UnitID: jira.UIUnitProjectPicker, Label: "Triage project",
@@ -267,7 +267,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: addTriageCommentStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "jira", GroupLabel: "Jira",
-				Explanation: "Add the triage comment once; an unknown outcome fails the Flow without resending.",
+				Explanation: "Add the triage comment; an unknown outcome is read back and resent up to the send cap, then fails the Flow.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
 			Added: sdkgo.GoTo(recordTriageComment{}),
