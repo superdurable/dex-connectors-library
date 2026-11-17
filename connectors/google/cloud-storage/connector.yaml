@@ -143,7 +143,7 @@ spec:
       description: Create a bucket with a globally unique name in a project.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: The requested bucket exists.}
         - {id: nameTaken, goName: NameTaken, description: Another bucket owns the requested name., optional: true}

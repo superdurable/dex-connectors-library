@@ -133,7 +133,7 @@ spec:
       description: Create a document with a chosen unused ID in the default database.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Firestore created the document.}
         - {id: alreadyExists, goName: AlreadyExists, description: The document ID is already in use., optional: true}
