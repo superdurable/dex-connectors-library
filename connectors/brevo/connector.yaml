@@ -63,7 +63,7 @@ spec:
       description: Create a contact by email without updating an existing contact.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Brevo created the contact.}
         - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the contact., optional: true}
@@ -163,7 +163,7 @@ spec:
       description: Create a contact attribute with its type, options, or formula.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Brevo created the attribute.}
         - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the attribute., optional: true}
@@ -243,7 +243,7 @@ spec:
       description: Create an email sender; Brevo sends an address verification message.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Brevo created the sender.}
         - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the sender., optional: true}
@@ -303,7 +303,7 @@ spec:
       description: Send one transactional email with inline text or HTML content.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: Brevo accepted the transactional email.}
         - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the email., optional: true}
@@ -323,7 +323,7 @@ spec:
       description: Send one transactional email from a configured Brevo template.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: Brevo accepted the template email.}
         - {id: providerRejected, goName: ProviderRejected, description: Brevo conclusively rejected the email., optional: true}

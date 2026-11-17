@@ -63,7 +63,7 @@ spec:
       description: Create a text idea in one organization.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Buffer created the idea.}
         - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the idea., optional: true}
@@ -184,7 +184,7 @@ spec:
       description: Add a text post to one channel queue.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Buffer completed the operation.}
         - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the request., optional: true}
@@ -204,7 +204,7 @@ spec:
       description: Create a text post scheduled for a specific UTC time.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Buffer scheduled the post.}
         - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the post., optional: true}
@@ -224,7 +224,7 @@ spec:
       description: Create a text post for immediate publishing.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Buffer accepted the post for immediate publishing.}
         - {id: providerRejected, goName: ProviderRejected, description: Buffer conclusively rejected the post., optional: true}

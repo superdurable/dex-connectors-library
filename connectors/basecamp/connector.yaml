@@ -107,7 +107,7 @@ spec:
       description: Create a Basecamp project with a name and optional description.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Basecamp created the project.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected creation., optional: true}
@@ -270,7 +270,7 @@ spec:
       description: Create a dated schedule entry.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -372,7 +372,7 @@ spec:
       description: Create a message as a draft or published post.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -595,7 +595,7 @@ spec:
       description: Enroll or invite one person into an account.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: enrolled, goName: Enrolled, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -656,7 +656,7 @@ spec:
       description: Create a to-do list in a to-do set.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Basecamp returned the requested result.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected the request., optional: true}
@@ -737,7 +737,7 @@ spec:
       description: Create a to-do in a list.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Basecamp applied the request.}
         - {id: providerRejected, goName: ProviderRejected, description: Basecamp rejected creation., optional: true}

@@ -104,7 +104,7 @@ spec:
       description: Create a draft campaign with hosted HTML and selected recipients.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Campaign Monitor created the draft.}
         - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected draft creation., optional: true}
@@ -124,7 +124,7 @@ spec:
       description: Send or schedule an existing draft campaign in the client's timezone.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: Campaign Monitor accepted the campaign send.}
         - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the send., optional: true}
@@ -144,7 +144,7 @@ spec:
       description: Send a draft campaign preview to selected addresses.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: Campaign Monitor accepted the preview.}
         - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the preview., optional: true}
@@ -245,7 +245,7 @@ spec:
       description: Create a segment with optional rule groups.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Campaign Monitor created the segment.}
         - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected segment creation., optional: true}
@@ -327,7 +327,7 @@ spec:
       description: Create a subscriber list for one client.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Campaign Monitor created the list.}
         - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected list creation., optional: true}

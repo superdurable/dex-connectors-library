@@ -198,7 +198,7 @@ spec:
       description: Create a pull request comment.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Bitbucket returned the requested comment state.}
         - {id: providerRejected, goName: ProviderRejected, description: Bitbucket rejected the comment request., optional: true}
@@ -301,7 +301,7 @@ spec:
       description: Create a pull request between two branches of one repository.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Bitbucket created the pull request.}
         - {id: providerRejected, goName: ProviderRejected, description: Bitbucket conclusively rejected the request., optional: true}

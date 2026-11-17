@@ -61,7 +61,7 @@ spec:
       description: Create an A, AAAA, CNAME, or TXT DNS record in one zone.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Cloudflare returned the created DNS record.}
         - {id: providerRejected, goName: ProviderRejected, description: Cloudflare conclusively rejected creation., optional: true}

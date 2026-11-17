@@ -125,7 +125,7 @@ spec:
       description: Accept an open dispute.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: accepted, goName: Accepted, description: Braintree returned the requested result.}
         - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
@@ -146,7 +146,7 @@ spec:
       description: Add text evidence to an open dispute.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Braintree returned the requested result.}
         - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
@@ -167,7 +167,7 @@ spec:
       description: Upload a worker-mounted file as dispute evidence.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Braintree returned the created evidence.}
         - {id: notFound, goName: NotFound, description: The dispute was not found., optional: true}
@@ -209,7 +209,7 @@ spec:
       description: Submit an open dispute and its evidence.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: finalized, goName: Finalized, description: Braintree returned the requested result.}
         - {id: notFound, goName: NotFound, description: The dispute or evidence was not found., optional: true}
@@ -331,7 +331,7 @@ spec:
       description: Vault a single-use payment method for repeat use.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: vaulted, goName: Vaulted, description: A vaulted payment method was returned.}
         - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
@@ -352,7 +352,7 @@ spec:
       description: Update a vaulted cardholder name with verification.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: updated, goName: Updated, description: The cardholder name was updated.}
         - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
@@ -373,7 +373,7 @@ spec:
       description: Update a vaulted card expiration date with verification.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: updated, goName: Updated, description: The expiration date was updated.}
         - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
@@ -394,7 +394,7 @@ spec:
       description: Update a vaulted card billing address with verification.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: updated, goName: Updated, description: The billing address was updated.}
         - {id: notFound, goName: NotFound, description: The selected payment method was not found., optional: true}
@@ -436,7 +436,7 @@ spec:
       description: Create a customer with contact details.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: created, goName: Created, description: Braintree created the customer.}
         - {id: providerRejected, goName: ProviderRejected, description: Braintree definitively rejected creation., optional: true}

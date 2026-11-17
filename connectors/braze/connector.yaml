@@ -64,7 +64,7 @@ spec:
       description: Trigger an API-enabled campaign for one existing external user ID.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: Braze accepted the targeted campaign dispatch.}
         - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the dispatch., optional: true}
@@ -84,7 +84,7 @@ spec:
       description: Trigger an API-enabled Canvas for one existing external user ID.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3, dispatchFence: true}
       branches:
         - {id: sent, goName: Sent, description: Braze accepted the targeted Canvas dispatch.}
         - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the dispatch., optional: true}

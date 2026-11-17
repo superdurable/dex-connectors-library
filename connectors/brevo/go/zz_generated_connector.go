@@ -262,7 +262,7 @@ var CreateContactDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
 	MaxSends:        3,
@@ -624,7 +624,7 @@ var CreateAttributeDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
 	MaxSends:        3,
@@ -915,7 +915,7 @@ var CreateSenderDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
 	MaxSends:        3,
@@ -1135,7 +1135,7 @@ var SendEmailDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
 	MaxSends:        3,
@@ -1211,7 +1211,7 @@ var SendTemplateEmailDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
 	MaxSends:        3,
