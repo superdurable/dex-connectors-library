@@ -171,7 +171,7 @@ func TestOversizedResponseIsInvalidForAReadAndUncertainForAWrite(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.GetInvoiceBranchInvalidResponse, read.Branch)
 	require.Equal(t, sdkgo.FailureResponseTooLarge, read.Failure.Kind)
-	write, err := sdkgo.RunMutation(newQuickBooksDexContext("large-write"), client.SendInvoice(), quickbooksConnection, quickbooks.SendInvoiceInput{InvoiceID: testInvoiceID})
+	write, err := sdkgo.RunMutation(newQuickBooksDexContext("large-write"), client.SendInvoice(), quickbooksConnection, quickbooks.SendInvoiceInput{InvoiceID: testInvoiceID}, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.SendInvoiceBranchUncertain, write.Branch)
 }

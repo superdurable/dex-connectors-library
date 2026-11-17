@@ -87,6 +87,8 @@ type quickbooksExchange struct {
 	failure    sdkgo.Failure
 	retryAfter time.Duration
 	metadata   map[string]string
+	// isProvablyUnsent means no request byte reached QuickBooks, such as a credential failure or a dial error.
+	isProvablyUnsent bool
 }
 
 // faultSummary holds only machine-readable tokens and a count from a QuickBooks Fault.

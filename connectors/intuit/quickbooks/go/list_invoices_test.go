@@ -112,7 +112,7 @@ func TestSendInvoicePostsAnEmptyOctetStreamAndRequiresEmailSent(t *testing.T) {
 	require.Equal(t, "accounts@cityagency.example.com", request.query.Get("sendTo"))
 	require.Equal(t, string(result.Receipt.IdempotencyKey), request.query.Get("requestid"))
 
-	result, err = sdkgo.RunMutation(newQuickBooksDexContext("not-sent"), client.SendInvoice(), quickbooksConnection, quickbooks.SendInvoiceInput{InvoiceID: testInvoiceID})
+	result, err = sdkgo.RunMutation(newQuickBooksDexContext("not-sent"), client.SendInvoice(), quickbooksConnection, quickbooks.SendInvoiceInput{InvoiceID: testInvoiceID}, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.SendInvoiceBranchUncertain, result.Branch, "an accepted send that is not marked EmailSent is unproven")
 	require.Empty(t, provider.request(1).query.Get("sendTo"), "blank sendTo uses the invoice's BillEmail")

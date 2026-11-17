@@ -111,7 +111,11 @@ func TestDefinitionsDeclareOptionalBranchesAndKeyedAsyncDurability(t *testing.T)
 		"createInvoice": quickbooks.CreateInvoiceDefinition.StepDefaults, "sendInvoice": quickbooks.SendInvoiceDefinition.StepDefaults,
 		"recordPayment": quickbooks.RecordPaymentDefinition.StepDefaults,
 	} {
-		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, "%s: a duplicate dispatch replays under the requestid", name)
+		if name == "findCustomer" || name == "getInvoice" || name == "listInvoices" {
+			require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, "%s: a read repeats harmlessly", name)
+		} else {
+			require.Equal(t, dex.StepDurabilitySync, defaults.ExecuteDurability, "%s: the dispatch fence requires sync durability", name)
+		}
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout, name)
 		require.GreaterOrEqual(t, defaults.ExecuteRetry.TotalDuration, 2*time.Minute, "%s: the documented one-minute throttle wait fits", name)
 		if name == "createInvoice" || name == "sendInvoice" || name == "recordPayment" {

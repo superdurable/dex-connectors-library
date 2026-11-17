@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-intuit-quickbooks",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "QuickBooks Online customer, invoice, and payment operations for Dex",
   "repository": {
     "type": "git",

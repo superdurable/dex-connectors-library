@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: MIT
 """QuickBooks operation invokes and Go-compatible Dex outcomes."""
 
+import dataclasses
 import json
 import re
+from collections.abc import Awaitable, Callable
 from datetime import UTC
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
@@ -11,6 +13,7 @@ from typing import Any
 from dex_connectors.sdk import (
     Call,
     CallID,
+    Failure,
     FailureKind,
     IdempotencyKey,
     MutationAttempt,
@@ -18,6 +21,14 @@ from dex_connectors.sdk import (
     QueryAttempt,
     QueryDefinition,
     Receipt,
+)
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    Decision,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
 )
 
 from ._generated import definitions as definitions
@@ -84,31 +95,6 @@ def _query_result(
     )
 
 
-def _mutation_result(
-    client: Client,
-    call: Call,
-    exchange: Exchange,
-    empty: Any,
-    name_conflict: bool = False,
-    object_id: str = "",
-) -> MutationAttempt[Any] | None:
-    if exchange.outcome in ("succeeded", "invalid", "interrupted"):
-        return None
-    if exchange.outcome == "retry":
-        assert exchange.failure is not None
-        return MutationAttempt.retry(exchange.failure, exchange.retry_after)
-    branch = (
-        "defect"
-        if exchange.outcome == "defect"
-        else "nameConflict"
-        if exchange.outcome == "nameConflict" and name_conflict
-        else "providerRejected"
-    )
-    return MutationAttempt.branch_result(
-        branch, empty, client.receipt(call, exchange, object_id), exchange.failure
-    )
-
-
 def _invalid_query(
     operation: str,
     client: Client,
@@ -148,22 +134,233 @@ def _created_customer_matches(customer: Customer, payload: dict[str, Any]) -> bo
     )
 
 
-async def _read_back(
-    client: Client, call: Call, operation: str, accepted: Exchange, entity_name: str, known_id: str = ""
-) -> dict[str, Any] | None:
+# Statuses that prove a write was refused; 409, 501, 3xx, and other statuses are unknown.
+_DEFINITE_REFUSAL_STATUSES = frozenset((400, 401, 403, 404, 411, 413, 414, 415, 422))
+
+# Confirms a read entity body as this Step's write, returning the happy-path output or None.
+_Confirm = Callable[[bytes, str], Any | None]
+
+
+def _accepted_entity_id(body: bytes, entity_name: str) -> str:
+    """Extract only an entity ID from a 2xx answer that failed full validation."""
     try:
-        accepted_entity = entity(accepted.body, entity_name) if not known_id else {}
-        identifier = validate_id("Id", known_id or accepted_entity.get("Id", ""))
-    except (ValueError, TypeError, KeyError):
-        return None
-    result = await client.exchange(call, operation, "GET", f"/{entity_name.lower()}/{identifier}")
-    if result.outcome != "succeeded":
-        return None
+        return validate_id("Id", entity(body, entity_name).get("Id", ""))
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return ""
+
+
+def _is_write_outcome_unknown(exchange: Exchange) -> bool:
+    """Report an outcome after a send that does not prove QuickBooks refused the write."""
+    if exchange.outcome == "retry":
+        return True
+    # A Fault at 2xx or 400 is a definite business refusal; other unlisted statuses are unknown.
+    return (
+        exchange.outcome == "rejected"
+        and exchange.status not in _DEFINITE_REFUSAL_STATUSES
+        and not 200 <= exchange.status < 300
+    )
+
+
+class _FencedWrite:
+    """One QuickBooks write attempt under a single-dispatch fence capped by call.max_sends."""
+
+    def __init__(
+        self,
+        client: Client,
+        call: Call,
+        operation: str,
+        fence: Fence,
+        decision: Decision,
+        requested: Any,
+        happy: str,
+        entity_path: str,
+        confirm: _Confirm,
+        has_name_conflict: bool,
+    ) -> None:
+        self._client = client
+        self._call = call
+        self._operation = operation
+        self._fence = fence
+        self._requested = requested
+        self._happy = happy
+        self._entity_path = entity_path
+        self._confirm = confirm
+        self._has_name_conflict = has_name_conflict
+        # False when this attempt's send is the last one the cap allows.
+        self._can_resend_unknown_outcome = decision.prior_send_upper_bound + 1 < call.max_sends
+        # A refusal of this send cannot prove nothing was written.
+        self._has_possible_earlier_send = decision.prior_send_upper_bound > 0
+
+    async def dispatch(self, send: Callable[[], Awaitable[Exchange]]) -> Exchange | MutationAttempt[Any]:
+        """Send once under the fence; an attempt result means nothing was sent."""
+        try:
+            return await self._fence.dispatch(lambda _deadline: send())
+        except CheckpointError:
+            message = "Dex did not record the dispatch checkpoint; nothing was sent in this attempt"
+        except (InsufficientAttemptTimeError, DispatchNotAllowedError):
+            message = "too little of the Step deadline remained to send; nothing was sent in this attempt"
+        except TimeoutError:
+            return Exchange(
+                "retry",
+                _failure(
+                    self._operation,
+                    FailureKind.TRANSPORT,
+                    "QuickBooks request failed before a response arrived",
+                ),
+            )
+        return MutationAttempt.retry(_failure(self._operation, FailureKind.AVAILABILITY, message))
+
+    async def attempt_for_exchange(self, exchange: Exchange, receipt: Receipt) -> MutationAttempt[Any] | None:
+        """Map every outcome except success and an accepted but unusable 2xx."""
+        if exchange.outcome in ("succeeded", "invalid", "interrupted"):
+            return None
+        assert exchange.failure is not None
+        if exchange.outcome == "retry" and (exchange.provably_unsent or exchange.status in (429, 503)):
+            try:
+                await self._fence.record_can_resend()
+            except Exception:
+                return MutationAttempt.retry(
+                    _failure(
+                        self._operation,
+                        FailureKind.AVAILABILITY,
+                        "the QuickBooks retry checkpoint could not be recorded",
+                    )
+                )
+            return MutationAttempt.retry(exchange.failure, exchange.retry_after)
+        if not exchange.provably_unsent and _is_write_outcome_unknown(exchange):
+            return self._resend_or_select_uncertain(exchange.failure, exchange.retry_after, receipt)
+        try:
+            await self._fence.record_can_resend()
+        except Exception:
+            pass  # The refusal proves nothing was written; a lost checkpoint only makes a replay count it.
+        branch = (
+            "defect"
+            if exchange.outcome == "defect"
+            else "nameConflict"
+            if exchange.outcome == "nameConflict" and self._has_name_conflict
+            else "providerRejected"
+        )
+        if self._has_possible_earlier_send:
+            return MutationAttempt.uncertain(
+                self._requested,
+                _failure(
+                    self._operation,
+                    exchange.failure.kind,
+                    "an earlier attempt may have written to QuickBooks, so this refusal cannot prove "
+                    "nothing was written: " + exchange.failure.message,
+                ),
+                receipt,
+            )
+        return MutationAttempt.branch_result(branch, self._requested, receipt, exchange.failure)
+
+    async def unusable_accepted(self, entity_id: str, receipt: Receipt, reason: str) -> MutationAttempt[Any]:
+        """Read back an accepted 2xx that failed validation and otherwise treat it as unknown."""
+        unknown = _failure(
+            self._operation,
+            FailureKind.PROTOCOL,
+            "QuickBooks accepted the write but returned an unusable answer: " + reason,
+        )
+        if not entity_id:
+            return self._resend_or_select_uncertain(unknown, 0, receipt)
+        try:
+            await self._fence.record_provider_id(entity_id)
+        except Exception:
+            pass  # The read-back below still runs; a later attempt without the ID counts this send.
+        result = await self._client.exchange(
+            self._call, self._operation, "GET", f"/{self._entity_path}/{entity_id}"
+        )
+        if result.outcome == "succeeded":
+            output = self._confirm(result.body, entity_id)
+            if output is not None:
+                return MutationAttempt.branch_result(
+                    self._happy, output, dataclasses.replace(receipt, provider_object_id=entity_id)
+                )
+        return self._resend_or_select_uncertain(unknown, 0, receipt)
+
+    async def read_back_only(self, entity_id: str) -> MutationAttempt[Any]:
+        """Confirm an accepted earlier write by ID; it never sends."""
+        result = await self._client.exchange(
+            self._call, self._operation, "GET", f"/{self._entity_path}/{entity_id}"
+        )
+        receipt = self._client.receipt(self._call, result, entity_id)
+        if result.outcome in ("retry", "interrupted"):
+            # Reading is harmless to repeat, and a retry of this path never sends.
+            assert result.failure is not None
+            return MutationAttempt.retry(result.failure, result.retry_after)
+        if result.outcome == "succeeded":
+            output = self._confirm(result.body, entity_id)
+            if output is not None:
+                return MutationAttempt.branch_result(self._happy, output, receipt)
+        return MutationAttempt.uncertain(
+            self._requested,
+            _failure(
+                self._operation,
+                FailureKind.PROTOCOL,
+                f"QuickBooks accepted an earlier attempt's write, but reading entity {entity_id} back "
+                "could not confirm it",
+            ),
+            receipt,
+        )
+
+    def _resend_or_select_uncertain(
+        self, unknown: Failure, retry_after: float, receipt: Receipt
+    ) -> MutationAttempt[Any]:
+        if self._can_resend_unknown_outcome:
+            # The claim stays the last marker, so the next attempt counts this send.
+            return MutationAttempt.retry(unknown, retry_after)
+        return MutationAttempt.uncertain(self._requested, unknown, receipt)
+
+
+async def _begin_fenced_write(
+    client: Client,
+    call: Call,
+    operation: str,
+    definition: MutationDefinition,
+    requested: Any,
+    happy: str,
+    entity_path: str,
+    confirm: _Confirm,
+    *,
+    has_name_conflict: bool = False,
+) -> _FencedWrite | MutationAttempt[Any]:
+    """Decide the attempt before credentials; an attempt result means it needs no send."""
     try:
-        read = entity(result.body, entity_name)
-        return read if read.get("Id") == identifier else None
-    except (ValueError, TypeError, KeyError):
-        return None
+        fence = Fence(call, definition.step_defaults.execute_method_timeout, max_sends=call.max_sends)
+        decision = await fence.decide()
+    except ValueError:
+        return MutationAttempt.branch_result(
+            "defect",
+            requested,
+            Receipt(),
+            _failure(
+                operation, FailureKind.LOCAL_DEFECT, "QuickBooks dispatch fence could not be constructed"
+            ),
+        )
+    write = _FencedWrite(
+        client, call, operation, fence, decision, requested, happy, entity_path, confirm, has_name_conflict
+    )
+    if decision.kind == DecisionKind.FAIL_CLOSED:
+        return MutationAttempt.retry(
+            _failure(
+                operation,
+                FailureKind.AVAILABILITY,
+                "the dispatch checkpoint could not be read; nothing was sent in this attempt",
+            )
+        )
+    if decision.marker is not None and decision.marker.provider_id:
+        # QuickBooks accepted an earlier send with this ID, so it is read back and never resent.
+        return await write.read_back_only(decision.marker.provider_id)
+    if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+        return MutationAttempt.uncertain(
+            requested,
+            _failure(
+                operation,
+                FailureKind.TRANSPORT,
+                "an earlier attempt may have written to QuickBooks and the send cap is reached",
+            ),
+            Receipt(),
+        )
+    return write
 
 
 class FindCustomerOperation:
@@ -426,10 +623,38 @@ class CreateCustomerOperation:
             return MutationAttempt.branch_result(
                 "defect", requested, Receipt(), _failure("createCustomer", FailureKind.VALIDATION, str(error))
             )
-        exchange = await self.client.exchange(
-            call, "createCustomer", "POST", "/customer", payload=_json_body(payload), mutation=True
+
+        def confirm(body: bytes, customer_id: str) -> CreateCustomerOutput | None:
+            try:
+                read = decode_customer(entity(body, "Customer"))
+            except (ValueError, TypeError, KeyError):
+                return None
+            if read.customer_id != customer_id or not _created_customer_matches(read, payload):
+                return None
+            return CreateCustomerOutput(customer=read, display_name=display_name)
+
+        write = await _begin_fenced_write(
+            self.client,
+            call,
+            "createCustomer",
+            definitions.CREATE_CUSTOMER_DEFINITION,
+            requested,
+            "created",
+            "customer",
+            confirm,
+            has_name_conflict=True,
         )
-        terminal = _mutation_result(self.client, call, exchange, requested, True)
+        if isinstance(write, MutationAttempt):
+            return write
+        exchange = await write.dispatch(
+            lambda: self.client.exchange(
+                call, "createCustomer", "POST", "/customer", payload=_json_body(payload), mutation=True
+            )
+        )
+        if isinstance(exchange, MutationAttempt):
+            return exchange
+        receipt = self.client.receipt(call, exchange)
+        terminal = await write.attempt_for_exchange(exchange, receipt)
         if terminal is not None:
             return terminal
         try:
@@ -437,26 +662,8 @@ class CreateCustomerOperation:
             if not _created_customer_matches(customer, payload):
                 raise ValueError("QuickBooks returned another customer")
         except (ValueError, TypeError, KeyError) as error:
-            read = await _read_back(self.client, call, "createCustomer", exchange, "Customer")
-            if read is not None:
-                try:
-                    customer = decode_customer(read)
-                    if _created_customer_matches(customer, payload):
-                        return MutationAttempt.branch_result(
-                            "created",
-                            CreateCustomerOutput(customer=customer, display_name=display_name),
-                            self.client.receipt(call, exchange, customer.customer_id),
-                        )
-                except (ValueError, TypeError, KeyError):
-                    pass
-            return MutationAttempt.uncertain(
-                requested,
-                _failure(
-                    "createCustomer",
-                    FailureKind.PROTOCOL,
-                    "QuickBooks accepted the customer but returned an unusable customer: " + str(error),
-                ),
-                self.client.receipt(call, exchange),
+            return await write.unusable_accepted(
+                _accepted_entity_id(exchange.body, "Customer"), receipt, str(error)
             )
         return MutationAttempt.branch_result(
             "created",
@@ -565,10 +772,41 @@ class CreateInvoiceOperation:
             )
         encoded = _json_body(payload)
         encoded = re.sub(rb'"(Amount|Qty|UnitPrice)":"(-?[0-9]+(?:\.[0-9]+)?)"', rb'"\1":\2', encoded)
-        exchange = await self.client.exchange(
-            call, "createInvoice", "POST", "/invoice", payload=encoded, mutation=True
+
+        def confirm(body: bytes, invoice_id: str) -> CreateInvoiceOutput | None:
+            try:
+                read = decode_invoice(entity(body, "Invoice"))
+            except (ValueError, TypeError, KeyError):
+                return None
+            if (
+                read.invoice_id != invoice_id
+                or read.customer_id != customer_id
+                or (document_number and read.doc_number != document_number)
+            ):
+                return None
+            return CreateInvoiceOutput(invoice=read, doc_number=document_number)
+
+        write = await _begin_fenced_write(
+            self.client,
+            call,
+            "createInvoice",
+            definitions.CREATE_INVOICE_DEFINITION,
+            requested,
+            "created",
+            "invoice",
+            confirm,
         )
-        terminal = _mutation_result(self.client, call, exchange, requested)
+        if isinstance(write, MutationAttempt):
+            return write
+        exchange = await write.dispatch(
+            lambda: self.client.exchange(
+                call, "createInvoice", "POST", "/invoice", payload=encoded, mutation=True
+            )
+        )
+        if isinstance(exchange, MutationAttempt):
+            return exchange
+        receipt = self.client.receipt(call, exchange)
+        terminal = await write.attempt_for_exchange(exchange, receipt)
         if terminal is not None:
             return terminal
         try:
@@ -576,28 +814,8 @@ class CreateInvoiceOperation:
             if invoice.customer_id != customer_id:
                 raise ValueError("invoice belongs to another customer")
         except (ValueError, TypeError, KeyError) as error:
-            read = await _read_back(self.client, call, "createInvoice", exchange, "Invoice")
-            if read is not None:
-                try:
-                    invoice = decode_invoice(read)
-                    if invoice.customer_id == customer_id and (
-                        not document_number or invoice.doc_number == document_number
-                    ):
-                        return MutationAttempt.branch_result(
-                            "created",
-                            CreateInvoiceOutput(invoice=invoice, doc_number=document_number),
-                            self.client.receipt(call, exchange, invoice.invoice_id),
-                        )
-                except (ValueError, TypeError, KeyError):
-                    pass
-            return MutationAttempt.uncertain(
-                requested,
-                _failure(
-                    "createInvoice",
-                    FailureKind.PROTOCOL,
-                    "QuickBooks accepted the invoice but returned an unusable invoice: " + str(error),
-                ),
-                self.client.receipt(call, exchange),
+            return await write.unusable_accepted(
+                _accepted_entity_id(exchange.body, "Invoice"), receipt, str(error)
             )
         return MutationAttempt.branch_result(
             "created",
@@ -633,15 +851,46 @@ class SendInvoiceOperation:
             return MutationAttempt.branch_result(
                 "defect", requested, Receipt(), _failure("sendInvoice", FailureKind.VALIDATION, str(error))
             )
-        exchange = await self.client.exchange(
+
+        def confirm(body: bytes, invoice_id: str) -> Invoice | None:
+            try:
+                read = decode_invoice(entity(body, "Invoice"))
+            except (ValueError, TypeError, KeyError):
+                return None
+            if (
+                read.invoice_id != invoice_id
+                or read.email_status != "EmailSent"
+                or (send_to and read.bill_email.lower() != send_to.lower())
+            ):
+                return None
+            return read
+
+        write = await _begin_fenced_write(
+            self.client,
             call,
             "sendInvoice",
-            "POST",
-            "/invoice/" + identifier + "/send",
-            {"sendTo": send_to} if send_to else None,
-            mutation=True,
+            definitions.SEND_INVOICE_DEFINITION,
+            requested,
+            "sent",
+            "invoice",
+            confirm,
         )
-        terminal = _mutation_result(self.client, call, exchange, requested, object_id=identifier)
+        if isinstance(write, MutationAttempt):
+            return write
+        exchange = await write.dispatch(
+            lambda: self.client.exchange(
+                call,
+                "sendInvoice",
+                "POST",
+                "/invoice/" + identifier + "/send",
+                {"sendTo": send_to} if send_to else None,
+                mutation=True,
+            )
+        )
+        if isinstance(exchange, MutationAttempt):
+            return exchange
+        receipt = self.client.receipt(call, exchange, identifier)
+        terminal = await write.attempt_for_exchange(exchange, receipt)
         if terminal is not None:
             return terminal
         try:
@@ -653,30 +902,8 @@ class SendInvoiceOperation:
             if send_to and invoice.bill_email.lower() != send_to.lower():
                 raise ValueError("the returned invoice has another billing address")
         except (ValueError, TypeError, KeyError) as error:
-            read = await _read_back(self.client, call, "sendInvoice", exchange, "Invoice", identifier)
-            if read is not None:
-                try:
-                    invoice = decode_invoice(read)
-                    if (
-                        invoice.invoice_id == identifier
-                        and invoice.email_status == "EmailSent"
-                        and (not send_to or invoice.bill_email.lower() == send_to.lower())
-                    ):
-                        return MutationAttempt.branch_result(
-                            "sent", invoice, self.client.receipt(call, exchange, identifier)
-                        )
-                except (ValueError, TypeError, KeyError):
-                    pass
-            return MutationAttempt.uncertain(
-                requested,
-                _failure(
-                    "sendInvoice",
-                    FailureKind.PROTOCOL,
-                    "QuickBooks accepted the delivery but returned an unusable invoice: " + str(error),
-                ),
-                self.client.receipt(call, exchange, identifier),
-            )
-        return MutationAttempt.branch_result("sent", invoice, self.client.receipt(call, exchange, identifier))
+            return await write.unusable_accepted(identifier, receipt, str(error))
+        return MutationAttempt.branch_result("sent", invoice, receipt)
 
 
 class RecordPaymentOperation:
@@ -734,10 +961,43 @@ class RecordPaymentOperation:
             )
         encoded = _json_body(payload)
         encoded = re.sub(rb'"(Amount|TotalAmt)":"(-?[0-9]+(?:\.[0-9]+)?)"', rb'"\1":\2', encoded)
-        exchange = await self.client.exchange(
-            call, "recordPayment", "POST", "/payment", payload=encoded, mutation=True
+
+        def confirm(body: bytes, payment_id: str) -> Payment | None:
+            try:
+                read = decode_payment(entity(body, "Payment"))
+                is_amount_equal = Decimal(read.total_amount) == Decimal(input.amount)
+            except (ValueError, TypeError, KeyError, ArithmeticError):
+                return None
+            if (
+                read.payment_id != payment_id
+                or read.customer_id != customer_id
+                or not is_amount_equal
+                or not any(application.invoice_id == invoice_id for application in read.applied_invoices)
+            ):
+                return None
+            return read
+
+        write = await _begin_fenced_write(
+            self.client,
+            call,
+            "recordPayment",
+            definitions.RECORD_PAYMENT_DEFINITION,
+            requested,
+            "recorded",
+            "payment",
+            confirm,
         )
-        terminal = _mutation_result(self.client, call, exchange, requested)
+        if isinstance(write, MutationAttempt):
+            return write
+        exchange = await write.dispatch(
+            lambda: self.client.exchange(
+                call, "recordPayment", "POST", "/payment", payload=encoded, mutation=True
+            )
+        )
+        if isinstance(exchange, MutationAttempt):
+            return exchange
+        receipt = self.client.receipt(call, exchange)
+        terminal = await write.attempt_for_exchange(exchange, receipt)
         if terminal is not None:
             return terminal
         try:
@@ -747,30 +1007,8 @@ class RecordPaymentOperation:
             ):
                 raise ValueError("the returned payment does not apply to the invoice")
         except (ValueError, TypeError, KeyError) as error:
-            read = await _read_back(self.client, call, "recordPayment", exchange, "Payment")
-            if read is not None:
-                try:
-                    payment = decode_payment(read)
-                    if (
-                        payment.customer_id == customer_id
-                        and Decimal(payment.total_amount) == Decimal(input.amount)
-                        and any(
-                            application.invoice_id == invoice_id for application in payment.applied_invoices
-                        )
-                    ):
-                        return MutationAttempt.branch_result(
-                            "recorded", payment, self.client.receipt(call, exchange, payment.payment_id)
-                        )
-                except (ValueError, TypeError, KeyError):
-                    pass
-            return MutationAttempt.uncertain(
-                requested,
-                _failure(
-                    "recordPayment",
-                    FailureKind.PROTOCOL,
-                    "QuickBooks accepted the payment but returned an unusable payment: " + str(error),
-                ),
-                self.client.receipt(call, exchange),
+            return await write.unusable_accepted(
+                _accepted_entity_id(exchange.body, "Payment"), receipt, str(error)
             )
         return MutationAttempt.branch_result(
             "recorded", payment, self.client.receipt(call, exchange, payment.payment_id)

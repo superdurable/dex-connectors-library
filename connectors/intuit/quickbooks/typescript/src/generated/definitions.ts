@@ -60,7 +60,7 @@ export const CreateCustomerBranchCreated = CreateCustomerBranch.Created;
 export const CreateCustomerBranchNameConflict = CreateCustomerBranch.NameConflict;
 /** QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created. */
 export const CreateCustomerBranchProviderRejected = CreateCustomerBranch.ProviderRejected;
-/** QuickBooks accepted the request but returned an unusable customer that read-back could not confirm; look it up with findCustomer before creating again. */
+/** QuickBooks may have created the customer, but the last send the cap allows had an unknown outcome, or an accepted customer could not be confirmed by read-back; look it up with findCustomer before creating again. */
 export const CreateCustomerBranchUncertain = CreateCustomerBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateCustomerBranchDefect = CreateCustomerBranch.Defect;
@@ -71,10 +71,10 @@ export const CreateCustomerDefinition: MutationDefinition = {
     { id: "created", description: "QuickBooks created the customer, or returned the customer this Step already created." },
     { id: "nameConflict", description: "A customer, vendor, or employee already uses the display name (QuickBooks error 6240); resolve it with findCustomer by display name, including a possible earlier attempt.", optional: true },
     { id: "providerRejected", description: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created.", optional: true },
-    { id: "uncertain", description: "QuickBooks accepted the request but returned an unusable customer that read-back could not confirm; look it up with findCustomer before creating again.", optional: true },
+    { id: "uncertain", description: "QuickBooks may have created the customer, but the last send the cap allows had an unknown outcome, or an accepted customer could not be confirmed by read-back; look it up with findCustomer before creating again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
   repeatOnUnknown: "limited",
   maxSends: 3,
 };
@@ -92,7 +92,7 @@ export const CreateInvoiceBranch = {
 export const CreateInvoiceBranchCreated = CreateInvoiceBranch.Created;
 /** QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created. */
 export const CreateInvoiceBranchProviderRejected = CreateInvoiceBranch.ProviderRejected;
-/** QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; look it up by document number before creating again. */
+/** QuickBooks may have created the invoice, but the last send the cap allows had an unknown outcome, or an accepted invoice could not be confirmed by read-back; look it up by document number before creating again. */
 export const CreateInvoiceBranchUncertain = CreateInvoiceBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateInvoiceBranchDefect = CreateInvoiceBranch.Defect;
@@ -102,10 +102,10 @@ export const CreateInvoiceDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "QuickBooks created the invoice, or returned the invoice this Step already created, with its number, total, and balance." },
     { id: "providerRejected", description: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created.", optional: true },
-    { id: "uncertain", description: "QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; look it up by document number before creating again.", optional: true },
+    { id: "uncertain", description: "QuickBooks may have created the invoice, but the last send the cap allows had an unknown outcome, or an accepted invoice could not be confirmed by read-back; look it up by document number before creating again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
   repeatOnUnknown: "limited",
   maxSends: 3,
 };
@@ -185,7 +185,7 @@ export const SendInvoiceBranch = {
 export const SendInvoiceBranchSent = SendInvoiceBranch.Sent;
 /** QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent. */
 export const SendInvoiceBranchProviderRejected = SendInvoiceBranch.ProviderRejected;
-/** QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; check its EmailStatus with getInvoice before sending again. */
+/** QuickBooks may have emailed the invoice, but the last send the cap allows had an unknown outcome, or an accepted delivery could not be confirmed by read-back; check its EmailStatus with getInvoice before sending again. */
 export const SendInvoiceBranchUncertain = SendInvoiceBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const SendInvoiceBranchDefect = SendInvoiceBranch.Defect;
@@ -195,10 +195,10 @@ export const SendInvoiceDefinition: MutationDefinition = {
   branches: [
     { id: "sent", description: "QuickBooks emailed the invoice, or returned the delivery this Step already made, with EmailStatus EmailSent." },
     { id: "providerRejected", description: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent.", optional: true },
-    { id: "uncertain", description: "QuickBooks accepted the request but returned an unusable invoice that read-back could not confirm; check its EmailStatus with getInvoice before sending again.", optional: true },
+    { id: "uncertain", description: "QuickBooks may have emailed the invoice, but the last send the cap allows had an unknown outcome, or an accepted delivery could not be confirmed by read-back; check its EmailStatus with getInvoice before sending again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
   repeatOnUnknown: "limited",
   maxSends: 3,
 };
@@ -216,7 +216,7 @@ export const RecordPaymentBranch = {
 export const RecordPaymentBranchRecorded = RecordPaymentBranch.Recorded;
 /** QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded. */
 export const RecordPaymentBranchProviderRejected = RecordPaymentBranch.ProviderRejected;
-/** QuickBooks accepted the request but returned an unusable payment that read-back could not confirm; inspect the invoice before paying again. */
+/** QuickBooks may have recorded the payment, but the last send the cap allows had an unknown outcome, or an accepted payment could not be confirmed by read-back; inspect the invoice before paying again. */
 export const RecordPaymentBranchUncertain = RecordPaymentBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const RecordPaymentBranchDefect = RecordPaymentBranch.Defect;
@@ -226,10 +226,10 @@ export const RecordPaymentDefinition: MutationDefinition = {
   branches: [
     { id: "recorded", description: "QuickBooks recorded the payment, or returned the payment this Step already recorded, with the invoices it applies to." },
     { id: "providerRejected", description: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded.", optional: true },
-    { id: "uncertain", description: "QuickBooks accepted the request but returned an unusable payment that read-back could not confirm; inspect the invoice before paying again.", optional: true },
+    { id: "uncertain", description: "QuickBooks may have recorded the payment, but the last send the cap allows had an unknown outcome, or an accepted payment could not be confirmed by read-back; inspect the invoice before paying again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
-  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 6, totalDurationMs: 300000 } },
   repeatOnUnknown: "limited",
   maxSends: 3,
 };

@@ -72,7 +72,11 @@ func (CreateCustomerOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateCusto
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates the customer with POST /customer under the Step's requestid.
+// Invoke creates the customer with POST /customer under the Step's requestid and a single-dispatch
+// fence capped by call.MaxSends. An unknown outcome, such as a 5xx or a lost response, is resent with
+// the same requestid while the cap allows another send, and selects uncertain at the cap. An accepted
+// but unusable answer is read back by its customer ID, which every later attempt reads back instead
+// of resending.
 func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCustomerInput) sdkgo.MutationAttempt[CreateCustomerOutput] {
 	client := operation.client
 	attemptBudget := client.newAttemptBudget(call.Context, CreateCustomerDefinition.StepDefaults.ExecuteMethodTimeout)
@@ -82,11 +86,22 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 		return sdkgo.NewMutationBranch(CreateCustomerBranchDefect, requested,
 			quickbooksFailurePointer(sdkgo.FailureValidation, createCustomerOperationID, err.Error()), sdkgo.Receipt{})
 	}
-	result := client.exchange(call, createCustomerOperationID, quickbooksRequest{method: http.MethodPost, path: "/customer", payload: payload, isMutation: true, attemptBudget: attemptBudget})
+	write, attempt, isDecided := newFencedWrite(client, call, createCustomerOperationID, CreateCustomerDefinition.StepDefaults.ExecuteMethodTimeout, requested,
+		mutationBranches{nameConflict: CreateCustomerBranchNameConflict, providerRejected: CreateCustomerBranchProviderRejected, defect: CreateCustomerBranchDefect},
+		acceptedWriteReadBack[CreateCustomerOutput]{entityPath: "customer", happy: CreateCustomerBranchCreated,
+			confirm: func(body []byte, customerID string) (CreateCustomerOutput, bool) {
+				readCustomer, isConfirmed := confirmCreatedCustomer(body, customerID, payload)
+				return CreateCustomerOutput{Customer: readCustomer, DisplayName: requested.DisplayName}, isConfirmed
+			}})
+	if isDecided {
+		return attempt
+	}
+	result, notSent := write.dispatch(quickbooksRequest{method: http.MethodPost, path: "/customer", payload: payload, isMutation: true, attemptBudget: attemptBudget})
+	if notSent != nil {
+		return *notSent
+	}
 	receipt := client.receipt(call, result, "")
-	if attempt, isTerminal := mutationAttemptForExchange(result, requested, receipt, mutationBranches{
-		nameConflict: CreateCustomerBranchNameConflict, providerRejected: CreateCustomerBranchProviderRejected, defect: CreateCustomerBranchDefect,
-	}); isTerminal {
+	if attempt, isTerminal := write.attemptForExchange(result, receipt); isTerminal {
 		return attempt
 	}
 	wire, err := decodeEntity[customerWire](result.response.body, "Customer")
@@ -98,21 +113,20 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 		err = errors.New("QuickBooks returned another customer")
 	}
 	if err != nil {
-		if customerID := acceptedEntityID(result.response.body, "Customer"); customerID != "" {
-			if body, isFound := readAcceptedEntity(client, call, createCustomerOperationID, "customer", customerID); isFound {
-				if readWire, readErr := decodeEntity[customerWire](body, "Customer"); readErr == nil {
-					if readCustomer, decodeErr := decodeCustomer(readWire); decodeErr == nil && readCustomer.CustomerID == customerID && isCreatedCustomerMatch(readCustomer, payload) {
-						receipt.ProviderObjectID = customerID
-						return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, CreateCustomerOutput{Customer: readCustomer, DisplayName: requested.DisplayName}, nil, receipt)
-					}
-				}
-			}
-		}
-		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, createCustomerOperationID,
-			"QuickBooks accepted the customer but returned an unusable customer: "+err.Error()), receipt)
+		return write.unusableAccepted(acceptedEntityID(result.response.body, "Customer"), receipt, err)
 	}
 	receipt.ProviderObjectID = customer.CustomerID
 	return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, CreateCustomerOutput{Customer: customer, DisplayName: requested.DisplayName}, nil, receipt)
+}
+
+// confirmCreatedCustomer decodes a read customer and reports whether it is the one this Step created.
+func confirmCreatedCustomer(body []byte, customerID string, payload createCustomerRequestWire) (Customer, bool) {
+	wire, err := decodeEntity[customerWire](body, "Customer")
+	if err != nil {
+		return Customer{}, false
+	}
+	customer, err := decodeCustomer(wire)
+	return customer, err == nil && customer.CustomerID == customerID && isCreatedCustomerMatch(customer, payload)
 }
 
 func isCreatedCustomerMatch(customer Customer, request createCustomerRequestWire) bool {

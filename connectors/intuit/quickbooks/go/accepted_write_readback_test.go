@@ -93,17 +93,17 @@ func TestInterruptedAcceptedWriteNeverResends(t *testing.T) {
 	}{
 		{"customer", quickbooks.CreateCustomerBranchUncertain, 0, func(t *testing.T, provider *recordingQuickBooks) sdkgo.BranchID {
 			result, err := sdkgo.RunMutation(newQuickBooksDexContext("interrupted-customer"), newQuickBooksClient(t, provider.URL).CreateCustomer(), quickbooksConnection,
-				quickbooks.CreateCustomerInput{DisplayName: "City Agency", EmailAddress: "accounts@cityagency.example.com"})
+				quickbooks.CreateCustomerInput{DisplayName: "City Agency", EmailAddress: "accounts@cityagency.example.com"}, sdkgo.WithMaxSends(1))
 			require.NoError(t, err)
 			return result.Branch
 		}},
 		{"invoice", quickbooks.CreateInvoiceBranchUncertain, 0, func(t *testing.T, provider *recordingQuickBooks) sdkgo.BranchID {
-			result, err := sdkgo.RunMutation(newQuickBooksDexContext("interrupted-invoice"), newQuickBooksClient(t, provider.URL).CreateInvoice(), quickbooksConnection, validCreateInvoiceInput())
+			result, err := sdkgo.RunMutation(newQuickBooksDexContext("interrupted-invoice"), newQuickBooksClient(t, provider.URL).CreateInvoice(), quickbooksConnection, validCreateInvoiceInput(), sdkgo.WithMaxSends(1))
 			require.NoError(t, err)
 			return result.Branch
 		}},
 		{"payment", quickbooks.RecordPaymentBranchUncertain, 0, func(t *testing.T, provider *recordingQuickBooks) sdkgo.BranchID {
-			result, err := sdkgo.RunMutation(newQuickBooksDexContext("interrupted-payment"), newQuickBooksClient(t, provider.URL).RecordPayment(), quickbooksConnection, validRecordPaymentInput())
+			result, err := sdkgo.RunMutation(newQuickBooksDexContext("interrupted-payment"), newQuickBooksClient(t, provider.URL).RecordPayment(), quickbooksConnection, validRecordPaymentInput(), sdkgo.WithMaxSends(1))
 			require.NoError(t, err)
 			return result.Branch
 		}},
@@ -144,17 +144,17 @@ func TestAcceptedCreateOrPaymentWithUnavailableReadBackRemainsUncertain(t *testi
 	}{
 		{"customer", "Customer", func(t *testing.T, provider *recordingQuickBooks) sdkgo.BranchID {
 			result, err := sdkgo.RunMutation(newQuickBooksDexContext("customer-readback-503"), newQuickBooksClient(t, provider.URL).CreateCustomer(), quickbooksConnection,
-				quickbooks.CreateCustomerInput{DisplayName: "City Agency"})
+				quickbooks.CreateCustomerInput{DisplayName: "City Agency"}, sdkgo.WithMaxSends(1))
 			require.NoError(t, err)
 			return result.Branch
 		}},
 		{"invoice", "Invoice", func(t *testing.T, provider *recordingQuickBooks) sdkgo.BranchID {
-			result, err := sdkgo.RunMutation(newQuickBooksDexContext("invoice-readback-503"), newQuickBooksClient(t, provider.URL).CreateInvoice(), quickbooksConnection, validCreateInvoiceInput())
+			result, err := sdkgo.RunMutation(newQuickBooksDexContext("invoice-readback-503"), newQuickBooksClient(t, provider.URL).CreateInvoice(), quickbooksConnection, validCreateInvoiceInput(), sdkgo.WithMaxSends(1))
 			require.NoError(t, err)
 			return result.Branch
 		}},
 		{"payment", "Payment", func(t *testing.T, provider *recordingQuickBooks) sdkgo.BranchID {
-			result, err := sdkgo.RunMutation(newQuickBooksDexContext("payment-readback-503"), newQuickBooksClient(t, provider.URL).RecordPayment(), quickbooksConnection, validRecordPaymentInput())
+			result, err := sdkgo.RunMutation(newQuickBooksDexContext("payment-readback-503"), newQuickBooksClient(t, provider.URL).RecordPayment(), quickbooksConnection, validRecordPaymentInput(), sdkgo.WithMaxSends(1))
 			require.NoError(t, err)
 			return result.Branch
 		}},
@@ -179,7 +179,7 @@ func TestAcceptedCreateWithoutIDRemainsUncertainAfterOneRequest(t *testing.T) {
 		writeJSON(t, response, http.StatusOK, `{"Customer":{}}`)
 	})
 	result, err := sdkgo.RunMutation(newQuickBooksDexContext("customer-no-id"), newQuickBooksClient(t, provider.URL).CreateCustomer(), quickbooksConnection,
-		quickbooks.CreateCustomerInput{DisplayName: "City Agency"})
+		quickbooks.CreateCustomerInput{DisplayName: "City Agency"}, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.CreateCustomerBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.requestCount())
@@ -195,7 +195,7 @@ func TestAcceptedSendWithUnavailableReadBackRemainsUncertain(t *testing.T) {
 		writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
 	})
 	result, err := sdkgo.RunMutation(newQuickBooksDexContext("send-no-resend"), newQuickBooksClient(t, provider.URL).SendInvoice(), quickbooksConnection,
-		quickbooks.SendInvoiceInput{InvoiceID: testInvoiceID})
+		quickbooks.SendInvoiceInput{InvoiceID: testInvoiceID}, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.SendInvoiceBranchUncertain, result.Branch)
 	assertOneAcceptedWriteAndOneRead(t, provider)
@@ -281,7 +281,7 @@ func TestDeadlineCutsAnAcceptedWriteMidResponseWithoutResending(t *testing.T) {
 	defer cancel()
 	dexContext.Context = requestContext
 	result, err := sdkgo.RunMutation(dexContext, newQuickBooksClient(t, provider.URL).CreateCustomer(), quickbooksConnection,
-		quickbooks.CreateCustomerInput{DisplayName: "City Agency"})
+		quickbooks.CreateCustomerInput{DisplayName: "City Agency"}, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.CreateCustomerBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.requestCount())

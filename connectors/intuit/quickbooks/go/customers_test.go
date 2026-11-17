@@ -134,7 +134,7 @@ func TestCreateCustomerValidatesBeforeAnyRequestAndAnUnusableAnswerIsUncertain(t
 		require.Equal(t, quickbooks.CreateCustomerBranchDefect, result.Branch, name)
 	}
 	require.Zero(t, provider.requestCount())
-	result, err := sdkgo.RunMutation(newQuickBooksDexContext("unusable"), client.CreateCustomer(), quickbooksConnection, quickbooks.CreateCustomerInput{DisplayName: "A"})
+	result, err := sdkgo.RunMutation(newQuickBooksDexContext("unusable"), client.CreateCustomer(), quickbooksConnection, quickbooks.CreateCustomerInput{DisplayName: "A"}, sdkgo.WithMaxSends(1))
 	require.NoError(t, err)
 	require.Equal(t, quickbooks.CreateCustomerBranchUncertain, result.Branch)
 }

@@ -4,7 +4,7 @@
 import { it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type Mutation } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
-import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
+import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { QuickBooksClient } from '../src/client.js';
 import { CreateCustomerInputSchema, CreateInvoiceInputSchema, FindCustomerInputSchema, GetInvoiceInputSchema, ListInvoicesInputSchema, RecordPaymentInputSchema, SendInvoiceInputSchema } from '../src/generated/models.js';
 
@@ -21,12 +21,12 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeQuickBooks, '/v3/company/9341453050298464'));
 
-async function invokeQuickBooks(scenario: Scenario, recorder: ExchangeRecorder) {
+async function invokeQuickBooks(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const send = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   const credentials = { accessToken: new SecretString('intuit-test-access-token-0123456789'), clientId: clientID, clientSecret: new SecretString('client-secret'), refreshToken: new SecretString(''), idToken: new SecretString(idToken) };
   const source = { resolve: async () => credentials, resolveWithRefresh: async () => credentials };
   const client = new QuickBooksClient({}, source, { send, localProviderURL: 'http://127.0.0.1:12345' });
-  const call = scenarioCall(scenario, connection, 'quickbooks', { flowId: 'quickbooks-flow', cancellationSignal: new AbortController().signal }, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
+  const call = scenarioCall(scenario, connection, 'quickbooks', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
   if (scenario.operation === 'findCustomer') return client.findCustomer().invoke(call, FindCustomerInputSchema.parse(scenario.input));
   if (scenario.operation === 'createCustomer') return productionMutation(client.createCustomer(), call, CreateCustomerInputSchema.parse(scenario.input), scenario.idempotencyKey!);
   if (scenario.operation === 'createInvoice') return productionMutation(client.createInvoice(), call, CreateInvoiceInputSchema.parse(scenario.input), scenario.idempotencyKey!);
