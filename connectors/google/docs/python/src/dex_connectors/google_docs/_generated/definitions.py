@@ -9,6 +9,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     OperationRef,
     QueryDefinition,
+    RepeatOnUnknown,
     RetryPolicy,
     StepDefaults,
     default_connector_step_execute_retry_policy,
@@ -56,7 +57,7 @@ CREATE_DOCUMENT_DEFINITION = MutationDefinition(
         BranchDefinition(CREATED, "Google created the document or returned the one an earlier attempt of the same Step execution created.", False),
         BranchDefinition(PROVIDER_REJECTED, "Google conclusively rejected the creation or the duplicate lookup, such as a missing parent folder; no document was created.", True),
         BranchDefinition(INVALID_RESPONSE, "Google returned an invalid or oversized duplicate-lookup response before the creation was sent.", True),
-        BranchDefinition(UNCERTAIN, "A creation may have been sent but its outcome cannot be confirmed, so the document may exist; the connector sends nothing after selecting this branch.", True),
+        BranchDefinition(UNCERTAIN, "A creation may have been sent, and the duplicate lookup still could not confirm it when the send cap was reached, so the document may exist; the connector sends nothing after selecting this branch.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -64,6 +65,8 @@ CREATE_DOCUMENT_DEFINITION = MutationDefinition(
         1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=60), 5, timedelta(seconds=300)),
     ),
+    repeat_on_unknown=RepeatOnUnknown.LIMITED,
+    max_sends=3,
 )
 
 REPLACE_DOCUMENT_TEXT_DEFINITION = MutationDefinition(
@@ -82,6 +85,7 @@ REPLACE_DOCUMENT_TEXT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )
 
 APPEND_TEXT_DEFINITION = MutationDefinition(
@@ -99,4 +103,5 @@ APPEND_TEXT_DEFINITION = MutationDefinition(
         2,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
+    repeat_on_unknown=RepeatOnUnknown.SAFE,
 )

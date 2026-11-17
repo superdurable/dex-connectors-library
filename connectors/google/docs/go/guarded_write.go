@@ -197,8 +197,11 @@ func guardedWriteAttemptFromResponse[OUT any](
 		return changedDocumentAttempt(target, change, document.RevisionID, bodyText, rereadReceipt)
 	case response.status == http.StatusNotFound:
 		return sdkgo.NewMutationBranch(target.notFound, *new(OUT), docsFailurePointer(sdkgo.FailureNotFound, target.operationID, "document was not found or is not visible to the connection"), receipt)
-	default:
+	case isDefiniteRefusalStatus(response.status):
 		return sdkgo.NewMutationBranch(target.providerRejected, *new(OUT), docsFailurePointer(statusFailureKind(response.status, tokens), target.operationID, "provider rejected the update"), receipt)
+	default:
+		// The revision guard makes a repeated batch harmless, so an unknown outcome repeats.
+		return sdkgo.NewMutationRetry[OUT](docsFailure(statusFailureKind(response.status, tokens), target.operationID, "provider update outcome is unknown; the next attempt reads the revision"), 0)
 	}
 }
 

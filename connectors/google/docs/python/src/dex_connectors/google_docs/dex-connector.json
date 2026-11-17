@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-google-docs",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {
@@ -79,7 +79,7 @@
       "kind": "mutation",
       "operationId": "createDocument",
       "inputType": "CreateDocumentInput",
-      "description": "Create one Google Doc from a title and optional plain-text or Markdown text in an optional Drive folder. Google offers no idempotency key, so the single-dispatch fence requires sync durability to persist its heartbeat across attempts; a private Drive app property supports read-back before any permitted resend.",
+      "description": "Create one Google Doc from a title and optional plain-text or Markdown text in an optional Drive folder. Google offers no idempotency key, so the single-dispatch fence requires sync durability to persist its heartbeat across attempts; a private Drive app property supports read-back before every resend, and an unconfirmed create is resent only up to the send cap.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
