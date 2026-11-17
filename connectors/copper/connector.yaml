@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: copper
   displayName: Copper CRM
-  description: Manage Copper leads, people, and companies, and discover customer sources without custom fields.
+  description: Manage Copper leads, people, companies, and opportunities without custom fields.
   company: Copper
   categories: [crm-sales]
   version: v0.2.0
@@ -302,6 +302,107 @@ spec:
           default: true
           description: One sample lead status is listed.
           output: {statuses: [{id: 208231, name: New}]}
+    - name: createOpportunity
+      goName: CreateOpportunity
+      inputType: CreateOpportunityInput
+      outputType: OpportunityMetadata
+      kind: mutation
+      description: Create a Copper opportunity with a name and bounded retry.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Copper created the opportunity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample opportunity is created.
+          output: {id: 4956209, name: Sample Opportunity, status: Open}
+    - name: listOpportunities
+      goName: ListOpportunities
+      inputType: ListOpportunitiesInput
+      outputType: OpportunitiesPage
+      kind: query
+      description: Search one bounded page of opportunities by name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Copper returned a page of opportunities.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized opportunities JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample opportunities page is returned.
+          output: {opportunities: [{id: 4956209, name: Sample Opportunity, status: Open}]}
+    - name: updateOpportunity
+      goName: UpdateOpportunity
+      inputType: UpdateOpportunityInput
+      outputType: OpportunityMetadata
+      kind: mutation
+      description: Replace a Copper opportunity's name and details without changing other fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Copper updated the opportunity.}
+        - {id: notFound, goName: NotFound, description: No opportunity matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample opportunity is updated.
+          output: {id: 4956209, name: Sample Opportunity, status: Open}
+    - name: deleteOpportunity
+      goName: DeleteOpportunity
+      inputType: DeleteOpportunityInput
+      outputType: DeleteOpportunityOutput
+      kind: mutation
+      description: Permanently delete a Copper opportunity by numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Copper deleted the opportunity.}
+        - {id: notFound, goName: NotFound, description: No opportunity matches the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample opportunity is deleted.
+          output: {id: 4956209, deleted: true}
+    - name: getOpportunity
+      goName: GetOpportunity
+      inputType: GetOpportunityInput
+      outputType: OpportunityMetadata
+      kind: query
+      description: Read a Copper opportunity's ID, name, and status by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Copper returned the selected opportunity.}
+        - {id: notFound, goName: NotFound, description: No opportunity matches this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample opportunity is returned.
+          output: {id: 4956209, name: Sample Opportunity, status: Open}
     - name: createLead
       goName: CreateLead
       inputType: CreateLeadInput

@@ -5888,6 +5888,1744 @@
       },
       "name": "deleteLead-transportFailure",
       "operation": "deleteLead"
+    },
+    {
+      "callId": "f323b1b9-9d6b-42f0-ac69-daf466d8a660",
+      "exchanges": [
+        {
+          "body": "{\"id\":4956209,\"name\":\"Sample Opportunity\",\"status\":\"Open\",\"custom_fields\":[{\"private\":\"not-persisted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 4956209,
+          "name": "Sample Opportunity",
+          "status": "Open"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "getOpportunity-success",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "18e1d13f-31b8-4cd5-9bce-78a792607511",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Not found\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "getOpportunity-notFound",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "bdf5fc9d-aa88-4645-add0-20f310e43c3e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Forbidden\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "getOpportunity-providerRejected",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "e2693793-7c49-49fb-85e7-de375d3d7ddb",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "getOpportunity-invalidResponse",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "acf21d25-80e9-48c5-9e18-0e2aba9dd264",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "0"
+      },
+      "name": "getOpportunity-defect",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "d5b09857-7089-437f-8fa1-98c0137c0a1d",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Rate limited\"}]}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "getOpportunity-rateLimit",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "9235ec99-4a10-464f-8bcb-a2fea0f541f2",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Unavailable\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "getOpportunity-serverUnavailable",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "8184fe32-9ed5-4f2b-b16e-be8fe0025fc3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "getOpportunity-transportFailure",
+      "operation": "getOpportunity"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000400",
+      "exchanges": [
+        {
+          "body": "[{\"id\":4956209,\"name\":\"Sample Opportunity\",\"status\":\"Open\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/search",
+          "requestBody": {
+            "name": "Sample Opportunity",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "opportunities": [
+            {
+              "id": 4956209,
+              "name": "Sample Opportunity",
+              "status": "Open"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "Sample Opportunity",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listOpportunities-success",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000401",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/search",
+          "requestBody": {
+            "name": "Sample Opportunity",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "opportunities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "Sample Opportunity",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listOpportunities-providerRejected",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000402",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/search",
+          "requestBody": {
+            "name": "Sample Opportunity",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "opportunities": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "Sample Opportunity",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listOpportunities-invalidResponse",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000403",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "opportunities": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 201
+      },
+      "name": "listOpportunities-defect",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000404",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/search",
+          "requestBody": {
+            "name": "Sample Opportunity",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "Sample Opportunity",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listOpportunities-rateLimited",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000405",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/search",
+          "requestBody": {
+            "name": "Sample Opportunity",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "Sample Opportunity",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listOpportunities-serviceUnavailable",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000406",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/search",
+          "requestBody": {
+            "name": "Sample Opportunity",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "Sample Opportunity",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listOpportunities-serverFailure",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000407",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/search",
+          "requestBody": {
+            "name": "Sample Opportunity",
+            "page_number": 2,
+            "page_size": 25
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "Sample Opportunity",
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listOpportunities-transportFailure",
+      "operation": "listOpportunities"
+    },
+    {
+      "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "exchanges": [
+        {
+          "body": "{\"id\":4956209,\"name\":\"Sample Opportunity\",\"status\":\"Open\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "requestBody": {
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+          "providerId": "4956209",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 4956209,
+          "name": "Sample Opportunity",
+          "status": "Open"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "input": {
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-success",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "requestBody": {
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "input": {
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-providerRejected",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "requestBody": {
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "input": {
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-rateLimit",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "requestBody": {
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "input": {
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-serverUnavailable",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities",
+          "requestBody": {
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "input": {
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-transportFailure",
+      "operation": "createOpportunity"
+    },
+    {
+      "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/opportunities/search",
+          "requestBody": {
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d5d12704-122e-5c16-b0d7-847192a126d9",
+      "input": {
+        "name": "Sample Opportunity"
+      },
+      "name": "createOpportunity-uncertain",
+      "operation": "createOpportunity",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "d5d12704-122e-5c16-b0d7-847192a126d9",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "exchanges": [
+        {
+          "body": "{\"id\":4956209,\"name\":\"Sample Opportunity\",\"status\":\"Open\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/4956209",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 4956209,
+          "name": "Sample Opportunity",
+          "status": "Open"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Opportunity",
+        "opportunityId": "4956209"
+      },
+      "name": "updateOpportunity-success",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/4956209",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Opportunity",
+        "opportunityId": "4956209"
+      },
+      "name": "updateOpportunity-notFound",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/4956209",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Opportunity",
+        "opportunityId": "4956209"
+      },
+      "name": "updateOpportunity-providerRejected",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/4956209",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Opportunity",
+        "opportunityId": "4956209"
+      },
+      "name": "updateOpportunity-rateLimit",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/4956209",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Opportunity",
+        "opportunityId": "4956209"
+      },
+      "name": "updateOpportunity-serverUnavailable",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/opportunities/4956209",
+          "requestBody": {
+            "details": "Updated",
+            "name": "Sample Opportunity"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e877fbac-d3a6-5db4-bf02-e4287e0f1af3",
+      "input": {
+        "details": "Updated",
+        "name": "Sample Opportunity",
+        "opportunityId": "4956209"
+      },
+      "name": "updateOpportunity-transportFailure",
+      "operation": "updateOpportunity"
+    },
+    {
+      "callId": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "exchanges": [
+        {
+          "body": "{\"id\":4956209,\"is_deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": 4956209
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "deleteOpportunity-success",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "deleteOpportunity-notFound",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "deleteOpportunity-providerRejected",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "deleteOpportunity-rateLimit",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "deleteOpportunity-serverUnavailable",
+      "operation": "deleteOpportunity"
+    },
+    {
+      "callId": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/opportunities/4956209",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ],
+            "X-Pw-Accesstoken": [
+              "test-token"
+            ],
+            "X-Pw-Application": [
+              "developer_api"
+            ],
+            "X-Pw-Useremail": [
+              "user@example.com"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8ba31c7f-2f6a-51f0-8bf8-21ada8cc04a8",
+      "input": {
+        "opportunityId": "4956209"
+      },
+      "name": "deleteOpportunity-transportFailure",
+      "operation": "deleteOpportunity"
     }
   ],
   "schemaVersion": 1

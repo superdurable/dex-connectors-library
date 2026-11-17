@@ -1,6 +1,6 @@
 # Copper person discovery Flow
 
-This runnable example registers `CopperPersonLookup` for `getPerson`, `CopperPeopleSearch` for `listPeople`, `CopperCompanySearch` for `listCompanies`, `CopperLeadSearch` for `listLeads`, and `CopperLeadCreation` for `createLead` with the static `copper` Dex Web connection. Each Flow stores its public result in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
+This runnable example registers `CopperPersonLookup` for `getPerson`, `CopperPeopleSearch` for `listPeople`, `CopperCompanySearch` for `listCompanies`, `CopperLeadSearch` for `listLeads`, `CopperLeadCreation` for `createLead`, `CopperOpportunitySearch` for `listOpportunities`, and `CopperOpportunityCreation` for `createOpportunity` with the static `copper` Dex Web connection. Each Flow stores its public result in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. Credentials do not enter Flow state.
 
 ## Strict FDG 2.0 generation
 
@@ -12,6 +12,8 @@ dexcli visualize ./examples/person-lookup/flow/list_people.go --schema-version 2
 dexcli visualize ./examples/person-lookup/flow/list_companies.go --schema-version 2.0 --lint app --json --out /tmp/copper-company-search-fdg
 dexcli visualize ./examples/person-lookup/flow/list_leads.go --schema-version 2.0 --lint app --json --out /tmp/copper-lead-search-fdg
 dexcli visualize ./examples/person-lookup/flow/create_lead.go --schema-version 2.0 --lint app --json --out /tmp/copper-lead-creation-fdg
+dexcli visualize ./examples/person-lookup/flow/list_opportunities.go --schema-version 2.0 --lint app --json --out /tmp/copper-opportunity-search-fdg
+dexcli visualize ./examples/person-lookup/flow/create_opportunity.go --schema-version 2.0 --lint app --json --out /tmp/copper-opportunity-creation-fdg
 ```
 
 The command must report `valid: true`. Before the first release, `connector_release_required` warns that automatic Dex Web configuration requires a published release.
@@ -35,5 +37,9 @@ Start `CopperCompanySearch` with a unique Flow ID and input `{"pageNumber":1,"pa
 Start `CopperLeadSearch` with a unique Flow ID and input `{"pageNumber":1,"pageSize":25,"email":"lead@example.com"}`. Omit the email to list leads. The email filter is not a unique lookup key: multiple leads can share it.
 
 Start `CopperLeadCreation` with a unique Flow ID and input `{"name":"Sample Lead","email":"lead@example.com"}`. Reconcile existing leads with that name and email first. Copper may accept a create request even if a matching lead already exists.
+
+Start `CopperOpportunitySearch` with a unique Flow ID and input `{"pageNumber":1,"pageSize":25,"name":"Sample Opportunity"}`. Omit the name to list opportunities.
+
+Start `CopperOpportunityCreation` with a unique Flow ID and input `{"name":"Sample Opportunity"}`. Names are not unique, so an ambiguous earlier send may select `uncertain`.
 
 With `dexcli dev` serving at `127.0.0.1:8905`, run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8905 GOWORK=off go test -race -tags=integration ./examples/person-lookup/flow -count=1`. Live provider authorization remains unverified.

@@ -30,6 +30,11 @@ type Mock struct {
 	deletePerson        *connectormock.Mutation[copper.DeletePersonInput, copper.DeletePersonOutput]
 	listCustomerSources *connectormock.Query[copper.ListCustomerSourcesInput, copper.CustomerSourcesList]
 	listLeadStatuses    *connectormock.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList]
+	createOpportunity   *connectormock.Mutation[copper.CreateOpportunityInput, copper.OpportunityMetadata]
+	listOpportunities   *connectormock.Query[copper.ListOpportunitiesInput, copper.OpportunitiesPage]
+	updateOpportunity   *connectormock.Mutation[copper.UpdateOpportunityInput, copper.OpportunityMetadata]
+	deleteOpportunity   *connectormock.Mutation[copper.DeleteOpportunityInput, copper.DeleteOpportunityOutput]
+	getOpportunity      *connectormock.Query[copper.GetOpportunityInput, copper.OpportunityMetadata]
 	createLead          *connectormock.Mutation[copper.CreateLeadInput, copper.LeadMetadata]
 	listLeads           *connectormock.Query[copper.ListLeadsInput, copper.LeadsPage]
 	updateLead          *connectormock.Mutation[copper.UpdateLeadInput, copper.LeadMetadata]
@@ -54,6 +59,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		deletePerson:        connectormock.NewMutation[copper.DeletePersonInput, copper.DeletePersonOutput](t, copper.DeletePersonDefinition),
 		listCustomerSources: connectormock.NewQuery[copper.ListCustomerSourcesInput, copper.CustomerSourcesList](t, copper.ListCustomerSourcesDefinition),
 		listLeadStatuses:    connectormock.NewQuery[copper.ListLeadStatusesInput, copper.LeadStatusesList](t, copper.ListLeadStatusesDefinition),
+		createOpportunity:   connectormock.NewMutation[copper.CreateOpportunityInput, copper.OpportunityMetadata](t, copper.CreateOpportunityDefinition),
+		listOpportunities:   connectormock.NewQuery[copper.ListOpportunitiesInput, copper.OpportunitiesPage](t, copper.ListOpportunitiesDefinition),
+		updateOpportunity:   connectormock.NewMutation[copper.UpdateOpportunityInput, copper.OpportunityMetadata](t, copper.UpdateOpportunityDefinition),
+		deleteOpportunity:   connectormock.NewMutation[copper.DeleteOpportunityInput, copper.DeleteOpportunityOutput](t, copper.DeleteOpportunityDefinition),
+		getOpportunity:      connectormock.NewQuery[copper.GetOpportunityInput, copper.OpportunityMetadata](t, copper.GetOpportunityDefinition),
 		createLead:          connectormock.NewMutation[copper.CreateLeadInput, copper.LeadMetadata](t, copper.CreateLeadDefinition),
 		listLeads:           connectormock.NewQuery[copper.ListLeadsInput, copper.LeadsPage](t, copper.ListLeadsDefinition),
 		updateLead:          connectormock.NewMutation[copper.UpdateLeadInput, copper.LeadMetadata](t, copper.UpdateLeadDefinition),
@@ -72,6 +82,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.deletePerson.Default(DeletePersonDefault())
 	mock.listCustomerSources.Default(ListCustomerSourcesDefault())
 	mock.listLeadStatuses.Default(ListLeadStatusesDefault())
+	mock.createOpportunity.Default(CreateOpportunityDefault())
+	mock.listOpportunities.Default(ListOpportunitiesDefault())
+	mock.updateOpportunity.Default(UpdateOpportunityDefault())
+	mock.deleteOpportunity.Default(DeleteOpportunityDefault())
+	mock.getOpportunity.Default(GetOpportunityDefault())
 	mock.createLead.Default(CreateLeadDefault())
 	mock.listLeads.Default(ListLeadsDefault())
 	mock.updateLead.Default(UpdateLeadDefault())
@@ -148,6 +163,31 @@ func (mock *Mock) ListLeadStatuses() *connectormock.Query[copper.ListLeadStatuse
 	return mock.listLeadStatuses
 }
 
+// CreateOpportunity returns the createOpportunity script.
+func (mock *Mock) CreateOpportunity() *connectormock.Mutation[copper.CreateOpportunityInput, copper.OpportunityMetadata] {
+	return mock.createOpportunity
+}
+
+// ListOpportunities returns the listOpportunities script.
+func (mock *Mock) ListOpportunities() *connectormock.Query[copper.ListOpportunitiesInput, copper.OpportunitiesPage] {
+	return mock.listOpportunities
+}
+
+// UpdateOpportunity returns the updateOpportunity script.
+func (mock *Mock) UpdateOpportunity() *connectormock.Mutation[copper.UpdateOpportunityInput, copper.OpportunityMetadata] {
+	return mock.updateOpportunity
+}
+
+// DeleteOpportunity returns the deleteOpportunity script.
+func (mock *Mock) DeleteOpportunity() *connectormock.Mutation[copper.DeleteOpportunityInput, copper.DeleteOpportunityOutput] {
+	return mock.deleteOpportunity
+}
+
+// GetOpportunity returns the getOpportunity script.
+func (mock *Mock) GetOpportunity() *connectormock.Query[copper.GetOpportunityInput, copper.OpportunityMetadata] {
+	return mock.getOpportunity
+}
+
 // CreateLead returns the createLead script.
 func (mock *Mock) CreateLead() *connectormock.Mutation[copper.CreateLeadInput, copper.LeadMetadata] {
 	return mock.createLead
@@ -210,6 +250,21 @@ func (operations mockOperations) ListCustomerSources() sdkgo.Query[copper.ListCu
 }
 func (operations mockOperations) ListLeadStatuses() sdkgo.Query[copper.ListLeadStatusesInput, copper.LeadStatusesList] {
 	return operations.mock.listLeadStatuses
+}
+func (operations mockOperations) CreateOpportunity() sdkgo.Mutation[copper.CreateOpportunityInput, copper.OpportunityMetadata] {
+	return operations.mock.createOpportunity
+}
+func (operations mockOperations) ListOpportunities() sdkgo.Query[copper.ListOpportunitiesInput, copper.OpportunitiesPage] {
+	return operations.mock.listOpportunities
+}
+func (operations mockOperations) UpdateOpportunity() sdkgo.Mutation[copper.UpdateOpportunityInput, copper.OpportunityMetadata] {
+	return operations.mock.updateOpportunity
+}
+func (operations mockOperations) DeleteOpportunity() sdkgo.Mutation[copper.DeleteOpportunityInput, copper.DeleteOpportunityOutput] {
+	return operations.mock.deleteOpportunity
+}
+func (operations mockOperations) GetOpportunity() sdkgo.Query[copper.GetOpportunityInput, copper.OpportunityMetadata] {
+	return operations.mock.getOpportunity
 }
 func (operations mockOperations) CreateLead() sdkgo.Mutation[copper.CreateLeadInput, copper.LeadMetadata] {
 	return operations.mock.createLead
@@ -661,6 +716,191 @@ func ListLeadStatusesListedDefault() connectormock.Case[copper.LeadStatusesList]
 // ListLeadStatusesDefault is the manifest default, listedDefault, which New installs.
 func ListLeadStatusesDefault() connectormock.Case[copper.LeadStatusesList] {
 	return ListLeadStatusesListedDefault()
+}
+
+// CreateOpportunityCreated selects the created branch: Copper created the opportunity.
+func CreateOpportunityCreated(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.CreateOpportunityBranchCreated, value, failure)
+}
+
+// CreateOpportunityProviderRejected selects the providerRejected branch: Copper rejected creation.
+func CreateOpportunityProviderRejected(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.CreateOpportunityBranchProviderRejected, value, failure)
+}
+
+// CreateOpportunityUncertain returns an uncertain createOpportunity outcome.
+func CreateOpportunityUncertain(value copper.OpportunityMetadata, failure sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOpportunityDefect selects the defect branch: Input or credentials are invalid.
+func CreateOpportunityDefect(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.CreateOpportunityBranchDefect, value, failure)
+}
+
+// CreateOpportunityRetry asks Dex to retry the createOpportunity Step, after the delay when it is positive.
+func CreateOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Retry[copper.OpportunityMetadata](failure, after)
+}
+
+// CreateOpportunityCreatedDefault is the manifest mock createdDefault: A sample opportunity is created.
+func CreateOpportunityCreatedDefault() connectormock.Case[copper.OpportunityMetadata] {
+	value := connectormock.MustDecodeOutput[copper.OpportunityMetadata](`{"id":4956209,"name":"Sample Opportunity","status":"Open"}`)
+	return connectormock.Branch(copper.CreateOpportunityBranchCreated, value, nil)
+}
+
+// CreateOpportunityDefault is the manifest default, createdDefault, which New installs.
+func CreateOpportunityDefault() connectormock.Case[copper.OpportunityMetadata] {
+	return CreateOpportunityCreatedDefault()
+}
+
+// ListOpportunitiesListed selects the listed branch: Copper returned a page of opportunities.
+func ListOpportunitiesListed(value copper.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[copper.OpportunitiesPage] {
+	return connectormock.Branch(copper.ListOpportunitiesBranchListed, value, failure)
+}
+
+// ListOpportunitiesProviderRejected selects the providerRejected branch: Copper rejected the search.
+func ListOpportunitiesProviderRejected(value copper.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[copper.OpportunitiesPage] {
+	return connectormock.Branch(copper.ListOpportunitiesBranchProviderRejected, value, failure)
+}
+
+// ListOpportunitiesInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized opportunities JSON.
+func ListOpportunitiesInvalidResponse(value copper.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[copper.OpportunitiesPage] {
+	return connectormock.Branch(copper.ListOpportunitiesBranchInvalidResponse, value, failure)
+}
+
+// ListOpportunitiesDefect selects the defect branch: Input or credentials are invalid.
+func ListOpportunitiesDefect(value copper.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[copper.OpportunitiesPage] {
+	return connectormock.Branch(copper.ListOpportunitiesBranchDefect, value, failure)
+}
+
+// ListOpportunitiesRetry asks Dex to retry the listOpportunities Step, after the delay when it is positive.
+func ListOpportunitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.OpportunitiesPage] {
+	return connectormock.Retry[copper.OpportunitiesPage](failure, after)
+}
+
+// ListOpportunitiesListedDefault is the manifest mock listedDefault: A sample opportunities page is returned.
+func ListOpportunitiesListedDefault() connectormock.Case[copper.OpportunitiesPage] {
+	value := connectormock.MustDecodeOutput[copper.OpportunitiesPage](`{"opportunities":[{"id":4956209,"name":"Sample Opportunity","status":"Open"}]}`)
+	return connectormock.Branch(copper.ListOpportunitiesBranchListed, value, nil)
+}
+
+// ListOpportunitiesDefault is the manifest default, listedDefault, which New installs.
+func ListOpportunitiesDefault() connectormock.Case[copper.OpportunitiesPage] {
+	return ListOpportunitiesListedDefault()
+}
+
+// UpdateOpportunityUpdated selects the updated branch: Copper updated the opportunity.
+func UpdateOpportunityUpdated(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.UpdateOpportunityBranchUpdated, value, failure)
+}
+
+// UpdateOpportunityNotFound selects the notFound branch: No opportunity matches the ID.
+func UpdateOpportunityNotFound(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.UpdateOpportunityBranchNotFound, value, failure)
+}
+
+// UpdateOpportunityProviderRejected selects the providerRejected branch: Copper rejected the update.
+func UpdateOpportunityProviderRejected(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.UpdateOpportunityBranchProviderRejected, value, failure)
+}
+
+// UpdateOpportunityDefect selects the defect branch: Input or credentials are invalid.
+func UpdateOpportunityDefect(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.UpdateOpportunityBranchDefect, value, failure)
+}
+
+// UpdateOpportunityRetry asks Dex to retry the updateOpportunity Step, after the delay when it is positive.
+func UpdateOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Retry[copper.OpportunityMetadata](failure, after)
+}
+
+// UpdateOpportunityUpdatedDefault is the manifest mock updatedDefault: A sample opportunity is updated.
+func UpdateOpportunityUpdatedDefault() connectormock.Case[copper.OpportunityMetadata] {
+	value := connectormock.MustDecodeOutput[copper.OpportunityMetadata](`{"id":4956209,"name":"Sample Opportunity","status":"Open"}`)
+	return connectormock.Branch(copper.UpdateOpportunityBranchUpdated, value, nil)
+}
+
+// UpdateOpportunityDefault is the manifest default, updatedDefault, which New installs.
+func UpdateOpportunityDefault() connectormock.Case[copper.OpportunityMetadata] {
+	return UpdateOpportunityUpdatedDefault()
+}
+
+// DeleteOpportunityDeleted selects the deleted branch: Copper deleted the opportunity.
+func DeleteOpportunityDeleted(value copper.DeleteOpportunityOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteOpportunityOutput] {
+	return connectormock.Branch(copper.DeleteOpportunityBranchDeleted, value, failure)
+}
+
+// DeleteOpportunityNotFound selects the notFound branch: No opportunity matches the ID.
+func DeleteOpportunityNotFound(value copper.DeleteOpportunityOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteOpportunityOutput] {
+	return connectormock.Branch(copper.DeleteOpportunityBranchNotFound, value, failure)
+}
+
+// DeleteOpportunityProviderRejected selects the providerRejected branch: Copper rejected the deletion.
+func DeleteOpportunityProviderRejected(value copper.DeleteOpportunityOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteOpportunityOutput] {
+	return connectormock.Branch(copper.DeleteOpportunityBranchProviderRejected, value, failure)
+}
+
+// DeleteOpportunityDefect selects the defect branch: Input or credentials are invalid.
+func DeleteOpportunityDefect(value copper.DeleteOpportunityOutput, failure *sdkgo.Failure) connectormock.Case[copper.DeleteOpportunityOutput] {
+	return connectormock.Branch(copper.DeleteOpportunityBranchDefect, value, failure)
+}
+
+// DeleteOpportunityRetry asks Dex to retry the deleteOpportunity Step, after the delay when it is positive.
+func DeleteOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.DeleteOpportunityOutput] {
+	return connectormock.Retry[copper.DeleteOpportunityOutput](failure, after)
+}
+
+// DeleteOpportunityDeletedDefault is the manifest mock deletedDefault: A sample opportunity is deleted.
+func DeleteOpportunityDeletedDefault() connectormock.Case[copper.DeleteOpportunityOutput] {
+	value := connectormock.MustDecodeOutput[copper.DeleteOpportunityOutput](`{"id":4956209,"deleted":true}`)
+	return connectormock.Branch(copper.DeleteOpportunityBranchDeleted, value, nil)
+}
+
+// DeleteOpportunityDefault is the manifest default, deletedDefault, which New installs.
+func DeleteOpportunityDefault() connectormock.Case[copper.DeleteOpportunityOutput] {
+	return DeleteOpportunityDeletedDefault()
+}
+
+// GetOpportunityFound selects the found branch: Copper returned the selected opportunity.
+func GetOpportunityFound(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.GetOpportunityBranchFound, value, failure)
+}
+
+// GetOpportunityNotFound selects the notFound branch: No opportunity matches this ID.
+func GetOpportunityNotFound(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.GetOpportunityBranchNotFound, value, failure)
+}
+
+// GetOpportunityProviderRejected selects the providerRejected branch: Copper conclusively rejected the request.
+func GetOpportunityProviderRejected(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.GetOpportunityBranchProviderRejected, value, failure)
+}
+
+// GetOpportunityInvalidResponse selects the invalidResponse branch: Copper returned malformed or oversized JSON.
+func GetOpportunityInvalidResponse(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.GetOpportunityBranchInvalidResponse, value, failure)
+}
+
+// GetOpportunityDefect selects the defect branch: Invalid input or unavailable credentials.
+func GetOpportunityDefect(value copper.OpportunityMetadata, failure *sdkgo.Failure) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Branch(copper.GetOpportunityBranchDefect, value, failure)
+}
+
+// GetOpportunityRetry asks Dex to retry the getOpportunity Step, after the delay when it is positive.
+func GetOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[copper.OpportunityMetadata] {
+	return connectormock.Retry[copper.OpportunityMetadata](failure, after)
+}
+
+// GetOpportunityFoundDefault is the manifest mock foundDefault: One sample opportunity is returned.
+func GetOpportunityFoundDefault() connectormock.Case[copper.OpportunityMetadata] {
+	value := connectormock.MustDecodeOutput[copper.OpportunityMetadata](`{"id":4956209,"name":"Sample Opportunity","status":"Open"}`)
+	return connectormock.Branch(copper.GetOpportunityBranchFound, value, nil)
+}
+
+// GetOpportunityDefault is the manifest default, foundDefault, which New installs.
+func GetOpportunityDefault() connectormock.Case[copper.OpportunityMetadata] {
+	return GetOpportunityFoundDefault()
 }
 
 // CreateLeadCreated selects the created branch: Copper created the lead.
