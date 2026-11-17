@@ -24,3 +24,12 @@ func TestBlobDownloadFlowInputAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestContainerListingFlowRegisters(t *testing.T) {
+	mock := azureblobmock.New(t, ConnectionName)
+	_, err := dex.NewRegistry([]dex.Flow{NewContainerListingFlow(mock.Connection())})
+	require.NoError(t, err)
+	wait, err := startContainerListing{}.WaitFor(nil, azureblob.ListContainersInput{})
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+}

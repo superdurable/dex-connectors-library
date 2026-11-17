@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{blobdownload.NewFlow(connection), blobdownload.NewBlobListingFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{blobdownload.NewFlow(connection), blobdownload.NewBlobListingFlow(connection), blobdownload.NewContainerListingFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Azure Blob Storage blob download Flow: %w", err)
 	}
