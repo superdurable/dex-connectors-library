@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: segment
   displayName: Twilio Segment
-  description: Read a Segment Public API source by ID.
+  description: Create, list, inspect, update, and delete Segment Public API Sources.
   company: Twilio
   categories: [analytics, marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: segment
   languages:
@@ -52,7 +52,7 @@ spec:
     guide:
       startURL: https://app.segment.com
       steps:
-        - Sign in to Segment, select the Workspace, then open Settings > Access Management > Tokens > Create Token. Select Public API, grant read access to Sources, and copy the complete secret into Dex Web api_key. Blank is invalid. Revoke it under the same Tokens page when needed. Each Workspace needs its own token.
+        - Sign in to Segment, select the Workspace, then open Settings > Access Management > Tokens > Create Token. Select Public API and grant the Source read, list, create, update, and delete permissions needed by the Flows you run. Copy the complete secret into Dex Web api_key. Blank is invalid. Revoke it under the same Tokens page when needed. Each Workspace needs its own token.
         - Leave baseUrl blank for a US Workspace. For an EU Workspace enter https://eu1.api.segmentapis.com; leave timeout and maxResponseBytes blank for their displayed defaults. Find the Source's non-secret opaque ID in Segment Sources or a Public API response and pass it as sourceId; blank is invalid. The Source slug is not its ID.
   operations:
     - name: getSource
@@ -76,3 +76,66 @@ spec:
           default: true
           description: One sample Source is returned without its write keys.
           output: {id: source123, slug: my-source, name: My Source}
+    - name: listSources
+      goName: ListSources
+      inputType: ListSourcesInput
+      outputType: SourcePage
+      kind: query
+      description: List one page of Workspace Sources without returning write keys.
+      idempotency: none
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Segment returned a page of Sources.}
+        - {id: providerRejected, goName: ProviderRejected, description: Segment definitively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Segment returned malformed or oversized list JSON., optional: true}
+        - {id: defect, goName: Defect, description: Pagination or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: A page of Source identities without write keys., output: {sources: [{id: source123, slug: my-source, name: My Source}], currentCursor: MA==, totalEntries: 1}}
+    - name: createSource
+      goName: CreateSource
+      inputType: CreateSourceInput
+      outputType: SourceProfile
+      kind: mutation
+      description: Create a Source type that needs no secret settings, with at most three possible sends after unknown outcomes.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
+      branches:
+        - {id: created, goName: Created, description: Segment created the Source and returned its identity.}
+        - {id: providerRejected, goName: ProviderRejected, description: Segment definitively rejected the first create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create may have succeeded but no Source ID was confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Source input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: A Source was created without exposing a write key., output: {id: source123, slug: my-source, name: My Source}}
+    - name: updateSource
+      goName: UpdateSource
+      inputType: UpdateSourceInput
+      outputType: SourceProfile
+      kind: mutation
+      description: Replace a Source display name or enabled state by ID.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: updated, goName: Updated, description: Segment updated the Source.}
+        - {id: notFound, goName: NotFound, description: Segment did not expose the Source., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Segment definitively rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Source input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: A Source display name was updated., output: {id: source123, slug: my-source, name: Updated Source}}
+    - name: deleteSource
+      goName: DeleteSource
+      inputType: DeleteSourceInput
+      outputType: DeletedSource
+      kind: mutation
+      description: Delete a Source by ID; an already absent Source counts as deleted so retries converge.
+      idempotency: required
+      authorization: required
+      execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: deleted, goName: Deleted, description: Segment deleted the Source or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Segment definitively rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Source ID or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: The Source was deleted., output: {sourceId: source123}}

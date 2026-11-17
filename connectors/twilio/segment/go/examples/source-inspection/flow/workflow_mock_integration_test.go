@@ -23,7 +23,7 @@ import (
 
 func TestSourceInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := segmentmock.New(t, ConnectionName)
-	flow := NewFlow(mock.Connection())
+	flow := NewSourceListFlow(mock.Connection())
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
@@ -47,15 +47,16 @@ func TestSourceInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	defer cancel()
 	require.NoError(t, worker.WaitPullRegistered(ctx))
 	flowID := "segment-sourceinspection-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	_, err = client.StartFlow(ctx, flow, flowID, segment.GetSourceInput{SourceID: "source123"}, dex.StartFlowOptions{})
+	_, err = client.StartFlow(ctx, flow, flowID, segment.ListSourcesInput{Count: 2}, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var output segment.SourceProfile
+	var output segment.SourcePage
 	require.NoError(t, result.DecodeSingleOutput(&output))
-	require.Equal(t, "source123", output.ID)
-	require.Equal(t, "my-source", output.Slug)
-	require.Equal(t, "My Source", output.Name)
-	require.Len(t, mock.GetSource().Calls(), 1)
+	require.Len(t, output.Sources, 1)
+	require.Equal(t, "source123", output.Sources[0].ID)
+	require.Equal(t, "my-source", output.Sources[0].Slug)
+	require.Equal(t, "My Source", output.Sources[0].Name)
+	require.Len(t, mock.ListSources().Calls(), 1)
 }

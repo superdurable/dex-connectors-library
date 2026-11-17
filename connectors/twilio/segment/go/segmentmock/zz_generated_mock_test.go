@@ -20,6 +20,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[segment.SourceProfile](`{"id":"source123","slug":"my-source","name":"My Source"}`)
 			return err
 		}},
+		{name: "listSources/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[segment.SourcePage](`{"sources":[{"id":"source123","slug":"my-source","name":"My Source"}],"currentCursor":"MA==","totalEntries":1}`)
+			return err
+		}},
+		{name: "createSource/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[segment.SourceProfile](`{"id":"source123","slug":"my-source","name":"My Source"}`)
+			return err
+		}},
+		{name: "updateSource/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[segment.SourceProfile](`{"id":"source123","slug":"my-source","name":"Updated Source"}`)
+			return err
+		}},
+		{name: "deleteSource/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[segment.DeletedSource](`{"sourceId":"source123"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +48,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetSource().Definition().Operation.OperationID != "getSource" {
 		t.Errorf("getSource mock has another definition")
+	}
+	if mock.ListSources().Definition().Operation.OperationID != "listSources" {
+		t.Errorf("listSources mock has another definition")
+	}
+	if mock.CreateSource().Definition().Operation.OperationID != "createSource" {
+		t.Errorf("createSource mock has another definition")
+	}
+	if mock.UpdateSource().Definition().Operation.OperationID != "updateSource" {
+		t.Errorf("updateSource mock has another definition")
+	}
+	if mock.DeleteSource().Definition().Operation.OperationID != "deleteSource" {
+		t.Errorf("deleteSource mock has another definition")
 	}
 }
