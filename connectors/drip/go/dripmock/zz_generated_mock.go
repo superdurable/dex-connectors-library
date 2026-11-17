@@ -17,9 +17,12 @@ import (
 
 // Mock is a scripted drip connection. Script each operation through its accessor.
 type Mock struct {
-	connection    drip.Connection
-	listAccounts  *connectormock.Query[drip.ListAccountsInput, drip.AccountsList]
-	getSubscriber *connectormock.Query[drip.GetSubscriberInput, drip.SubscriberMetadata]
+	connection       drip.Connection
+	listAccounts     *connectormock.Query[drip.ListAccountsInput, drip.AccountsList]
+	getSubscriber    *connectormock.Query[drip.GetSubscriberInput, drip.SubscriberMetadata]
+	listSubscribers  *connectormock.Query[drip.ListSubscribersInput, drip.SubscribersPage]
+	upsertSubscriber *connectormock.Mutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata]
+	deleteSubscriber *connectormock.Mutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listAccounts:  connectormock.NewQuery[drip.ListAccountsInput, drip.AccountsList](t, drip.ListAccountsDefinition),
-		getSubscriber: connectormock.NewQuery[drip.GetSubscriberInput, drip.SubscriberMetadata](t, drip.GetSubscriberDefinition),
+		listAccounts:     connectormock.NewQuery[drip.ListAccountsInput, drip.AccountsList](t, drip.ListAccountsDefinition),
+		getSubscriber:    connectormock.NewQuery[drip.GetSubscriberInput, drip.SubscriberMetadata](t, drip.GetSubscriberDefinition),
+		listSubscribers:  connectormock.NewQuery[drip.ListSubscribersInput, drip.SubscribersPage](t, drip.ListSubscribersDefinition),
+		upsertSubscriber: connectormock.NewMutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata](t, drip.UpsertSubscriberDefinition),
+		deleteSubscriber: connectormock.NewMutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber](t, drip.DeleteSubscriberDefinition),
 	}
 	mock.listAccounts.Default(ListAccountsDefault())
 	mock.getSubscriber.Default(GetSubscriberDefault())
+	mock.listSubscribers.Default(ListSubscribersDefault())
+	mock.upsertSubscriber.Default(UpsertSubscriberDefault())
+	mock.deleteSubscriber.Default(DeleteSubscriberDefault())
 	connection, err := drip.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "drip", Name: connectionName})
 	if err != nil {
 		t.Fatalf("drip mock connection: %v", err)
@@ -53,6 +62,21 @@ func (mock *Mock) GetSubscriber() *connectormock.Query[drip.GetSubscriberInput, 
 	return mock.getSubscriber
 }
 
+// ListSubscribers returns the listSubscribers script.
+func (mock *Mock) ListSubscribers() *connectormock.Query[drip.ListSubscribersInput, drip.SubscribersPage] {
+	return mock.listSubscribers
+}
+
+// UpsertSubscriber returns the upsertSubscriber script.
+func (mock *Mock) UpsertSubscriber() *connectormock.Mutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata] {
+	return mock.upsertSubscriber
+}
+
+// DeleteSubscriber returns the deleteSubscriber script.
+func (mock *Mock) DeleteSubscriber() *connectormock.Mutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber] {
+	return mock.deleteSubscriber
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListAccounts() sdkgo.Query[drip.ListAccountsInput, drip.AccountsList] {
@@ -60,6 +84,15 @@ func (operations mockOperations) ListAccounts() sdkgo.Query[drip.ListAccountsInp
 }
 func (operations mockOperations) GetSubscriber() sdkgo.Query[drip.GetSubscriberInput, drip.SubscriberMetadata] {
 	return operations.mock.getSubscriber
+}
+func (operations mockOperations) ListSubscribers() sdkgo.Query[drip.ListSubscribersInput, drip.SubscribersPage] {
+	return operations.mock.listSubscribers
+}
+func (operations mockOperations) UpsertSubscriber() sdkgo.Mutation[drip.UpsertSubscriberInput, drip.SubscriberMetadata] {
+	return operations.mock.upsertSubscriber
+}
+func (operations mockOperations) DeleteSubscriber() sdkgo.Mutation[drip.DeleteSubscriberInput, drip.DeletedSubscriber] {
+	return operations.mock.deleteSubscriber
 }
 
 // ListAccountsListed selects the listed branch: Drip returned accessible accounts.
@@ -135,4 +168,112 @@ func GetSubscriberFoundDefault() connectormock.Case[drip.SubscriberMetadata] {
 // GetSubscriberDefault is the manifest default, foundDefault, which New installs.
 func GetSubscriberDefault() connectormock.Case[drip.SubscriberMetadata] {
 	return GetSubscriberFoundDefault()
+}
+
+// ListSubscribersListed selects the listed branch: Drip returned a subscriber page.
+func ListSubscribersListed(value drip.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Branch(drip.ListSubscribersBranchListed, value, failure)
+}
+
+// ListSubscribersProviderRejected selects the providerRejected branch: Drip conclusively rejected the request.
+func ListSubscribersProviderRejected(value drip.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Branch(drip.ListSubscribersBranchProviderRejected, value, failure)
+}
+
+// ListSubscribersInvalidResponse selects the invalidResponse branch: Drip returned malformed or oversized JSON.
+func ListSubscribersInvalidResponse(value drip.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Branch(drip.ListSubscribersBranchInvalidResponse, value, failure)
+}
+
+// ListSubscribersDefect selects the defect branch: Invalid input or unavailable credentials.
+func ListSubscribersDefect(value drip.SubscribersPage, failure *sdkgo.Failure) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Branch(drip.ListSubscribersBranchDefect, value, failure)
+}
+
+// ListSubscribersRetry asks Dex to retry the listSubscribers Step, after the delay when it is positive.
+func ListSubscribersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.SubscribersPage] {
+	return connectormock.Retry[drip.SubscribersPage](failure, after)
+}
+
+// ListSubscribersListedDefault is the manifest mock listedDefault: One sample subscriber is listed.
+func ListSubscribersListedDefault() connectormock.Case[drip.SubscribersPage] {
+	value := connectormock.MustDecodeOutput[drip.SubscribersPage](`{"subscribers":[{"id":"sample-subscriber-id","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace","status":"active"}]}`)
+	return connectormock.Branch(drip.ListSubscribersBranchListed, value, nil)
+}
+
+// ListSubscribersDefault is the manifest default, listedDefault, which New installs.
+func ListSubscribersDefault() connectormock.Case[drip.SubscribersPage] {
+	return ListSubscribersListedDefault()
+}
+
+// UpsertSubscriberUpserted selects the upserted branch: Drip returned the created or updated subscriber.
+func UpsertSubscriberUpserted(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.UpsertSubscriberBranchUpserted, value, failure)
+}
+
+// UpsertSubscriberProviderRejected selects the providerRejected branch: Drip conclusively rejected the request.
+func UpsertSubscriberProviderRejected(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.UpsertSubscriberBranchProviderRejected, value, failure)
+}
+
+// UpsertSubscriberInvalidResponse selects the invalidResponse branch: Drip returned malformed or oversized JSON.
+func UpsertSubscriberInvalidResponse(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.UpsertSubscriberBranchInvalidResponse, value, failure)
+}
+
+// UpsertSubscriberDefect selects the defect branch: Invalid input or unavailable credentials.
+func UpsertSubscriberDefect(value drip.SubscriberMetadata, failure *sdkgo.Failure) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Branch(drip.UpsertSubscriberBranchDefect, value, failure)
+}
+
+// UpsertSubscriberRetry asks Dex to retry the upsertSubscriber Step, after the delay when it is positive.
+func UpsertSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.SubscriberMetadata] {
+	return connectormock.Retry[drip.SubscriberMetadata](failure, after)
+}
+
+// UpsertSubscriberUpsertedDefault is the manifest mock upsertedDefault: One sample subscriber is upserted.
+func UpsertSubscriberUpsertedDefault() connectormock.Case[drip.SubscriberMetadata] {
+	value := connectormock.MustDecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace","status":"active"}`)
+	return connectormock.Branch(drip.UpsertSubscriberBranchUpserted, value, nil)
+}
+
+// UpsertSubscriberDefault is the manifest default, upsertedDefault, which New installs.
+func UpsertSubscriberDefault() connectormock.Case[drip.SubscriberMetadata] {
+	return UpsertSubscriberUpsertedDefault()
+}
+
+// DeleteSubscriberDeleted selects the deleted branch: Drip deleted the subscriber or it was already absent.
+func DeleteSubscriberDeleted(value drip.DeletedSubscriber, failure *sdkgo.Failure) connectormock.Case[drip.DeletedSubscriber] {
+	return connectormock.Branch(drip.DeleteSubscriberBranchDeleted, value, failure)
+}
+
+// DeleteSubscriberProviderRejected selects the providerRejected branch: Drip conclusively rejected the request.
+func DeleteSubscriberProviderRejected(value drip.DeletedSubscriber, failure *sdkgo.Failure) connectormock.Case[drip.DeletedSubscriber] {
+	return connectormock.Branch(drip.DeleteSubscriberBranchProviderRejected, value, failure)
+}
+
+// DeleteSubscriberInvalidResponse selects the invalidResponse branch: Drip returned an oversized response.
+func DeleteSubscriberInvalidResponse(value drip.DeletedSubscriber, failure *sdkgo.Failure) connectormock.Case[drip.DeletedSubscriber] {
+	return connectormock.Branch(drip.DeleteSubscriberBranchInvalidResponse, value, failure)
+}
+
+// DeleteSubscriberDefect selects the defect branch: Invalid input or unavailable credentials.
+func DeleteSubscriberDefect(value drip.DeletedSubscriber, failure *sdkgo.Failure) connectormock.Case[drip.DeletedSubscriber] {
+	return connectormock.Branch(drip.DeleteSubscriberBranchDefect, value, failure)
+}
+
+// DeleteSubscriberRetry asks Dex to retry the deleteSubscriber Step, after the delay when it is positive.
+func DeleteSubscriberRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[drip.DeletedSubscriber] {
+	return connectormock.Retry[drip.DeletedSubscriber](failure, after)
+}
+
+// DeleteSubscriberDeletedDefault is the manifest mock deletedDefault: One sample subscriber is deleted.
+func DeleteSubscriberDeletedDefault() connectormock.Case[drip.DeletedSubscriber] {
+	value := connectormock.MustDecodeOutput[drip.DeletedSubscriber](`{"deleted":true}`)
+	return connectormock.Branch(drip.DeleteSubscriberBranchDeleted, value, nil)
+}
+
+// DeleteSubscriberDefault is the manifest default, deletedDefault, which New installs.
+func DeleteSubscriberDefault() connectormock.Case[drip.DeletedSubscriber] {
+	return DeleteSubscriberDeletedDefault()
 }

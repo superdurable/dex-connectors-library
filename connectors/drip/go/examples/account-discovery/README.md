@@ -1,5 +1,7 @@
 # Drip account discovery Flow
 
+The same Worker also registers `DripSubscriberPage`. Start it with `ListSubscribersInput` containing an account ID returned by `listAccounts`, a one-based `page`, and `perPage` from 1 to 1000. It returns subscriber identity and status without custom fields or tracking data. The mock-backed real Dex test is `TestSubscriberPageUsesDefaultMockWithRealDex` in `flow/`; run it with the integration build tag and `DEX_FLOW_SERVICE_ADDRESS` set to the local Dex Flow service.
+
 This runnable Flow calls `listAccounts` with the static `drip` Dex Web connection. It stores account IDs and names in an Attribute and completes with the typed result. Optional branches are unwired and fail the Flow when selected. The API key does not enter Flow state.
 
 ## Strict FDG 2.0 generation
@@ -8,6 +10,7 @@ From `connectors/drip/go`, run:
 
 ```bash
 dexcli visualize ./examples/account-discovery/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/drip-account-discovery-fdg
+dexcli visualize ./examples/account-discovery/flow/subscriber_page.go --schema-version 2.0 --lint app --json --out /tmp/drip-subscriber-page-fdg
 ```
 
 The command must report `valid: true` with no diagnostics.

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: drip
   displayName: Drip
-  description: Discover Drip accounts and read subscriber identity and status.
+  description: Discover Drip accounts, list subscribers, and manage subscriber identity and status.
   company: Drip
   categories: [marketing]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: drip
   languages:
@@ -96,3 +96,63 @@ spec:
           default: true
           description: One sample subscriber is returned.
           output: {id: sample-subscriber-id, email: 'ada@example.com', firstName: Ada, lastName: Lovelace, status: active}
+    - name: listSubscribers
+      goName: ListSubscribers
+      inputType: ListSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: Read one bounded page of subscriber identities and statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Drip returned a subscriber page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or unavailable credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample subscriber is listed.
+          output: {subscribers: [{id: sample-subscriber-id, email: 'ada@example.com', firstName: Ada, lastName: Lovelace, status: active}]}
+    - name: upsertSubscriber
+      goName: UpsertSubscriber
+      inputType: UpsertSubscriberInput
+      outputType: SubscriberMetadata
+      kind: mutation
+      description: Create or update one subscriber by email using Drip's upsert endpoint.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: upserted, goName: Upserted, description: Drip returned the created or updated subscriber.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or unavailable credentials., optional: true}
+      mocks:
+        - name: upsertedDefault
+          branch: upserted
+          default: true
+          description: One sample subscriber is upserted.
+          output: {id: sample-subscriber-id, email: 'ada@example.com', firstName: Ada, lastName: Lovelace, status: active}
+    - name: deleteSubscriber
+      goName: DeleteSubscriber
+      inputType: DeleteSubscriberInput
+      outputType: DeletedSubscriber
+      kind: mutation
+      description: Permanently delete one subscriber by ID or email.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Drip deleted the subscriber or it was already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or unavailable credentials., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample subscriber is deleted.
+          output: {deleted: true}

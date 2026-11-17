@@ -42,6 +42,9 @@ type Connection struct {
 type Operations interface {
 	ListAccounts() sdkgo.Query[ListAccountsInput, AccountsList]
 	GetSubscriber() sdkgo.Query[GetSubscriberInput, SubscriberMetadata]
+	ListSubscribers() sdkgo.Query[ListSubscribersInput, SubscribersPage]
+	UpsertSubscriber() sdkgo.Mutation[UpsertSubscriberInput, SubscriberMetadata]
+	DeleteSubscriber() sdkgo.Mutation[DeleteSubscriberInput, DeletedSubscriber]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +54,15 @@ func (operations clientOperations) ListAccounts() sdkgo.Query[ListAccountsInput,
 }
 func (operations clientOperations) GetSubscriber() sdkgo.Query[GetSubscriberInput, SubscriberMetadata] {
 	return operations.client.GetSubscriber()
+}
+func (operations clientOperations) ListSubscribers() sdkgo.Query[ListSubscribersInput, SubscribersPage] {
+	return operations.client.ListSubscribers()
+}
+func (operations clientOperations) UpsertSubscriber() sdkgo.Mutation[UpsertSubscriberInput, SubscriberMetadata] {
+	return operations.client.UpsertSubscriber()
+}
+func (operations clientOperations) DeleteSubscriber() sdkgo.Mutation[DeleteSubscriberInput, DeletedSubscriber] {
+	return operations.client.DeleteSubscriber()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +342,219 @@ func NewGetSubscriberStep[IN any](config GetSubscriberStepConfig[IN]) sdkgo.Quer
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetSubscriberBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListSubscribersBranchListed sdkgo.BranchID = "listed"
+const ListSubscribersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListSubscribersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListSubscribersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListSubscribersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listSubscribers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListSubscribersBranchListed, Description: "Drip returned a subscriber page."},
+		{ID: ListSubscribersBranchProviderRejected, Description: "Drip conclusively rejected the request.", Optional: true},
+		{ID: ListSubscribersBranchInvalidResponse, Description: "Drip returned malformed or oversized JSON.", Optional: true},
+		{ID: ListSubscribersBranchDefect, Description: "Invalid input or unavailable credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListSubscribersResult = sdkgo.QueryResult[SubscribersPage]
+
+type ListSubscribersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=drip"`
+	operationID                    struct{}                                           `connector:"operationId=listSubscribers"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListSubscribersInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListSubscribersResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListSubscribersResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListSubscribersResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListSubscribersResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SubscribersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewListSubscribersStep[IN any](config ListSubscribersStepConfig[IN]) sdkgo.QueryStep[IN, ListSubscribersInput, SubscribersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("drip connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListSubscribersInput, SubscribersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListSubscribers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListSubscribersResult] {
+			branches := make([]sdkgo.BranchTarget[ListSubscribersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListSubscribersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListSubscribersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListSubscribersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListSubscribersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpsertSubscriberBranchUpserted sdkgo.BranchID = "upserted"
+const UpsertSubscriberBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpsertSubscriberBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpsertSubscriberBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpsertSubscriberDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "upsertSubscriber"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpsertSubscriberBranchUpserted, Description: "Drip returned the created or updated subscriber."},
+		{ID: UpsertSubscriberBranchProviderRejected, Description: "Drip conclusively rejected the request.", Optional: true},
+		{ID: UpsertSubscriberBranchInvalidResponse, Description: "Drip returned malformed or oversized JSON.", Optional: true},
+		{ID: UpsertSubscriberBranchDefect, Description: "Invalid input or unavailable credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpsertSubscriberResult = sdkgo.MutationResult[SubscriberMetadata]
+
+type UpsertSubscriberStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=drip"`
+	operationID                       struct{}                                                 `connector:"operationId=upsertSubscriber"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpsertSubscriberInput                           `connector:"mapToOperationInput"`
+	Upserted                          sdkgo.Target[UpsertSubscriberResult]                     `connector:"branch=upserted"`
+	ProviderRejected                  sdkgo.Target[UpsertSubscriberResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpsertSubscriberResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpsertSubscriberResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SubscriberMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUpsertSubscriberStep[IN any](config UpsertSubscriberStepConfig[IN]) sdkgo.MutationStep[IN, UpsertSubscriberInput, SubscriberMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("drip connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpsertSubscriberInput, SubscriberMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpsertSubscriber(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpsertSubscriberResult] {
+			branches := make([]sdkgo.BranchTarget[UpsertSubscriberResult], 0, 4)
+			if config.Upserted.HasStep() {
+				branches = append(branches, config.Upserted.BranchTarget(UpsertSubscriberBranchUpserted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpsertSubscriberBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpsertSubscriberBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpsertSubscriberBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteSubscriberBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteSubscriberBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteSubscriberBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteSubscriberBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteSubscriberDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteSubscriber"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteSubscriberBranchDeleted, Description: "Drip deleted the subscriber or it was already absent."},
+		{ID: DeleteSubscriberBranchProviderRejected, Description: "Drip conclusively rejected the request.", Optional: true},
+		{ID: DeleteSubscriberBranchInvalidResponse, Description: "Drip returned an oversized response.", Optional: true},
+		{ID: DeleteSubscriberBranchDefect, Description: "Invalid input or unavailable credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteSubscriberResult = sdkgo.MutationResult[DeletedSubscriber]
+
+type DeleteSubscriberStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=drip"`
+	operationID                       struct{}                                                `connector:"operationId=deleteSubscriber"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteSubscriberInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteSubscriberResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteSubscriberResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteSubscriberResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteSubscriberResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedSubscriber]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteSubscriberStep[IN any](config DeleteSubscriberStepConfig[IN]) sdkgo.MutationStep[IN, DeleteSubscriberInput, DeletedSubscriber] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("drip connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteSubscriberInput, DeletedSubscriber]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteSubscriber(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteSubscriberResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteSubscriberResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteSubscriberBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteSubscriberBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteSubscriberBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteSubscriberBranchDefect))
 			}
 			return branches
 		}(),

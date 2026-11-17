@@ -24,6 +24,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace","status":"active"}`)
 			return err
 		}},
+		{name: "listSubscribers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.SubscribersPage](`{"subscribers":[{"id":"sample-subscriber-id","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace","status":"active"}]}`)
+			return err
+		}},
+		{name: "upsertSubscriber/upsertedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.SubscriberMetadata](`{"id":"sample-subscriber-id","email":"ada@example.com","firstName":"Ada","lastName":"Lovelace","status":"active"}`)
+			return err
+		}},
+		{name: "deleteSubscriber/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[drip.DeletedSubscriber](`{"deleted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +51,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetSubscriber().Definition().Operation.OperationID != "getSubscriber" {
 		t.Errorf("getSubscriber mock has another definition")
+	}
+	if mock.ListSubscribers().Definition().Operation.OperationID != "listSubscribers" {
+		t.Errorf("listSubscribers mock has another definition")
+	}
+	if mock.UpsertSubscriber().Definition().Operation.OperationID != "upsertSubscriber" {
+		t.Errorf("upsertSubscriber mock has another definition")
+	}
+	if mock.DeleteSubscriber().Definition().Operation.OperationID != "deleteSubscriber" {
+		t.Errorf("deleteSubscriber mock has another definition")
 	}
 }
