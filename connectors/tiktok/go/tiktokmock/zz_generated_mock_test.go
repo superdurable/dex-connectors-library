@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createAdgroup/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdgroupWriteResult](`{"id":"1845123456789012346"}`)
+			return err
+		}},
+		{name: "updateAdgroup/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[tiktok.AdgroupWriteResult](`{"id":"1845123456789012346"}`)
+			return err
+		}},
 		{name: "createCampaign/createdDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[tiktok.CampaignWriteResult](`{"id":"1845123456789012345"}`)
 			return err
@@ -58,6 +66,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateAdgroup().Definition().Operation.OperationID != "createAdgroup" {
+		t.Errorf("createAdgroup mock has another definition")
+	}
+	if mock.UpdateAdgroup().Definition().Operation.OperationID != "updateAdgroup" {
+		t.Errorf("updateAdgroup mock has another definition")
+	}
 	if mock.CreateCampaign().Definition().Operation.OperationID != "createCampaign" {
 		t.Errorf("createCampaign mock has another definition")
 	}

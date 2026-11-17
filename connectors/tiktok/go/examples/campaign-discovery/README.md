@@ -15,6 +15,8 @@ dexcli visualize ./examples/campaign-discovery/flow/adgroup_status_flow.go --sch
 dexcli visualize ./examples/campaign-discovery/flow/ad_status_flow.go --schema-version 2.0 --lint app --json --out /tmp/tiktok-ad-status-fdg
 dexcli visualize ./examples/campaign-discovery/flow/create_campaign_flow.go --schema-version 2.0 --lint app --json --out /tmp/tiktok-create-campaign-fdg
 dexcli visualize ./examples/campaign-discovery/flow/update_campaign_flow.go --schema-version 2.0 --lint app --json --out /tmp/tiktok-update-campaign-fdg
+dexcli visualize ./examples/campaign-discovery/flow/create_adgroup_flow.go --schema-version 2.0 --lint app --json --out /tmp/tiktok-create-adgroup-fdg
+dexcli visualize ./examples/campaign-discovery/flow/update_adgroup_flow.go --schema-version 2.0 --lint app --json --out /tmp/tiktok-update-adgroup-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -36,5 +38,7 @@ Start `TikTokAdgroupsDiscovery` or `TikTokAdsDiscovery` with the same input shap
 Start `TikTokCampaignStatus`, `TikTokAdgroupStatus`, or `TikTokAdStatus` with a unique Flow ID and input such as `{"advertiserId":"1845123456789012344","campaignId":"1845123456789012345","operationStatus":"DISABLE"}`. Replace `campaignId` with `adgroupId` or `adId` for the other Flows. The token needs Marketing API write permission. `DELETE` removes the selected resource.
 
 Start `TikTokCreateCampaign` with `{"advertiserId":"1845123456789012344","name":"Example Campaign","objectiveType":"LEAD_GENERATION","budgetMode":"BUDGET_MODE_TOTAL","budget":50}`. Start `TikTokUpdateCampaign` with `{"advertiserId":"1845123456789012344","campaignId":"1845123456789012345","name":"Updated Campaign"}`. Use a unique Flow ID for each run; confirm an uncertain create in Ads Manager before manually retrying.
+
+Start `TikTokCreateAdgroup` with the required advertiser and campaign IDs, `name`, `billingEvent`, `budget`, `budgetMode`, `optimizationGoal`, `pacing`, `scheduleStartTime`, and `scheduleType`. The Go integration test shows a complete example input. Start `TikTokUpdateAdgroup` with advertiser and ad group IDs plus a replacement `name` or `budget`. Confirm an uncertain create in Ads Manager before manual recovery.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`.

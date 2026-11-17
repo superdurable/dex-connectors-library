@@ -31,7 +31,9 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	adStatusFlow := NewAdStatusFlow(mock.Connection())
 	createCampaignFlow := NewCreateCampaignFlow(mock.Connection())
 	updateCampaignFlow := NewUpdateCampaignFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, adgroupsFlow, adsFlow, campaignStatusFlow, adgroupStatusFlow, adStatusFlow, createCampaignFlow, updateCampaignFlow})
+	createAdgroupFlow := NewCreateAdgroupFlow(mock.Connection())
+	updateAdgroupFlow := NewUpdateAdgroupFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, adgroupsFlow, adsFlow, campaignStatusFlow, adgroupStatusFlow, adStatusFlow, createCampaignFlow, updateCampaignFlow, createAdgroupFlow, updateAdgroupFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -119,4 +121,19 @@ func TestCampaignDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, updateCampaignResult.Status, updateCampaignResult.ErrorMessage)
 	require.Len(t, mock.UpdateCampaign().Calls(), 1)
+	createAdgroupFlowID := flowID + "-create-adgroup"
+	_, err = client.StartFlow(ctx, createAdgroupFlow, createAdgroupFlowID, tiktok.CreateAdgroupInput{AdvertiserID: "1845123456789012344", CampaignID: "1845123456789012345", Name: "Example Adgroup", BillingEvent: "OCPM", Budget: 50, BudgetMode: "BUDGET_MODE_TOTAL", OptimizationGoal: "CONVERT", Pacing: "PACING_MODE_SMOOTH", ScheduleStartTime: "2026-11-20 00:00:00", ScheduleEndTime: "2026-12-20 00:00:00", ScheduleType: "SCHEDULE_START_END", LocationIDs: []string{"1562822"}}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	createAdgroupResult, err := client.WaitForFlow(ctx, createAdgroupFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, createAdgroupResult.Status, createAdgroupResult.ErrorMessage)
+	require.Len(t, mock.CreateAdgroup().Calls(), 1)
+	updateAdgroupFlowID := flowID + "-update-adgroup"
+	updatedAdgroupName := "Updated Adgroup"
+	_, err = client.StartFlow(ctx, updateAdgroupFlow, updateAdgroupFlowID, tiktok.UpdateAdgroupInput{AdvertiserID: "1845123456789012344", AdgroupID: "1845123456789012346", Name: &updatedAdgroupName}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateAdgroupResult, err := client.WaitForFlow(ctx, updateAdgroupFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateAdgroupResult.Status, updateAdgroupResult.ErrorMessage)
+	require.Len(t, mock.UpdateAdgroup().Calls(), 1)
 }

@@ -40,6 +40,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateAdgroup() sdkgo.Mutation[CreateAdgroupInput, AdgroupWriteResult]
+	UpdateAdgroup() sdkgo.Mutation[UpdateAdgroupInput, AdgroupWriteResult]
 	CreateCampaign() sdkgo.Mutation[CreateCampaignInput, CampaignWriteResult]
 	UpdateCampaign() sdkgo.Mutation[UpdateCampaignInput, CampaignWriteResult]
 	UpdateCampaignStatus() sdkgo.Mutation[UpdateCampaignStatusInput, AdvertisingStatusResult]
@@ -52,6 +54,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateAdgroup() sdkgo.Mutation[CreateAdgroupInput, AdgroupWriteResult] {
+	return operations.client.CreateAdgroup()
+}
+func (operations clientOperations) UpdateAdgroup() sdkgo.Mutation[UpdateAdgroupInput, AdgroupWriteResult] {
+	return operations.client.UpdateAdgroup()
+}
 func (operations clientOperations) CreateCampaign() sdkgo.Mutation[CreateCampaignInput, CampaignWriteResult] {
 	return operations.client.CreateCampaign()
 }
@@ -212,6 +220,154 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const CreateAdgroupBranchCreated sdkgo.BranchID = "created"
+const CreateAdgroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAdgroupBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateAdgroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateAdgroupDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAdgroup"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAdgroupBranchCreated, Description: "TikTok created the ad group and returned its ID."},
+		{ID: CreateAdgroupBranchProviderRejected, Description: "TikTok conclusively rejected the create.", Optional: true},
+		{ID: CreateAdgroupBranchUncertain, Description: "TikTok may have created the ad group but no ID was confirmed after the send cap.", Optional: true},
+		{ID: CreateAdgroupBranchDefect, Description: "Local input, credentials, or checkpoint are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAdgroupResult = sdkgo.MutationResult[AdgroupWriteResult]
+
+type CreateAdgroupStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=tiktok-business"`
+	operationID                       struct{}                                                 `connector:"operationId=createAdgroup"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAdgroupInput                              `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAdgroupResult]                        `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateAdgroupResult]                        `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateAdgroupResult]                        `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateAdgroupResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdgroupWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAdgroupStep[IN any](config CreateAdgroupStepConfig[IN]) sdkgo.MutationStep[IN, CreateAdgroupInput, AdgroupWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("tiktok-business connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAdgroupInput, AdgroupWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAdgroup(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAdgroupResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAdgroupResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAdgroupBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAdgroupBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAdgroupBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAdgroupBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateAdgroupBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAdgroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAdgroupBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateAdgroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAdgroupDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAdgroup"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAdgroupBranchUpdated, Description: "TikTok confirmed the ad group update."},
+		{ID: UpdateAdgroupBranchProviderRejected, Description: "TikTok conclusively rejected the update.", Optional: true},
+		{ID: UpdateAdgroupBranchInvalidResponse, Description: "TikTok returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateAdgroupBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAdgroupResult = sdkgo.MutationResult[AdgroupWriteResult]
+
+type UpdateAdgroupStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=tiktok-business"`
+	operationID                       struct{}                                                 `connector:"operationId=updateAdgroup"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAdgroupInput                              `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAdgroupResult]                        `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateAdgroupResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateAdgroupResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateAdgroupResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AdgroupWriteResult]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAdgroupStep[IN any](config UpdateAdgroupStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAdgroupInput, AdgroupWriteResult] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("tiktok-business connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAdgroupInput, AdgroupWriteResult]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAdgroup(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAdgroupResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAdgroupResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAdgroupBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAdgroupBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateAdgroupBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAdgroupBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const CreateCampaignBranchCreated sdkgo.BranchID = "created"

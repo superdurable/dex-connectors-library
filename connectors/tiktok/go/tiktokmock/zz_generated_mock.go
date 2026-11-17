@@ -18,6 +18,8 @@ import (
 // Mock is a scripted tiktok-business connection. Script each operation through its accessor.
 type Mock struct {
 	connection           tiktok.Connection
+	createAdgroup        *connectormock.Mutation[tiktok.CreateAdgroupInput, tiktok.AdgroupWriteResult]
+	updateAdgroup        *connectormock.Mutation[tiktok.UpdateAdgroupInput, tiktok.AdgroupWriteResult]
 	createCampaign       *connectormock.Mutation[tiktok.CreateCampaignInput, tiktok.CampaignWriteResult]
 	updateCampaign       *connectormock.Mutation[tiktok.UpdateCampaignInput, tiktok.CampaignWriteResult]
 	updateCampaignStatus *connectormock.Mutation[tiktok.UpdateCampaignStatusInput, tiktok.AdvertisingStatusResult]
@@ -33,6 +35,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createAdgroup:        connectormock.NewMutation[tiktok.CreateAdgroupInput, tiktok.AdgroupWriteResult](t, tiktok.CreateAdgroupDefinition),
+		updateAdgroup:        connectormock.NewMutation[tiktok.UpdateAdgroupInput, tiktok.AdgroupWriteResult](t, tiktok.UpdateAdgroupDefinition),
 		createCampaign:       connectormock.NewMutation[tiktok.CreateCampaignInput, tiktok.CampaignWriteResult](t, tiktok.CreateCampaignDefinition),
 		updateCampaign:       connectormock.NewMutation[tiktok.UpdateCampaignInput, tiktok.CampaignWriteResult](t, tiktok.UpdateCampaignDefinition),
 		updateCampaignStatus: connectormock.NewMutation[tiktok.UpdateCampaignStatusInput, tiktok.AdvertisingStatusResult](t, tiktok.UpdateCampaignStatusDefinition),
@@ -42,6 +46,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		listAds:              connectormock.NewQuery[tiktok.ListAdsInput, tiktok.AdsPage](t, tiktok.ListAdsDefinition),
 		listCampaigns:        connectormock.NewQuery[tiktok.ListCampaignsInput, tiktok.CampaignsPage](t, tiktok.ListCampaignsDefinition),
 	}
+	mock.createAdgroup.Default(CreateAdgroupDefault())
+	mock.updateAdgroup.Default(UpdateAdgroupDefault())
 	mock.createCampaign.Default(CreateCampaignDefault())
 	mock.updateCampaign.Default(UpdateCampaignDefault())
 	mock.updateCampaignStatus.Default(UpdateCampaignStatusDefault())
@@ -60,6 +66,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() tiktok.Connection { return mock.connection }
+
+// CreateAdgroup returns the createAdgroup script.
+func (mock *Mock) CreateAdgroup() *connectormock.Mutation[tiktok.CreateAdgroupInput, tiktok.AdgroupWriteResult] {
+	return mock.createAdgroup
+}
+
+// UpdateAdgroup returns the updateAdgroup script.
+func (mock *Mock) UpdateAdgroup() *connectormock.Mutation[tiktok.UpdateAdgroupInput, tiktok.AdgroupWriteResult] {
+	return mock.updateAdgroup
+}
 
 // CreateCampaign returns the createCampaign script.
 func (mock *Mock) CreateCampaign() *connectormock.Mutation[tiktok.CreateCampaignInput, tiktok.CampaignWriteResult] {
@@ -103,6 +119,12 @@ func (mock *Mock) ListCampaigns() *connectormock.Query[tiktok.ListCampaignsInput
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateAdgroup() sdkgo.Mutation[tiktok.CreateAdgroupInput, tiktok.AdgroupWriteResult] {
+	return operations.mock.createAdgroup
+}
+func (operations mockOperations) UpdateAdgroup() sdkgo.Mutation[tiktok.UpdateAdgroupInput, tiktok.AdgroupWriteResult] {
+	return operations.mock.updateAdgroup
+}
 func (operations mockOperations) CreateCampaign() sdkgo.Mutation[tiktok.CreateCampaignInput, tiktok.CampaignWriteResult] {
 	return operations.mock.createCampaign
 }
@@ -126,6 +148,78 @@ func (operations mockOperations) ListAds() sdkgo.Query[tiktok.ListAdsInput, tikt
 }
 func (operations mockOperations) ListCampaigns() sdkgo.Query[tiktok.ListCampaignsInput, tiktok.CampaignsPage] {
 	return operations.mock.listCampaigns
+}
+
+// CreateAdgroupCreated selects the created branch: TikTok created the ad group and returned its ID.
+func CreateAdgroupCreated(value tiktok.AdgroupWriteResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Branch(tiktok.CreateAdgroupBranchCreated, value, failure)
+}
+
+// CreateAdgroupProviderRejected selects the providerRejected branch: TikTok conclusively rejected the create.
+func CreateAdgroupProviderRejected(value tiktok.AdgroupWriteResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Branch(tiktok.CreateAdgroupBranchProviderRejected, value, failure)
+}
+
+// CreateAdgroupUncertain returns an uncertain createAdgroup outcome.
+func CreateAdgroupUncertain(value tiktok.AdgroupWriteResult, failure sdkgo.Failure) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateAdgroupDefect selects the defect branch: Local input, credentials, or checkpoint are invalid.
+func CreateAdgroupDefect(value tiktok.AdgroupWriteResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Branch(tiktok.CreateAdgroupBranchDefect, value, failure)
+}
+
+// CreateAdgroupRetry asks Dex to retry the createAdgroup Step, after the delay when it is positive.
+func CreateAdgroupRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Retry[tiktok.AdgroupWriteResult](failure, after)
+}
+
+// CreateAdgroupCreatedDefault is the manifest mock createdDefault: Example ad group was created.
+func CreateAdgroupCreatedDefault() connectormock.Case[tiktok.AdgroupWriteResult] {
+	value := connectormock.MustDecodeOutput[tiktok.AdgroupWriteResult](`{"id":"1845123456789012346"}`)
+	return connectormock.Branch(tiktok.CreateAdgroupBranchCreated, value, nil)
+}
+
+// CreateAdgroupDefault is the manifest default, createdDefault, which New installs.
+func CreateAdgroupDefault() connectormock.Case[tiktok.AdgroupWriteResult] {
+	return CreateAdgroupCreatedDefault()
+}
+
+// UpdateAdgroupUpdated selects the updated branch: TikTok confirmed the ad group update.
+func UpdateAdgroupUpdated(value tiktok.AdgroupWriteResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Branch(tiktok.UpdateAdgroupBranchUpdated, value, failure)
+}
+
+// UpdateAdgroupProviderRejected selects the providerRejected branch: TikTok conclusively rejected the update.
+func UpdateAdgroupProviderRejected(value tiktok.AdgroupWriteResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Branch(tiktok.UpdateAdgroupBranchProviderRejected, value, failure)
+}
+
+// UpdateAdgroupInvalidResponse selects the invalidResponse branch: TikTok returned malformed or oversized JSON.
+func UpdateAdgroupInvalidResponse(value tiktok.AdgroupWriteResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Branch(tiktok.UpdateAdgroupBranchInvalidResponse, value, failure)
+}
+
+// UpdateAdgroupDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateAdgroupDefect(value tiktok.AdgroupWriteResult, failure *sdkgo.Failure) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Branch(tiktok.UpdateAdgroupBranchDefect, value, failure)
+}
+
+// UpdateAdgroupRetry asks Dex to retry the updateAdgroup Step, after the delay when it is positive.
+func UpdateAdgroupRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[tiktok.AdgroupWriteResult] {
+	return connectormock.Retry[tiktok.AdgroupWriteResult](failure, after)
+}
+
+// UpdateAdgroupUpdatedDefault is the manifest mock updatedDefault: Example ad group was updated.
+func UpdateAdgroupUpdatedDefault() connectormock.Case[tiktok.AdgroupWriteResult] {
+	value := connectormock.MustDecodeOutput[tiktok.AdgroupWriteResult](`{"id":"1845123456789012346"}`)
+	return connectormock.Branch(tiktok.UpdateAdgroupBranchUpdated, value, nil)
+}
+
+// UpdateAdgroupDefault is the manifest default, updatedDefault, which New installs.
+func UpdateAdgroupDefault() connectormock.Case[tiktok.AdgroupWriteResult] {
+	return UpdateAdgroupUpdatedDefault()
 }
 
 // CreateCampaignCreated selects the created branch: TikTok created the campaign and returned its ID.
