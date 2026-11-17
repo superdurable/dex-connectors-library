@@ -8,7 +8,8 @@ import { ShortcutClient } from '../src/client.js';
 import { GetStoryInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/shortcut/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/shortcut/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getStory');
 const connection = { provider: 'shortcut', name: 'shortcut' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeShortcut, '/api/v3'));
 

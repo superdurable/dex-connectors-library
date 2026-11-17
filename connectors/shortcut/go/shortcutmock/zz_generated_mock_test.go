@@ -20,6 +20,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[shortcut.StoryMetadata](`{"storyId":"12345","name":"Example story","storyType":"feature","workflowStateId":"678","archived":false}`)
 			return err
 		}},
+		{name: "searchStories/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shortcut.SearchStoriesOutput](`{"stories":[{"storyId":"12345","name":"Example story","storyType":"feature","workflowStateId":"678","archived":false}],"total":1}`)
+			return err
+		}},
+		{name: "createStory/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shortcut.StoryMetadata](`{"storyId":"12345","name":"Example story","storyType":"feature","workflowStateId":"678","archived":false}`)
+			return err
+		}},
+		{name: "updateStory/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shortcut.StoryMetadata](`{"storyId":"12345","name":"Example story","storyType":"feature","workflowStateId":"678","archived":false}`)
+			return err
+		}},
+		{name: "deleteStory/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[shortcut.DeleteStoryOutput](`{"storyId":"12345"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +48,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetStory().Definition().Operation.OperationID != "getStory" {
 		t.Errorf("getStory mock has another definition")
+	}
+	if mock.SearchStories().Definition().Operation.OperationID != "searchStories" {
+		t.Errorf("searchStories mock has another definition")
+	}
+	if mock.CreateStory().Definition().Operation.OperationID != "createStory" {
+		t.Errorf("createStory mock has another definition")
+	}
+	if mock.UpdateStory().Definition().Operation.OperationID != "updateStory" {
+		t.Errorf("updateStory mock has another definition")
+	}
+	if mock.DeleteStory().Definition().Operation.OperationID != "deleteStory" {
+		t.Errorf("deleteStory mock has another definition")
 	}
 }
