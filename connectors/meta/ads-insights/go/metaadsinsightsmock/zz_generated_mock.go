@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted meta-ads-insights connection. Script each operation through its accessor.
 type Mock struct {
-	connection metaadsinsights.Connection
-	getAd      *connectormock.Query[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata]
+	connection  metaadsinsights.Connection
+	getInsights *connectormock.Query[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage]
+	getAd       *connectormock.Query[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +27,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getAd: connectormock.NewQuery[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata](t, metaadsinsights.GetAdDefinition),
+		getInsights: connectormock.NewQuery[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage](t, metaadsinsights.GetInsightsDefinition),
+		getAd:       connectormock.NewQuery[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata](t, metaadsinsights.GetAdDefinition),
 	}
+	mock.getInsights.Default(GetInsightsDefault())
 	mock.getAd.Default(GetAdDefault())
 	connection, err := metaadsinsights.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "meta-ads-insights", Name: connectionName})
 	if err != nil {
@@ -40,6 +43,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() metaadsinsights.Connection { return mock.connection }
 
+// GetInsights returns the getInsights script.
+func (mock *Mock) GetInsights() *connectormock.Query[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage] {
+	return mock.getInsights
+}
+
 // GetAd returns the getAd script.
 func (mock *Mock) GetAd() *connectormock.Query[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata] {
 	return mock.getAd
@@ -47,8 +55,52 @@ func (mock *Mock) GetAd() *connectormock.Query[metaadsinsights.GetAdInput, metaa
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) GetInsights() sdkgo.Query[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage] {
+	return operations.mock.getInsights
+}
 func (operations mockOperations) GetAd() sdkgo.Query[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata] {
 	return operations.mock.getAd
+}
+
+// GetInsightsListed selects the listed branch: Meta returned one insights page.
+func GetInsightsListed(value metaadsinsights.InsightsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.InsightsPage] {
+	return connectormock.Branch(metaadsinsights.GetInsightsBranchListed, value, failure)
+}
+
+// GetInsightsNotFound selects the notFound branch: The ad object is missing or inaccessible.
+func GetInsightsNotFound(value metaadsinsights.InsightsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.InsightsPage] {
+	return connectormock.Branch(metaadsinsights.GetInsightsBranchNotFound, value, failure)
+}
+
+// GetInsightsProviderRejected selects the providerRejected branch: Meta definitively rejected the insights lookup.
+func GetInsightsProviderRejected(value metaadsinsights.InsightsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.InsightsPage] {
+	return connectormock.Branch(metaadsinsights.GetInsightsBranchProviderRejected, value, failure)
+}
+
+// GetInsightsInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func GetInsightsInvalidResponse(value metaadsinsights.InsightsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.InsightsPage] {
+	return connectormock.Branch(metaadsinsights.GetInsightsBranchInvalidResponse, value, failure)
+}
+
+// GetInsightsDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetInsightsDefect(value metaadsinsights.InsightsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.InsightsPage] {
+	return connectormock.Branch(metaadsinsights.GetInsightsBranchDefect, value, failure)
+}
+
+// GetInsightsRetry asks Dex to retry the getInsights Step, after the delay when it is positive.
+func GetInsightsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[metaadsinsights.InsightsPage] {
+	return connectormock.Retry[metaadsinsights.InsightsPage](failure, after)
+}
+
+// GetInsightsListedDefault is the manifest mock listedDefault: One campaign insights row is available.
+func GetInsightsListedDefault() connectormock.Case[metaadsinsights.InsightsPage] {
+	value := connectormock.MustDecodeOutput[metaadsinsights.InsightsPage](`{"rows":[{"accountId":"123456789012345","campaignId":"987654321012345","dateStart":"2026-11-01","dateStop":"2026-11-07","impressions":"361324","clicks":"7346","spend":"5339.5"}],"nextCursor":""}`)
+	return connectormock.Branch(metaadsinsights.GetInsightsBranchListed, value, nil)
+}
+
+// GetInsightsDefault is the manifest default, listedDefault, which New installs.
+func GetInsightsDefault() connectormock.Case[metaadsinsights.InsightsPage] {
+	return GetInsightsListedDefault()
 }
 
 // GetAdFound selects the found branch: Meta returned the ad.

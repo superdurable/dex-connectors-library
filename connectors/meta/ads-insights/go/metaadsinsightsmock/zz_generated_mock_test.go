@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "getInsights/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[metaadsinsights.InsightsPage](`{"rows":[{"accountId":"123456789012345","campaignId":"987654321012345","dateStart":"2026-11-01","dateStop":"2026-11-07","impressions":"361324","clicks":"7346","spend":"5339.5"}],"nextCursor":""}`)
+			return err
+		}},
 		{name: "getAd/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[metaadsinsights.AdMetadata](`{"id":"123456789012345","name":"Spring campaign image","status":"ACTIVE","effectiveStatus":"ACTIVE"}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.GetInsights().Definition().Operation.OperationID != "getInsights" {
+		t.Errorf("getInsights mock has another definition")
+	}
 	if mock.GetAd().Definition().Operation.OperationID != "getAd" {
 		t.Errorf("getAd mock has another definition")
 	}
