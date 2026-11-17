@@ -192,11 +192,13 @@ Branches, in the order the operation decides them:
 | --- | --- |
 | `completed` | The API answered 2xx. |
 | `rejected` (optional) | A redirect, a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or an authorization the server will no longer renew. `statusCode` is zero in the last case. A 401 is final only after one renewal and one resend. |
-| `uncertain` (optional) | Never selected. `sendRequest` repeats every unknown outcome; the branch stays declared so applications that wired it keep compiling. |
+| `uncertain` (optional) | A `POST` without `idempotencyKeyHeader` was sent, but its answer was lost or cut off. It is the only unknown outcome that is not repeated. |
 | `defect` (optional) | The input or the settings are invalid, so no request was sent. |
 
 `sendRequest` is `repeatOnUnknown: safe`: every unknown outcome is sent again,
-for every method. Dex retries, after `Retry-After` when the API sends it, a
+for every method, with one narrow exception kept so the declared `uncertain`
+branch stays reachable: a `POST` without `idempotencyKeyHeader` whose answer
+was lost or cut off after it was sent selects `uncertain`. Dex retries, after `Retry-After` when the API sends it, a
 request that never left the Worker, a lost or cut-off answer, a timeout, any
 5xx, and any status that does not prove a refusal, such as 408, 409, 410, 425,
 or 429. The retry policy allows five attempts within two minutes, after which

@@ -20,7 +20,7 @@ export const SendRequestBranch = {
 export const SendRequestBranchCompleted = SendRequestBranch.Completed;
 /** The API answered a redirect or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent. */
 export const SendRequestBranchRejected = SendRequestBranch.Rejected;
-/** Never selected: sendRequest repeats every unknown outcome until its retry policy runs out. The branch stays declared so applications that wired it keep compiling. */
+/** A POST without idempotencyKeyHeader was sent, but its answer was lost or cut off, so the API may have processed it; it is not repeated. Every other unknown outcome is sent again. */
 export const SendRequestBranchUncertain = SendRequestBranch.Uncertain;
 /** The input or the connection settings are invalid, so no request was sent. */
 export const SendRequestBranchDefect = SendRequestBranch.Defect;
@@ -30,7 +30,7 @@ export const SendRequestDefinition: MutationDefinition = {
   branches: [
     { id: "completed", description: "The API answered 2xx; the Result carries the status code and body." },
     { id: "rejected", description: "The API answered a redirect or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.", optional: true },
-    { id: "uncertain", description: "Never selected: sendRequest repeats every unknown outcome until its retry policy runs out. The branch stays declared so applications that wired it keep compiling.", optional: true },
+    { id: "uncertain", description: "A POST without idempotencyKeyHeader was sent, but its answer was lost or cut off, so the API may have processed it; it is not repeated. Every other unknown outcome is sent again.", optional: true },
     { id: "defect", description: "The input or the connection settings are invalid, so no request was sent.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },

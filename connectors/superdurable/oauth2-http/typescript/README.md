@@ -23,7 +23,8 @@ Go duration to milliseconds; blank uses the manifest default.
 `uncertain`, and `defect` are optional and fail the Flow when unwired.
 `sendRequest` is repeat-safe: every method retries a lost answer, a 5xx, and
 any status other than a redirect or a definite refusal (400, 401, 403, 404,
-411, 413, 414, 415, or 422), and it never selects `uncertain`.
+411, 413, 414, 415, or 422). Only a `POST` without `idempotencyKeyHeader`
+whose answer was lost after it was sent selects `uncertain`.
 
 `newPostNonIdempotentStep` sends one POST per Step execution under the
 Connector SDK single-dispatch fence with sync durability. A 429, a 503, a 401

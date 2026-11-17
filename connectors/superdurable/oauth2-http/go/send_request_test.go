@@ -312,12 +312,18 @@ func TestSendRequestRetriesAnUndispatchedRequestAndALostAnswer(t *testing.T) {
 	t.Cleanup(cutOff.Close)
 	lost := newTestSession(t, func(config *oauth2http.Config) { config.APIBaseURL = cutOff.URL }, time.Hour)
 
-	for _, input := range []oauth2http.SendRequestInput{{Path: "/things"}, {Method: "POST", Path: "/things", Body: "{}"}} {
+	for _, input := range []oauth2http.SendRequestInput{
+		{Path: "/things"}, {Method: "PUT", Path: "/things/1", Body: "{}"},
+		{Method: "POST", Path: "/things", Body: "{}", IdempotencyKeyHeader: "Idempotency-Key"},
+	} {
 		_, err = lost.send(t, "lost", input)
 		var retry *sdkgo.RetryError
 		require.ErrorAs(t, err, &retry, "a lost %s answer is repeated", input.Method)
 		require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 	}
+	result, err := lost.send(t, "lost-post", oauth2http.SendRequestInput{Method: "POST", Path: "/things", Body: "{}"})
+	require.NoError(t, err)
+	require.Equal(t, oauth2http.SendRequestBranchUncertain, result.Branch, "a POST the API cannot deduplicate is not repeated")
 }
 
 func TestSendRequestBoundsTheBodyItReturns(t *testing.T) {
@@ -394,9 +400,11 @@ func TestSendRequestReadsAServerThatClosesAfterTheHeaders(t *testing.T) {
 	session := newTestSession(t, func(config *oauth2http.Config) { config.APIBaseURL = server.URL }, time.Hour)
 
 	_, getErr := session.send(t, "partial-get", oauth2http.SendRequestInput{Path: "/things"})
-	_, postErr := session.send(t, "partial-post", oauth2http.SendRequestInput{Method: "POST", Path: "/things"})
+	postResult, postErr := session.send(t, "partial-post", oauth2http.SendRequestInput{Method: "POST", Path: "/things"})
 
 	var retry *sdkgo.RetryError
 	require.True(t, errors.As(getErr, &retry), "a GET cut off mid-body is repeated")
-	require.True(t, errors.As(postErr, &retry), "a POST cut off mid-body is repeated, because sendRequest is repeat-safe")
+	require.NoError(t, postErr)
+	require.Equal(t, oauth2http.SendRequestBranchUncertain, postResult.Branch, "a POST without an idempotency header is not repeated")
+	require.Equal(t, http.StatusOK, postResult.Value.StatusCode)
 }

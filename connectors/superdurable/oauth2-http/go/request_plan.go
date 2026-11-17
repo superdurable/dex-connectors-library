@@ -43,6 +43,11 @@ type plannedRequest struct {
 	isFencedWrite bool
 }
 
+// isUndeduplicatedPost reports a POST that names no idempotency header, which the API cannot deduplicate.
+func (request plannedRequest) isUndeduplicatedPost() bool {
+	return request.method == http.MethodPost && request.idempotencyKeyHeader == "" && !request.isFencedWrite
+}
+
 // planRequest validates input against the connection and returns the request to send, or an error whose
 // text is safe to show: it names the operation, the field, and the rule, never a value.
 func (client *Client) planRequest(operation string, input SendRequestInput) (plannedRequest, error) {

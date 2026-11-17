@@ -12,7 +12,7 @@
       "kind": "mutation",
       "operationId": "sendRequest",
       "inputType": "SendRequestInput",
-      "description": "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. Every unknown outcome, such as a lost connection, a timeout, a 5xx, or a status that does not prove a refusal, sends the request again, so use it only for requests that are safe to repeat: reads, absolute updates, deletes, or writes the API deduplicates through idempotencyKeyHeader. Use postNonIdempotent for a POST that must never be sent twice.",
+      "description": "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. Every unknown outcome, such as a lost connection, a timeout, a 5xx, or a status that does not prove a refusal, sends the request again, except that a POST without idempotencyKeyHeader whose answer was lost selects uncertain; use it only for requests that are safe to repeat: reads, absolute updates, deletes, or writes the API deduplicates through idempotencyKeyHeader. Use postNonIdempotent for a POST that must never be sent twice.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

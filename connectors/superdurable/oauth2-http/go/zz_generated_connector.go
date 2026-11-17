@@ -303,7 +303,7 @@ var SendRequestDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: SendRequestBranchCompleted, Description: "The API answered 2xx; the Result carries the status code and body."},
 		{ID: SendRequestBranchRejected, Description: "The API answered a redirect or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.", Optional: true},
-		{ID: SendRequestBranchUncertain, Description: "Never selected: sendRequest repeats every unknown outcome until its retry policy runs out. The branch stays declared so applications that wired it keep compiling.", Optional: true},
+		{ID: SendRequestBranchUncertain, Description: "A POST without idempotencyKeyHeader was sent, but its answer was lost or cut off, so the API may have processed it; it is not repeated. Every other unknown outcome is sent again.", Optional: true},
 		{ID: SendRequestBranchDefect, Description: "The input or the connection settings are invalid, so no request was sent.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

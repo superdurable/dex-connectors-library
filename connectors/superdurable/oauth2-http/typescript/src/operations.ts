@@ -29,7 +29,7 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
 
   /**
    * Send one OAuth bearer request and classify its observed result. A 2xx selects completed; a redirect
-   * or a definite refusal selects rejected. Every other outcome returns Retry; uncertain is never selected.
+   * or a definite refusal selects rejected. Every other outcome returns Retry, except that a POST without idempotencyKeyHeader whose answer was lost selects uncertain.
    */
   async invoke(call: Call, input: SendRequestInput): Promise<MutationAttempt<SendRequestOutput>> {
     let plan: RequestPlan;
@@ -43,7 +43,7 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
     let answer: APIResponse;
     let tokens = [token];
     try { answer = await this.client.exchange(call, plan, token, signal, deadline); }
-    catch (error) { return dispatchFailure(error); }
+    catch (error) { return dispatchFailure(error, plan, call, this.client.now()); }
     if (answer.status === 401 && !answer.readError) {
       try {
         const replacement = await this.client.resolveAfterRejection(call, signal);
@@ -51,13 +51,14 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
         if (replacementToken && replacementToken !== token) {
           tokens = [token, replacementToken];
           try { answer = await this.client.exchange(call, plan, replacementToken, signal, deadline); }
-          catch (error) { return dispatchFailure(error); }
+          catch (error) { return dispatchFailure(error, plan, call, this.client.now()); }
         }
       } catch { /* The original 401 remains the authoritative API response. */ }
     }
     const output = responseOutput(answer, tokens);
     const receipt = receiptFor(call, this.client.now(), answer);
     const status = answer.status;
+    if (answer.readError && isUndeduplicatedPost(plan)) return newMutationUncertain(output, failure(sendRequestOperation, 'TRANSPORT', 'the POST was sent without an idempotency header but the API did not answer completely'), receipt);
     if (answer.readError) return newMutationRetry(failure(sendRequestOperation, 'TRANSPORT', 'the request was sent but the API did not answer completely'));
     if (status >= 200 && status < 300) return newMutationBranch('completed', output, receipt);
     // The connector never follows a redirect, so a redirect is reported like a refusal.
@@ -214,9 +215,13 @@ function isTemporaryRefreshFailure(error: unknown): boolean {
   return error instanceof RefreshFailedError || error instanceof ProviderTransportError || error instanceof Error && /token endpoint is unavailable|token response could not be read/i.test(error.message);
 }
 
-function dispatchFailure(error: unknown): MutationAttempt<SendRequestOutput> {
+// Kept narrowly so the declared sendRequest uncertain branch stays reachable; see the README.
+function isUndeduplicatedPost(plan: RequestPlan): boolean { return plan.method === 'POST' && !plan.idempotencyKeyHeader; }
+
+function dispatchFailure(error: unknown, plan: RequestPlan, call: Call, now: Date): MutationAttempt<SendRequestOutput> {
   if (error instanceof AddressRefusal) return newMutationBranch('defect', zeroOutput, {}, failure(sendRequestOperation, 'VALIDATION', `the connection's apiBaseUrl resolves to an address the connector will not connect to: ${error.reason}`));
   if (error instanceof ProviderTransportError && error.isProvablyNotSent) return newMutationRetry(failure(sendRequestOperation, 'AVAILABILITY', 'the API could not be reached; no request was sent'));
+  if (isUndeduplicatedPost(plan)) return newMutationUncertain(zeroOutput, failure(sendRequestOperation, 'TRANSPORT', 'the POST was sent without an idempotency header but the API did not answer completely'), receiptFor(call, now));
   return newMutationRetry(failure(sendRequestOperation, 'TRANSPORT', 'the request was sent but the API did not answer completely'));
 }
 

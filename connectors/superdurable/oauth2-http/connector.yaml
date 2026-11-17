@@ -121,12 +121,12 @@ spec:
       inputType: SendRequestInput
       outputType: SendRequestOutput
       kind: mutation
-      description: "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. Every unknown outcome, such as a lost connection, a timeout, a 5xx, or a status that does not prove a refusal, sends the request again, so use it only for requests that are safe to repeat: reads, absolute updates, deletes, or writes the API deduplicates through idempotencyKeyHeader. Use postNonIdempotent for a POST that must never be sent twice."
+      description: "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. Every unknown outcome, such as a lost connection, a timeout, a 5xx, or a status that does not prove a refusal, sends the request again, except that a POST without idempotencyKeyHeader whose answer was lost selects uncertain; use it only for requests that are safe to repeat: reads, absolute updates, deletes, or writes the API deduplicates through idempotencyKeyHeader. Use postNonIdempotent for a POST that must never be sent twice."
       idempotency: required
       branches:
         - {id: completed, goName: Completed, description: "The API answered 2xx; the Result carries the status code and body."}
         - {id: rejected, goName: Rejected, description: "The API answered a redirect or a definite refusal (400, 401, 403, 404, 411, 413, 414, 415, or 422), or the connection's authorization could not be renewed. The Result carries the status code, which is zero when no request was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "Never selected: sendRequest repeats every unknown outcome until its retry policy runs out. The branch stays declared so applications that wired it keep compiling.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "A POST without idempotencyKeyHeader was sent, but its answer was lost or cut off, so the API may have processed it; it is not repeated. Every other unknown outcome is sent again.", optional: true}
         - {id: defect, goName: Defect, description: "The input or the connection settings are invalid, so no request was sent.", optional: true}
       execution:
         executeMethodTimeout: 30s
