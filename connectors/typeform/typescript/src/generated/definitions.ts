@@ -133,6 +133,8 @@ export const UpsertWebhookDefinition: MutationDefinition = {
     { id: "defect", description: "Local input, connection configuration such as a blank webhook_secret, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for upsertWebhook. */
 export const UpsertWebhookMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

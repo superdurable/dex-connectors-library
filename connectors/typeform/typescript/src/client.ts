@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, SecretString, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry, SecretString, defaultTriggerLogger, type TriggerLogger, type Call, type CredentialProvider, type Failure, type MutationAttempt, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, Credentials } from './generated/models.js';
 import { GetFormOperation, ListFormsOperation, ListResponsesOperation, UpsertWebhookOperation } from './operations.js';
@@ -14,12 +14,16 @@ export type TypeformRequestSender = (request: ProviderRequest) => Promise<Provid
 export interface TypeformClientOptions {
   /** HTTP sender; omitted uses the SDK transport. */ send?: TypeformRequestSender;
   /** Receipt and Retry-After clock. */ now?: () => Date;
+  /** Destination of secret-safe Trigger records. */ logger?: TriggerLogger;
 }
 /** One Typeform API client with live credentials. */
 export class TypeformClient {
   private readonly baseURL: string;
   private readonly maxResponseBytes: number;
-  private readonly credentials: CredentialProvider<Credentials>;
+  /** Provider credentials, resolved for each webhook. */ readonly credentials: CredentialProvider<Credentials>;
+  /** Maximum accepted webhook body in bytes. */ readonly webhookMaxBodyBytes: number;
+  /** Destination of Trigger records. */ readonly triggerLogger: TriggerLogger;
+  /** Webhook receipt clock. */ readonly triggerNow: () => Date;
   private readonly send: TypeformRequestSender;
   private readonly now: () => Date;
 
@@ -30,7 +34,10 @@ export class TypeformClient {
     if (!this.baseURL) throw new TypeError('Typeform dataCenter is invalid');
     this.maxResponseBytes = config.maxResponseBytes || 1_048_576;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('Typeform maxResponseBytes must be positive');
-    if (config.webhookMaxBodyBytes !== undefined && (!Number.isSafeInteger(config.webhookMaxBodyBytes) || config.webhookMaxBodyBytes <= 0)) throw new TypeError('Typeform webhookMaxBodyBytes must be positive');
+    this.webhookMaxBodyBytes = config.webhookMaxBodyBytes ?? 1_048_576;
+    if (!Number.isSafeInteger(this.webhookMaxBodyBytes) || this.webhookMaxBodyBytes <= 0) throw new TypeError('Typeform webhookMaxBodyBytes must be positive');
+    this.triggerLogger = options.logger ?? defaultTriggerLogger;
+    this.triggerNow = options.now ?? (() => new Date());
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());

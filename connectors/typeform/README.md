@@ -37,6 +37,10 @@ Go-recorded [conformance scenarios](../../conformance/connectors/typeform/scenar
 verify Python requests, branches, retries, and results. The Python port's live
 Typeform authorization and API behavior have not been verified.
 
+## TypeScript package
+
+The `@superdurable/connector-typeform` TypeScript package implements all four operations and the `responseSubmitted` Trigger. Its [response recorder](typescript/examples/response-recorder/README.md) verifies `Typeform-Signature` over the raw body, decodes typed answers, filters by form ID, and persists each delivery before routing it to a real Dex Flow. A real local Dex delivery and restart test passed; live Typeform account delivery remains unverified.
+
 ## Mocks
 
 The generated `typeformmock` package defaults to one customer signup form

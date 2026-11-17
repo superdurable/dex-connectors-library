@@ -8,3 +8,4 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newProjectConnection } from './project.js';
 export { TypeformClient, type TypeformClientOptions, type TypeformRequestSender } from './client.js';
 export { ListFormsOperation, GetFormOperation, ListResponsesOperation, UpsertWebhookOperation } from './operations.js';
+export * from './trigger.js';
