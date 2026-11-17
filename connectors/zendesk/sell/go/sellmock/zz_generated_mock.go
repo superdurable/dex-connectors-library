@@ -18,6 +18,9 @@ import (
 // Mock is a scripted zendesk-sell connection. Script each operation through its accessor.
 type Mock struct {
 	connection sell.Connection
+	createLead *connectormock.Mutation[sell.CreateLeadInput, sell.LeadMetadata]
+	updateLead *connectormock.Mutation[sell.UpdateLeadInput, sell.LeadMetadata]
+	deleteLead *connectormock.Mutation[sell.DeleteLeadInput, sell.DeleteLeadOutput]
 	listLeads  *connectormock.Query[sell.ListLeadsInput, sell.LeadsPage]
 	getLead    *connectormock.Query[sell.GetLeadInput, sell.LeadMetadata]
 }
@@ -27,9 +30,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listLeads: connectormock.NewQuery[sell.ListLeadsInput, sell.LeadsPage](t, sell.ListLeadsDefinition),
-		getLead:   connectormock.NewQuery[sell.GetLeadInput, sell.LeadMetadata](t, sell.GetLeadDefinition),
+		createLead: connectormock.NewMutation[sell.CreateLeadInput, sell.LeadMetadata](t, sell.CreateLeadDefinition),
+		updateLead: connectormock.NewMutation[sell.UpdateLeadInput, sell.LeadMetadata](t, sell.UpdateLeadDefinition),
+		deleteLead: connectormock.NewMutation[sell.DeleteLeadInput, sell.DeleteLeadOutput](t, sell.DeleteLeadDefinition),
+		listLeads:  connectormock.NewQuery[sell.ListLeadsInput, sell.LeadsPage](t, sell.ListLeadsDefinition),
+		getLead:    connectormock.NewQuery[sell.GetLeadInput, sell.LeadMetadata](t, sell.GetLeadDefinition),
 	}
+	mock.createLead.Default(CreateLeadDefault())
+	mock.updateLead.Default(UpdateLeadDefault())
+	mock.deleteLead.Default(DeleteLeadDefault())
 	mock.listLeads.Default(ListLeadsDefault())
 	mock.getLead.Default(GetLeadDefault())
 	connection, err := sell.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "zendesk-sell", Name: connectionName})
@@ -43,6 +52,21 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() sell.Connection { return mock.connection }
 
+// CreateLead returns the createLead script.
+func (mock *Mock) CreateLead() *connectormock.Mutation[sell.CreateLeadInput, sell.LeadMetadata] {
+	return mock.createLead
+}
+
+// UpdateLead returns the updateLead script.
+func (mock *Mock) UpdateLead() *connectormock.Mutation[sell.UpdateLeadInput, sell.LeadMetadata] {
+	return mock.updateLead
+}
+
+// DeleteLead returns the deleteLead script.
+func (mock *Mock) DeleteLead() *connectormock.Mutation[sell.DeleteLeadInput, sell.DeleteLeadOutput] {
+	return mock.deleteLead
+}
+
 // ListLeads returns the listLeads script.
 func (mock *Mock) ListLeads() *connectormock.Query[sell.ListLeadsInput, sell.LeadsPage] {
 	return mock.listLeads
@@ -55,12 +79,128 @@ func (mock *Mock) GetLead() *connectormock.Query[sell.GetLeadInput, sell.LeadMet
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateLead() sdkgo.Mutation[sell.CreateLeadInput, sell.LeadMetadata] {
+	return operations.mock.createLead
+}
+func (operations mockOperations) UpdateLead() sdkgo.Mutation[sell.UpdateLeadInput, sell.LeadMetadata] {
+	return operations.mock.updateLead
+}
+func (operations mockOperations) DeleteLead() sdkgo.Mutation[sell.DeleteLeadInput, sell.DeleteLeadOutput] {
+	return operations.mock.deleteLead
+}
 func (operations mockOperations) ListLeads() sdkgo.Query[sell.ListLeadsInput, sell.LeadsPage] {
 	return operations.mock.listLeads
 }
 func (operations mockOperations) GetLead() sdkgo.Query[sell.GetLeadInput, sell.LeadMetadata] {
 	return operations.mock.getLead
 }
+
+// CreateLeadCreated selects the created branch: Zendesk Sell created the lead.
+func CreateLeadCreated(value sell.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Branch(sell.CreateLeadBranchCreated, value, failure)
+}
+
+// CreateLeadProviderRejected selects the providerRejected branch: Zendesk Sell rejected the lead.
+func CreateLeadProviderRejected(value sell.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Branch(sell.CreateLeadBranchProviderRejected, value, failure)
+}
+
+// CreateLeadDefect selects the defect branch: Lead input or credentials are invalid.
+func CreateLeadDefect(value sell.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Branch(sell.CreateLeadBranchDefect, value, failure)
+}
+
+// CreateLeadUncertain returns an uncertain createLead outcome.
+func CreateLeadUncertain(value sell.LeadMetadata, failure sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateLeadRetry asks Dex to retry the createLead Step, after the delay when it is positive.
+func CreateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Retry[sell.LeadMetadata](failure, after)
+}
+
+// CreateLeadCreatedDefault is the manifest mock createdDefault: One sample lead was created.
+func CreateLeadCreatedDefault() connectormock.Case[sell.LeadMetadata] {
+	value := connectormock.MustDecodeOutput[sell.LeadMetadata](`{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com","organizationName":"Example Co"}`)
+	return connectormock.Branch(sell.CreateLeadBranchCreated, value, nil)
+}
+
+// CreateLeadDefault is the manifest default, createdDefault, which New installs.
+func CreateLeadDefault() connectormock.Case[sell.LeadMetadata] { return CreateLeadCreatedDefault() }
+
+// UpdateLeadUpdated selects the updated branch: Zendesk Sell updated the lead.
+func UpdateLeadUpdated(value sell.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Branch(sell.UpdateLeadBranchUpdated, value, failure)
+}
+
+// UpdateLeadNotFound selects the notFound branch: The lead does not exist.
+func UpdateLeadNotFound(value sell.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Branch(sell.UpdateLeadBranchNotFound, value, failure)
+}
+
+// UpdateLeadProviderRejected selects the providerRejected branch: Zendesk Sell rejected the update.
+func UpdateLeadProviderRejected(value sell.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Branch(sell.UpdateLeadBranchProviderRejected, value, failure)
+}
+
+// UpdateLeadInvalidResponse selects the invalidResponse branch: Zendesk Sell returned malformed or oversized JSON.
+func UpdateLeadInvalidResponse(value sell.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Branch(sell.UpdateLeadBranchInvalidResponse, value, failure)
+}
+
+// UpdateLeadDefect selects the defect branch: Lead input or credentials are invalid.
+func UpdateLeadDefect(value sell.LeadMetadata, failure *sdkgo.Failure) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Branch(sell.UpdateLeadBranchDefect, value, failure)
+}
+
+// UpdateLeadRetry asks Dex to retry the updateLead Step, after the delay when it is positive.
+func UpdateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sell.LeadMetadata] {
+	return connectormock.Retry[sell.LeadMetadata](failure, after)
+}
+
+// UpdateLeadUpdatedDefault is the manifest mock updatedDefault: One sample lead was updated.
+func UpdateLeadUpdatedDefault() connectormock.Case[sell.LeadMetadata] {
+	value := connectormock.MustDecodeOutput[sell.LeadMetadata](`{"id":144,"firstName":"Ada","lastName":"Lovelace","emailAddress":"ada@example.com","organizationName":"Example Co"}`)
+	return connectormock.Branch(sell.UpdateLeadBranchUpdated, value, nil)
+}
+
+// UpdateLeadDefault is the manifest default, updatedDefault, which New installs.
+func UpdateLeadDefault() connectormock.Case[sell.LeadMetadata] { return UpdateLeadUpdatedDefault() }
+
+// DeleteLeadDeleted selects the deleted branch: Zendesk Sell deleted the lead.
+func DeleteLeadDeleted(value sell.DeleteLeadOutput, failure *sdkgo.Failure) connectormock.Case[sell.DeleteLeadOutput] {
+	return connectormock.Branch(sell.DeleteLeadBranchDeleted, value, failure)
+}
+
+// DeleteLeadNotFound selects the notFound branch: The lead does not exist.
+func DeleteLeadNotFound(value sell.DeleteLeadOutput, failure *sdkgo.Failure) connectormock.Case[sell.DeleteLeadOutput] {
+	return connectormock.Branch(sell.DeleteLeadBranchNotFound, value, failure)
+}
+
+// DeleteLeadProviderRejected selects the providerRejected branch: Zendesk Sell rejected the delete.
+func DeleteLeadProviderRejected(value sell.DeleteLeadOutput, failure *sdkgo.Failure) connectormock.Case[sell.DeleteLeadOutput] {
+	return connectormock.Branch(sell.DeleteLeadBranchProviderRejected, value, failure)
+}
+
+// DeleteLeadDefect selects the defect branch: Lead ID or credentials are invalid.
+func DeleteLeadDefect(value sell.DeleteLeadOutput, failure *sdkgo.Failure) connectormock.Case[sell.DeleteLeadOutput] {
+	return connectormock.Branch(sell.DeleteLeadBranchDefect, value, failure)
+}
+
+// DeleteLeadRetry asks Dex to retry the deleteLead Step, after the delay when it is positive.
+func DeleteLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sell.DeleteLeadOutput] {
+	return connectormock.Retry[sell.DeleteLeadOutput](failure, after)
+}
+
+// DeleteLeadDeletedDefault is the manifest mock deletedDefault: One sample lead was deleted.
+func DeleteLeadDeletedDefault() connectormock.Case[sell.DeleteLeadOutput] {
+	value := connectormock.MustDecodeOutput[sell.DeleteLeadOutput](`{"leadId":"144"}`)
+	return connectormock.Branch(sell.DeleteLeadBranchDeleted, value, nil)
+}
+
+// DeleteLeadDefault is the manifest default, deletedDefault, which New installs.
+func DeleteLeadDefault() connectormock.Case[sell.DeleteLeadOutput] { return DeleteLeadDeletedDefault() }
 
 // ListLeadsListed selects the listed branch: Zendesk Sell returned the selected lead page.
 func ListLeadsListed(value sell.LeadsPage, failure *sdkgo.Failure) connectormock.Case[sell.LeadsPage] {

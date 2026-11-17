@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: zendesk-sell
   displayName: Zendesk Sell
-  description: Read Zendesk Sell lead identity for migration and existing sales workflows.
+  description: Read and manage Zendesk Sell leads for sales workflows and migration.
   company: Zendesk
   categories: [crm-sales]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   languages:
     python:
@@ -54,6 +54,67 @@ spec:
         - Click Add User Token, enter a description, and Save. Copy the secret token from the one-time modal into the Dex access_token secret field; the modal cannot reveal it again after closing.
         - Revoke an unused token from the same Access Tokens tab. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
   operations:
+    - name: createLead
+      goName: CreateLead
+      inputType: CreateLeadInput
+      outputType: LeadMetadata
+      kind: mutation
+      description: Create an individual or organization lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Zendesk Sell created the lead.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk Sell rejected the lead., optional: true}
+        - {id: defect, goName: Defect, description: Lead input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create may have succeeded but could not be confirmed., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample lead was created.
+          output: {id: 144, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com', organizationName: Example Co}
+    - name: updateLead
+      goName: UpdateLead
+      inputType: UpdateLeadInput
+      outputType: LeadMetadata
+      kind: mutation
+      description: Replace selected fields of an existing lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Zendesk Sell updated the lead.}
+        - {id: notFound, goName: NotFound, description: The lead does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk Sell rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk Sell returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Lead input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample lead was updated.
+          output: {id: 144, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com', organizationName: Example Co}
+    - name: deleteLead
+      goName: DeleteLead
+      inputType: DeleteLeadInput
+      outputType: DeleteLeadOutput
+      kind: mutation
+      description: Delete an existing lead by numeric ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Zendesk Sell deleted the lead.}
+        - {id: notFound, goName: NotFound, description: The lead does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk Sell rejected the delete., optional: true}
+        - {id: defect, goName: Defect, description: Lead ID or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample lead was deleted.
+          output: {leadId: '144'}
     - name: listLeads
       goName: ListLeads
       inputType: ListLeadsInput
@@ -62,7 +123,7 @@ spec:
       description: Read one bounded page of lead identities for migration or lookup.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Zendesk Sell returned the selected lead page.}
         - {id: providerRejected, goName: ProviderRejected, description: Zendesk Sell conclusively rejected the request., optional: true}
@@ -82,7 +143,7 @@ spec:
       description: Read one lead's ID, name, email, and organization by numeric ID.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Zendesk Sell returned the selected lead.}
         - {id: notFound, goName: NotFound, description: No lead matches this ID., optional: true}

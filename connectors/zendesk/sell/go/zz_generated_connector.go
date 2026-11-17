@@ -40,12 +40,24 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateLead() sdkgo.Mutation[CreateLeadInput, LeadMetadata]
+	UpdateLead() sdkgo.Mutation[UpdateLeadInput, LeadMetadata]
+	DeleteLead() sdkgo.Mutation[DeleteLeadInput, DeleteLeadOutput]
 	ListLeads() sdkgo.Query[ListLeadsInput, LeadsPage]
 	GetLead() sdkgo.Query[GetLeadInput, LeadMetadata]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateLead() sdkgo.Mutation[CreateLeadInput, LeadMetadata] {
+	return operations.client.CreateLead()
+}
+func (operations clientOperations) UpdateLead() sdkgo.Mutation[UpdateLeadInput, LeadMetadata] {
+	return operations.client.UpdateLead()
+}
+func (operations clientOperations) DeleteLead() sdkgo.Mutation[DeleteLeadInput, DeleteLeadOutput] {
+	return operations.client.DeleteLead()
+}
 func (operations clientOperations) ListLeads() sdkgo.Query[ListLeadsInput, LeadsPage] {
 	return operations.client.ListLeads()
 }
@@ -188,6 +200,232 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const CreateLeadBranchCreated sdkgo.BranchID = "created"
+const CreateLeadBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateLeadBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateLeadBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateLeadDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createLead"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateLeadBranchCreated, Description: "Zendesk Sell created the lead."},
+		{ID: CreateLeadBranchProviderRejected, Description: "Zendesk Sell rejected the lead.", Optional: true},
+		{ID: CreateLeadBranchDefect, Description: "Lead input or credentials are invalid.", Optional: true},
+		{ID: CreateLeadBranchUncertain, Description: "The create may have succeeded but could not be confirmed.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateLeadResult = sdkgo.MutationResult[LeadMetadata]
+
+type CreateLeadStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=zendesk-sell"`
+	operationID                       struct{}                                           `connector:"operationId=createLead"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateLeadInput                           `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateLeadResult]                     `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateLeadResult]                     `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateLeadResult]                     `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateLeadResult]                     `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[LeadMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateLeadStep[IN any](config CreateLeadStepConfig[IN]) sdkgo.MutationStep[IN, CreateLeadInput, LeadMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-sell connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateLeadInput, LeadMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateLead(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateLeadResult] {
+			branches := make([]sdkgo.BranchTarget[CreateLeadResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateLeadBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateLeadBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateLeadBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateLeadBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateLeadBranchUpdated sdkgo.BranchID = "updated"
+const UpdateLeadBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateLeadBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateLeadBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateLeadBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateLeadDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateLead"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateLeadBranchUpdated, Description: "Zendesk Sell updated the lead."},
+		{ID: UpdateLeadBranchNotFound, Description: "The lead does not exist.", Optional: true},
+		{ID: UpdateLeadBranchProviderRejected, Description: "Zendesk Sell rejected the update.", Optional: true},
+		{ID: UpdateLeadBranchInvalidResponse, Description: "Zendesk Sell returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateLeadBranchDefect, Description: "Lead input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateLeadResult = sdkgo.MutationResult[LeadMetadata]
+
+type UpdateLeadStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=zendesk-sell"`
+	operationID                       struct{}                                           `connector:"operationId=updateLead"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateLeadInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateLeadResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateLeadResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateLeadResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateLeadResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateLeadResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[LeadMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateLeadStep[IN any](config UpdateLeadStepConfig[IN]) sdkgo.MutationStep[IN, UpdateLeadInput, LeadMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-sell connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateLeadInput, LeadMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateLead(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateLeadResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateLeadResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateLeadBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateLeadBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateLeadBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateLeadBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateLeadBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteLeadBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteLeadBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteLeadBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteLeadBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteLeadDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteLead"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteLeadBranchDeleted, Description: "Zendesk Sell deleted the lead."},
+		{ID: DeleteLeadBranchNotFound, Description: "The lead does not exist.", Optional: true},
+		{ID: DeleteLeadBranchProviderRejected, Description: "Zendesk Sell rejected the delete.", Optional: true},
+		{ID: DeleteLeadBranchDefect, Description: "Lead ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteLeadResult = sdkgo.MutationResult[DeleteLeadOutput]
+
+type DeleteLeadStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=zendesk-sell"`
+	operationID                       struct{}                                               `connector:"operationId=deleteLead"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteLeadInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteLeadResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteLeadResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteLeadResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteLeadResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteLeadOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteLeadStep[IN any](config DeleteLeadStepConfig[IN]) sdkgo.MutationStep[IN, DeleteLeadInput, DeleteLeadOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("zendesk-sell connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteLeadInput, DeleteLeadOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteLead(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteLeadResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteLeadResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteLeadBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteLeadBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteLeadBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteLeadBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListLeadsBranchListed sdkgo.BranchID = "listed"

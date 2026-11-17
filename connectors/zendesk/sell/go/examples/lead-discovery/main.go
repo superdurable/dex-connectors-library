@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{leaddiscovery.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{leaddiscovery.NewFlow(connection), leaddiscovery.NewLeadIntakeFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Zendesk Sell leaddiscovery Flow: %w", err)
 	}
