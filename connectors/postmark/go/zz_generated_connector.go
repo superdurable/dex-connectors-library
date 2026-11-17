@@ -55,6 +55,10 @@ type Operations interface {
 	CreateSuppression() sdkgo.Mutation[CreateSuppressionInput, SuppressionAction]
 	DeleteSuppression() sdkgo.Mutation[DeleteSuppressionInput, SuppressionAction]
 	SendEmailWithTemplate() sdkgo.Mutation[SendEmailWithTemplateInput, SentEmail]
+	ListInboundMessages() sdkgo.Query[ListInboundMessagesInput, InboundMessagePage]
+	GetInboundMessageDetails() sdkgo.Query[GetInboundMessageDetailsInput, InboundMessage]
+	BypassInboundMessage() sdkgo.Mutation[InboundMessageActionInput, InboundMessageAction]
+	RetryInboundMessage() sdkgo.Mutation[InboundMessageActionInput, InboundMessageAction]
 }
 
 type clientOperations struct{ client *Client }
@@ -103,6 +107,18 @@ func (operations clientOperations) DeleteSuppression() sdkgo.Mutation[DeleteSupp
 }
 func (operations clientOperations) SendEmailWithTemplate() sdkgo.Mutation[SendEmailWithTemplateInput, SentEmail] {
 	return operations.client.SendEmailWithTemplate()
+}
+func (operations clientOperations) ListInboundMessages() sdkgo.Query[ListInboundMessagesInput, InboundMessagePage] {
+	return operations.client.ListInboundMessages()
+}
+func (operations clientOperations) GetInboundMessageDetails() sdkgo.Query[GetInboundMessageDetailsInput, InboundMessage] {
+	return operations.client.GetInboundMessageDetails()
+}
+func (operations clientOperations) BypassInboundMessage() sdkgo.Mutation[InboundMessageActionInput, InboundMessageAction] {
+	return operations.client.BypassInboundMessage()
+}
+func (operations clientOperations) RetryInboundMessage() sdkgo.Mutation[InboundMessageActionInput, InboundMessageAction] {
+	return operations.client.RetryInboundMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1318,6 +1334,306 @@ func NewSendEmailWithTemplateStep[IN any](config SendEmailWithTemplateStepConfig
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SendEmailWithTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const ListInboundMessagesBranchListed sdkgo.BranchID = "listed"
+const ListInboundMessagesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInboundMessagesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInboundMessagesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInboundMessagesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInboundMessages"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInboundMessagesBranchListed, Description: "Postmark returned the requested inbound outcome."},
+		{ID: ListInboundMessagesBranchProviderRejected, Description: "Postmark providerRejected outcome.", Optional: true},
+		{ID: ListInboundMessagesBranchInvalidResponse, Description: "Postmark invalidResponse outcome.", Optional: true},
+		{ID: ListInboundMessagesBranchDefect, Description: "Postmark defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInboundMessagesResult = sdkgo.QueryResult[InboundMessagePage]
+
+type ListInboundMessagesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=postmark"`
+	operationID                    struct{}                                              `connector:"operationId=listInboundMessages"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInboundMessagesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInboundMessagesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListInboundMessagesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInboundMessagesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInboundMessagesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InboundMessagePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewListInboundMessagesStep[IN any](config ListInboundMessagesStepConfig[IN]) sdkgo.QueryStep[IN, ListInboundMessagesInput, InboundMessagePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("postmark connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInboundMessagesInput, InboundMessagePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInboundMessages(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInboundMessagesResult] {
+			branches := make([]sdkgo.BranchTarget[ListInboundMessagesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInboundMessagesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInboundMessagesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInboundMessagesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInboundMessagesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInboundMessageDetailsBranchFound sdkgo.BranchID = "found"
+const GetInboundMessageDetailsBranchNotFound sdkgo.BranchID = "notFound"
+const GetInboundMessageDetailsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInboundMessageDetailsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInboundMessageDetailsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInboundMessageDetailsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInboundMessageDetails"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInboundMessageDetailsBranchFound, Description: "Postmark returned the requested inbound outcome."},
+		{ID: GetInboundMessageDetailsBranchNotFound, Description: "Postmark notFound outcome.", Optional: true},
+		{ID: GetInboundMessageDetailsBranchProviderRejected, Description: "Postmark providerRejected outcome.", Optional: true},
+		{ID: GetInboundMessageDetailsBranchInvalidResponse, Description: "Postmark invalidResponse outcome.", Optional: true},
+		{ID: GetInboundMessageDetailsBranchDefect, Description: "Postmark defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInboundMessageDetailsResult = sdkgo.QueryResult[InboundMessage]
+
+type GetInboundMessageDetailsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=postmark"`
+	operationID                    struct{}                                          `connector:"operationId=getInboundMessageDetails"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInboundMessageDetailsInput            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInboundMessageDetailsResult]      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetInboundMessageDetailsResult]      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetInboundMessageDetailsResult]      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInboundMessageDetailsResult]      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInboundMessageDetailsResult]      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InboundMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewGetInboundMessageDetailsStep[IN any](config GetInboundMessageDetailsStepConfig[IN]) sdkgo.QueryStep[IN, GetInboundMessageDetailsInput, InboundMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("postmark connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInboundMessageDetailsInput, InboundMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInboundMessageDetails(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInboundMessageDetailsResult] {
+			branches := make([]sdkgo.BranchTarget[GetInboundMessageDetailsResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInboundMessageDetailsBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetInboundMessageDetailsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInboundMessageDetailsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInboundMessageDetailsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInboundMessageDetailsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const BypassInboundMessageBranchBypassed sdkgo.BranchID = "bypassed"
+const BypassInboundMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const BypassInboundMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const BypassInboundMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var BypassInboundMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "bypassInboundMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: BypassInboundMessageBranchBypassed, Description: "Postmark returned the requested inbound outcome."},
+		{ID: BypassInboundMessageBranchProviderRejected, Description: "Postmark providerRejected outcome.", Optional: true},
+		{ID: BypassInboundMessageBranchUncertain, Description: "Postmark uncertain outcome.", Optional: true},
+		{ID: BypassInboundMessageBranchDefect, Description: "Postmark defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type BypassInboundMessageResult = sdkgo.MutationResult[InboundMessageAction]
+
+type BypassInboundMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=postmark"`
+	operationID                       struct{}                                                   `connector:"operationId=bypassInboundMessage"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) InboundMessageActionInput                         `connector:"mapToOperationInput"`
+	Bypassed                          sdkgo.Target[BypassInboundMessageResult]                   `connector:"branch=bypassed"`
+	ProviderRejected                  sdkgo.Target[BypassInboundMessageResult]                   `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[BypassInboundMessageResult]                   `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[BypassInboundMessageResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InboundMessageAction]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewBypassInboundMessageStep[IN any](config BypassInboundMessageStepConfig[IN]) sdkgo.MutationStep[IN, InboundMessageActionInput, InboundMessageAction] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("postmark connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, InboundMessageActionInput, InboundMessageAction]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.BypassInboundMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[BypassInboundMessageResult] {
+			branches := make([]sdkgo.BranchTarget[BypassInboundMessageResult], 0, 4)
+			if config.Bypassed.HasStep() {
+				branches = append(branches, config.Bypassed.BranchTarget(BypassInboundMessageBranchBypassed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(BypassInboundMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(BypassInboundMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(BypassInboundMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const RetryInboundMessageBranchRetried sdkgo.BranchID = "retried"
+const RetryInboundMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RetryInboundMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const RetryInboundMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RetryInboundMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "retryInboundMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RetryInboundMessageBranchRetried, Description: "Postmark returned the requested inbound outcome."},
+		{ID: RetryInboundMessageBranchProviderRejected, Description: "Postmark providerRejected outcome.", Optional: true},
+		{ID: RetryInboundMessageBranchUncertain, Description: "Postmark uncertain outcome.", Optional: true},
+		{ID: RetryInboundMessageBranchDefect, Description: "Postmark defect outcome.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type RetryInboundMessageResult = sdkgo.MutationResult[InboundMessageAction]
+
+type RetryInboundMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=postmark"`
+	operationID                       struct{}                                                   `connector:"operationId=retryInboundMessage"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) InboundMessageActionInput                         `connector:"mapToOperationInput"`
+	Retried                           sdkgo.Target[RetryInboundMessageResult]                    `connector:"branch=retried"`
+	ProviderRejected                  sdkgo.Target[RetryInboundMessageResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[RetryInboundMessageResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[RetryInboundMessageResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InboundMessageAction]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewRetryInboundMessageStep[IN any](config RetryInboundMessageStepConfig[IN]) sdkgo.MutationStep[IN, InboundMessageActionInput, InboundMessageAction] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("postmark connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, InboundMessageActionInput, InboundMessageAction]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RetryInboundMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RetryInboundMessageResult] {
+			branches := make([]sdkgo.BranchTarget[RetryInboundMessageResult], 0, 4)
+			if config.Retried.HasStep() {
+				branches = append(branches, config.Retried.BranchTarget(RetryInboundMessageBranchRetried))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RetryInboundMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(RetryInboundMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RetryInboundMessageBranchDefect))
 			}
 			return branches
 		}(),

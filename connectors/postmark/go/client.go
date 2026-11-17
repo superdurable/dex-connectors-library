@@ -190,7 +190,7 @@ func runQuery[T any](client *Client, call sdkgo.Call, operation, path string, su
 		return sdkgo.NewQueryRetry[T](newFailure(operation, sdkgo.FailureRateLimit, "provider rate limited the request"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
 	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500:
 		return sdkgo.NewQueryRetry[T](newFailure(operation, sdkgo.FailureAvailability, "provider is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
-	case operation == "getMessageDetails" && response.StatusCode == http.StatusUnprocessableEntity:
+	case (operation == "getMessageDetails" || operation == "getInboundMessageDetails") && response.StatusCode == http.StatusUnprocessableEntity:
 		if response.Header.Get("X-PM-ApiErrorCode") == "701" {
 			return queryFailure[T](operation, notFound, sdkgo.FailureNotFound, "Postmark message was not found")
 		}

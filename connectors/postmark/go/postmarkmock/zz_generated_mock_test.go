@@ -76,6 +76,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
 			return err
 		}},
+		{name: "listInboundMessages/listInboundMessagesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.InboundMessagePage](`{"totalCount":1,"inboundMessages":[{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","from":"sender@example.com","to":"inbox@example.com","subject":"Request","status":"Processed"}]}`)
+			return err
+		}},
+		{name: "getInboundMessageDetails/getInboundMessageDetailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.InboundMessage](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","from":"sender@example.com","to":"inbox@example.com","subject":"Request","status":"Processed"}`)
+			return err
+		}},
+		{name: "bypassInboundMessage/bypassInboundMessageDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.InboundMessageAction](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","accepted":true}`)
+			return err
+		}},
+		{name: "retryInboundMessage/retryInboundMessageDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.InboundMessageAction](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","accepted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -130,5 +146,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SendEmailWithTemplate().Definition().Operation.OperationID != "sendEmailWithTemplate" {
 		t.Errorf("sendEmailWithTemplate mock has another definition")
+	}
+	if mock.ListInboundMessages().Definition().Operation.OperationID != "listInboundMessages" {
+		t.Errorf("listInboundMessages mock has another definition")
+	}
+	if mock.GetInboundMessageDetails().Definition().Operation.OperationID != "getInboundMessageDetails" {
+		t.Errorf("getInboundMessageDetails mock has another definition")
+	}
+	if mock.BypassInboundMessage().Definition().Operation.OperationID != "bypassInboundMessage" {
+		t.Errorf("bypassInboundMessage mock has another definition")
+	}
+	if mock.RetryInboundMessage().Definition().Operation.OperationID != "retryInboundMessage" {
+		t.Errorf("retryInboundMessage mock has another definition")
 	}
 }

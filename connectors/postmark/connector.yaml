@@ -629,3 +629,161 @@ spec:
       output:
         messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
         to: recipient@example.com
+  - name: listInboundMessages
+    goName: ListInboundMessages
+    inputType: ListInboundMessagesInput
+    outputType: InboundMessagePage
+    kind: query
+    description: ListInboundMessages through the Postmark server-token Messages API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Postmark returned the requested inbound outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listInboundMessagesDefault
+      branch: listed
+      description: Representative Postmark inbound response.
+      default: true
+      output:
+        totalCount: 1
+        inboundMessages:
+        - messageId: cc5727a0-ea30-4e79-baea-aa43c9628ac4
+          from: sender@example.com
+          to: inbox@example.com
+          subject: Request
+          status: Processed
+  - name: getInboundMessageDetails
+    goName: GetInboundMessageDetails
+    inputType: GetInboundMessageDetailsInput
+    outputType: InboundMessage
+    kind: query
+    description: GetInboundMessageDetails through the Postmark server-token Messages API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Postmark returned the requested inbound outcome.
+    - id: notFound
+      goName: NotFound
+      description: Postmark notFound outcome.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: Postmark invalidResponse outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getInboundMessageDetailsDefault
+      branch: found
+      description: Representative Postmark inbound response.
+      default: true
+      output:
+        messageId: cc5727a0-ea30-4e79-baea-aa43c9628ac4
+        from: sender@example.com
+        to: inbox@example.com
+        subject: Request
+        status: Processed
+  - name: bypassInboundMessage
+    goName: BypassInboundMessage
+    inputType: InboundMessageActionInput
+    outputType: InboundMessageAction
+    kind: mutation
+    description: BypassInboundMessage through the Postmark server-token Messages API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: bypassed
+      goName: Bypassed
+      description: Postmark returned the requested inbound outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: Postmark uncertain outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      dispatchFence: true
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: bypassInboundMessageDefault
+      branch: bypassed
+      description: Representative Postmark inbound response.
+      default: true
+      output:
+        messageId: cc5727a0-ea30-4e79-baea-aa43c9628ac4
+        accepted: true
+  - name: retryInboundMessage
+    goName: RetryInboundMessage
+    inputType: InboundMessageActionInput
+    outputType: InboundMessageAction
+    kind: mutation
+    description: RetryInboundMessage through the Postmark server-token Messages API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: retried
+      goName: Retried
+      description: Postmark returned the requested inbound outcome.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: Postmark providerRejected outcome.
+      optional: true
+    - id: uncertain
+      goName: Uncertain
+      description: Postmark uncertain outcome.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Postmark defect outcome.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: sync
+      dispatchFence: true
+      repeatOnUnknown: limited
+      maxSends: 3
+    mocks:
+    - name: retryInboundMessageDefault
+      branch: retried
+      description: Representative Postmark inbound response.
+      default: true
+      output:
+        messageId: cc5727a0-ea30-4e79-baea-aa43c9628ac4
+        accepted: true

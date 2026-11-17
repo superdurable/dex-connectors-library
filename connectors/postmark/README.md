@@ -36,6 +36,10 @@ uses the static `postmark` connection and a real Dex Worker and Client.
 | `createSuppression` | safe mutation | SuppressionAction |
 | `deleteSuppression` | safe mutation | SuppressionAction |
 | `sendEmailWithTemplate` | limited mutation | SentEmail |
+| `listInboundMessages` | query | InboundMessagePage |
+| `getInboundMessageDetails` | query | InboundMessage |
+| `bypassInboundMessage` | limited mutation | InboundMessageAction |
+| `retryInboundMessage` | limited mutation | InboundMessageAction |
 
 `sendEmail` accepts one plain text message from a verified sender. Postmark does
 not document a deduplication key for sends, so the connector uses Dex's durable
@@ -62,6 +66,12 @@ email address. The list operation can filter by recipient. Create and delete
 apply the requested recipient state; a per-address `Failed` result selects
 `providerRejected`, even when Postmark returns HTTP 200. Postmark does not allow
 deletion of a spam-complaint suppression.
+
+Inbound search and lookup return message metadata without bodies or attachments.
+`bypassInboundMessage` requests processing of a blocked email;
+`retryInboundMessage` reschedules a failed one. Both use a durable dispatch
+fence, check the same message's processing status after an unknown outcome, and
+allow at most three possible sends before selecting `uncertain`.
 
 ## Authorization
 

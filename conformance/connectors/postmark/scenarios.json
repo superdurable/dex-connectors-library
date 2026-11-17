@@ -6396,6 +6396,1883 @@
       ],
       "name": "sendEmailWithTemplate-cap-uncertain",
       "operation": "sendEmailWithTemplate"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"TotalCount\":1,\"InboundMessages\":[{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Blocked\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ],
+            "status": [
+              "blocked"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "InboundMessages": [
+            {
+              "From": "sender@example.com",
+              "MessageID": "cc5727a0-ea30-4e79-baea-aa43c9628ac4",
+              "Status": "Blocked",
+              "Subject": "Request",
+              "To": "inbox@example.com"
+            }
+          ],
+          "TotalCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1,
+        "status": "blocked"
+      },
+      "name": "listInboundMessages-success",
+      "operation": "listInboundMessages"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":300,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ],
+            "status": [
+              "blocked"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "InboundMessages": [],
+          "TotalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1,
+        "status": "blocked"
+      },
+      "name": "listInboundMessages-provider-rejected",
+      "operation": "listInboundMessages"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ],
+            "status": [
+              "blocked"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1,
+        "status": "blocked"
+      },
+      "name": "listInboundMessages-rate-limited",
+      "operation": "listInboundMessages"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ],
+            "status": [
+              "blocked"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1,
+        "status": "blocked"
+      },
+      "name": "listInboundMessages-service-unavailable",
+      "operation": "listInboundMessages"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ],
+            "status": [
+              "blocked"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1,
+        "status": "blocked"
+      },
+      "name": "listInboundMessages-unknown-5xx",
+      "operation": "listInboundMessages"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ],
+            "status": [
+              "blocked"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "InboundMessages": [],
+          "TotalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1,
+        "status": "blocked"
+      },
+      "name": "listInboundMessages-invalid-response",
+      "operation": "listInboundMessages"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ],
+            "status": [
+              "blocked"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": 2,
+        "offset": 1,
+        "status": "blocked"
+      },
+      "name": "listInboundMessages-transport",
+      "operation": "listInboundMessages"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "InboundMessages": [],
+          "TotalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "count": -1,
+        "offset": 0,
+        "status": "blocked"
+      },
+      "name": "listInboundMessages-defect",
+      "operation": "listInboundMessages"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Blocked\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "From": "sender@example.com",
+          "MessageID": "cc5727a0-ea30-4e79-baea-aa43c9628ac4",
+          "Status": "Blocked",
+          "Subject": "Request",
+          "To": "inbox@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "getInboundMessageDetails-success",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":300,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "From": "",
+          "MessageID": "",
+          "Status": "",
+          "Subject": "",
+          "To": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "getInboundMessageDetails-provider-rejected",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "getInboundMessageDetails-rate-limited",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "getInboundMessageDetails-service-unavailable",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "getInboundMessageDetails-unknown-5xx",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":701}",
+          "headers": {
+            "X-PM-ApiErrorCode": "701"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "From": "",
+          "MessageID": "",
+          "Status": "",
+          "Subject": "",
+          "To": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "getInboundMessageDetails-not-found",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "From": "",
+          "MessageID": "",
+          "Status": "",
+          "Subject": "",
+          "To": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "getInboundMessageDetails-invalid-response",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "getInboundMessageDetails-transport",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "3b84b4c0-f6ae-568d-8693-14736c05a1a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "From": "",
+          "MessageID": "",
+          "Status": "",
+          "Subject": "",
+          "To": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": ""
+      },
+      "name": "getInboundMessageDetails-defect",
+      "operation": "getInboundMessageDetails"
+    },
+    {
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0,\"Message\":\"Successfully bypassed message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "bypassed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+          "providerId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": true,
+          "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "bypassInboundMessage-success",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":300,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "bypassInboundMessage-provider-rejected",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "bypassInboundMessage-rate-limited",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "bypassInboundMessage-service-unavailable",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "bypassInboundMessage-unknown-5xx",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "bypassInboundMessage-transport",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": ""
+      },
+      "name": "bypassInboundMessage-defect",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Processed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "bypassed",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "bypassInboundMessage-confirm-after-unknown",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "attempts": 4,
+      "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Blocked\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Blocked\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/bypass",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Blocked\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "accepted": false,
+          "messageId": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "c98810f3-9b48-5c9e-8e68-07bb8054ad98",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "bypassInboundMessage-cap-uncertain",
+      "operation": "bypassInboundMessage"
+    },
+    {
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0,\"Message\":\"Successfully rescheduled failed message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retried",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+          "providerId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": true,
+          "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "retryInboundMessage-success",
+      "operation": "retryInboundMessage"
+    },
+    {
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":300,\"Message\":\"Invalid request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accepted": false,
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "retryInboundMessage-provider-rejected",
+      "operation": "retryInboundMessage"
+    },
+    {
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "retryInboundMessage-rate-limited",
+      "operation": "retryInboundMessage"
+    },
+    {
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "retryInboundMessage-service-unavailable",
+      "operation": "retryInboundMessage"
+    },
+    {
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "retryInboundMessage-unknown-5xx",
+      "operation": "retryInboundMessage"
+    },
+    {
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "name": "retryInboundMessage-transport",
+      "operation": "retryInboundMessage"
+    },
+    {
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": ""
+      },
+      "name": "retryInboundMessage-defect",
+      "operation": "retryInboundMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Processed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "retried",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "retryInboundMessage-confirm-after-unknown",
+      "operation": "retryInboundMessage"
+    },
+    {
+      "attempts": 4,
+      "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "exchanges": [
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Failed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Failed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ErrorCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/retry",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"MessageID\":\"cc5727a0-ea30-4e79-baea-aa43c9628ac4\",\"From\":\"sender@example.com\",\"To\":\"inbox@example.com\",\"Subject\":\"Request\",\"Status\":\"Failed\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/inbound/cc5727a0-ea30-4e79-baea-aa43c9628ac4/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "accepted": false,
+          "messageId": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "19f62e84-537d-57e2-b131-271c4a605a37",
+      "input": {
+        "messageId": "cc5727a0-ea30-4e79-baea-aa43c9628ac4"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "19f62e84-537d-57e2-b131-271c4a605a37",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "retryInboundMessage-cap-uncertain",
+      "operation": "retryInboundMessage"
     }
   ],
   "schemaVersion": 1

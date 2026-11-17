@@ -17,22 +17,26 @@ import (
 
 // Mock is a scripted postmark connection. Script each operation through its accessor.
 type Mock struct {
-	connection            postmark.Connection
-	listOutboundMessages  *connectormock.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage]
-	getMessageDetails     *connectormock.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails]
-	sendEmail             *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail]
-	listTemplates         *connectormock.Query[postmark.ListTemplatesInput, postmark.TemplatePage]
-	getTemplate           *connectormock.Query[postmark.GetTemplateInput, postmark.Template]
-	createTemplate        *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template]
-	updateTemplate        *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template]
-	deleteTemplate        *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate]
-	listBounces           *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage]
-	getBounce             *connectormock.Query[postmark.GetBounceInput, postmark.Bounce]
-	activateBounce        *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce]
-	listSuppressions      *connectormock.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage]
-	createSuppression     *connectormock.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction]
-	deleteSuppression     *connectormock.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction]
-	sendEmailWithTemplate *connectormock.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail]
+	connection               postmark.Connection
+	listOutboundMessages     *connectormock.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage]
+	getMessageDetails        *connectormock.Query[postmark.GetMessageDetailsInput, postmark.MessageDetails]
+	sendEmail                *connectormock.Mutation[postmark.SendEmailInput, postmark.SentEmail]
+	listTemplates            *connectormock.Query[postmark.ListTemplatesInput, postmark.TemplatePage]
+	getTemplate              *connectormock.Query[postmark.GetTemplateInput, postmark.Template]
+	createTemplate           *connectormock.Mutation[postmark.CreateTemplateInput, postmark.Template]
+	updateTemplate           *connectormock.Mutation[postmark.UpdateTemplateInput, postmark.Template]
+	deleteTemplate           *connectormock.Mutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate]
+	listBounces              *connectormock.Query[postmark.ListBouncesInput, postmark.BouncePage]
+	getBounce                *connectormock.Query[postmark.GetBounceInput, postmark.Bounce]
+	activateBounce           *connectormock.Mutation[postmark.ActivateBounceInput, postmark.Bounce]
+	listSuppressions         *connectormock.Query[postmark.ListSuppressionsInput, postmark.SuppressionPage]
+	createSuppression        *connectormock.Mutation[postmark.CreateSuppressionInput, postmark.SuppressionAction]
+	deleteSuppression        *connectormock.Mutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction]
+	sendEmailWithTemplate    *connectormock.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail]
+	listInboundMessages      *connectormock.Query[postmark.ListInboundMessagesInput, postmark.InboundMessagePage]
+	getInboundMessageDetails *connectormock.Query[postmark.GetInboundMessageDetailsInput, postmark.InboundMessage]
+	bypassInboundMessage     *connectormock.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction]
+	retryInboundMessage      *connectormock.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -40,21 +44,25 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listOutboundMessages:  connectormock.NewQuery[postmark.ListOutboundMessagesInput, postmark.MessagePage](t, postmark.ListOutboundMessagesDefinition),
-		getMessageDetails:     connectormock.NewQuery[postmark.GetMessageDetailsInput, postmark.MessageDetails](t, postmark.GetMessageDetailsDefinition),
-		sendEmail:             connectormock.NewMutation[postmark.SendEmailInput, postmark.SentEmail](t, postmark.SendEmailDefinition),
-		listTemplates:         connectormock.NewQuery[postmark.ListTemplatesInput, postmark.TemplatePage](t, postmark.ListTemplatesDefinition),
-		getTemplate:           connectormock.NewQuery[postmark.GetTemplateInput, postmark.Template](t, postmark.GetTemplateDefinition),
-		createTemplate:        connectormock.NewMutation[postmark.CreateTemplateInput, postmark.Template](t, postmark.CreateTemplateDefinition),
-		updateTemplate:        connectormock.NewMutation[postmark.UpdateTemplateInput, postmark.Template](t, postmark.UpdateTemplateDefinition),
-		deleteTemplate:        connectormock.NewMutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate](t, postmark.DeleteTemplateDefinition),
-		listBounces:           connectormock.NewQuery[postmark.ListBouncesInput, postmark.BouncePage](t, postmark.ListBouncesDefinition),
-		getBounce:             connectormock.NewQuery[postmark.GetBounceInput, postmark.Bounce](t, postmark.GetBounceDefinition),
-		activateBounce:        connectormock.NewMutation[postmark.ActivateBounceInput, postmark.Bounce](t, postmark.ActivateBounceDefinition),
-		listSuppressions:      connectormock.NewQuery[postmark.ListSuppressionsInput, postmark.SuppressionPage](t, postmark.ListSuppressionsDefinition),
-		createSuppression:     connectormock.NewMutation[postmark.CreateSuppressionInput, postmark.SuppressionAction](t, postmark.CreateSuppressionDefinition),
-		deleteSuppression:     connectormock.NewMutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction](t, postmark.DeleteSuppressionDefinition),
-		sendEmailWithTemplate: connectormock.NewMutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail](t, postmark.SendEmailWithTemplateDefinition),
+		listOutboundMessages:     connectormock.NewQuery[postmark.ListOutboundMessagesInput, postmark.MessagePage](t, postmark.ListOutboundMessagesDefinition),
+		getMessageDetails:        connectormock.NewQuery[postmark.GetMessageDetailsInput, postmark.MessageDetails](t, postmark.GetMessageDetailsDefinition),
+		sendEmail:                connectormock.NewMutation[postmark.SendEmailInput, postmark.SentEmail](t, postmark.SendEmailDefinition),
+		listTemplates:            connectormock.NewQuery[postmark.ListTemplatesInput, postmark.TemplatePage](t, postmark.ListTemplatesDefinition),
+		getTemplate:              connectormock.NewQuery[postmark.GetTemplateInput, postmark.Template](t, postmark.GetTemplateDefinition),
+		createTemplate:           connectormock.NewMutation[postmark.CreateTemplateInput, postmark.Template](t, postmark.CreateTemplateDefinition),
+		updateTemplate:           connectormock.NewMutation[postmark.UpdateTemplateInput, postmark.Template](t, postmark.UpdateTemplateDefinition),
+		deleteTemplate:           connectormock.NewMutation[postmark.DeleteTemplateInput, postmark.DeletedTemplate](t, postmark.DeleteTemplateDefinition),
+		listBounces:              connectormock.NewQuery[postmark.ListBouncesInput, postmark.BouncePage](t, postmark.ListBouncesDefinition),
+		getBounce:                connectormock.NewQuery[postmark.GetBounceInput, postmark.Bounce](t, postmark.GetBounceDefinition),
+		activateBounce:           connectormock.NewMutation[postmark.ActivateBounceInput, postmark.Bounce](t, postmark.ActivateBounceDefinition),
+		listSuppressions:         connectormock.NewQuery[postmark.ListSuppressionsInput, postmark.SuppressionPage](t, postmark.ListSuppressionsDefinition),
+		createSuppression:        connectormock.NewMutation[postmark.CreateSuppressionInput, postmark.SuppressionAction](t, postmark.CreateSuppressionDefinition),
+		deleteSuppression:        connectormock.NewMutation[postmark.DeleteSuppressionInput, postmark.SuppressionAction](t, postmark.DeleteSuppressionDefinition),
+		sendEmailWithTemplate:    connectormock.NewMutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail](t, postmark.SendEmailWithTemplateDefinition),
+		listInboundMessages:      connectormock.NewQuery[postmark.ListInboundMessagesInput, postmark.InboundMessagePage](t, postmark.ListInboundMessagesDefinition),
+		getInboundMessageDetails: connectormock.NewQuery[postmark.GetInboundMessageDetailsInput, postmark.InboundMessage](t, postmark.GetInboundMessageDetailsDefinition),
+		bypassInboundMessage:     connectormock.NewMutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction](t, postmark.BypassInboundMessageDefinition),
+		retryInboundMessage:      connectormock.NewMutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction](t, postmark.RetryInboundMessageDefinition),
 	}
 	mock.listOutboundMessages.Default(ListOutboundMessagesDefault())
 	mock.getMessageDetails.Default(GetMessageDetailsDefault())
@@ -71,6 +79,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createSuppression.Default(CreateSuppressionDefault())
 	mock.deleteSuppression.Default(DeleteSuppressionDefault())
 	mock.sendEmailWithTemplate.Default(SendEmailWithTemplateDefault())
+	mock.listInboundMessages.Default(ListInboundMessagesDefault())
+	mock.getInboundMessageDetails.Default(GetInboundMessageDetailsDefault())
+	mock.bypassInboundMessage.Default(BypassInboundMessageDefault())
+	mock.retryInboundMessage.Default(RetryInboundMessageDefault())
 	connection, err := postmark.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "postmark", Name: connectionName})
 	if err != nil {
 		t.Fatalf("postmark mock connection: %v", err)
@@ -157,6 +169,26 @@ func (mock *Mock) SendEmailWithTemplate() *connectormock.Mutation[postmark.SendE
 	return mock.sendEmailWithTemplate
 }
 
+// ListInboundMessages returns the listInboundMessages script.
+func (mock *Mock) ListInboundMessages() *connectormock.Query[postmark.ListInboundMessagesInput, postmark.InboundMessagePage] {
+	return mock.listInboundMessages
+}
+
+// GetInboundMessageDetails returns the getInboundMessageDetails script.
+func (mock *Mock) GetInboundMessageDetails() *connectormock.Query[postmark.GetInboundMessageDetailsInput, postmark.InboundMessage] {
+	return mock.getInboundMessageDetails
+}
+
+// BypassInboundMessage returns the bypassInboundMessage script.
+func (mock *Mock) BypassInboundMessage() *connectormock.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction] {
+	return mock.bypassInboundMessage
+}
+
+// RetryInboundMessage returns the retryInboundMessage script.
+func (mock *Mock) RetryInboundMessage() *connectormock.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction] {
+	return mock.retryInboundMessage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOutboundMessages() sdkgo.Query[postmark.ListOutboundMessagesInput, postmark.MessagePage] {
@@ -203,6 +235,18 @@ func (operations mockOperations) DeleteSuppression() sdkgo.Mutation[postmark.Del
 }
 func (operations mockOperations) SendEmailWithTemplate() sdkgo.Mutation[postmark.SendEmailWithTemplateInput, postmark.SentEmail] {
 	return operations.mock.sendEmailWithTemplate
+}
+func (operations mockOperations) ListInboundMessages() sdkgo.Query[postmark.ListInboundMessagesInput, postmark.InboundMessagePage] {
+	return operations.mock.listInboundMessages
+}
+func (operations mockOperations) GetInboundMessageDetails() sdkgo.Query[postmark.GetInboundMessageDetailsInput, postmark.InboundMessage] {
+	return operations.mock.getInboundMessageDetails
+}
+func (operations mockOperations) BypassInboundMessage() sdkgo.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction] {
+	return operations.mock.bypassInboundMessage
+}
+func (operations mockOperations) RetryInboundMessage() sdkgo.Mutation[postmark.InboundMessageActionInput, postmark.InboundMessageAction] {
+	return operations.mock.retryInboundMessage
 }
 
 // ListOutboundMessagesListed selects the listed branch: Postmark returned the requested result.
@@ -739,4 +783,153 @@ func SendEmailWithTemplateSendEmailWithTemplateDefault() connectormock.Case[post
 // SendEmailWithTemplateDefault is the manifest default, sendEmailWithTemplateDefault, which New installs.
 func SendEmailWithTemplateDefault() connectormock.Case[postmark.SentEmail] {
 	return SendEmailWithTemplateSendEmailWithTemplateDefault()
+}
+
+// ListInboundMessagesListed selects the listed branch: Postmark returned the requested inbound outcome.
+func ListInboundMessagesListed(value postmark.InboundMessagePage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Branch(postmark.ListInboundMessagesBranchListed, value, failure)
+}
+
+// ListInboundMessagesProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func ListInboundMessagesProviderRejected(value postmark.InboundMessagePage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Branch(postmark.ListInboundMessagesBranchProviderRejected, value, failure)
+}
+
+// ListInboundMessagesInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func ListInboundMessagesInvalidResponse(value postmark.InboundMessagePage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Branch(postmark.ListInboundMessagesBranchInvalidResponse, value, failure)
+}
+
+// ListInboundMessagesDefect selects the defect branch: Postmark defect outcome.
+func ListInboundMessagesDefect(value postmark.InboundMessagePage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Branch(postmark.ListInboundMessagesBranchDefect, value, failure)
+}
+
+// ListInboundMessagesRetry asks Dex to retry the listInboundMessages Step, after the delay when it is positive.
+func ListInboundMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.InboundMessagePage] {
+	return connectormock.Retry[postmark.InboundMessagePage](failure, after)
+}
+
+// ListInboundMessagesListInboundMessagesDefault is the manifest mock listInboundMessagesDefault: Representative Postmark inbound response.
+func ListInboundMessagesListInboundMessagesDefault() connectormock.Case[postmark.InboundMessagePage] {
+	value := connectormock.MustDecodeOutput[postmark.InboundMessagePage](`{"totalCount":1,"inboundMessages":[{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","from":"sender@example.com","to":"inbox@example.com","subject":"Request","status":"Processed"}]}`)
+	return connectormock.Branch(postmark.ListInboundMessagesBranchListed, value, nil)
+}
+
+// ListInboundMessagesDefault is the manifest default, listInboundMessagesDefault, which New installs.
+func ListInboundMessagesDefault() connectormock.Case[postmark.InboundMessagePage] {
+	return ListInboundMessagesListInboundMessagesDefault()
+}
+
+// GetInboundMessageDetailsFound selects the found branch: Postmark returned the requested inbound outcome.
+func GetInboundMessageDetailsFound(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchFound, value, failure)
+}
+
+// GetInboundMessageDetailsNotFound selects the notFound branch: Postmark notFound outcome.
+func GetInboundMessageDetailsNotFound(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchNotFound, value, failure)
+}
+
+// GetInboundMessageDetailsProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func GetInboundMessageDetailsProviderRejected(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchProviderRejected, value, failure)
+}
+
+// GetInboundMessageDetailsInvalidResponse selects the invalidResponse branch: Postmark invalidResponse outcome.
+func GetInboundMessageDetailsInvalidResponse(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchInvalidResponse, value, failure)
+}
+
+// GetInboundMessageDetailsDefect selects the defect branch: Postmark defect outcome.
+func GetInboundMessageDetailsDefect(value postmark.InboundMessage, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchDefect, value, failure)
+}
+
+// GetInboundMessageDetailsRetry asks Dex to retry the getInboundMessageDetails Step, after the delay when it is positive.
+func GetInboundMessageDetailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.InboundMessage] {
+	return connectormock.Retry[postmark.InboundMessage](failure, after)
+}
+
+// GetInboundMessageDetailsGetInboundMessageDetailsDefault is the manifest mock getInboundMessageDetailsDefault: Representative Postmark inbound response.
+func GetInboundMessageDetailsGetInboundMessageDetailsDefault() connectormock.Case[postmark.InboundMessage] {
+	value := connectormock.MustDecodeOutput[postmark.InboundMessage](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","from":"sender@example.com","to":"inbox@example.com","subject":"Request","status":"Processed"}`)
+	return connectormock.Branch(postmark.GetInboundMessageDetailsBranchFound, value, nil)
+}
+
+// GetInboundMessageDetailsDefault is the manifest default, getInboundMessageDetailsDefault, which New installs.
+func GetInboundMessageDetailsDefault() connectormock.Case[postmark.InboundMessage] {
+	return GetInboundMessageDetailsGetInboundMessageDetailsDefault()
+}
+
+// BypassInboundMessageBypassed selects the bypassed branch: Postmark returned the requested inbound outcome.
+func BypassInboundMessageBypassed(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.BypassInboundMessageBranchBypassed, value, failure)
+}
+
+// BypassInboundMessageProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func BypassInboundMessageProviderRejected(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.BypassInboundMessageBranchProviderRejected, value, failure)
+}
+
+// BypassInboundMessageUncertain returns an uncertain bypassInboundMessage outcome.
+func BypassInboundMessageUncertain(value postmark.InboundMessageAction, failure sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// BypassInboundMessageDefect selects the defect branch: Postmark defect outcome.
+func BypassInboundMessageDefect(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.BypassInboundMessageBranchDefect, value, failure)
+}
+
+// BypassInboundMessageRetry asks Dex to retry the bypassInboundMessage Step, after the delay when it is positive.
+func BypassInboundMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Retry[postmark.InboundMessageAction](failure, after)
+}
+
+// BypassInboundMessageBypassInboundMessageDefault is the manifest mock bypassInboundMessageDefault: Representative Postmark inbound response.
+func BypassInboundMessageBypassInboundMessageDefault() connectormock.Case[postmark.InboundMessageAction] {
+	value := connectormock.MustDecodeOutput[postmark.InboundMessageAction](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","accepted":true}`)
+	return connectormock.Branch(postmark.BypassInboundMessageBranchBypassed, value, nil)
+}
+
+// BypassInboundMessageDefault is the manifest default, bypassInboundMessageDefault, which New installs.
+func BypassInboundMessageDefault() connectormock.Case[postmark.InboundMessageAction] {
+	return BypassInboundMessageBypassInboundMessageDefault()
+}
+
+// RetryInboundMessageRetried selects the retried branch: Postmark returned the requested inbound outcome.
+func RetryInboundMessageRetried(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.RetryInboundMessageBranchRetried, value, failure)
+}
+
+// RetryInboundMessageProviderRejected selects the providerRejected branch: Postmark providerRejected outcome.
+func RetryInboundMessageProviderRejected(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.RetryInboundMessageBranchProviderRejected, value, failure)
+}
+
+// RetryInboundMessageUncertain returns an uncertain retryInboundMessage outcome.
+func RetryInboundMessageUncertain(value postmark.InboundMessageAction, failure sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// RetryInboundMessageDefect selects the defect branch: Postmark defect outcome.
+func RetryInboundMessageDefect(value postmark.InboundMessageAction, failure *sdkgo.Failure) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Branch(postmark.RetryInboundMessageBranchDefect, value, failure)
+}
+
+// RetryInboundMessageRetry asks Dex to retry the retryInboundMessage Step, after the delay when it is positive.
+func RetryInboundMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[postmark.InboundMessageAction] {
+	return connectormock.Retry[postmark.InboundMessageAction](failure, after)
+}
+
+// RetryInboundMessageRetryInboundMessageDefault is the manifest mock retryInboundMessageDefault: Representative Postmark inbound response.
+func RetryInboundMessageRetryInboundMessageDefault() connectormock.Case[postmark.InboundMessageAction] {
+	value := connectormock.MustDecodeOutput[postmark.InboundMessageAction](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","accepted":true}`)
+	return connectormock.Branch(postmark.RetryInboundMessageBranchRetried, value, nil)
+}
+
+// RetryInboundMessageDefault is the manifest default, retryInboundMessageDefault, which New installs.
+func RetryInboundMessageDefault() connectormock.Case[postmark.InboundMessageAction] {
+	return RetryInboundMessageRetryInboundMessageDefault()
 }
