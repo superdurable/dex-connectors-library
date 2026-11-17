@@ -9,6 +9,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: cloopen
+  languages:
+    python:
+      version: v0.1.0
+      operations: [getBalance]
+      triggers: []
   codegen:
     go:
       package: cloopen
@@ -21,7 +26,7 @@ spec:
     type: apiKey
     connectionKind: cloopen-account
     fields:
-      - {name: account_sid, goName: AccountSID, type: secretString, required: true, description: 'Main-account ACCOUNT SID from https://console.yuntongxun.com > management console > account information. Copy the exact 32-character alphanumeric ID; it is placed in the API path and signed header. Blank prevents requests.'}
+      - {name: account_sid, goName: AccountSID, type: secretString, required: true, description: 'Secret main-account ACCOUNT SID from https://console.yuntongxun.com > management console > account information. Copy the exact 32-character alphanumeric ID; it is placed in the API path and signed header. Blank prevents requests.'}
       - {name: auth_token, goName: AuthToken, type: secretString, required: true, description: 'Main-account AUTH TOKEN from https://console.yuntongxun.com > management console > account information. Copy the exact 32-character secret; it is used only to create the request signature. Blank prevents requests.'}
     guide:
       startURL: https://console.yuntongxun.com
