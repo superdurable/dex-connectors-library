@@ -52,10 +52,12 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   const selected = project.configuration.connections.find(connection => connection.connectorId === 'stripe' && connection.connectionName === connectionName);
   if (!selected) throw new TypeError('Stripe project connection is not configured');
   if (selected.provider !== 'stripe') throw new TypeError('Stripe project connection provider is invalid');
-  const settings = z.object({ endpoint: z.string().optional(), maxResponseBytes: z.number().int().optional() }).parse(selected.configuration);
+  const settings = z.object({ endpoint: z.string().optional(), maxResponseBytes: z.number().int().optional(), webhookMaxBodyBytes: z.number().int().optional(), webhookSignatureTolerance: z.union([z.string(), z.number().int()]).optional() }).parse(selected.configuration);
   const config: Config = {
     ...(settings.endpoint !== undefined ? { endpoint: settings.endpoint } : {}),
     ...(settings.maxResponseBytes !== undefined ? { maxResponseBytes: settings.maxResponseBytes } : {}),
+    ...(settings.webhookMaxBodyBytes !== undefined ? { webhookMaxBodyBytes: settings.webhookMaxBodyBytes } : {}),
+    ...(settings.webhookSignatureTolerance !== undefined ? { webhookSignatureToleranceMs: stripeDurationMilliseconds(settings.webhookSignatureTolerance) } : {}),
   };
   const credentials: CredentialProvider<Credentials> = {
     async resolve(call: Call, signal?: AbortSignal): Promise<Credentials> {
@@ -74,4 +76,23 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     },
   };
   return newConnection(new StripeClient(config, credentials, options), { provider: 'stripe', name: connectionName });
+}
+
+function stripeDurationMilliseconds(value: string | number): number {
+  if (typeof value === 'number') {
+    if (!Number.isSafeInteger(value) || value < 0) throw new TypeError('Stripe webhookSignatureTolerance must be a nonnegative Go duration');
+    return Math.ceil(value / 1_000_000);
+  }
+  if (value === '0') return 0;
+  let text = value;
+  let milliseconds = 0;
+  const units: Record<string, number> = { ns: 0.000001, us: 0.001, 'µs': 0.001, ms: 1, s: 1000, m: 60_000, h: 3_600_000 };
+  while (text) {
+    const match = /^(\d+(?:\.\d+)?)(ns|us|µs|ms|s|m|h)/.exec(text);
+    if (!match) throw new TypeError('Stripe webhookSignatureTolerance must be a positive Go duration');
+    milliseconds += Number(match[1]) * units[match[2]!]!;
+    text = text.slice(match[0].length);
+  }
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) throw new TypeError('Stripe webhookSignatureTolerance must be a positive Go duration');
+  return Math.ceil(milliseconds);
 }

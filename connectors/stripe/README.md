@@ -6,6 +6,8 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/stripe`.
 
 The [Python package](python/README.md) includes all five operations and the signed `checkoutSessionUpdated` Trigger at v0.3.0. Its [Checkout event example](python/examples/checkout_session_event/README.md) runs a real Dex Worker and a durable webhook receiver. Live Stripe delivery remains unverified.
 
+The TypeScript package also includes the signed Trigger and a [runnable Dex Flow and Worker](typescript/examples/checkout-session-events/).
+
 This module creates and reconciles Stripe-hosted Checkout Sessions that accept
 card or US bank account (ACH Direct Debit) payments. It also receives signed Checkout
 Session webhooks through one shared HTTP endpoint.
