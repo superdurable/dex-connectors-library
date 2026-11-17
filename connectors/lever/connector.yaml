@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: lever
   displayName: Lever
-  description: Read and manage Lever opportunities, postings, notes, and interviews through the Data API.
+  description: Read and manage Lever opportunities, postings, notes, interviews, and users through the Data API.
   company: Lever
   categories: [hr-recruiting]
   version: v0.2.0
@@ -52,8 +52,8 @@ spec:
     guide:
       startURL: https://hire.lever.co
       steps:
-        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, postings, notes, and interviews and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity, posting, note, or interview UID in Lever or the respective list operation and pass it as the relevant ID; blank is invalid. Confidential records require corresponding account access.
+        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, postings, notes, interviews, and users and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity, posting, note, interview, or user UID in Lever or the respective list operation and pass it as the relevant ID; blank is invalid. Confidential records require corresponding account access.
   operations:
     - name: listOpportunities
       goName: ListOpportunities
@@ -444,3 +444,124 @@ spec:
           default: true
           description: The interview is absent.
           output: {id: 6ff55c8e-fe04-4eb4-835a-630b1c0da421}
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: UserSummary
+      kind: query
+      description: Read role and activation state for one Lever user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the user.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid user JSON., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One active user is visible.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}
+    - name: listUsers
+      goName: ListUsers
+      inputType: ListUsersInput
+      outputType: UsersPage
+      kind: query
+      description: List Lever user role and activation metadata, optionally by email.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the users.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned invalid users JSON., optional: true}
+        - {id: defect, goName: Defect, description: Email filter or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One active user is visible.
+          output: {users: [{id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}]}
+    - name: createUser
+      goName: CreateUser
+      inputType: CreateUserInput
+      outputType: UserSummary
+      kind: mutation
+      description: Create a Lever user with an explicit access role.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the user ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected user creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The user may exist but its ID was not confirmed at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: Input or dispatch checkpoint is invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever created one user.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}
+    - name: updateUser
+      goName: UpdateUser
+      inputType: UpdateUserInput
+      outputType: UserSummary
+      kind: mutation
+      description: Replace a Lever user's name, email, role, and optional directory fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Lever confirmed the user replacement.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected the replacement., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Lever confirmed the replacement.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}
+    - name: deactivateUser
+      goName: DeactivateUser
+      inputType: SetUserActivationInput
+      outputType: UserSummary
+      kind: mutation
+      description: Disable login for one Lever user.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The user is inactive.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected deactivation., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The user is inactive.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: false}
+    - name: reactivateUser
+      goName: ReactivateUser
+      inputType: SetUserActivationInput
+      outputType: UserSummary
+      kind: mutation
+      description: Restore login for one Lever user.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The user is active.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever rejected reactivation., optional: true}
+        - {id: defect, goName: Defect, description: User ID or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The user is active.
+          output: {id: 8d49b010-cc6a-4f40-ace5-e86061c677ed, accessRole: interviewer, active: true}

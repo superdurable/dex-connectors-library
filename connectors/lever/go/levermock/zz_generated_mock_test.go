@@ -92,6 +92,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[lever.InterviewIdentity](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421"}`)
 			return err
 		}},
+		{name: "getUser/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+			return err
+		}},
+		{name: "listUsers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UsersPage](`{"users":[{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}]}`)
+			return err
+		}},
+		{name: "createUser/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+			return err
+		}},
+		{name: "updateUser/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+			return err
+		}},
+		{name: "deactivateUser/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":false}`)
+			return err
+		}},
+		{name: "reactivateUser/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -158,5 +182,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteInterview().Definition().Operation.OperationID != "deleteInterview" {
 		t.Errorf("deleteInterview mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
+	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
+		t.Errorf("listUsers mock has another definition")
+	}
+	if mock.CreateUser().Definition().Operation.OperationID != "createUser" {
+		t.Errorf("createUser mock has another definition")
+	}
+	if mock.UpdateUser().Definition().Operation.OperationID != "updateUser" {
+		t.Errorf("updateUser mock has another definition")
+	}
+	if mock.DeactivateUser().Definition().Operation.OperationID != "deactivateUser" {
+		t.Errorf("deactivateUser mock has another definition")
+	}
+	if mock.ReactivateUser().Definition().Operation.OperationID != "reactivateUser" {
+		t.Errorf("reactivateUser mock has another definition")
 	}
 }

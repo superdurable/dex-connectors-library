@@ -43,6 +43,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createInterview":           newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.CreateInterview(), reference, scenario.CallID),
 		"updateInterview":           newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.UpdateInterview(), reference, scenario.CallID),
 		"deleteInterview":           newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.DeleteInterview(), reference, scenario.CallID),
+		"getUser":                   newConformanceQueryInvocation(t, scenario.Input, attemptContext, client.GetUser(), reference),
+		"listUsers":                 newConformanceQueryInvocation(t, scenario.Input, attemptContext, client.ListUsers(), reference),
+		"createUser":                newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.CreateUser(), reference, scenario.CallID),
+		"updateUser":                newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.UpdateUser(), reference, scenario.CallID),
+		"deactivateUser":            newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.DeactivateUser(), reference, scenario.CallID),
+		"reactivateUser":            newConformanceMutationInvocation(t, scenario.Input, attemptContext, client.ReactivateUser(), reference, scenario.CallID),
 	}}
 }
 

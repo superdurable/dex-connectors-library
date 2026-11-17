@@ -59,6 +59,12 @@ type Operations interface {
 	CreateInterview() sdkgo.Mutation[CreateInterviewInput, InterviewSummary]
 	UpdateInterview() sdkgo.Mutation[UpdateInterviewInput, InterviewSummary]
 	DeleteInterview() sdkgo.Mutation[DeleteInterviewInput, InterviewIdentity]
+	GetUser() sdkgo.Query[GetUserInput, UserSummary]
+	ListUsers() sdkgo.Query[ListUsersInput, UsersPage]
+	CreateUser() sdkgo.Mutation[CreateUserInput, UserSummary]
+	UpdateUser() sdkgo.Mutation[UpdateUserInput, UserSummary]
+	DeactivateUser() sdkgo.Mutation[SetUserActivationInput, UserSummary]
+	ReactivateUser() sdkgo.Mutation[SetUserActivationInput, UserSummary]
 }
 
 type clientOperations struct{ client *Client }
@@ -119,6 +125,24 @@ func (operations clientOperations) UpdateInterview() sdkgo.Mutation[UpdateInterv
 }
 func (operations clientOperations) DeleteInterview() sdkgo.Mutation[DeleteInterviewInput, InterviewIdentity] {
 	return operations.client.DeleteInterview()
+}
+func (operations clientOperations) GetUser() sdkgo.Query[GetUserInput, UserSummary] {
+	return operations.client.GetUser()
+}
+func (operations clientOperations) ListUsers() sdkgo.Query[ListUsersInput, UsersPage] {
+	return operations.client.ListUsers()
+}
+func (operations clientOperations) CreateUser() sdkgo.Mutation[CreateUserInput, UserSummary] {
+	return operations.client.CreateUser()
+}
+func (operations clientOperations) UpdateUser() sdkgo.Mutation[UpdateUserInput, UserSummary] {
+	return operations.client.UpdateUser()
+}
+func (operations clientOperations) DeactivateUser() sdkgo.Mutation[SetUserActivationInput, UserSummary] {
+	return operations.client.DeactivateUser()
+}
+func (operations clientOperations) ReactivateUser() sdkgo.Mutation[SetUserActivationInput, UserSummary] {
+	return operations.client.ReactivateUser()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -1650,6 +1674,446 @@ func NewDeleteInterviewStep[IN any](config DeleteInterviewStepConfig[IN]) sdkgo.
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteInterviewBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetUserBranchFound sdkgo.BranchID = "found"
+const GetUserBranchNotFound sdkgo.BranchID = "notFound"
+const GetUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetUserBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetUserDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetUserBranchFound, Description: "Lever returned the user."},
+		{ID: GetUserBranchNotFound, Description: "Lever did not expose the user.", Optional: true},
+		{ID: GetUserBranchProviderRejected, Description: "Lever rejected the read.", Optional: true},
+		{ID: GetUserBranchInvalidResponse, Description: "Lever returned invalid user JSON.", Optional: true},
+		{ID: GetUserBranchDefect, Description: "User ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetUserResult = sdkgo.QueryResult[UserSummary]
+
+type GetUserStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=lever"`
+	operationID                    struct{}                                       `connector:"operationId=getUser"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetUserInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetUserResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetUserResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetUserResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetUserResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetUserResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UserSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetUserStep[IN any](config GetUserStepConfig[IN]) sdkgo.QueryStep[IN, GetUserInput, UserSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetUserInput, UserSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetUserResult] {
+			branches := make([]sdkgo.BranchTarget[GetUserResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetUserBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetUserBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetUserBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListUsersBranchListed sdkgo.BranchID = "listed"
+const ListUsersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListUsersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListUsersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListUsersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listUsers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListUsersBranchListed, Description: "Lever returned the users."},
+		{ID: ListUsersBranchProviderRejected, Description: "Lever rejected the read.", Optional: true},
+		{ID: ListUsersBranchInvalidResponse, Description: "Lever returned invalid users JSON.", Optional: true},
+		{ID: ListUsersBranchDefect, Description: "Email filter or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListUsersResult = sdkgo.QueryResult[UsersPage]
+
+type ListUsersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=lever"`
+	operationID                    struct{}                                     `connector:"operationId=listUsers"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListUsersInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListUsersResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListUsersResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListUsersResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListUsersResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[UsersPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewListUsersStep[IN any](config ListUsersStepConfig[IN]) sdkgo.QueryStep[IN, ListUsersInput, UsersPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListUsersInput, UsersPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListUsers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListUsersResult] {
+			branches := make([]sdkgo.BranchTarget[ListUsersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListUsersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListUsersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListUsersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListUsersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateUserBranchCreated sdkgo.BranchID = "created"
+const CreateUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateUserBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateUserBranchCreated, Description: "Lever confirmed the user ID."},
+		{ID: CreateUserBranchProviderRejected, Description: "Lever rejected user creation.", Optional: true},
+		{ID: CreateUserBranchUncertain, Description: "The user may exist but its ID was not confirmed at the send cap.", Optional: true},
+		{ID: CreateUserBranchDefect, Description: "Input or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateUserResult = sdkgo.MutationResult[UserSummary]
+
+type CreateUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=lever"`
+	operationID                       struct{}                                          `connector:"operationId=createUser"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateUserInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateUserResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateUserResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateUserResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateUserResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UserSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateUserStep[IN any](config CreateUserStepConfig[IN]) sdkgo.MutationStep[IN, CreateUserInput, UserSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateUserInput, UserSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateUserResult] {
+			branches := make([]sdkgo.BranchTarget[CreateUserResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateUserBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateUserBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateUserBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateUserBranchUpdated sdkgo.BranchID = "updated"
+const UpdateUserBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateUserBranchUpdated, Description: "Lever confirmed the user replacement."},
+		{ID: UpdateUserBranchNotFound, Description: "Lever did not expose the user.", Optional: true},
+		{ID: UpdateUserBranchProviderRejected, Description: "Lever rejected the replacement.", Optional: true},
+		{ID: UpdateUserBranchDefect, Description: "Input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateUserResult = sdkgo.MutationResult[UserSummary]
+
+type UpdateUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=lever"`
+	operationID                       struct{}                                          `connector:"operationId=updateUser"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateUserInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateUserResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateUserResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateUserResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateUserResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UserSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateUserStep[IN any](config UpdateUserStepConfig[IN]) sdkgo.MutationStep[IN, UpdateUserInput, UserSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateUserInput, UserSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateUserResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateUserResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateUserBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateUserBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeactivateUserBranchUpdated sdkgo.BranchID = "updated"
+const DeactivateUserBranchNotFound sdkgo.BranchID = "notFound"
+const DeactivateUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeactivateUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeactivateUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deactivateUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeactivateUserBranchUpdated, Description: "The user is inactive."},
+		{ID: DeactivateUserBranchNotFound, Description: "Lever did not expose the user.", Optional: true},
+		{ID: DeactivateUserBranchProviderRejected, Description: "Lever rejected deactivation.", Optional: true},
+		{ID: DeactivateUserBranchDefect, Description: "User ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeactivateUserResult = sdkgo.MutationResult[UserSummary]
+
+type DeactivateUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=lever"`
+	operationID                       struct{}                                          `connector:"operationId=deactivateUser"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetUserActivationInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[DeactivateUserResult]                `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[DeactivateUserResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeactivateUserResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeactivateUserResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UserSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeactivateUserStep[IN any](config DeactivateUserStepConfig[IN]) sdkgo.MutationStep[IN, SetUserActivationInput, UserSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetUserActivationInput, UserSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeactivateUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeactivateUserResult] {
+			branches := make([]sdkgo.BranchTarget[DeactivateUserResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(DeactivateUserBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeactivateUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeactivateUserBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeactivateUserBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ReactivateUserBranchUpdated sdkgo.BranchID = "updated"
+const ReactivateUserBranchNotFound sdkgo.BranchID = "notFound"
+const ReactivateUserBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ReactivateUserBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ReactivateUserDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "reactivateUser"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ReactivateUserBranchUpdated, Description: "The user is active."},
+		{ID: ReactivateUserBranchNotFound, Description: "Lever did not expose the user.", Optional: true},
+		{ID: ReactivateUserBranchProviderRejected, Description: "Lever rejected reactivation.", Optional: true},
+		{ID: ReactivateUserBranchDefect, Description: "User ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type ReactivateUserResult = sdkgo.MutationResult[UserSummary]
+
+type ReactivateUserStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=lever"`
+	operationID                       struct{}                                          `connector:"operationId=reactivateUser"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetUserActivationInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[ReactivateUserResult]                `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[ReactivateUserResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ReactivateUserResult]                `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[ReactivateUserResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UserSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewReactivateUserStep[IN any](config ReactivateUserStepConfig[IN]) sdkgo.MutationStep[IN, SetUserActivationInput, UserSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetUserActivationInput, UserSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ReactivateUser(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ReactivateUserResult] {
+			branches := make([]sdkgo.BranchTarget[ReactivateUserResult], 0, 4)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(ReactivateUserBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ReactivateUserBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ReactivateUserBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ReactivateUserBranchDefect))
 			}
 			return branches
 		}(),

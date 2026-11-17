@@ -37,6 +37,12 @@ type Mock struct {
 	createInterview            *connectormock.Mutation[lever.CreateInterviewInput, lever.InterviewSummary]
 	updateInterview            *connectormock.Mutation[lever.UpdateInterviewInput, lever.InterviewSummary]
 	deleteInterview            *connectormock.Mutation[lever.DeleteInterviewInput, lever.InterviewIdentity]
+	getUser                    *connectormock.Query[lever.GetUserInput, lever.UserSummary]
+	listUsers                  *connectormock.Query[lever.ListUsersInput, lever.UsersPage]
+	createUser                 *connectormock.Mutation[lever.CreateUserInput, lever.UserSummary]
+	updateUser                 *connectormock.Mutation[lever.UpdateUserInput, lever.UserSummary]
+	deactivateUser             *connectormock.Mutation[lever.SetUserActivationInput, lever.UserSummary]
+	reactivateUser             *connectormock.Mutation[lever.SetUserActivationInput, lever.UserSummary]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -63,6 +69,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		createInterview:            connectormock.NewMutation[lever.CreateInterviewInput, lever.InterviewSummary](t, lever.CreateInterviewDefinition),
 		updateInterview:            connectormock.NewMutation[lever.UpdateInterviewInput, lever.InterviewSummary](t, lever.UpdateInterviewDefinition),
 		deleteInterview:            connectormock.NewMutation[lever.DeleteInterviewInput, lever.InterviewIdentity](t, lever.DeleteInterviewDefinition),
+		getUser:                    connectormock.NewQuery[lever.GetUserInput, lever.UserSummary](t, lever.GetUserDefinition),
+		listUsers:                  connectormock.NewQuery[lever.ListUsersInput, lever.UsersPage](t, lever.ListUsersDefinition),
+		createUser:                 connectormock.NewMutation[lever.CreateUserInput, lever.UserSummary](t, lever.CreateUserDefinition),
+		updateUser:                 connectormock.NewMutation[lever.UpdateUserInput, lever.UserSummary](t, lever.UpdateUserDefinition),
+		deactivateUser:             connectormock.NewMutation[lever.SetUserActivationInput, lever.UserSummary](t, lever.DeactivateUserDefinition),
+		reactivateUser:             connectormock.NewMutation[lever.SetUserActivationInput, lever.UserSummary](t, lever.ReactivateUserDefinition),
 	}
 	mock.listOpportunities.Default(ListOpportunitiesDefault())
 	mock.getOpportunity.Default(GetOpportunityDefault())
@@ -83,6 +95,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createInterview.Default(CreateInterviewDefault())
 	mock.updateInterview.Default(UpdateInterviewDefault())
 	mock.deleteInterview.Default(DeleteInterviewDefault())
+	mock.getUser.Default(GetUserDefault())
+	mock.listUsers.Default(ListUsersDefault())
+	mock.createUser.Default(CreateUserDefault())
+	mock.updateUser.Default(UpdateUserDefault())
+	mock.deactivateUser.Default(DeactivateUserDefault())
+	mock.reactivateUser.Default(ReactivateUserDefault())
 	connection, err := lever.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "lever", Name: connectionName})
 	if err != nil {
 		t.Fatalf("lever mock connection: %v", err)
@@ -189,6 +207,36 @@ func (mock *Mock) DeleteInterview() *connectormock.Mutation[lever.DeleteIntervie
 	return mock.deleteInterview
 }
 
+// GetUser returns the getUser script.
+func (mock *Mock) GetUser() *connectormock.Query[lever.GetUserInput, lever.UserSummary] {
+	return mock.getUser
+}
+
+// ListUsers returns the listUsers script.
+func (mock *Mock) ListUsers() *connectormock.Query[lever.ListUsersInput, lever.UsersPage] {
+	return mock.listUsers
+}
+
+// CreateUser returns the createUser script.
+func (mock *Mock) CreateUser() *connectormock.Mutation[lever.CreateUserInput, lever.UserSummary] {
+	return mock.createUser
+}
+
+// UpdateUser returns the updateUser script.
+func (mock *Mock) UpdateUser() *connectormock.Mutation[lever.UpdateUserInput, lever.UserSummary] {
+	return mock.updateUser
+}
+
+// DeactivateUser returns the deactivateUser script.
+func (mock *Mock) DeactivateUser() *connectormock.Mutation[lever.SetUserActivationInput, lever.UserSummary] {
+	return mock.deactivateUser
+}
+
+// ReactivateUser returns the reactivateUser script.
+func (mock *Mock) ReactivateUser() *connectormock.Mutation[lever.SetUserActivationInput, lever.UserSummary] {
+	return mock.reactivateUser
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListOpportunities() sdkgo.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage] {
@@ -247,6 +295,24 @@ func (operations mockOperations) UpdateInterview() sdkgo.Mutation[lever.UpdateIn
 }
 func (operations mockOperations) DeleteInterview() sdkgo.Mutation[lever.DeleteInterviewInput, lever.InterviewIdentity] {
 	return operations.mock.deleteInterview
+}
+func (operations mockOperations) GetUser() sdkgo.Query[lever.GetUserInput, lever.UserSummary] {
+	return operations.mock.getUser
+}
+func (operations mockOperations) ListUsers() sdkgo.Query[lever.ListUsersInput, lever.UsersPage] {
+	return operations.mock.listUsers
+}
+func (operations mockOperations) CreateUser() sdkgo.Mutation[lever.CreateUserInput, lever.UserSummary] {
+	return operations.mock.createUser
+}
+func (operations mockOperations) UpdateUser() sdkgo.Mutation[lever.UpdateUserInput, lever.UserSummary] {
+	return operations.mock.updateUser
+}
+func (operations mockOperations) DeactivateUser() sdkgo.Mutation[lever.SetUserActivationInput, lever.UserSummary] {
+	return operations.mock.deactivateUser
+}
+func (operations mockOperations) ReactivateUser() sdkgo.Mutation[lever.SetUserActivationInput, lever.UserSummary] {
+	return operations.mock.reactivateUser
 }
 
 // ListOpportunitiesListed selects the listed branch: Lever returned the opportunity page.
@@ -933,4 +999,217 @@ func DeleteInterviewDeletedDefault() connectormock.Case[lever.InterviewIdentity]
 // DeleteInterviewDefault is the manifest default, deletedDefault, which New installs.
 func DeleteInterviewDefault() connectormock.Case[lever.InterviewIdentity] {
 	return DeleteInterviewDeletedDefault()
+}
+
+// GetUserFound selects the found branch: Lever returned the user.
+func GetUserFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchFound, value, failure)
+}
+
+// GetUserNotFound selects the notFound branch: Lever did not expose the user.
+func GetUserNotFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchNotFound, value, failure)
+}
+
+// GetUserProviderRejected selects the providerRejected branch: Lever rejected the read.
+func GetUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchProviderRejected, value, failure)
+}
+
+// GetUserInvalidResponse selects the invalidResponse branch: Lever returned invalid user JSON.
+func GetUserInvalidResponse(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchInvalidResponse, value, failure)
+}
+
+// GetUserDefect selects the defect branch: User ID or credentials are invalid.
+func GetUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.GetUserBranchDefect, value, failure)
+}
+
+// GetUserRetry asks Dex to retry the getUser Step, after the delay when it is positive.
+func GetUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// GetUserFoundDefault is the manifest mock foundDefault: One active user is visible.
+func GetUserFoundDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+	return connectormock.Branch(lever.GetUserBranchFound, value, nil)
+}
+
+// GetUserDefault is the manifest default, foundDefault, which New installs.
+func GetUserDefault() connectormock.Case[lever.UserSummary] { return GetUserFoundDefault() }
+
+// ListUsersListed selects the listed branch: Lever returned the users.
+func ListUsersListed(value lever.UsersPage, failure *sdkgo.Failure) connectormock.Case[lever.UsersPage] {
+	return connectormock.Branch(lever.ListUsersBranchListed, value, failure)
+}
+
+// ListUsersProviderRejected selects the providerRejected branch: Lever rejected the read.
+func ListUsersProviderRejected(value lever.UsersPage, failure *sdkgo.Failure) connectormock.Case[lever.UsersPage] {
+	return connectormock.Branch(lever.ListUsersBranchProviderRejected, value, failure)
+}
+
+// ListUsersInvalidResponse selects the invalidResponse branch: Lever returned invalid users JSON.
+func ListUsersInvalidResponse(value lever.UsersPage, failure *sdkgo.Failure) connectormock.Case[lever.UsersPage] {
+	return connectormock.Branch(lever.ListUsersBranchInvalidResponse, value, failure)
+}
+
+// ListUsersDefect selects the defect branch: Email filter or credentials are invalid.
+func ListUsersDefect(value lever.UsersPage, failure *sdkgo.Failure) connectormock.Case[lever.UsersPage] {
+	return connectormock.Branch(lever.ListUsersBranchDefect, value, failure)
+}
+
+// ListUsersRetry asks Dex to retry the listUsers Step, after the delay when it is positive.
+func ListUsersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UsersPage] {
+	return connectormock.Retry[lever.UsersPage](failure, after)
+}
+
+// ListUsersListedDefault is the manifest mock listedDefault: One active user is visible.
+func ListUsersListedDefault() connectormock.Case[lever.UsersPage] {
+	value := connectormock.MustDecodeOutput[lever.UsersPage](`{"users":[{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}]}`)
+	return connectormock.Branch(lever.ListUsersBranchListed, value, nil)
+}
+
+// ListUsersDefault is the manifest default, listedDefault, which New installs.
+func ListUsersDefault() connectormock.Case[lever.UsersPage] { return ListUsersListedDefault() }
+
+// CreateUserCreated selects the created branch: Lever confirmed the user ID.
+func CreateUserCreated(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.CreateUserBranchCreated, value, failure)
+}
+
+// CreateUserProviderRejected selects the providerRejected branch: Lever rejected user creation.
+func CreateUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.CreateUserBranchProviderRejected, value, failure)
+}
+
+// CreateUserUncertain returns an uncertain createUser outcome.
+func CreateUserUncertain(value lever.UserSummary, failure sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateUserDefect selects the defect branch: Input or dispatch checkpoint is invalid.
+func CreateUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.CreateUserBranchDefect, value, failure)
+}
+
+// CreateUserRetry asks Dex to retry the createUser Step, after the delay when it is positive.
+func CreateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// CreateUserCreatedDefault is the manifest mock createdDefault: Lever created one user.
+func CreateUserCreatedDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+	return connectormock.Branch(lever.CreateUserBranchCreated, value, nil)
+}
+
+// CreateUserDefault is the manifest default, createdDefault, which New installs.
+func CreateUserDefault() connectormock.Case[lever.UserSummary] { return CreateUserCreatedDefault() }
+
+// UpdateUserUpdated selects the updated branch: Lever confirmed the user replacement.
+func UpdateUserUpdated(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.UpdateUserBranchUpdated, value, failure)
+}
+
+// UpdateUserNotFound selects the notFound branch: Lever did not expose the user.
+func UpdateUserNotFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.UpdateUserBranchNotFound, value, failure)
+}
+
+// UpdateUserProviderRejected selects the providerRejected branch: Lever rejected the replacement.
+func UpdateUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.UpdateUserBranchProviderRejected, value, failure)
+}
+
+// UpdateUserDefect selects the defect branch: Input or credentials are invalid.
+func UpdateUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.UpdateUserBranchDefect, value, failure)
+}
+
+// UpdateUserRetry asks Dex to retry the updateUser Step, after the delay when it is positive.
+func UpdateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// UpdateUserUpdatedDefault is the manifest mock updatedDefault: Lever confirmed the replacement.
+func UpdateUserUpdatedDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+	return connectormock.Branch(lever.UpdateUserBranchUpdated, value, nil)
+}
+
+// UpdateUserDefault is the manifest default, updatedDefault, which New installs.
+func UpdateUserDefault() connectormock.Case[lever.UserSummary] { return UpdateUserUpdatedDefault() }
+
+// DeactivateUserUpdated selects the updated branch: The user is inactive.
+func DeactivateUserUpdated(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.DeactivateUserBranchUpdated, value, failure)
+}
+
+// DeactivateUserNotFound selects the notFound branch: Lever did not expose the user.
+func DeactivateUserNotFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.DeactivateUserBranchNotFound, value, failure)
+}
+
+// DeactivateUserProviderRejected selects the providerRejected branch: Lever rejected deactivation.
+func DeactivateUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.DeactivateUserBranchProviderRejected, value, failure)
+}
+
+// DeactivateUserDefect selects the defect branch: User ID or credentials are invalid.
+func DeactivateUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.DeactivateUserBranchDefect, value, failure)
+}
+
+// DeactivateUserRetry asks Dex to retry the deactivateUser Step, after the delay when it is positive.
+func DeactivateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// DeactivateUserUpdatedDefault is the manifest mock updatedDefault: The user is inactive.
+func DeactivateUserUpdatedDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":false}`)
+	return connectormock.Branch(lever.DeactivateUserBranchUpdated, value, nil)
+}
+
+// DeactivateUserDefault is the manifest default, updatedDefault, which New installs.
+func DeactivateUserDefault() connectormock.Case[lever.UserSummary] {
+	return DeactivateUserUpdatedDefault()
+}
+
+// ReactivateUserUpdated selects the updated branch: The user is active.
+func ReactivateUserUpdated(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.ReactivateUserBranchUpdated, value, failure)
+}
+
+// ReactivateUserNotFound selects the notFound branch: Lever did not expose the user.
+func ReactivateUserNotFound(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.ReactivateUserBranchNotFound, value, failure)
+}
+
+// ReactivateUserProviderRejected selects the providerRejected branch: Lever rejected reactivation.
+func ReactivateUserProviderRejected(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.ReactivateUserBranchProviderRejected, value, failure)
+}
+
+// ReactivateUserDefect selects the defect branch: User ID or credentials are invalid.
+func ReactivateUserDefect(value lever.UserSummary, failure *sdkgo.Failure) connectormock.Case[lever.UserSummary] {
+	return connectormock.Branch(lever.ReactivateUserBranchDefect, value, failure)
+}
+
+// ReactivateUserRetry asks Dex to retry the reactivateUser Step, after the delay when it is positive.
+func ReactivateUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.UserSummary] {
+	return connectormock.Retry[lever.UserSummary](failure, after)
+}
+
+// ReactivateUserUpdatedDefault is the manifest mock updatedDefault: The user is active.
+func ReactivateUserUpdatedDefault() connectormock.Case[lever.UserSummary] {
+	value := connectormock.MustDecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+	return connectormock.Branch(lever.ReactivateUserBranchUpdated, value, nil)
+}
+
+// ReactivateUserDefault is the manifest default, updatedDefault, which New installs.
+func ReactivateUserDefault() connectormock.Case[lever.UserSummary] {
+	return ReactivateUserUpdatedDefault()
 }

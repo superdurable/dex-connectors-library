@@ -6426,6 +6426,1925 @@
       },
       "name": "deleteInterview-transportFailure",
       "operation": "deleteInterview"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"8d49b010-cc6a-4f40-ace5-e86061c677ed\",\"name\":\"Sample User\",\"email\":\"sample@example.com\",\"accessRole\":\"interviewer\",\"deactivatedAt\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "accessRole": "interviewer",
+          "active": true,
+          "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "getUser-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "getUser-notFound",
+      "operation": "getUser"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "getUser-providerRejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"bad\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "getUser-invalidResponse",
+      "operation": "getUser"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "bad"
+      },
+      "name": "getUser-defect",
+      "operation": "getUser"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "getUser-final429",
+      "operation": "getUser"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "getUser-final503",
+      "operation": "getUser"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "getUser-transportFailure",
+      "operation": "getUser"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"8d49b010-cc6a-4f40-ace5-e86061c677ed\",\"name\":\"Sample User\",\"email\":\"sample@example.com\",\"accessRole\":\"interviewer\",\"deactivatedAt\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "email": [
+              "sample@example.com"
+            ],
+            "includeDeactivated": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "users": [
+            {
+              "accessRole": "interviewer",
+              "active": true,
+              "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "includeDeactivated": true
+      },
+      "name": "listUsers-listed",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "email": [
+              "sample@example.com"
+            ],
+            "includeDeactivated": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "includeDeactivated": true
+      },
+      "name": "listUsers-providerRejected",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "email": [
+              "sample@example.com"
+            ],
+            "includeDeactivated": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "includeDeactivated": true
+      },
+      "name": "listUsers-invalidResponse",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "bad",
+        "includeDeactivated": true
+      },
+      "name": "listUsers-defect",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "email": [
+              "sample@example.com"
+            ],
+            "includeDeactivated": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "includeDeactivated": true
+      },
+      "name": "listUsers-final429",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "email": [
+              "sample@example.com"
+            ],
+            "includeDeactivated": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "includeDeactivated": true
+      },
+      "name": "listUsers-final503",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "email": [
+              "sample@example.com"
+            ],
+            "includeDeactivated": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "sample@example.com",
+        "includeDeactivated": true
+      },
+      "name": "listUsers-transportFailure",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"8d49b010-cc6a-4f40-ace5-e86061c677ed\",\"name\":\"Sample User\",\"email\":\"sample@example.com\",\"accessRole\":\"interviewer\",\"deactivatedAt\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "providerId": "8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accessRole": "interviewer",
+          "active": true,
+          "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-created",
+      "operation": "createUser"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-providerRejected",
+      "operation": "createUser"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "bad",
+        "name": "Sample User"
+      },
+      "name": "createUser-defect",
+      "operation": "createUser"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-final429",
+      "operation": "createUser"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-final503",
+      "operation": "createUser"
+    },
+    {
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "name": "createUser-transportFailure",
+      "operation": "createUser"
+    },
+    {
+      "attempts": 3,
+      "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "email": [
+              "sample@example.com"
+            ],
+            "includeDeactivated": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "email": [
+              "sample@example.com"
+            ],
+            "includeDeactivated": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "name": "Sample User"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "dadffa9b-bb83-53d9-8f68-6088cf2e236c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createUser-uncertain",
+      "operation": "createUser"
+    },
+    {
+      "callId": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"8d49b010-cc6a-4f40-ace5-e86061c677ed\",\"name\":\"Sample User\",\"email\":\"sample@example.com\",\"accessRole\":\"interviewer\",\"deactivatedAt\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "externalDirectoryId": "HR-123",
+            "jobTitle": "Recruiter",
+            "linkedContactIds": [
+              "38f608d5-9a60-4960-83c1-99d18f40c428"
+            ],
+            "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accessRole": "interviewer",
+          "active": true,
+          "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "externalDirectoryId": "HR-123",
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed",
+        "jobTitle": "Recruiter",
+        "linkedContactIds": [
+          "38f608d5-9a60-4960-83c1-99d18f40c428"
+        ],
+        "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+        "name": "Sample User"
+      },
+      "name": "updateUser-updated",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "externalDirectoryId": "HR-123",
+            "jobTitle": "Recruiter",
+            "linkedContactIds": [
+              "38f608d5-9a60-4960-83c1-99d18f40c428"
+            ],
+            "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "externalDirectoryId": "HR-123",
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed",
+        "jobTitle": "Recruiter",
+        "linkedContactIds": [
+          "38f608d5-9a60-4960-83c1-99d18f40c428"
+        ],
+        "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+        "name": "Sample User"
+      },
+      "name": "updateUser-notFound",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "externalDirectoryId": "HR-123",
+            "jobTitle": "Recruiter",
+            "linkedContactIds": [
+              "38f608d5-9a60-4960-83c1-99d18f40c428"
+            ],
+            "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "externalDirectoryId": "HR-123",
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed",
+        "jobTitle": "Recruiter",
+        "linkedContactIds": [
+          "38f608d5-9a60-4960-83c1-99d18f40c428"
+        ],
+        "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+        "name": "Sample User"
+      },
+      "name": "updateUser-providerRejected",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "externalDirectoryId": "HR-123",
+        "id": "bad",
+        "jobTitle": "Recruiter",
+        "linkedContactIds": [
+          "38f608d5-9a60-4960-83c1-99d18f40c428"
+        ],
+        "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+        "name": "Sample User"
+      },
+      "name": "updateUser-defect",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "externalDirectoryId": "HR-123",
+            "jobTitle": "Recruiter",
+            "linkedContactIds": [
+              "38f608d5-9a60-4960-83c1-99d18f40c428"
+            ],
+            "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "externalDirectoryId": "HR-123",
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed",
+        "jobTitle": "Recruiter",
+        "linkedContactIds": [
+          "38f608d5-9a60-4960-83c1-99d18f40c428"
+        ],
+        "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+        "name": "Sample User"
+      },
+      "name": "updateUser-final429",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "externalDirectoryId": "HR-123",
+            "jobTitle": "Recruiter",
+            "linkedContactIds": [
+              "38f608d5-9a60-4960-83c1-99d18f40c428"
+            ],
+            "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "externalDirectoryId": "HR-123",
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed",
+        "jobTitle": "Recruiter",
+        "linkedContactIds": [
+          "38f608d5-9a60-4960-83c1-99d18f40c428"
+        ],
+        "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+        "name": "Sample User"
+      },
+      "name": "updateUser-final503",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed",
+          "requestBody": {
+            "accessRole": "interviewer",
+            "email": "sample@example.com",
+            "externalDirectoryId": "HR-123",
+            "jobTitle": "Recruiter",
+            "linkedContactIds": [
+              "38f608d5-9a60-4960-83c1-99d18f40c428"
+            ],
+            "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+            "name": "Sample User"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e0ba522-d6b1-52dc-8b01-db91f2838bf3",
+      "input": {
+        "accessRole": "interviewer",
+        "email": "sample@example.com",
+        "externalDirectoryId": "HR-123",
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed",
+        "jobTitle": "Recruiter",
+        "linkedContactIds": [
+          "38f608d5-9a60-4960-83c1-99d18f40c428"
+        ],
+        "managerId": "1da88e6b-c49f-4945-a9fc-c1ce2d36c031",
+        "name": "Sample User"
+      },
+      "name": "updateUser-transportFailure",
+      "operation": "updateUser"
+    },
+    {
+      "callId": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"8d49b010-cc6a-4f40-ace5-e86061c677ed\",\"name\":\"Sample User\",\"email\":\"sample@example.com\",\"accessRole\":\"interviewer\",\"deactivatedAt\":1794906000000}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/deactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accessRole": "interviewer",
+          "active": false,
+          "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "deactivateUser-updated",
+      "operation": "deactivateUser"
+    },
+    {
+      "callId": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/deactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "deactivateUser-notFound",
+      "operation": "deactivateUser"
+    },
+    {
+      "callId": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/deactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "deactivateUser-providerRejected",
+      "operation": "deactivateUser"
+    },
+    {
+      "callId": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "input": {
+        "id": "bad"
+      },
+      "name": "deactivateUser-defect",
+      "operation": "deactivateUser"
+    },
+    {
+      "callId": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/deactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "deactivateUser-final429",
+      "operation": "deactivateUser"
+    },
+    {
+      "callId": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/deactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "deactivateUser-final503",
+      "operation": "deactivateUser"
+    },
+    {
+      "callId": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/deactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4c639aa7-0681-5186-afe6-2bec57d84c47",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "deactivateUser-transportFailure",
+      "operation": "deactivateUser"
+    },
+    {
+      "callId": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"8d49b010-cc6a-4f40-ace5-e86061c677ed\",\"name\":\"Sample User\",\"email\":\"sample@example.com\",\"accessRole\":\"interviewer\",\"deactivatedAt\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/reactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accessRole": "interviewer",
+          "active": true,
+          "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "reactivateUser-updated",
+      "operation": "reactivateUser"
+    },
+    {
+      "callId": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/reactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "reactivateUser-notFound",
+      "operation": "reactivateUser"
+    },
+    {
+      "callId": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/reactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "reactivateUser-providerRejected",
+      "operation": "reactivateUser"
+    },
+    {
+      "callId": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accessRole": "",
+          "active": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "input": {
+        "id": "bad"
+      },
+      "name": "reactivateUser-defect",
+      "operation": "reactivateUser"
+    },
+    {
+      "callId": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/reactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "reactivateUser-final429",
+      "operation": "reactivateUser"
+    },
+    {
+      "callId": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/reactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "reactivateUser-final503",
+      "operation": "reactivateUser"
+    },
+    {
+      "callId": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/8d49b010-cc6a-4f40-ace5-e86061c677ed/reactivate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWxldmVyLWFwaS1rZXk6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "02f2d480-e479-58bf-afcb-4d68241a52c3",
+      "input": {
+        "id": "8d49b010-cc6a-4f40-ace5-e86061c677ed"
+      },
+      "name": "reactivateUser-transportFailure",
+      "operation": "reactivateUser"
     }
   ],
   "schemaVersion": 1
