@@ -10766,6 +10766,1581 @@
       },
       "name": "deleteAccount-transportFailure",
       "operation": "deleteAccount"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"accountContacts\":[{\"id\":\"17\",\"account\":\"2\",\"contact\":\"3\",\"jobTitle\":\"Manager\"}],\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts",
+          "query": {
+            "filters[account]": [
+              "2"
+            ],
+            "filters[contact]": [
+              "3"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "associations": [
+            {
+              "accountId": "2",
+              "contactId": "3",
+              "id": "17",
+              "jobTitle": "Manager"
+            }
+          ],
+          "limit": 3,
+          "offset": 2,
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "2",
+        "contactId": "3",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccountContacts-success",
+      "operation": "listAccountContacts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts",
+          "query": {
+            "filters[account]": [
+              "2"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "associations": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "2",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccountContacts-providerRejected",
+      "operation": "listAccountContacts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"accountContacts\":{},\"meta\":{\"total\":\"1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts",
+          "query": {
+            "filters[account]": [
+              "2"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "associations": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "2",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccountContacts-invalidResponse",
+      "operation": "listAccountContacts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "associations": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "bad",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccountContacts-defect",
+      "operation": "listAccountContacts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts",
+          "query": {
+            "filters[account]": [
+              "2"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "2",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccountContacts-rateLimit",
+      "operation": "listAccountContacts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts",
+          "query": {
+            "filters[account]": [
+              "2"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "2",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccountContacts-serverUnavailable",
+      "operation": "listAccountContacts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts",
+          "query": {
+            "filters[account]": [
+              "2"
+            ],
+            "limit": [
+              "3"
+            ],
+            "offset": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "2",
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccountContacts-transportFailure",
+      "operation": "listAccountContacts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"accountContact\":{\"id\":\"17\",\"account\":\"2\",\"contact\":\"3\",\"jobTitle\":\"Manager\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "accountId": "2",
+          "contactId": "3",
+          "id": "17",
+          "jobTitle": "Manager"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "associationId": "17"
+      },
+      "name": "getAccountContact-success",
+      "operation": "getAccountContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "associationId": "17"
+      },
+      "name": "getAccountContact-providerRejected",
+      "operation": "getAccountContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "associationId": "17"
+      },
+      "name": "getAccountContact-invalidResponse",
+      "operation": "getAccountContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "associationId": "17"
+      },
+      "name": "getAccountContact-notFound",
+      "operation": "getAccountContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "associationId": "bad"
+      },
+      "name": "getAccountContact-defect",
+      "operation": "getAccountContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "associationId": "17"
+      },
+      "name": "getAccountContact-rateLimit",
+      "operation": "getAccountContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "associationId": "17"
+      },
+      "name": "getAccountContact-serverUnavailable",
+      "operation": "getAccountContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "associationId": "17"
+      },
+      "name": "getAccountContact-transportFailure",
+      "operation": "getAccountContact"
+    },
+    {
+      "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "exchanges": [
+        {
+          "body": "{\"accountContact\":{\"id\":\"17\",\"account\":\"2\",\"contact\":\"3\",\"jobTitle\":\"Manager\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accountContacts",
+          "requestBody": {
+            "accountContact": {
+              "account": "2",
+              "contact": "3",
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+          "providerId": "17",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accountId": "2",
+          "contactId": "3",
+          "id": "17",
+          "jobTitle": "Manager"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "input": {
+        "accountId": "2",
+        "contactId": "3",
+        "jobTitle": "Manager"
+      },
+      "name": "createAccountContact-success",
+      "operation": "createAccountContact"
+    },
+    {
+      "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accountContacts",
+          "requestBody": {
+            "accountContact": {
+              "account": "2",
+              "contact": "3",
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "input": {
+        "accountId": "2",
+        "contactId": "3",
+        "jobTitle": "Manager"
+      },
+      "name": "createAccountContact-providerRejected",
+      "operation": "createAccountContact"
+    },
+    {
+      "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accountContacts",
+          "requestBody": {
+            "accountContact": {
+              "account": "2",
+              "contact": "3",
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "input": {
+        "accountId": "2",
+        "contactId": "3",
+        "jobTitle": "Manager"
+      },
+      "name": "createAccountContact-uncertain",
+      "operation": "createAccountContact"
+    },
+    {
+      "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "input": {
+        "accountId": "bad",
+        "contactId": "3",
+        "jobTitle": "Manager"
+      },
+      "name": "createAccountContact-defect",
+      "operation": "createAccountContact"
+    },
+    {
+      "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accountContacts",
+          "requestBody": {
+            "accountContact": {
+              "account": "2",
+              "contact": "3",
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "input": {
+        "accountId": "2",
+        "contactId": "3",
+        "jobTitle": "Manager"
+      },
+      "name": "createAccountContact-rateLimit",
+      "operation": "createAccountContact"
+    },
+    {
+      "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accountContacts",
+          "requestBody": {
+            "accountContact": {
+              "account": "2",
+              "contact": "3",
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "input": {
+        "accountId": "2",
+        "contactId": "3",
+        "jobTitle": "Manager"
+      },
+      "name": "createAccountContact-serverUnavailable",
+      "operation": "createAccountContact"
+    },
+    {
+      "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accountContacts",
+          "requestBody": {
+            "accountContact": {
+              "account": "2",
+              "contact": "3",
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e2816f78-7bd6-581a-bd5c-adefe5c72546",
+      "input": {
+        "accountId": "2",
+        "contactId": "3",
+        "jobTitle": "Manager"
+      },
+      "name": "createAccountContact-transportFailure",
+      "operation": "createAccountContact"
+    },
+    {
+      "callId": "ebfecd83-89aa-570a-9740-15512735b193",
+      "exchanges": [
+        {
+          "body": "{\"accountContact\":{\"id\":\"17\",\"account\":\"2\",\"contact\":\"3\",\"jobTitle\":\"Manager\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/accountContacts/17",
+          "requestBody": {
+            "accountContact": {
+              "account": "2",
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "accountId": "2",
+          "contactId": "3",
+          "id": "17",
+          "jobTitle": "Manager"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebfecd83-89aa-570a-9740-15512735b193",
+      "input": {
+        "accountId": "2",
+        "associationId": "17",
+        "jobTitle": "Manager"
+      },
+      "name": "updateAccountContact-success",
+      "operation": "updateAccountContact"
+    },
+    {
+      "callId": "ebfecd83-89aa-570a-9740-15512735b193",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/accountContacts/17",
+          "requestBody": {
+            "accountContact": {
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebfecd83-89aa-570a-9740-15512735b193",
+      "input": {
+        "associationId": "17",
+        "jobTitle": "Manager"
+      },
+      "name": "updateAccountContact-providerRejected",
+      "operation": "updateAccountContact"
+    },
+    {
+      "callId": "ebfecd83-89aa-570a-9740-15512735b193",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/accountContacts/17",
+          "requestBody": {
+            "accountContact": {
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebfecd83-89aa-570a-9740-15512735b193",
+      "input": {
+        "associationId": "17",
+        "jobTitle": "Manager"
+      },
+      "name": "updateAccountContact-invalidResponse",
+      "operation": "updateAccountContact"
+    },
+    {
+      "callId": "ebfecd83-89aa-570a-9740-15512735b193",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/accountContacts/17",
+          "requestBody": {
+            "accountContact": {
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebfecd83-89aa-570a-9740-15512735b193",
+      "input": {
+        "associationId": "17",
+        "jobTitle": "Manager"
+      },
+      "name": "updateAccountContact-notFound",
+      "operation": "updateAccountContact"
+    },
+    {
+      "callId": "ebfecd83-89aa-570a-9740-15512735b193",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountId": "",
+          "contactId": "",
+          "id": "",
+          "jobTitle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebfecd83-89aa-570a-9740-15512735b193",
+      "input": {
+        "associationId": "bad",
+        "jobTitle": "Manager"
+      },
+      "name": "updateAccountContact-defect",
+      "operation": "updateAccountContact"
+    },
+    {
+      "callId": "ebfecd83-89aa-570a-9740-15512735b193",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/accountContacts/17",
+          "requestBody": {
+            "accountContact": {
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebfecd83-89aa-570a-9740-15512735b193",
+      "input": {
+        "associationId": "17",
+        "jobTitle": "Manager"
+      },
+      "name": "updateAccountContact-rateLimit",
+      "operation": "updateAccountContact"
+    },
+    {
+      "callId": "ebfecd83-89aa-570a-9740-15512735b193",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/accountContacts/17",
+          "requestBody": {
+            "accountContact": {
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebfecd83-89aa-570a-9740-15512735b193",
+      "input": {
+        "associationId": "17",
+        "jobTitle": "Manager"
+      },
+      "name": "updateAccountContact-serverUnavailable",
+      "operation": "updateAccountContact"
+    },
+    {
+      "callId": "ebfecd83-89aa-570a-9740-15512735b193",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/accountContacts/17",
+          "requestBody": {
+            "accountContact": {
+              "jobTitle": "Manager"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebfecd83-89aa-570a-9740-15512735b193",
+      "input": {
+        "associationId": "17",
+        "jobTitle": "Manager"
+      },
+      "name": "updateAccountContact-transportFailure",
+      "operation": "updateAccountContact"
+    },
+    {
+      "callId": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "associationId": "17",
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "input": {
+        "associationId": "17"
+      },
+      "name": "deleteAccountContact-success",
+      "operation": "deleteAccountContact"
+    },
+    {
+      "callId": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "associationId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "input": {
+        "associationId": "17"
+      },
+      "name": "deleteAccountContact-providerRejected",
+      "operation": "deleteAccountContact"
+    },
+    {
+      "callId": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "exchanges": [
+        {
+          "body": "bad",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "associationId": "",
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "input": {
+        "associationId": "17"
+      },
+      "name": "deleteAccountContact-invalidResponse",
+      "operation": "deleteAccountContact"
+    },
+    {
+      "callId": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "associationId": "",
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "input": {
+        "associationId": "bad"
+      },
+      "name": "deleteAccountContact-defect",
+      "operation": "deleteAccountContact"
+    },
+    {
+      "callId": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "input": {
+        "associationId": "17"
+      },
+      "name": "deleteAccountContact-rateLimit",
+      "operation": "deleteAccountContact"
+    },
+    {
+      "callId": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "input": {
+        "associationId": "17"
+      },
+      "name": "deleteAccountContact-serverUnavailable",
+      "operation": "deleteAccountContact"
+    },
+    {
+      "callId": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/accountContacts/17",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Token": [
+              "test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "18735eb1-03c6-54cb-8329-3fd779cc36f7",
+      "input": {
+        "associationId": "17"
+      },
+      "name": "deleteAccountContact-transportFailure",
+      "operation": "deleteAccountContact"
     }
   ],
   "schemaVersion": 1

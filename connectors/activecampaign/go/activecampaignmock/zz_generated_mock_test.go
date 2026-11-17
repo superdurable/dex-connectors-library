@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listAccountContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactsPage](`{"associations":[{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}],"offset":0,"limit":20,"total":1}`)
+			return err
+		}},
+		{name: "getAccountContact/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactAssociation](`{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}`)
+			return err
+		}},
+		{name: "createAccountContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactAssociation](`{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}`)
+			return err
+		}},
+		{name: "updateAccountContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactAssociation](`{"id":"17","accountId":"2","contactId":"3","jobTitle":"Manager"}`)
+			return err
+		}},
+		{name: "deleteAccountContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[activecampaign.AccountContactDeletion](`{"associationId":"17","deleted":true}`)
+			return err
+		}},
 		{name: "listAccounts/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[activecampaign.AccountsPage](`{"accounts":[{"id":"1","name":"Example Account","accountUrl":"https://example.com"}],"offset":0,"limit":20,"total":1}`)
 			return err
@@ -150,6 +170,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListAccountContacts().Definition().Operation.OperationID != "listAccountContacts" {
+		t.Errorf("listAccountContacts mock has another definition")
+	}
+	if mock.GetAccountContact().Definition().Operation.OperationID != "getAccountContact" {
+		t.Errorf("getAccountContact mock has another definition")
+	}
+	if mock.CreateAccountContact().Definition().Operation.OperationID != "createAccountContact" {
+		t.Errorf("createAccountContact mock has another definition")
+	}
+	if mock.UpdateAccountContact().Definition().Operation.OperationID != "updateAccountContact" {
+		t.Errorf("updateAccountContact mock has another definition")
+	}
+	if mock.DeleteAccountContact().Definition().Operation.OperationID != "deleteAccountContact" {
+		t.Errorf("deleteAccountContact mock has another definition")
+	}
 	if mock.ListAccounts().Definition().Operation.OperationID != "listAccounts" {
 		t.Errorf("listAccounts mock has another definition")
 	}

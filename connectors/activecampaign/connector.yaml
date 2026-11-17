@@ -55,6 +55,108 @@ spec:
         - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
         - Ensure this API user can view and edit the intended contacts and lists; list subscriptions need contact edit permission and resubscribing an unsubscribed contact needs resubscribe permission. Existing contact-tag assignment needs contact edit permission, tag-definition writes need tag management permission, deal operations need Deals and pipeline management permission, and CRM account writes need account management permission. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: listAccountContacts
+      goName: ListAccountContacts
+      inputType: ListAccountContactsInput
+      outputType: AccountContactsPage
+      kind: query
+      description: List one page of account-contact links.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample account-contact link result.
+          output: {associations: [{id: '17', accountId: '2', contactId: '3', jobTitle: Manager}], offset: 0, limit: 20, total: 1}
+    - name: getAccountContact
+      goName: GetAccountContact
+      inputType: GetAccountContactInput
+      outputType: AccountContactAssociation
+      kind: query
+      description: Read one account-contact link.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: notFound, goName: NotFound, description: No link exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample account-contact link result.
+          output: {id: '17', accountId: '2', contactId: '3', jobTitle: Manager}
+    - name: createAccountContact
+      goName: CreateAccountContact
+      inputType: CreateAccountContactInput
+      outputType: AccountContactAssociation
+      kind: mutation
+      description: Link one contact to one CRM account with bounded sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: uncertain, goName: Uncertain, description: Bounded link creation could not be confirmed., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample account-contact link result.
+          output: {id: '17', accountId: '2', contactId: '3', jobTitle: Manager}
+    - name: updateAccountContact
+      goName: UpdateAccountContact
+      inputType: UpdateAccountContactInput
+      outputType: AccountContactAssociation
+      kind: mutation
+      description: Replace a link's job title or move it to another account.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: notFound, goName: NotFound, description: No link exists at the selected ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: Sample account-contact link result.
+          output: {id: '17', accountId: '2', contactId: '3', jobTitle: Manager}
+    - name: deleteAccountContact
+      goName: DeleteAccountContact
+      inputType: DeleteAccountContactInput
+      outputType: AccountContactDeletion
+      kind: mutation
+      description: Remove a contact-account link while retaining both records.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: ActiveCampaign completed the contact-account link operation.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample account-contact link result.
+          output: {associationId: '17', deleted: true}
     - name: listAccounts
       goName: ListAccounts
       inputType: ListAccountsInput
