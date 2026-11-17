@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createLead/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Lead](`{"id":"lead_meridian1","name":"Meridian Labs"}`)
+			return err
+		}},
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+			return err
+		}},
 		{name: "listLeads/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.LeadPage](`{"leads":[{"id":"lead_meridian1","name":"Meridian Labs"}],"hasMore":false}`)
 			return err
@@ -58,6 +66,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
+		t.Errorf("createLead mock has another definition")
+	}
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
 	if mock.ListLeads().Definition().Operation.OperationID != "listLeads" {
 		t.Errorf("listLeads mock has another definition")
 	}

@@ -2419,6 +2419,919 @@
       },
       "name": "getLead-not-found",
       "operation": "getLead"
+    },
+    {
+      "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"lead_meridian1\",\"name\":\"Meridian Labs\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+          "providerId": "lead_meridian1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "lead_meridian1",
+          "name": "Meridian Labs"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "input": {
+        "description": "Research account",
+        "name": "Meridian Labs"
+      },
+      "name": "createLead-created",
+      "operation": "createLead"
+    },
+    {
+      "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "input": {
+        "description": "Research account",
+        "name": "Meridian Labs"
+      },
+      "name": "createLead-providerRejected",
+      "operation": "createLead"
+    },
+    {
+      "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "input": {
+        "description": "Research account",
+        "name": ""
+      },
+      "name": "createLead-defect",
+      "operation": "createLead"
+    },
+    {
+      "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "input": {
+        "description": "Research account",
+        "name": "Meridian Labs"
+      },
+      "name": "createLead-rateLimit",
+      "operation": "createLead"
+    },
+    {
+      "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "input": {
+        "description": "Research account",
+        "name": "Meridian Labs"
+      },
+      "name": "createLead-serverUnavailable",
+      "operation": "createLead"
+    },
+    {
+      "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "input": {
+        "description": "Research account",
+        "name": "Meridian Labs"
+      },
+      "name": "createLead-serverError",
+      "operation": "createLead"
+    },
+    {
+      "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "input": {
+        "description": "Research account",
+        "name": "Meridian Labs"
+      },
+      "name": "createLead-transportFailure",
+      "operation": "createLead"
+    },
+    {
+      "attempts": 3,
+      "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/lead/",
+          "requestBody": {
+            "description": "Research account",
+            "name": "Meridian Labs"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+      "input": {
+        "description": "Research account",
+        "name": "Meridian Labs"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "c0d5dedc-2354-50e0-be16-6b4173faaa07",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createLead-uncertain",
+      "operation": "createLead"
+    },
+    {
+      "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cont_meridian1\",\"name\":\"Ada\",\"lead_id\":\"lead_meridian1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+          "providerId": "cont_meridian1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "cont_meridian1",
+          "leadId": "lead_meridian1",
+          "name": "Ada"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "input": {
+        "leadId": "lead_meridian1",
+        "name": "Ada",
+        "title": "CTO"
+      },
+      "name": "createContact-created",
+      "operation": "createContact"
+    },
+    {
+      "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "input": {
+        "leadId": "lead_meridian1",
+        "name": "Ada",
+        "title": "CTO"
+      },
+      "name": "createContact-providerRejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "input": {
+        "leadId": "",
+        "name": "Ada",
+        "title": "CTO"
+      },
+      "name": "createContact-defect",
+      "operation": "createContact"
+    },
+    {
+      "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "input": {
+        "leadId": "lead_meridian1",
+        "name": "Ada",
+        "title": "CTO"
+      },
+      "name": "createContact-rateLimit",
+      "operation": "createContact"
+    },
+    {
+      "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "input": {
+        "leadId": "lead_meridian1",
+        "name": "Ada",
+        "title": "CTO"
+      },
+      "name": "createContact-serverUnavailable",
+      "operation": "createContact"
+    },
+    {
+      "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "input": {
+        "leadId": "lead_meridian1",
+        "name": "Ada",
+        "title": "CTO"
+      },
+      "name": "createContact-serverError",
+      "operation": "createContact"
+    },
+    {
+      "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "input": {
+        "leadId": "lead_meridian1",
+        "name": "Ada",
+        "title": "CTO"
+      },
+      "name": "createContact-transportFailure",
+      "operation": "createContact"
+    },
+    {
+      "attempts": 3,
+      "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/contact/",
+          "requestBody": {
+            "lead_id": "lead_meridian1",
+            "name": "Ada",
+            "title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "leadId": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+      "input": {
+        "leadId": "lead_meridian1",
+        "name": "Ada",
+        "title": "CTO"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "ffea0b6c-5733-5e9a-a8cd-8bfe1dea4b86",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createContact-uncertain",
+      "operation": "createContact"
     }
   ],
   "schemaVersion": 1

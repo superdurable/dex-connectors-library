@@ -4,6 +4,7 @@
 package close
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -20,7 +21,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		connection: {APIKey: sdkgo.NewSecretString(testAPIKey)},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	createContext := &closeCreateConformanceContext{attempt: 1}
+	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { createContext.heartbeat = value })
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { createContext.attempt = prior + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
+		"createLead":    newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateLead(), connection, scenario.CallID),
+		"createContact": newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateContact(), connection, scenario.CallID),
 		"listLeads":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListLeads(), connection),
 		"getLead":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), connection),
 		"updateLead":    newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateLead(), connection, scenario.CallID),
@@ -30,4 +35,28 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"updateContact": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateContact(), connection, scenario.CallID),
 		"deleteContact": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteContact(), connection, scenario.CallID),
 	}}
+}
+
+type closeCreateConformanceContext struct {
+	queryContext
+	attempt   int32
+	heartbeat json.RawMessage
+}
+
+func (context *closeCreateConformanceContext) Attempt() int32 { return context.attempt }
+
+func (context *closeCreateConformanceContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.heartbeat = encoded
+	return nil
+}
+
+func (context *closeCreateConformanceContext) GetLastHeartbeatValue(target any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, target)
 }

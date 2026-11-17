@@ -18,6 +18,8 @@ import (
 // Mock is a scripted close connection. Script each operation through its accessor.
 type Mock struct {
 	connection    close.Connection
+	createLead    *connectormock.Mutation[close.CreateLeadInput, close.Lead]
+	createContact *connectormock.Mutation[close.CreateContactInput, close.Contact]
 	listLeads     *connectormock.Query[close.ListLeadsInput, close.LeadPage]
 	updateLead    *connectormock.Mutation[close.UpdateLeadInput, close.Lead]
 	deleteLead    *connectormock.Mutation[close.DeleteLeadInput, close.DeletedLead]
@@ -33,6 +35,8 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createLead:    connectormock.NewMutation[close.CreateLeadInput, close.Lead](t, close.CreateLeadDefinition),
+		createContact: connectormock.NewMutation[close.CreateContactInput, close.Contact](t, close.CreateContactDefinition),
 		listLeads:     connectormock.NewQuery[close.ListLeadsInput, close.LeadPage](t, close.ListLeadsDefinition),
 		updateLead:    connectormock.NewMutation[close.UpdateLeadInput, close.Lead](t, close.UpdateLeadDefinition),
 		deleteLead:    connectormock.NewMutation[close.DeleteLeadInput, close.DeletedLead](t, close.DeleteLeadDefinition),
@@ -42,6 +46,8 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteContact: connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
 		getLead:       connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
 	}
+	mock.createLead.Default(CreateLeadDefault())
+	mock.createContact.Default(CreateContactDefault())
 	mock.listLeads.Default(ListLeadsDefault())
 	mock.updateLead.Default(UpdateLeadDefault())
 	mock.deleteLead.Default(DeleteLeadDefault())
@@ -60,6 +66,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() close.Connection { return mock.connection }
+
+// CreateLead returns the createLead script.
+func (mock *Mock) CreateLead() *connectormock.Mutation[close.CreateLeadInput, close.Lead] {
+	return mock.createLead
+}
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[close.CreateContactInput, close.Contact] {
+	return mock.createContact
+}
 
 // ListLeads returns the listLeads script.
 func (mock *Mock) ListLeads() *connectormock.Query[close.ListLeadsInput, close.LeadPage] {
@@ -101,6 +117,12 @@ func (mock *Mock) GetLead() *connectormock.Query[close.GetLeadInput, close.Lead]
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateLead() sdkgo.Mutation[close.CreateLeadInput, close.Lead] {
+	return operations.mock.createLead
+}
+func (operations mockOperations) CreateContact() sdkgo.Mutation[close.CreateContactInput, close.Contact] {
+	return operations.mock.createContact
+}
 func (operations mockOperations) ListLeads() sdkgo.Query[close.ListLeadsInput, close.LeadPage] {
 	return operations.mock.listLeads
 }
@@ -125,6 +147,74 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[close.DeleteCont
 func (operations mockOperations) GetLead() sdkgo.Query[close.GetLeadInput, close.Lead] {
 	return operations.mock.getLead
 }
+
+// CreateLeadCreated selects the created branch: Close returned the created lead.
+func CreateLeadCreated(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Branch(close.CreateLeadBranchCreated, value, failure)
+}
+
+// CreateLeadProviderRejected selects the providerRejected branch: Close conclusively rejected the creation.
+func CreateLeadProviderRejected(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Branch(close.CreateLeadBranchProviderRejected, value, failure)
+}
+
+// CreateLeadUncertain returns an uncertain createLead outcome.
+func CreateLeadUncertain(value close.Lead, failure sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateLeadDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateLeadDefect(value close.Lead, failure *sdkgo.Failure) connectormock.Case[close.Lead] {
+	return connectormock.Branch(close.CreateLeadBranchDefect, value, failure)
+}
+
+// CreateLeadRetry asks Dex to retry the createLead Step, after the delay when it is positive.
+func CreateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Lead] {
+	return connectormock.Retry[close.Lead](failure, after)
+}
+
+// CreateLeadCreatedDefault is the manifest mock createdDefault: Meridian Labs was created.
+func CreateLeadCreatedDefault() connectormock.Case[close.Lead] {
+	value := connectormock.MustDecodeOutput[close.Lead](`{"id":"lead_meridian1","name":"Meridian Labs"}`)
+	return connectormock.Branch(close.CreateLeadBranchCreated, value, nil)
+}
+
+// CreateLeadDefault is the manifest default, createdDefault, which New installs.
+func CreateLeadDefault() connectormock.Case[close.Lead] { return CreateLeadCreatedDefault() }
+
+// CreateContactCreated selects the created branch: Close returned the created contact.
+func CreateContactCreated(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Close conclusively rejected the creation.
+func CreateContactProviderRejected(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value close.Contact, failure sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateContactDefect(value close.Contact, failure *sdkgo.Failure) connectormock.Case[close.Contact] {
+	return connectormock.Branch(close.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Contact] {
+	return connectormock.Retry[close.Contact](failure, after)
+}
+
+// CreateContactCreatedDefault is the manifest mock createdDefault: Ada was added to Meridian Labs.
+func CreateContactCreatedDefault() connectormock.Case[close.Contact] {
+	value := connectormock.MustDecodeOutput[close.Contact](`{"id":"cont_meridian1","name":"Ada","leadId":"lead_meridian1"}`)
+	return connectormock.Branch(close.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createdDefault, which New installs.
+func CreateContactDefault() connectormock.Case[close.Contact] { return CreateContactCreatedDefault() }
 
 // ListLeadsListed selects the listed branch: Close returned the requested data.
 func ListLeadsListed(value close.LeadPage, failure *sdkgo.Failure) connectormock.Case[close.LeadPage] {

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: close
   displayName: Close
-  description: Read and maintain Close leads with a connection-owned API key.
+  description: Create, read, and maintain Close leads and contacts with a connection-owned API key.
   company: Close
   categories: [crm-sales]
   version: v0.3.0
@@ -56,6 +56,46 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "To revoke access, delete the token on the same provider page."
   operations:
+    - name: createLead
+      goName: CreateLead
+      inputType: CreateLeadInput
+      outputType: Lead
+      kind: mutation
+      description: Create a lead with a name and optional description.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created lead.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The lead may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Meridian Labs was created.
+          output: {id: lead_meridian1, name: Meridian Labs}
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: Contact
+      kind: mutation
+      description: Create a contact under an existing lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The contact may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Ada was added to Meridian Labs.
+          output: {id: cont_meridian1, name: Ada, leadId: lead_meridian1}
     - name: listLeads
       goName: ListLeads
       inputType: ListLeadsInput

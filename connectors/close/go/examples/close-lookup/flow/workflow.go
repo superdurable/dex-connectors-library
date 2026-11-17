@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package closelookup demonstrates Close lead and contact reads in a Dex Flow.
+// Package closelookup demonstrates Close reads and contact creation in a Dex Flow.
 package closelookup
 
 import (
@@ -18,6 +18,7 @@ const ConnectionName = "close"
 const firstStepType = "ReadCloseFirst"
 const secondStepType = "ReadCloseSecond"
 const contactsStepType = "ReadCloseContacts"
+const createContactStepType = "CreateCloseContact"
 
 var selectedLeadAttribute = dex.DefineAttribute[close.Lead]("close-selected-lead")
 
@@ -75,6 +76,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(afterFirst{}),
 		dex.DefineStep(close.NewGetLeadStep(close.GetLeadStepConfig[close.GetLeadInput]{StepType: secondStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read the related Close resource."}, MapToOperationInput: MapToGetLeadInput, Found: sdkgo.GoTo(afterLead{})})),
 		dex.DefineStep(afterLead{}),
+		dex.DefineStep(close.NewCreateContactStep(close.CreateContactStepConfig[close.CreateContactInput]{StepType: createContactStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Create a sample contact on the selected lead."}, MapToOperationInput: func(input close.CreateContactInput) close.CreateContactInput { return input }, Created: sdkgo.GoTo(afterContactCreated{})})),
+		dex.DefineStep(afterContactCreated{}),
 		dex.DefineStep(close.NewListContactsStep(close.ListContactsStepConfig[close.ListContactsInput]{StepType: contactsStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read contacts belonging to the selected lead."}, MapToOperationInput: func(input close.ListContactsInput) close.ListContactsInput { return input }, Listed: sdkgo.GoTo(completeLookup{})})),
 		dex.DefineStep(completeLookup{}),
 	}
@@ -124,7 +127,17 @@ func (afterLead) Execute(ctx dex.Context, result close.GetLeadResult) (*dex.Step
 	if err := selectedLeadAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GoTo(sdkgo.StepRef[close.ListContactsInput](contactsStepType), close.ListContactsInput{LeadID: result.Value.ID, Limit: 10}), nil
+	return dex.GoTo(sdkgo.StepRef[close.CreateContactInput](createContactStepType), close.CreateContactInput{LeadID: result.Value.ID, Name: "Ada Example"}), nil
+}
+
+// dex:group group-id:close-lookup group-label:"Close lookup"
+// dex:explanation text:"Read the contact page after Close confirms creation."
+type afterContactCreated struct {
+	dex.StepDefaultsNoWaitFor[close.CreateContactResult]
+}
+
+func (afterContactCreated) Execute(_ dex.Context, result close.CreateContactResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[close.ListContactsInput](contactsStepType), close.ListContactsInput{LeadID: result.Value.LeadID, Limit: 10}), nil
 }
 
 // dex:group group-id:close-lookup group-label:"Close lookup"
