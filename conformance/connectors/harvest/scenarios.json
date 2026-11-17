@@ -657,6 +657,1788 @@
       },
       "name": "listTimeEntries-defect",
       "operation": "listTimeEntries"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"clients\":[{\"id\":2001,\"name\":\"Meridian\",\"is_active\":true,\"address\":\"123 Main\",\"currency\":\"USD\"}],\"links\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "clients": [
+            {
+              "address": "123 Main",
+              "currency": "USD",
+              "id": 2001,
+              "isActive": true,
+              "name": "Meridian"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listClients-success",
+      "operation": "listClients"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "clients": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listClients-rejected",
+      "operation": "listClients"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listClients-rate-limit",
+      "operation": "listClients"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listClients-server-error",
+      "operation": "listClients"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listClients-unavailable",
+      "operation": "listClients"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000006",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listClients-transport",
+      "operation": "listClients"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clients": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listClients-invalid",
+      "operation": "listClients"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"id\":2001,\"name\":\"Meridian\",\"is_active\":true,\"address\":\"123 Main\",\"currency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "address": "123 Main",
+          "currency": "USD",
+          "id": 2001,
+          "isActive": true,
+          "name": "Meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 2001
+      },
+      "name": "getClient-success",
+      "operation": "getClient"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 2001
+      },
+      "name": "getClient-rejected",
+      "operation": "getClient"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 2001
+      },
+      "name": "getClient-rate-limit",
+      "operation": "getClient"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 2001
+      },
+      "name": "getClient-server-error",
+      "operation": "getClient"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 2001
+      },
+      "name": "getClient-unavailable",
+      "operation": "getClient"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000013",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 2001
+      },
+      "name": "getClient-transport",
+      "operation": "getClient"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000014",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 2001
+      },
+      "name": "getClient-not-found",
+      "operation": "getClient"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": 2001
+      },
+      "name": "getClient-invalid",
+      "operation": "getClient"
+    },
+    {
+      "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "exchanges": [
+        {
+          "body": "{\"id\":2001,\"name\":\"Meridian\",\"is_active\":true,\"address\":\"123 Main\",\"currency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/clients",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+          "providerId": "2001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "address": "123 Main",
+          "currency": "USD",
+          "id": 2001,
+          "isActive": true,
+          "name": "Meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "createClient-success",
+      "operation": "createClient"
+    },
+    {
+      "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/clients",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "createClient-rejected",
+      "operation": "createClient"
+    },
+    {
+      "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/clients",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "createClient-rate-limit",
+      "operation": "createClient"
+    },
+    {
+      "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/clients",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "createClient-server-error",
+      "operation": "createClient"
+    },
+    {
+      "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/clients",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "createClient-unavailable",
+      "operation": "createClient"
+    },
+    {
+      "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/clients",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "createClient-transport",
+      "operation": "createClient"
+    },
+    {
+      "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "exchanges": [
+        {
+          "body": "{\"id\":2001,\"name\":\"Meridian\",\"is_active\":true,\"address\":\"123 Main\",\"currency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/clients/2001",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "address": "123 Main",
+          "currency": "USD",
+          "id": 2001,
+          "isActive": true,
+          "name": "Meridian"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "id": 2001,
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "updateClient-success",
+      "operation": "updateClient"
+    },
+    {
+      "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/clients/2001",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "id": 2001,
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "updateClient-rejected",
+      "operation": "updateClient"
+    },
+    {
+      "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/clients/2001",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "id": 2001,
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "updateClient-rate-limit",
+      "operation": "updateClient"
+    },
+    {
+      "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/clients/2001",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "id": 2001,
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "updateClient-server-error",
+      "operation": "updateClient"
+    },
+    {
+      "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/clients/2001",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "id": 2001,
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "updateClient-unavailable",
+      "operation": "updateClient"
+    },
+    {
+      "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/clients/2001",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "id": 2001,
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "updateClient-transport",
+      "operation": "updateClient"
+    },
+    {
+      "callId": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/clients/2001",
+          "requestBody": {
+            "address": "123 Main",
+            "currency": "USD",
+            "is_active": true,
+            "name": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4906ed61-e84d-5486-b6bb-1387198e38f5",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "id": 2001,
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "updateClient-not-found",
+      "operation": "updateClient"
+    },
+    {
+      "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": 2001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "input": {
+        "id": 2001
+      },
+      "name": "deleteClient-success",
+      "operation": "deleteClient"
+    },
+    {
+      "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "input": {
+        "id": 2001
+      },
+      "name": "deleteClient-rejected",
+      "operation": "deleteClient"
+    },
+    {
+      "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "input": {
+        "id": 2001
+      },
+      "name": "deleteClient-rate-limit",
+      "operation": "deleteClient"
+    },
+    {
+      "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "input": {
+        "id": 2001
+      },
+      "name": "deleteClient-server-error",
+      "operation": "deleteClient"
+    },
+    {
+      "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "input": {
+        "id": 2001
+      },
+      "name": "deleteClient-unavailable",
+      "operation": "deleteClient"
+    },
+    {
+      "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "input": {
+        "id": 2001
+      },
+      "name": "deleteClient-transport",
+      "operation": "deleteClient"
+    },
+    {
+      "callId": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/clients/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a910b36e-60c3-5ec9-b65d-4f86f166f940",
+      "input": {
+        "id": 2001
+      },
+      "name": "deleteClient-not-found",
+      "operation": "deleteClient"
+    },
+    {
+      "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": 0,
+          "isActive": false,
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+      "input": {
+        "address": "123 Main",
+        "currency": "USD",
+        "isActive": true,
+        "name": "Meridian"
+      },
+      "name": "createClient-send-cap-uncertain",
+      "operation": "createClient",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "4fba8a02-5a2d-5a56-89ae-a639d3108ff4",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

@@ -16,6 +16,23 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listClients/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ClientPage](`{"clients":[{"id":2001,"name":"Meridian","isActive":true}]}`)
+			return err
+		}},
+		{name: "getClient/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ClientRecord](`{"id":2001,"name":"Meridian","isActive":true}`)
+			return err
+		}},
+		{name: "createClient/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ClientRecord](`{"id":2001,"name":"Meridian","isActive":true}`)
+			return err
+		}},
+		{name: "updateClient/defaultAnswer/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[harvest.ClientRecord](`{"id":2001,"name":"Meridian","isActive":true}`)
+			return err
+		}},
+		{name: "deleteClient/defaultAnswer/1", decode: func() error { _, err := connectormock.DecodeOutput[harvest.DeletedClient](`{"id":2001}`); return err }},
 		{name: "listProjects/defaultAnswer/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[harvest.ProjectPage](`{"projects":[{"id":3001,"name":"Meridian Website","isActive":true}]}`)
 			return err
@@ -34,6 +51,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListClients().Definition().Operation.OperationID != "listClients" {
+		t.Errorf("listClients mock has another definition")
+	}
+	if mock.GetClient().Definition().Operation.OperationID != "getClient" {
+		t.Errorf("getClient mock has another definition")
+	}
+	if mock.CreateClient().Definition().Operation.OperationID != "createClient" {
+		t.Errorf("createClient mock has another definition")
+	}
+	if mock.UpdateClient().Definition().Operation.OperationID != "updateClient" {
+		t.Errorf("updateClient mock has another definition")
+	}
+	if mock.DeleteClient().Definition().Operation.OperationID != "deleteClient" {
+		t.Errorf("deleteClient mock has another definition")
+	}
 	if mock.ListProjects().Definition().Operation.OperationID != "listProjects" {
 		t.Errorf("listProjects mock has another definition")
 	}

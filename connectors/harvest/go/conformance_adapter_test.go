@@ -4,11 +4,13 @@
 package harvest
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 const conformanceEndpointPath = ""
@@ -19,8 +21,54 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	connection := sdkgo.ConnectionRef{Provider: "harvest", Name: "harvest"}
 	client, err := New(Config{BaseURL: endpoint, AccountID: "123"}, sdkgo.StaticCredentialProvider[Credentials]{connection: {APIKey: sdkgo.NewSecretString("test-secret-key")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	context := &harvestReplayContext{attempt: 1}
+	var priorAttempt int32
+	if len(scenario.PriorHeartbeat) > 0 {
+		var marker struct {
+			Attempt int32           `json:"attempt"`
+			Value   json.RawMessage `json:"value"`
+		}
+		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
+		if len(marker.Value) > 0 {
+			context.heartbeat = append(json.RawMessage(nil), marker.Value...)
+		} else {
+			context.heartbeat = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
+		}
+		priorAttempt = marker.Attempt
+	}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = int32(attempt) + priorAttempt }, actions: map[string]conformanceOperationInvocation{
+		"listClients":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListClients(), connection),
+		"getClient":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetClient(), connection),
+		"createClient":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateClient(), connection, scenario.CallID),
+		"updateClient":    newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateClient(), connection, scenario.CallID),
+		"deleteClient":    newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteClient(), connection, scenario.CallID),
 		"listProjects":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListProjects(), connection),
 		"listTimeEntries": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListTimeEntries(), connection),
 	}}
 }
+
+type harvestReplayContext struct {
+	queryContext
+	attempt   int32
+	heartbeat json.RawMessage
+}
+
+func (context *harvestReplayContext) Attempt() int32 { return context.attempt }
+
+func (context *harvestReplayContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.heartbeat = encoded
+	return nil
+}
+
+func (context *harvestReplayContext) GetLastHeartbeatValue(value any) (bool, error) {
+	if len(context.heartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.heartbeat, value)
+}
+
+var _ dex.Context = (*harvestReplayContext)(nil)

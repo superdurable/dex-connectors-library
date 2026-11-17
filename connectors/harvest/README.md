@@ -1,10 +1,10 @@
 # Harvest connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/harvest/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/harvest/go@v0.3.0` after this version is released.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/harvest`.
 
-`github.com/superdurable/dex-connectors-library/connectors/harvest/go` exposes read-only Dex Query Steps against Harvest's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
+`github.com/superdurable/dex-connectors-library/connectors/harvest/go` exposes Dex Query and Mutation Steps against Harvest's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
 
 ## Connection
 
@@ -21,8 +21,11 @@ The TypeScript package is [`@superdurable/connector-harvest`](typescript/README.
 | --- | --- |
 | `listProjects` | [Harvest listProjects](https://help.getharvest.com/api-v2/projects-api/projects/projects/) |
 | `listTimeEntries` | [Harvest listTimeEntries](https://help.getharvest.com/api-v2/timesheets-api/timesheets/time-entries/) |
+| `listClients`, `getClient`, `createClient`, `updateClient`, `deleteClient` | [Harvest Clients API](https://help.getharvest.com/api-v2/clients-api/clients/clients/) |
 
 Each operation returns a bounded, typed response. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse`. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
+
+`createClient` is a limited-repeat Mutation with at most three sends because Harvest does not support an idempotency key and client names are not unique enough for reliable read-back. If a possible create remains unconfirmed at the cap, it selects `uncertain`; inspect Harvest before another create. `updateClient` applies absolute fields and `deleteClient` is idempotent, so unknown responses Retry safely. Each requires the connection owner's Harvest permission to manage clients.
 
 ## Mocks
 
@@ -30,7 +33,7 @@ The generated `harvestmock` package includes one default Meridian answer per ope
 
 ## Example
 
-The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/harvest-lookup/README.md) registers a Worker and a Flow using the static `harvest` connection. It reads projects, time entries, and clients. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 ## Live verification
 

@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: harvest
   displayName: Harvest
-  description: Read Harvest records with a connection-owned API key.
+  description: Read and manage Harvest records with a connection-owned API key.
   company: Harvest
   categories: [productivity, project-management]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: harvest
   languages:
@@ -61,6 +61,107 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "Copy the decimal account ID shown with the personal token into accountId; this ID is not secret."
   operations:
+    - name: listClients
+      goName: ListClients
+      inputType: ListClientsInput
+      outputType: ClientPage
+      kind: query
+      description: List Harvest clients with cursor pagination.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Harvest returned the client page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          default: true
+          description: One Meridian client.
+          output: {clients: [{id: 2001, name: Meridian, isActive: true}]}
+    - name: getClient
+      goName: GetClient
+      inputType: GetClientInput
+      outputType: ClientRecord
+      kind: query
+      description: Retrieve one Harvest client by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Harvest returned the client.}
+        - {id: notFound, goName: NotFound, description: The client ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Harvest returned unusable JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          default: true
+          description: The Meridian client.
+          output: {id: 2001, name: Meridian, isActive: true}
+    - name: createClient
+      goName: CreateClient
+      inputType: CreateClientInput
+      outputType: ClientRecord
+      kind: mutation
+      description: Create a Harvest client; a lost response may need confirmation in Harvest before another send.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Harvest created the client.}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A submitted create could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: created
+          default: true
+          description: A Meridian client was created.
+          output: {id: 2001, name: Meridian, isActive: true}
+    - name: updateClient
+      goName: UpdateClient
+      inputType: UpdateClientInput
+      outputType: ClientRecord
+      kind: mutation
+      description: Set selected Harvest client fields with an idempotent PATCH.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Harvest updated the client.}
+        - {id: notFound, goName: NotFound, description: The client ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client update., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: updated
+          default: true
+          description: A Meridian client was updated.
+          output: {id: 2001, name: Meridian, isActive: true}
+    - name: deleteClient
+      goName: DeleteClient
+      inputType: DeleteClientInput
+      outputType: DeletedClient
+      kind: mutation
+      description: Delete a Harvest client without related projects, invoices, or estimates.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Harvest deleted the client.}
+        - {id: notFound, goName: NotFound, description: The client ID does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Harvest rejected the client deletion., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: defaultAnswer
+          branch: deleted
+          default: true
+          description: A Meridian client was deleted.
+          output: {id: 2001}
     - name: listProjects
       goName: ListProjects
       inputType: ListProjectsInput
