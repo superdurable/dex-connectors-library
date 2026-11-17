@@ -122,7 +122,10 @@ func (operation CreateAccountOperation) Invoke(call sdkgo.Call, input CreateAcco
 	if len(code) > 50 || len(code) < 34 {
 		return createAccountBranch(CreateAccountBranchDefect, sdkgo.FailureLocalDefect, "Recurly account code could not be derived")
 	}
-	payload, _ := json.Marshal(map[string]string{"code": code})
+	payload, err := json.Marshal(map[string]string{"code": code})
+	if err != nil {
+		return createAccountBranch(CreateAccountBranchDefect, sdkgo.FailureLocalDefect, "Recurly account payload could not be encoded")
+	}
 	response := operation.client.postAccount(call, "/accounts", payload)
 	if errors.Is(response.err, errCredential) {
 		return createAccountBranch(CreateAccountBranchDefect, sdkgo.FailureAuthentication, "Recurly credentials are unavailable")

@@ -66,7 +66,10 @@ func (operation CreateFeatureOperation) Invoke(call sdkgo.Call, input CreateFeat
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
 		return featureMutationBranch(CreateFeatureBranchDefect, "createFeature", sdkgo.FailureAuthentication, "Productboard credentials are unavailable", FeatureMetadata{})
 	}
-	payload, _ := json.Marshal(map[string]any{"data": map[string]any{"type": "feature", "fields": map[string]string{"name": input.Name}, "relationships": []any{map[string]any{"type": "parent", "target": map[string]string{"type": "component", "id": input.ParentComponentID}}}}})
+	payload, err := json.Marshal(map[string]any{"data": map[string]any{"type": "feature", "fields": map[string]string{"name": input.Name}, "relationships": []any{map[string]any{"type": "parent", "target": map[string]string{"type": "component", "id": input.ParentComponentID}}}}})
+	if err != nil {
+		return featureMutationBranch(CreateFeatureBranchDefect, "createFeature", sdkgo.FailureLocalDefect, "Productboard feature payload could not be encoded", FeatureMetadata{})
+	}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, operation.client.baseURL+"/entities", bytes.NewReader(payload))
 	if err != nil {
 		return featureMutationBranch(CreateFeatureBranchDefect, "createFeature", sdkgo.FailureLocalDefect, "Productboard request could not be built", FeatureMetadata{})
@@ -119,8 +122,15 @@ func (operation CreateFeatureOperation) Invoke(call sdkgo.Call, input CreateFeat
 }
 
 func decodeCreatedFeatureID(body []byte) (string, bool) {
-	var wire struct { Data struct { ID string `json:"id"`; Type string `json:"type"` } `json:"data"` }
-	if json.Unmarshal(body, &wire) != nil || !validFeatureID(wire.Data.ID) || wire.Data.Type != "feature" { return "", false }
+	var wire struct {
+		Data struct {
+			ID   string `json:"id"`
+			Type string `json:"type"`
+		} `json:"data"`
+	}
+	if json.Unmarshal(body, &wire) != nil || !validFeatureID(wire.Data.ID) || wire.Data.Type != "feature" {
+		return "", false
+	}
 	return wire.Data.ID, true
 }
 

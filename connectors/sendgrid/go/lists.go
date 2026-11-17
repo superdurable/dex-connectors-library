@@ -119,7 +119,10 @@ func (operation UpdateListOperation) Invoke(call sdkgo.Call, input UpdateListInp
 	if !isSafeIdentifier(input.ID) || strings.TrimSpace(input.Name) == "" || len(input.Name) > 100 {
 		return mutationBranch("updateList", branches.defect, MarketingList{}, sdkgo.FailureValidation, "list ID or name is invalid")
 	}
-	payload, _ := json.Marshal(map[string]string{"name": input.Name})
+	payload, err := json.Marshal(map[string]string{"name": input.Name})
+	if err != nil {
+		return mutationBranch("updateList", branches.defect, MarketingList{}, sdkgo.FailureLocalDefect, "list payload could not be encoded")
+	}
 	return invokeSafeMutation(call, operation.client, "updateList", branches, http.MethodPatch, "/v3/marketing/lists/"+url.PathEscape(input.ID), payload, http.StatusOK, decodeMarketingList)
 }
 

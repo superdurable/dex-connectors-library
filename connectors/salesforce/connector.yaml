@@ -872,6 +872,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         repeatOnUnknown: limited
         maxSends: 3
       mocks:

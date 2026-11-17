@@ -212,7 +212,10 @@ func (operation CreatePlanOperation) Invoke(call sdkgo.Call, input CreatePlanInp
 	if len(code) > 50 || len(code) < 34 {
 		return createPlanBranch(CreatePlanBranchDefect, sdkgo.FailureLocalDefect, "Recurly plan code could not be derived")
 	}
-	payload, _ := json.Marshal(map[string]any{"code": code, "name": input.Name, "pricing_model": "fixed", "currencies": []map[string]any{{"currency": input.CurrencyCode, "unit_amount": input.UnitAmount}}, "interval_unit": input.IntervalUnit, "interval_length": input.IntervalLength})
+	payload, err := json.Marshal(map[string]any{"code": code, "name": input.Name, "pricing_model": "fixed", "currencies": []map[string]any{{"currency": input.CurrencyCode, "unit_amount": input.UnitAmount}}, "interval_unit": input.IntervalUnit, "interval_length": input.IntervalLength})
+	if err != nil {
+		return createPlanBranch(CreatePlanBranchDefect, sdkgo.FailureLocalDefect, "Recurly plan payload could not be encoded")
+	}
 	response := operation.client.sendPlanRequest(call, http.MethodPost, "/plans", payload)
 	if errors.Is(response.err, errCredential) {
 		return createPlanBranch(CreatePlanBranchDefect, sdkgo.FailureAuthentication, "Recurly credentials are unavailable")
@@ -278,7 +281,10 @@ func (operation RenamePlanOperation) Invoke(call sdkgo.Call, input RenamePlanInp
 	if !validAccountID(input.PlanID) || len(input.Name) == 0 || len(input.Name) > 255 || strings.TrimSpace(input.Name) == "" {
 		return renamePlanBranch(RenamePlanBranchDefect, sdkgo.FailureValidation, "Recurly plan ID or name is invalid")
 	}
-	payload, _ := json.Marshal(map[string]string{"name": input.Name})
+	payload, err := json.Marshal(map[string]string{"name": input.Name})
+	if err != nil {
+		return renamePlanBranch(RenamePlanBranchDefect, sdkgo.FailureLocalDefect, "Recurly plan payload could not be encoded")
+	}
 	response := operation.client.sendPlanRequest(call, http.MethodPut, "/plans/"+url.PathEscape(input.PlanID), payload)
 	if errors.Is(response.err, errCredential) {
 		return renamePlanBranch(RenamePlanBranchDefect, sdkgo.FailureAuthentication, "Recurly credentials are unavailable")

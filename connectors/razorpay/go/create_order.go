@@ -63,7 +63,10 @@ func (operation CreateOrderOperation) Invoke(call sdkgo.Call, input CreateOrderI
 	if len(receipt) != 36 {
 		return orderBranch(CreateOrderBranchDefect, sdkgo.FailureLocalDefect, "Razorpay order receipt could not be derived")
 	}
-	payload, _ := json.Marshal(map[string]any{"amount": input.Amount, "currency": input.CurrencyCode, "receipt": receipt})
+	payload, err := json.Marshal(map[string]any{"amount": input.Amount, "currency": input.CurrencyCode, "receipt": receipt})
+	if err != nil {
+		return orderBranch(CreateOrderBranchDefect, sdkgo.FailureLocalDefect, "Razorpay order payload could not be encoded")
+	}
 	response := operation.client.postOrder(call, payload)
 	if errors.Is(response.err, errCredential) {
 		return orderBranch(CreateOrderBranchDefect, sdkgo.FailureAuthentication, "Razorpay credentials are unavailable")

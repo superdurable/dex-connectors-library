@@ -127,7 +127,10 @@ func (operation CapturePaymentOperation) Invoke(call sdkgo.Call, input CapturePa
 	if !validPaymentID(input.PaymentID) || input.Amount <= 0 || !validCurrencyCode(input.CurrencyCode) {
 		return captureBranch(CapturePaymentBranchDefect, sdkgo.FailureValidation, "Razorpay capture input is invalid")
 	}
-	payload, _ := json.Marshal(map[string]any{"amount": input.Amount, "currency": input.CurrencyCode})
+	payload, err := json.Marshal(map[string]any{"amount": input.Amount, "currency": input.CurrencyCode})
+	if err != nil {
+		return captureBranch(CapturePaymentBranchDefect, sdkgo.FailureLocalDefect, "Razorpay capture payload could not be encoded")
+	}
 	response := operation.client.postCapture(call, input.PaymentID, payload)
 	if errors.Is(response.err, errCredential) {
 		return captureBranch(CapturePaymentBranchDefect, sdkgo.FailureAuthentication, "Razorpay credentials are unavailable")

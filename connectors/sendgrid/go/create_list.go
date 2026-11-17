@@ -63,7 +63,10 @@ func (operation CreateListOperation) Invoke(call sdkgo.Call, input CreateListInp
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return uncertainList(call, "an earlier list create may have succeeded")
 	}
-	payload, _ := json.Marshal(map[string]string{"name": input.Name})
+	payload, err := json.Marshal(map[string]string{"name": input.Name})
+	if err != nil {
+		return mutationBranch("createList", CreateListBranchDefect, MarketingList{}, sdkgo.FailureLocalDefect, "list payload could not be encoded")
+	}
 	var body []byte
 	var status int
 	var retryAfterDuration time.Duration

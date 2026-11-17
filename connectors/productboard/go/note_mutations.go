@@ -71,7 +71,10 @@ func (operation RenameNoteOperation) Invoke(call sdkgo.Call, input RenameNoteInp
 	if !validFeatureID(input.NoteID) || !validFeatureName(input.Name) {
 		return featureMutationBranch(RenameNoteBranchDefect, "renameNote", sdkgo.FailureValidation, "note ID or name is invalid", RenamedNote{})
 	}
-	payload, _ := json.Marshal(map[string]any{"data": map[string]any{"fields": map[string]string{"name": input.Name}}})
+	payload, err := json.Marshal(map[string]any{"data": map[string]any{"fields": map[string]string{"name": input.Name}}})
+	if err != nil {
+		return featureMutationBranch(RenameNoteBranchDefect, "renameNote", sdkgo.FailureLocalDefect, "Productboard note payload could not be encoded", RenamedNote{})
+	}
 	response := operation.client.request(call, http.MethodPatch, "/notes/"+url.PathEscape(input.NoteID), payload)
 	if errors.Is(response.err, errCredential) {
 		return featureMutationBranch(RenameNoteBranchDefect, "renameNote", sdkgo.FailureAuthentication, "Productboard credentials are unavailable", RenamedNote{})
@@ -114,7 +117,10 @@ func (operation ArchiveNoteOperation) Invoke(call sdkgo.Call, input ArchiveNoteI
 	if !validFeatureID(input.NoteID) {
 		return featureMutationBranch(ArchiveNoteBranchDefect, "archiveNote", sdkgo.FailureValidation, "note ID must be a UUID", ArchivedNote{})
 	}
-	payload, _ := json.Marshal(map[string]any{"data": map[string]any{"fields": map[string]bool{"archived": true}}})
+	payload, err := json.Marshal(map[string]any{"data": map[string]any{"fields": map[string]bool{"archived": true}}})
+	if err != nil {
+		return featureMutationBranch(ArchiveNoteBranchDefect, "archiveNote", sdkgo.FailureLocalDefect, "Productboard note payload could not be encoded", ArchivedNote{})
+	}
 	response := operation.client.request(call, http.MethodPatch, "/notes/"+url.PathEscape(input.NoteID), payload)
 	if errors.Is(response.err, errCredential) {
 		return featureMutationBranch(ArchiveNoteBranchDefect, "archiveNote", sdkgo.FailureAuthentication, "Productboard credentials are unavailable", ArchivedNote{})

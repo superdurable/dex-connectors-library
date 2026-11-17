@@ -192,7 +192,10 @@ func (operation CreatePaymentLinkOperation) Invoke(call sdkgo.Call, input Create
 	if len(referenceID) != 36 {
 		return createPaymentLinkBranch(CreatePaymentLinkBranchDefect, sdkgo.FailureLocalDefect, "Razorpay link reference could not be derived")
 	}
-	payload, _ := json.Marshal(map[string]any{"amount": input.Amount, "currency": input.CurrencyCode, "reference_id": referenceID, "notify": map[string]bool{"sms": false, "email": false}})
+	payload, err := json.Marshal(map[string]any{"amount": input.Amount, "currency": input.CurrencyCode, "reference_id": referenceID, "notify": map[string]bool{"sms": false, "email": false}})
+	if err != nil {
+		return createPaymentLinkBranch(CreatePaymentLinkBranchDefect, sdkgo.FailureLocalDefect, "Razorpay payment link payload could not be encoded")
+	}
 	response := operation.client.postPaymentLink(call, "/payment_links", payload)
 	if errors.Is(response.err, errCredential) {
 		return createPaymentLinkBranch(CreatePaymentLinkBranchDefect, sdkgo.FailureAuthentication, "Razorpay credentials are unavailable")

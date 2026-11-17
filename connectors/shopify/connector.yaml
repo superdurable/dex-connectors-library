@@ -138,7 +138,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Shopify conclusively rejected the order., optional: true}
         - {id: uncertain, goName: Uncertain, description: An order may have been created but could not be confirmed., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       mocks:
         - {name: createdOrder, branch: created, description: Shopify created an order., default: true, output: {id: 102, name: "#102", financial_status: pending, total_price: "29.00", currency: USD}}
     - name: updateOrder
@@ -221,7 +221,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Shopify rejected creation., optional: true}
         - {id: uncertain, goName: Uncertain, description: A product may have been created but could not be confirmed., optional: true}
         - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       mocks:
         - {name: createdProduct, branch: created, description: Shopify created a product., default: true, output: {id: 202, title: New Product, status: draft}}
     - name: updateProduct

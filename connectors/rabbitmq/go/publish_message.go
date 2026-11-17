@@ -72,7 +72,10 @@ func (operation PublishMessageOperation) Invoke(call sdkgo.Call, input PublishMe
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.Username) || strings.Contains(credentials.Username, ":") || !providerhttp.IsHeaderSafeCredential(credentials.Password.Reveal()) {
 		return publishBranch(PublishMessageBranchDefect, sdkgo.FailureAuthentication, "RabbitMQ credentials are unavailable")
 	}
-	payload, _ := json.Marshal(map[string]any{"properties": map[string]any{}, "routing_key": input.RoutingKey, "payload": input.Payload, "payload_encoding": "string"})
+	payload, err := json.Marshal(map[string]any{"properties": map[string]any{}, "routing_key": input.RoutingKey, "payload": input.Payload, "payload_encoding": "string"})
+	if err != nil {
+		return publishBranch(PublishMessageBranchDefect, sdkgo.FailureLocalDefect, "RabbitMQ publish payload could not be encoded")
+	}
 	endpoint := operation.client.managementURL + "/api/exchanges/" + url.PathEscape(input.VirtualHost) + "/" + url.PathEscape(input.Exchange) + "/publish"
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPut, endpoint, bytes.NewReader(payload))
 	if err != nil {

@@ -111,7 +111,10 @@ func (operation SearchContactsOperation) Invoke(call sdkgo.Call, input SearchCon
 	if strings.TrimSpace(input.Query) == "" || len(input.Query) > 4096 {
 		return queryBranch("searchContacts", branches.defect, SearchContactsOutput{}, sdkgo.FailureValidation, "query must be a bounded SGQL expression")
 	}
-	payload, _ := json.Marshal(map[string]string{"query": input.Query})
+	payload, err := json.Marshal(map[string]string{"query": input.Query})
+	if err != nil {
+		return queryBranch("searchContacts", branches.defect, SearchContactsOutput{}, sdkgo.FailureLocalDefect, "contact search payload could not be encoded")
+	}
 	return invokeJSONQuery(call, operation.client, "searchContacts", branches, http.MethodPost, "/v3/marketing/contacts/search", nil, payload, decodeContactSearch)
 }
 
@@ -159,7 +162,10 @@ func (operation UpsertContactOperation) Invoke(call sdkgo.Call, input UpsertCont
 	if input.LastName != "" {
 		contact["last_name"] = input.LastName
 	}
-	payload, _ := json.Marshal(map[string]any{"contacts": []any{contact}})
+	payload, err := json.Marshal(map[string]any{"contacts": []any{contact}})
+	if err != nil {
+		return mutationBranch("upsertContact", branches.defect, ContactJobOutput{}, sdkgo.FailureLocalDefect, "contact payload could not be encoded")
+	}
 	return invokeSafeMutation(call, operation.client, "upsertContact", branches, http.MethodPut, "/v3/marketing/contacts", payload, http.StatusAccepted, decodeContactJob)
 }
 

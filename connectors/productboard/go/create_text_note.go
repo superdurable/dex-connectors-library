@@ -69,7 +69,10 @@ func (operation CreateTextNoteOperation) Invoke(call sdkgo.Call, input CreateTex
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.APIToken.Reveal()) {
 		return noteCreateBranch(CreateTextNoteBranchDefect, sdkgo.FailureAuthentication, "Productboard credentials are unavailable")
 	}
-	payload, _ := json.Marshal(map[string]any{"data": map[string]any{"type": "textNote", "fields": map[string]string{"name": input.Name, "content": input.Content}}})
+	payload, err := json.Marshal(map[string]any{"data": map[string]any{"type": "textNote", "fields": map[string]string{"name": input.Name, "content": input.Content}}})
+	if err != nil {
+		return noteCreateBranch(CreateTextNoteBranchDefect, sdkgo.FailureLocalDefect, "Productboard note payload could not be encoded")
+	}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, operation.client.baseURL+"/notes", bytes.NewReader(payload))
 	if err != nil {
 		return noteCreateBranch(CreateTextNoteBranchDefect, sdkgo.FailureLocalDefect, "Productboard note request could not be built")

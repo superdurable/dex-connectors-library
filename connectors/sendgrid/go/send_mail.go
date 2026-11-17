@@ -67,7 +67,10 @@ func (operation SendMailOperation) Invoke(call sdkgo.Call, input SendMailInput) 
 	if decision.Kind == singledispatch.FailClosed || decision.Kind == singledispatch.ReadBackRequired {
 		return uncertainMail(call, "an earlier SendGrid mail send may have succeeded")
 	}
-	payload := encodeMailPayload(input)
+	payload, err := encodeMailPayload(input)
+	if err != nil {
+		return mutationBranch("sendMail", SendMailBranchDefect, SendMailOutput{}, sdkgo.FailureLocalDefect, "mail payload could not be encoded")
+	}
 	var status int
 	var retryAfter time.Duration
 	err = fence.Dispatch(func(requestContext context.Context) error {
@@ -118,7 +121,7 @@ func isMailAddress(value string) bool {
 	return err == nil && parsed.Address == value && len(value) <= 254
 }
 
-func encodeMailPayload(input SendMailInput) []byte {
+func encodeMailPayload(input SendMailInput) ([]byte, error) {
 	addresses := func(values []string) []map[string]string {
 		result := make([]map[string]string, 0, len(values))
 		for _, value := range values {
@@ -140,8 +143,7 @@ func encodeMailPayload(input SendMailInput) []byte {
 	if input.HTML != "" {
 		content = append(content, map[string]string{"type": "text/html", "value": input.HTML})
 	}
-	payload, _ := json.Marshal(map[string]any{"personalizations": []any{personalization}, "from": map[string]string{"email": input.From}, "subject": input.Subject, "content": content})
-	return payload
+	return json.Marshal(map[string]any{"personalizations": []any{personalization}, "from": map[string]string{"email": input.From}, "subject": input.Subject, "content": content})
 }
 
 func uncertainMail(call sdkgo.Call, message string) sdkgo.MutationAttempt[SendMailOutput] {

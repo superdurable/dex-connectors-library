@@ -258,7 +258,7 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected creation., optional: true}
         - {id: uncertain, goName: Uncertain, description: A list create may have succeeded but could not be confirmed., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       mocks:
         - {name: createdList, branch: created, description: SendGrid created a static list., default: true, output: {id: list-123, name: Customers, contactCount: 0}}
     - name: sendMail
@@ -273,6 +273,6 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "SendGrid rejected the sender, recipients, content, or authorization.", optional: true}
         - {id: uncertain, goName: Uncertain, description: An email may have been accepted but the outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: Local mail input or connection is invalid., optional: true}
-      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
       mocks:
         - {name: acceptedMail, branch: accepted, description: SendGrid accepted one message for delivery., default: true, output: {accepted: true}}

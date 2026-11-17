@@ -95,7 +95,10 @@ func (operation RenameFeatureOperation) Invoke(call sdkgo.Call, input RenameFeat
 	if !validFeatureID(input.FeatureID) || !validFeatureName(input.Name) {
 		return featureMutationBranch(RenameFeatureBranchDefect, "renameFeature", sdkgo.FailureValidation, "feature ID or name is invalid", FeatureMetadata{})
 	}
-	payload, _ := json.Marshal(map[string]any{"data": map[string]any{"fields": map[string]string{"name": input.Name}}})
+	payload, err := json.Marshal(map[string]any{"data": map[string]any{"fields": map[string]string{"name": input.Name}}})
+	if err != nil {
+		return featureMutationBranch(RenameFeatureBranchDefect, "renameFeature", sdkgo.FailureLocalDefect, "Productboard feature payload could not be encoded", FeatureMetadata{})
+	}
 	response := operation.client.request(call, http.MethodPatch, "/entities/"+url.PathEscape(input.FeatureID), payload)
 	if errors.Is(response.err, errCredential) {
 		return featureMutationBranch(RenameFeatureBranchDefect, "renameFeature", sdkgo.FailureAuthentication, "Productboard credentials are unavailable", FeatureMetadata{})

@@ -188,7 +188,10 @@ func (operation CreateNormalRefundOperation) Invoke(call sdkgo.Call, input Creat
 	if !validPaymentID(input.PaymentID) || input.Amount <= 0 {
 		return createRefundBranch(CreateNormalRefundBranchDefect, sdkgo.FailureValidation, "Razorpay refund input is invalid")
 	}
-	payload, _ := json.Marshal(map[string]int64{"amount": input.Amount})
+	payload, err := json.Marshal(map[string]int64{"amount": input.Amount})
+	if err != nil {
+		return createRefundBranch(CreateNormalRefundBranchDefect, sdkgo.FailureLocalDefect, "Razorpay refund payload could not be encoded")
+	}
 	response := operation.client.postNormalRefund(call, input.PaymentID, payload)
 	if errors.Is(response.err, errCredential) {
 		return createRefundBranch(CreateNormalRefundBranchDefect, sdkgo.FailureAuthentication, "Razorpay credentials are unavailable")

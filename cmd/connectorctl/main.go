@@ -67,6 +67,9 @@ func run(args []string) error {
 			if err != nil {
 				return err
 			}
+			if err := validateDispatchFenceSource(path, manifest); err != nil {
+				return fmt.Errorf("validate %s: %w", path, err)
+			}
 			if err := manifest.ValidateMockCoverage(); err != nil {
 				return fmt.Errorf("validate %s: %w", path, err)
 			}

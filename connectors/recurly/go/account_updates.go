@@ -76,7 +76,10 @@ func (operation SetAccountTimeZoneOperation) Invoke(call sdkgo.Call, input SetAc
 	if _, err := time.LoadLocation(input.TimeZone); err != nil {
 		return accountTimeZoneBranch(SetAccountTimeZoneBranchDefect, sdkgo.FailureValidation, "Recurly account time zone is invalid")
 	}
-	payload, _ := json.Marshal(map[string]string{"preferred_time_zone": input.TimeZone})
+	payload, err := json.Marshal(map[string]string{"preferred_time_zone": input.TimeZone})
+	if err != nil {
+		return accountTimeZoneBranch(SetAccountTimeZoneBranchDefect, sdkgo.FailureLocalDefect, "Recurly account payload could not be encoded")
+	}
 	response := operation.client.putAccount(call, "/accounts/"+url.PathEscape(input.AccountID), payload)
 	if errors.Is(response.err, errCredential) {
 		return accountTimeZoneBranch(SetAccountTimeZoneBranchDefect, sdkgo.FailureAuthentication, "Recurly credentials are unavailable")
