@@ -34716,6 +34716,4176 @@
       },
       "name": "updateEvent-clear-schema",
       "operation": "updateEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"automation\",\"id\":\"automation-1\",\"name\":\"Welcome\",\"status\":\"disabled\",\"created_at\":\"2026-11-16T00:00:00Z\",\"updated_at\":\"2026-11-16T00:00:00Z\",\"steps\":[{\"key\":\"start\",\"type\":\"trigger\",\"config\":{\"event_name\":\"order.paid\"}},{\"key\":\"wait\",\"type\":\"delay\",\"config\":{\"duration\":\"30 minutes\"}}],\"connections\":[{\"from\":\"start\",\"to\":\"wait\",\"type\":\"default\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "2026-11-16T00:00:00Z",
+          "id": "automation-1",
+          "name": "Welcome",
+          "status": "disabled",
+          "updated_at": "2026-11-16T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "getAutomation-success",
+      "operation": "getAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"automation_run\",\"id\":\"run-1\",\"status\":\"completed\",\"created_at\":\"2026-11-16T00:00:00Z\",\"started_at\":\"2026-11-16T00:00:00Z\",\"completed_at\":\"2026-11-16T00:01:00Z\",\"steps\":[{\"key\":\"start\",\"type\":\"trigger\",\"output\":{\"secret\":\"omit\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs/run-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "completed_at": "2026-11-16T00:01:00Z",
+          "created_at": "2026-11-16T00:00:00Z",
+          "id": "run-1",
+          "started_at": "2026-11-16T00:00:00Z",
+          "status": "completed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "automationId": "automation-1",
+        "runId": "run-1"
+      },
+      "name": "getAutomationRun-success",
+      "operation": "getAutomationRun"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "name": "",
+          "status": "",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "getAutomation-missing",
+      "operation": "getAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs/run-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "completed_at": "",
+          "created_at": "",
+          "id": "",
+          "started_at": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "automationId": "automation-1",
+        "runId": "run-1"
+      },
+      "name": "getAutomationRun-missing",
+      "operation": "getAutomationRun"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "name": "",
+          "status": "",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "getAutomation-rejected",
+      "operation": "getAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs/run-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "completed_at": "",
+          "created_at": "",
+          "id": "",
+          "started_at": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "automationId": "automation-1",
+        "runId": "run-1"
+      },
+      "name": "getAutomationRun-rejected",
+      "operation": "getAutomationRun"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "name": "",
+          "status": "",
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "getAutomation-invalid",
+      "operation": "getAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs/run-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "completed_at": "",
+          "created_at": "",
+          "id": "",
+          "started_at": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "automationId": "automation-1",
+        "runId": "run-1"
+      },
+      "name": "getAutomationRun-invalid",
+      "operation": "getAutomationRun"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "name": "",
+          "status": "",
+          "updated_at": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getAutomation-defect",
+      "operation": "getAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "completed_at": "",
+          "created_at": "",
+          "id": "",
+          "started_at": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "automationId": "automation-1",
+        "runId": ""
+      },
+      "name": "getAutomationRun-defect",
+      "operation": "getAutomationRun"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "getAutomation-rate",
+      "operation": "getAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs/run-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "automationId": "automation-1",
+        "runId": "run-1"
+      },
+      "name": "getAutomationRun-rate",
+      "operation": "getAutomationRun"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "getAutomation-server",
+      "operation": "getAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs/run-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "automationId": "automation-1",
+        "runId": "run-1"
+      },
+      "name": "getAutomationRun-server",
+      "operation": "getAutomationRun"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "getAutomation-transport",
+      "operation": "getAutomation"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs/run-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "automationId": "automation-1",
+        "runId": "run-1"
+      },
+      "name": "getAutomationRun-transport",
+      "operation": "getAutomationRun"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"automation-1\",\"name\":\"Welcome\",\"status\":\"disabled\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "after": [
+              "automation-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "disabled"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "",
+              "id": "automation-1",
+              "name": "Welcome",
+              "status": "disabled",
+              "updated_at": ""
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "automation-0",
+        "limit": 10,
+        "status": "disabled"
+      },
+      "name": "listAutomations-success",
+      "operation": "listAutomations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"automation_run\",\"id\":\"run-1\",\"status\":\"completed\",\"created_at\":\"2026-11-16T00:00:00Z\",\"started_at\":\"2026-11-16T00:00:00Z\",\"completed_at\":\"2026-11-16T00:01:00Z\",\"steps\":[{\"key\":\"start\",\"type\":\"trigger\",\"output\":{\"secret\":\"omit\"}}]}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs",
+          "query": {
+            "after": [
+              "run-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "completed_at": "2026-11-16T00:01:00Z",
+              "created_at": "2026-11-16T00:00:00Z",
+              "id": "run-1",
+              "started_at": "2026-11-16T00:00:00Z",
+              "status": "completed"
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "run-0",
+        "automationId": "automation-1",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listAutomationRuns-success",
+      "operation": "listAutomationRuns"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "after": [
+              "automation-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "disabled"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "automation-0",
+        "limit": 10,
+        "status": "disabled"
+      },
+      "name": "listAutomations-rejected",
+      "operation": "listAutomations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs",
+          "query": {
+            "after": [
+              "run-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "run-0",
+        "automationId": "automation-1",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listAutomationRuns-rejected",
+      "operation": "listAutomationRuns"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "after": [
+              "automation-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "disabled"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "automation-0",
+        "limit": 10,
+        "status": "disabled"
+      },
+      "name": "listAutomations-invalid",
+      "operation": "listAutomations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs",
+          "query": {
+            "after": [
+              "run-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "run-0",
+        "automationId": "automation-1",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listAutomationRuns-invalid",
+      "operation": "listAutomationRuns"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "automation-0",
+        "limit": 10,
+        "status": "invalid"
+      },
+      "name": "listAutomations-defect",
+      "operation": "listAutomations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "run-0",
+        "automationId": "",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listAutomationRuns-defect",
+      "operation": "listAutomationRuns"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "after": [
+              "automation-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "disabled"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "automation-0",
+        "limit": 10,
+        "status": "disabled"
+      },
+      "name": "listAutomations-rate",
+      "operation": "listAutomations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs",
+          "query": {
+            "after": [
+              "run-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "run-0",
+        "automationId": "automation-1",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listAutomationRuns-rate",
+      "operation": "listAutomationRuns"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "after": [
+              "automation-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "disabled"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "automation-0",
+        "limit": 10,
+        "status": "disabled"
+      },
+      "name": "listAutomations-server",
+      "operation": "listAutomations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs",
+          "query": {
+            "after": [
+              "run-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "run-0",
+        "automationId": "automation-1",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listAutomationRuns-server",
+      "operation": "listAutomationRuns"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "after": [
+              "automation-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "disabled"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "automation-0",
+        "limit": 10,
+        "status": "disabled"
+      },
+      "name": "listAutomations-transport",
+      "operation": "listAutomations"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1/runs",
+          "query": {
+            "after": [
+              "run-0"
+            ],
+            "limit": [
+              "10"
+            ],
+            "status": [
+              "completed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "run-0",
+        "automationId": "automation-1",
+        "limit": 10,
+        "status": "completed"
+      },
+      "name": "listAutomationRuns-transport",
+      "operation": "listAutomationRuns"
+    },
+    {
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"automation\",\"id\":\"automation-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "automation-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "createAutomation-success",
+      "operation": "createAutomation"
+    },
+    {
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "createAutomation-rejected",
+      "operation": "createAutomation"
+    },
+    {
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "createAutomation-429",
+      "operation": "createAutomation"
+    },
+    {
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "createAutomation-5xx",
+      "operation": "createAutomation"
+    },
+    {
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "createAutomation-transport",
+      "operation": "createAutomation"
+    },
+    {
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "createAutomation-defect",
+      "operation": "createAutomation"
+    },
+    {
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "createAutomation-conflict",
+      "operation": "createAutomation"
+    },
+    {
+      "attempts": 2,
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"automation-1\",\"name\":\"Welcome\",\"status\":\"disabled\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"object\":\"automation\",\"id\":\"automation-1\",\"name\":\"Welcome\",\"status\":\"disabled\",\"created_at\":\"2026-11-16T00:00:00Z\",\"updated_at\":\"2026-11-16T00:00:00Z\",\"steps\":[{\"key\":\"start\",\"type\":\"trigger\",\"config\":{\"event_name\":\"order.paid\"}},{\"key\":\"wait\",\"type\":\"delay\",\"config\":{\"duration\":\"30 minutes\"}}],\"connections\":[{\"from\":\"start\",\"to\":\"wait\",\"type\":\"default\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "automation-1"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createAutomation-retry-readback",
+      "operation": "createAutomation"
+    },
+    {
+      "attempts": 3,
+      "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/automations",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "6f9590b3-ec65-589f-90e7-8dd6111d224e",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createAutomation-send-cap",
+      "operation": "createAutomation"
+    },
+    {
+      "callId": "136e1e97-e785-5559-87eb-368689660102",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"automation\",\"id\":\"automation-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/automations/automation-1",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "automation-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "136e1e97-e785-5559-87eb-368689660102",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "id": "automation-1",
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "updateAutomation-success",
+      "operation": "updateAutomation"
+    },
+    {
+      "callId": "136e1e97-e785-5559-87eb-368689660102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/automations/automation-1",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "136e1e97-e785-5559-87eb-368689660102",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "id": "automation-1",
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "updateAutomation-notFound",
+      "operation": "updateAutomation"
+    },
+    {
+      "callId": "136e1e97-e785-5559-87eb-368689660102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/automations/automation-1",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "136e1e97-e785-5559-87eb-368689660102",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "id": "automation-1",
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "updateAutomation-providerRejected",
+      "operation": "updateAutomation"
+    },
+    {
+      "callId": "136e1e97-e785-5559-87eb-368689660102",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/automations/automation-1",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "136e1e97-e785-5559-87eb-368689660102",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "id": "automation-1",
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "updateAutomation-invalidResponse",
+      "operation": "updateAutomation"
+    },
+    {
+      "callId": "136e1e97-e785-5559-87eb-368689660102",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "136e1e97-e785-5559-87eb-368689660102",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "id": "",
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "updateAutomation-defect",
+      "operation": "updateAutomation"
+    },
+    {
+      "callId": "136e1e97-e785-5559-87eb-368689660102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/automations/automation-1",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "136e1e97-e785-5559-87eb-368689660102",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "id": "automation-1",
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "updateAutomation-429",
+      "operation": "updateAutomation"
+    },
+    {
+      "callId": "136e1e97-e785-5559-87eb-368689660102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/automations/automation-1",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "136e1e97-e785-5559-87eb-368689660102",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "id": "automation-1",
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "updateAutomation-5xx",
+      "operation": "updateAutomation"
+    },
+    {
+      "callId": "136e1e97-e785-5559-87eb-368689660102",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/automations/automation-1",
+          "requestBody": {
+            "connections": [
+              {
+                "from": "start",
+                "to": "wait",
+                "type": "default"
+              }
+            ],
+            "name": "Welcome",
+            "status": "disabled",
+            "steps": [
+              {
+                "config": {
+                  "event_name": "order.paid"
+                },
+                "key": "start",
+                "type": "trigger"
+              },
+              {
+                "config": {
+                  "duration": "30 minutes"
+                },
+                "key": "wait",
+                "type": "delay"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "136e1e97-e785-5559-87eb-368689660102",
+      "input": {
+        "connections": [
+          {
+            "from": "start",
+            "to": "wait",
+            "type": "default"
+          }
+        ],
+        "id": "automation-1",
+        "name": "Welcome",
+        "status": "disabled",
+        "steps": [
+          {
+            "config": {
+              "event_name": "order.paid"
+            },
+            "key": "start",
+            "type": "trigger"
+          },
+          {
+            "config": {
+              "duration": "30 minutes"
+            },
+            "key": "wait",
+            "type": "delay"
+          }
+        ]
+      },
+      "name": "updateAutomation-transport",
+      "operation": "updateAutomation"
+    },
+    {
+      "callId": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"automation\",\"id\":\"automation-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "automation-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "deleteAutomation-success",
+      "operation": "deleteAutomation"
+    },
+    {
+      "callId": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "deleteAutomation-notFound",
+      "operation": "deleteAutomation"
+    },
+    {
+      "callId": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "deleteAutomation-rejected",
+      "operation": "deleteAutomation"
+    },
+    {
+      "callId": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "deleteAutomation-invalid",
+      "operation": "deleteAutomation"
+    },
+    {
+      "callId": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "deleteAutomation-429",
+      "operation": "deleteAutomation"
+    },
+    {
+      "callId": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "deleteAutomation-5xx",
+      "operation": "deleteAutomation"
+    },
+    {
+      "callId": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/automations/automation-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "deleteAutomation-transport",
+      "operation": "deleteAutomation"
+    },
+    {
+      "callId": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc7aed44-2437-5dce-a96a-551a54b811c1",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteAutomation-defect",
+      "operation": "deleteAutomation"
+    },
+    {
+      "callId": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"automation\",\"id\":\"automation-1\",\"status\":\"disabled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "stopped",
+        "failureKind": "",
+        "output": {
+          "id": "automation-1",
+          "status": "disabled"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "stopAutomation-success",
+      "operation": "stopAutomation"
+    },
+    {
+      "callId": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "stopAutomation-notFound",
+      "operation": "stopAutomation"
+    },
+    {
+      "callId": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "stopAutomation-providerRejected",
+      "operation": "stopAutomation"
+    },
+    {
+      "callId": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "stopAutomation-invalidResponse",
+      "operation": "stopAutomation"
+    },
+    {
+      "callId": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "input": {
+        "id": ""
+      },
+      "name": "stopAutomation-defect",
+      "operation": "stopAutomation"
+    },
+    {
+      "callId": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "stopAutomation-429",
+      "operation": "stopAutomation"
+    },
+    {
+      "callId": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "stopAutomation-5xx",
+      "operation": "stopAutomation"
+    },
+    {
+      "callId": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/stop",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5ef5cafb-a4cb-50e4-8eba-f231c533abb8",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "stopAutomation-transport",
+      "operation": "stopAutomation"
+    },
+    {
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"automation\",\"id\":\"automation-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "duplicated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "automation-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "duplicateAutomation-success",
+      "operation": "duplicateAutomation"
+    },
+    {
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "duplicateAutomation-rejected",
+      "operation": "duplicateAutomation"
+    },
+    {
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "duplicateAutomation-429",
+      "operation": "duplicateAutomation"
+    },
+    {
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "duplicateAutomation-5xx",
+      "operation": "duplicateAutomation"
+    },
+    {
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "duplicateAutomation-transport",
+      "operation": "duplicateAutomation"
+    },
+    {
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": ""
+      },
+      "name": "duplicateAutomation-defect",
+      "operation": "duplicateAutomation"
+    },
+    {
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": "automation-1"
+      },
+      "name": "duplicateAutomation-conflict",
+      "operation": "duplicateAutomation"
+    },
+    {
+      "attempts": 2,
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"automation\",\"id\":\"automation-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "duplicated",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "automation-2"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": "automation-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "duplicateAutomation-retry-readback",
+      "operation": "duplicateAutomation"
+    },
+    {
+      "attempts": 3,
+      "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/automations/automation-1/duplicate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+      "input": {
+        "id": "automation-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "7d4109d9-4ad0-5b51-ad8a-a8b3a1a13eef",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "duplicateAutomation-send-cap",
+      "operation": "duplicateAutomation"
     }
   ],
   "schemaVersion": 1

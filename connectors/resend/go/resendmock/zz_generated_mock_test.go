@@ -368,6 +368,42 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.EventSendReference](`{"event":"order.paid"}`)
 			return err
 		}},
+		{name: "createAutomation/createAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationReference](`{"id":"automation-1"}`)
+			return err
+		}},
+		{name: "getAutomation/getAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Automation](`{"id":"automation-1","name":"Welcome","status":"disabled"}`)
+			return err
+		}},
+		{name: "listAutomations/listAutomationsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationPage](`{"data":[{"id":"automation-1","name":"Welcome","status":"disabled"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateAutomation/updateAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationReference](`{"id":"automation-1"}`)
+			return err
+		}},
+		{name: "deleteAutomation/deleteAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedAutomation](`{"id":"automation-1","deleted":true}`)
+			return err
+		}},
+		{name: "duplicateAutomation/duplicateAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationReference](`{"id":"automation-2"}`)
+			return err
+		}},
+		{name: "stopAutomation/stopAutomationDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationStatus](`{"id":"automation-1","status":"disabled"}`)
+			return err
+		}},
+		{name: "listAutomationRuns/listAutomationRunsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationRunPage](`{"data":[{"id":"run-1","status":"completed"}],"has_more":false}`)
+			return err
+		}},
+		{name: "getAutomationRun/getAutomationRunDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.AutomationRun](`{"id":"run-1","status":"completed"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -641,5 +677,32 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SendEvent().Definition().Operation.OperationID != "sendEvent" {
 		t.Errorf("sendEvent mock has another definition")
+	}
+	if mock.CreateAutomation().Definition().Operation.OperationID != "createAutomation" {
+		t.Errorf("createAutomation mock has another definition")
+	}
+	if mock.GetAutomation().Definition().Operation.OperationID != "getAutomation" {
+		t.Errorf("getAutomation mock has another definition")
+	}
+	if mock.ListAutomations().Definition().Operation.OperationID != "listAutomations" {
+		t.Errorf("listAutomations mock has another definition")
+	}
+	if mock.UpdateAutomation().Definition().Operation.OperationID != "updateAutomation" {
+		t.Errorf("updateAutomation mock has another definition")
+	}
+	if mock.DeleteAutomation().Definition().Operation.OperationID != "deleteAutomation" {
+		t.Errorf("deleteAutomation mock has another definition")
+	}
+	if mock.DuplicateAutomation().Definition().Operation.OperationID != "duplicateAutomation" {
+		t.Errorf("duplicateAutomation mock has another definition")
+	}
+	if mock.StopAutomation().Definition().Operation.OperationID != "stopAutomation" {
+		t.Errorf("stopAutomation mock has another definition")
+	}
+	if mock.ListAutomationRuns().Definition().Operation.OperationID != "listAutomationRuns" {
+		t.Errorf("listAutomationRuns mock has another definition")
+	}
+	if mock.GetAutomationRun().Definition().Operation.OperationID != "getAutomationRun" {
+		t.Errorf("getAutomationRun mock has another definition")
 	}
 }

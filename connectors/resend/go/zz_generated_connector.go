@@ -128,6 +128,15 @@ type Operations interface {
 	UpdateEvent() sdkgo.Mutation[UpdateEventInput, EventReference]
 	DeleteEvent() sdkgo.Mutation[DeleteEventInput, DeletedEvent]
 	SendEvent() sdkgo.Mutation[SendEventInput, EventSendReference]
+	CreateAutomation() sdkgo.Mutation[CreateAutomationInput, AutomationReference]
+	GetAutomation() sdkgo.Query[GetAutomationInput, Automation]
+	ListAutomations() sdkgo.Query[ListAutomationsInput, AutomationPage]
+	UpdateAutomation() sdkgo.Mutation[UpdateAutomationInput, AutomationReference]
+	DeleteAutomation() sdkgo.Mutation[DeleteAutomationInput, DeletedAutomation]
+	DuplicateAutomation() sdkgo.Mutation[DuplicateAutomationInput, AutomationReference]
+	StopAutomation() sdkgo.Mutation[StopAutomationInput, AutomationStatus]
+	ListAutomationRuns() sdkgo.Query[ListAutomationRunsInput, AutomationRunPage]
+	GetAutomationRun() sdkgo.Query[GetAutomationRunInput, AutomationRun]
 }
 
 type clientOperations struct{ client *Client }
@@ -395,6 +404,33 @@ func (operations clientOperations) DeleteEvent() sdkgo.Mutation[DeleteEventInput
 }
 func (operations clientOperations) SendEvent() sdkgo.Mutation[SendEventInput, EventSendReference] {
 	return operations.client.SendEvent()
+}
+func (operations clientOperations) CreateAutomation() sdkgo.Mutation[CreateAutomationInput, AutomationReference] {
+	return operations.client.CreateAutomation()
+}
+func (operations clientOperations) GetAutomation() sdkgo.Query[GetAutomationInput, Automation] {
+	return operations.client.GetAutomation()
+}
+func (operations clientOperations) ListAutomations() sdkgo.Query[ListAutomationsInput, AutomationPage] {
+	return operations.client.ListAutomations()
+}
+func (operations clientOperations) UpdateAutomation() sdkgo.Mutation[UpdateAutomationInput, AutomationReference] {
+	return operations.client.UpdateAutomation()
+}
+func (operations clientOperations) DeleteAutomation() sdkgo.Mutation[DeleteAutomationInput, DeletedAutomation] {
+	return operations.client.DeleteAutomation()
+}
+func (operations clientOperations) DuplicateAutomation() sdkgo.Mutation[DuplicateAutomationInput, AutomationReference] {
+	return operations.client.DuplicateAutomation()
+}
+func (operations clientOperations) StopAutomation() sdkgo.Mutation[StopAutomationInput, AutomationStatus] {
+	return operations.client.StopAutomation()
+}
+func (operations clientOperations) ListAutomationRuns() sdkgo.Query[ListAutomationRunsInput, AutomationRunPage] {
+	return operations.client.ListAutomationRuns()
+}
+func (operations clientOperations) GetAutomationRun() sdkgo.Query[GetAutomationRunInput, AutomationRun] {
+	return operations.client.GetAutomationRun()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -7135,5 +7171,687 @@ func NewSendEventStep[IN any](config SendEventStepConfig[IN]) sdkgo.MutationStep
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
 		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateAutomationBranchCreated sdkgo.BranchID = "created"
+const CreateAutomationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateAutomationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateAutomationBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateAutomationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createAutomation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateAutomationBranchCreated, Description: "Resend completed the automation request."},
+		{ID: CreateAutomationBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: CreateAutomationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateAutomationBranchUncertain, Description: "Bounded sends ended without confirming the request.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateAutomationResult = sdkgo.MutationResult[AutomationReference]
+
+type CreateAutomationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=resend"`
+	operationID                       struct{}                                                  `connector:"operationId=createAutomation"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateAutomationInput                            `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateAutomationResult]                      `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateAutomationResult]                      `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreateAutomationResult]                      `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateAutomationResult]                      `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AutomationReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateAutomationStep[IN any](config CreateAutomationStepConfig[IN]) sdkgo.MutationStep[IN, CreateAutomationInput, AutomationReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateAutomationInput, AutomationReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateAutomation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateAutomationResult] {
+			branches := make([]sdkgo.BranchTarget[CreateAutomationResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateAutomationBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateAutomationBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateAutomationBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateAutomationBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetAutomationBranchFound sdkgo.BranchID = "found"
+const GetAutomationBranchNotFound sdkgo.BranchID = "notFound"
+const GetAutomationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAutomationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAutomationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAutomationDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAutomation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAutomationBranchFound, Description: "Resend completed the automation request."},
+		{ID: GetAutomationBranchNotFound, Description: "The automation resource does not exist.", Optional: true},
+		{ID: GetAutomationBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetAutomationBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetAutomationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAutomationResult = sdkgo.QueryResult[Automation]
+
+type GetAutomationStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=resend"`
+	operationID                    struct{}                                      `connector:"operationId=getAutomation"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAutomationInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAutomationResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAutomationResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAutomationResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAutomationResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAutomationResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Automation]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetAutomationStep[IN any](config GetAutomationStepConfig[IN]) sdkgo.QueryStep[IN, GetAutomationInput, Automation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAutomationInput, Automation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAutomation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAutomationResult] {
+			branches := make([]sdkgo.BranchTarget[GetAutomationResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAutomationBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAutomationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAutomationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAutomationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAutomationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAutomationsBranchListed sdkgo.BranchID = "listed"
+const ListAutomationsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAutomationsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAutomationsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAutomationsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAutomations"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAutomationsBranchListed, Description: "Resend completed the automation request."},
+		{ID: ListAutomationsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListAutomationsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListAutomationsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAutomationsResult = sdkgo.QueryResult[AutomationPage]
+
+type ListAutomationsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=resend"`
+	operationID                    struct{}                                          `connector:"operationId=listAutomations"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAutomationsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAutomationsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAutomationsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAutomationsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAutomationsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AutomationPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListAutomationsStep[IN any](config ListAutomationsStepConfig[IN]) sdkgo.QueryStep[IN, ListAutomationsInput, AutomationPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAutomationsInput, AutomationPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAutomations(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAutomationsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAutomationsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAutomationsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAutomationsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAutomationsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAutomationsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateAutomationBranchUpdated sdkgo.BranchID = "updated"
+const UpdateAutomationBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateAutomationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateAutomationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateAutomationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateAutomationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateAutomation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateAutomationBranchUpdated, Description: "Resend completed the automation request."},
+		{ID: UpdateAutomationBranchNotFound, Description: "The automation resource does not exist.", Optional: true},
+		{ID: UpdateAutomationBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: UpdateAutomationBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: UpdateAutomationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateAutomationResult = sdkgo.MutationResult[AutomationReference]
+
+type UpdateAutomationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=resend"`
+	operationID                       struct{}                                                  `connector:"operationId=updateAutomation"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateAutomationInput                            `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateAutomationResult]                      `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateAutomationResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateAutomationResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateAutomationResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateAutomationResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AutomationReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateAutomationStep[IN any](config UpdateAutomationStepConfig[IN]) sdkgo.MutationStep[IN, UpdateAutomationInput, AutomationReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateAutomationInput, AutomationReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateAutomation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateAutomationResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateAutomationResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateAutomationBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateAutomationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateAutomationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateAutomationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateAutomationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteAutomationBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteAutomationBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteAutomationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteAutomationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteAutomationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteAutomationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteAutomation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteAutomationBranchDeleted, Description: "Resend completed the automation request."},
+		{ID: DeleteAutomationBranchNotFound, Description: "The automation resource does not exist.", Optional: true},
+		{ID: DeleteAutomationBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DeleteAutomationBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: DeleteAutomationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteAutomationResult = sdkgo.MutationResult[DeletedAutomation]
+
+type DeleteAutomationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=resend"`
+	operationID                       struct{}                                                `connector:"operationId=deleteAutomation"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteAutomationInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteAutomationResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteAutomationResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteAutomationResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteAutomationResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteAutomationResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedAutomation]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteAutomationStep[IN any](config DeleteAutomationStepConfig[IN]) sdkgo.MutationStep[IN, DeleteAutomationInput, DeletedAutomation] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteAutomationInput, DeletedAutomation]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteAutomation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteAutomationResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteAutomationResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteAutomationBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteAutomationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteAutomationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteAutomationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteAutomationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DuplicateAutomationBranchDuplicated sdkgo.BranchID = "duplicated"
+const DuplicateAutomationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DuplicateAutomationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const DuplicateAutomationBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var DuplicateAutomationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "duplicateAutomation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DuplicateAutomationBranchDuplicated, Description: "Resend completed the automation request."},
+		{ID: DuplicateAutomationBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: DuplicateAutomationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: DuplicateAutomationBranchUncertain, Description: "Bounded sends ended without confirming the request.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type DuplicateAutomationResult = sdkgo.MutationResult[AutomationReference]
+
+type DuplicateAutomationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                  `connector:"connectorId=resend"`
+	operationID                       struct{}                                                  `connector:"operationId=duplicateAutomation"`
+	StepType                          string                                                    `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                     `connector:"annotations"`
+	Connection                        Connection                                                `connector:"connection"`
+	ConnectionName                    string                                                    `connector:"connectionName"`
+	MapToOperationInput               func(IN) DuplicateAutomationInput                         `connector:"mapToOperationInput"`
+	Duplicated                        sdkgo.Target[DuplicateAutomationResult]                   `connector:"branch=duplicated"`
+	ProviderRejected                  sdkgo.Target[DuplicateAutomationResult]                   `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DuplicateAutomationResult]                   `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[DuplicateAutomationResult]                   `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AutomationReference]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                          `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewDuplicateAutomationStep[IN any](config DuplicateAutomationStepConfig[IN]) sdkgo.MutationStep[IN, DuplicateAutomationInput, AutomationReference] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DuplicateAutomationInput, AutomationReference]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DuplicateAutomation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DuplicateAutomationResult] {
+			branches := make([]sdkgo.BranchTarget[DuplicateAutomationResult], 0, 4)
+			if config.Duplicated.HasStep() {
+				branches = append(branches, config.Duplicated.BranchTarget(DuplicateAutomationBranchDuplicated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DuplicateAutomationBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DuplicateAutomationBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(DuplicateAutomationBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const StopAutomationBranchStopped sdkgo.BranchID = "stopped"
+const StopAutomationBranchNotFound sdkgo.BranchID = "notFound"
+const StopAutomationBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const StopAutomationBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const StopAutomationBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var StopAutomationDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "stopAutomation"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: StopAutomationBranchStopped, Description: "Resend completed the automation request."},
+		{ID: StopAutomationBranchNotFound, Description: "The automation resource does not exist.", Optional: true},
+		{ID: StopAutomationBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: StopAutomationBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: StopAutomationBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type StopAutomationResult = sdkgo.MutationResult[AutomationStatus]
+
+type StopAutomationStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=resend"`
+	operationID                       struct{}                                               `connector:"operationId=stopAutomation"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) StopAutomationInput                           `connector:"mapToOperationInput"`
+	Stopped                           sdkgo.Target[StopAutomationResult]                     `connector:"branch=stopped"`
+	NotFound                          sdkgo.Target[StopAutomationResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[StopAutomationResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[StopAutomationResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[StopAutomationResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[AutomationStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewStopAutomationStep[IN any](config StopAutomationStepConfig[IN]) sdkgo.MutationStep[IN, StopAutomationInput, AutomationStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, StopAutomationInput, AutomationStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.StopAutomation(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[StopAutomationResult] {
+			branches := make([]sdkgo.BranchTarget[StopAutomationResult], 0, 5)
+			if config.Stopped.HasStep() {
+				branches = append(branches, config.Stopped.BranchTarget(StopAutomationBranchStopped))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(StopAutomationBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(StopAutomationBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(StopAutomationBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(StopAutomationBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAutomationRunsBranchListed sdkgo.BranchID = "listed"
+const ListAutomationRunsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAutomationRunsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAutomationRunsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAutomationRunsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAutomationRuns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAutomationRunsBranchListed, Description: "Resend completed the automation request."},
+		{ID: ListAutomationRunsBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: ListAutomationRunsBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: ListAutomationRunsBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAutomationRunsResult = sdkgo.QueryResult[AutomationRunPage]
+
+type ListAutomationRunsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=resend"`
+	operationID                    struct{}                                             `connector:"operationId=listAutomationRuns"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListAutomationRunsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAutomationRunsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAutomationRunsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAutomationRunsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAutomationRunsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AutomationRunPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListAutomationRunsStep[IN any](config ListAutomationRunsStepConfig[IN]) sdkgo.QueryStep[IN, ListAutomationRunsInput, AutomationRunPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListAutomationRunsInput, AutomationRunPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAutomationRuns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAutomationRunsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAutomationRunsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAutomationRunsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAutomationRunsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAutomationRunsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAutomationRunsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAutomationRunBranchFound sdkgo.BranchID = "found"
+const GetAutomationRunBranchNotFound sdkgo.BranchID = "notFound"
+const GetAutomationRunBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAutomationRunBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAutomationRunBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAutomationRunDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAutomationRun"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAutomationRunBranchFound, Description: "Resend completed the automation request."},
+		{ID: GetAutomationRunBranchNotFound, Description: "The automation resource does not exist.", Optional: true},
+		{ID: GetAutomationRunBranchProviderRejected, Description: "Resend definitively rejected the request.", Optional: true},
+		{ID: GetAutomationRunBranchInvalidResponse, Description: "Resend returned an invalid response.", Optional: true},
+		{ID: GetAutomationRunBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAutomationRunResult = sdkgo.QueryResult[AutomationRun]
+
+type GetAutomationRunStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=resend"`
+	operationID                    struct{}                                         `connector:"operationId=getAutomationRun"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAutomationRunInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAutomationRunResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAutomationRunResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAutomationRunResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAutomationRunResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAutomationRunResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AutomationRun]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetAutomationRunStep[IN any](config GetAutomationRunStepConfig[IN]) sdkgo.QueryStep[IN, GetAutomationRunInput, AutomationRun] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("resend connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAutomationRunInput, AutomationRun]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAutomationRun(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAutomationRunResult] {
+			branches := make([]sdkgo.BranchTarget[GetAutomationRunResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAutomationRunBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAutomationRunBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAutomationRunBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAutomationRunBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAutomationRunBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }

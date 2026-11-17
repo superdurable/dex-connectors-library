@@ -106,6 +106,15 @@ type Mock struct {
 	updateEvent                  *connectormock.Mutation[resend.UpdateEventInput, resend.EventReference]
 	deleteEvent                  *connectormock.Mutation[resend.DeleteEventInput, resend.DeletedEvent]
 	sendEvent                    *connectormock.Mutation[resend.SendEventInput, resend.EventSendReference]
+	createAutomation             *connectormock.Mutation[resend.CreateAutomationInput, resend.AutomationReference]
+	getAutomation                *connectormock.Query[resend.GetAutomationInput, resend.Automation]
+	listAutomations              *connectormock.Query[resend.ListAutomationsInput, resend.AutomationPage]
+	updateAutomation             *connectormock.Mutation[resend.UpdateAutomationInput, resend.AutomationReference]
+	deleteAutomation             *connectormock.Mutation[resend.DeleteAutomationInput, resend.DeletedAutomation]
+	duplicateAutomation          *connectormock.Mutation[resend.DuplicateAutomationInput, resend.AutomationReference]
+	stopAutomation               *connectormock.Mutation[resend.StopAutomationInput, resend.AutomationStatus]
+	listAutomationRuns           *connectormock.Query[resend.ListAutomationRunsInput, resend.AutomationRunPage]
+	getAutomationRun             *connectormock.Query[resend.GetAutomationRunInput, resend.AutomationRun]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -201,6 +210,15 @@ func New(t testing.TB, connectionName string) *Mock {
 		updateEvent:                  connectormock.NewMutation[resend.UpdateEventInput, resend.EventReference](t, resend.UpdateEventDefinition),
 		deleteEvent:                  connectormock.NewMutation[resend.DeleteEventInput, resend.DeletedEvent](t, resend.DeleteEventDefinition),
 		sendEvent:                    connectormock.NewMutation[resend.SendEventInput, resend.EventSendReference](t, resend.SendEventDefinition),
+		createAutomation:             connectormock.NewMutation[resend.CreateAutomationInput, resend.AutomationReference](t, resend.CreateAutomationDefinition),
+		getAutomation:                connectormock.NewQuery[resend.GetAutomationInput, resend.Automation](t, resend.GetAutomationDefinition),
+		listAutomations:              connectormock.NewQuery[resend.ListAutomationsInput, resend.AutomationPage](t, resend.ListAutomationsDefinition),
+		updateAutomation:             connectormock.NewMutation[resend.UpdateAutomationInput, resend.AutomationReference](t, resend.UpdateAutomationDefinition),
+		deleteAutomation:             connectormock.NewMutation[resend.DeleteAutomationInput, resend.DeletedAutomation](t, resend.DeleteAutomationDefinition),
+		duplicateAutomation:          connectormock.NewMutation[resend.DuplicateAutomationInput, resend.AutomationReference](t, resend.DuplicateAutomationDefinition),
+		stopAutomation:               connectormock.NewMutation[resend.StopAutomationInput, resend.AutomationStatus](t, resend.StopAutomationDefinition),
+		listAutomationRuns:           connectormock.NewQuery[resend.ListAutomationRunsInput, resend.AutomationRunPage](t, resend.ListAutomationRunsDefinition),
+		getAutomationRun:             connectormock.NewQuery[resend.GetAutomationRunInput, resend.AutomationRun](t, resend.GetAutomationRunDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -290,6 +308,15 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.updateEvent.Default(UpdateEventDefault())
 	mock.deleteEvent.Default(DeleteEventDefault())
 	mock.sendEvent.Default(SendEventDefault())
+	mock.createAutomation.Default(CreateAutomationDefault())
+	mock.getAutomation.Default(GetAutomationDefault())
+	mock.listAutomations.Default(ListAutomationsDefault())
+	mock.updateAutomation.Default(UpdateAutomationDefault())
+	mock.deleteAutomation.Default(DeleteAutomationDefault())
+	mock.duplicateAutomation.Default(DuplicateAutomationDefault())
+	mock.stopAutomation.Default(StopAutomationDefault())
+	mock.listAutomationRuns.Default(ListAutomationRunsDefault())
+	mock.getAutomationRun.Default(GetAutomationRunDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -741,6 +768,51 @@ func (mock *Mock) SendEvent() *connectormock.Mutation[resend.SendEventInput, res
 	return mock.sendEvent
 }
 
+// CreateAutomation returns the createAutomation script.
+func (mock *Mock) CreateAutomation() *connectormock.Mutation[resend.CreateAutomationInput, resend.AutomationReference] {
+	return mock.createAutomation
+}
+
+// GetAutomation returns the getAutomation script.
+func (mock *Mock) GetAutomation() *connectormock.Query[resend.GetAutomationInput, resend.Automation] {
+	return mock.getAutomation
+}
+
+// ListAutomations returns the listAutomations script.
+func (mock *Mock) ListAutomations() *connectormock.Query[resend.ListAutomationsInput, resend.AutomationPage] {
+	return mock.listAutomations
+}
+
+// UpdateAutomation returns the updateAutomation script.
+func (mock *Mock) UpdateAutomation() *connectormock.Mutation[resend.UpdateAutomationInput, resend.AutomationReference] {
+	return mock.updateAutomation
+}
+
+// DeleteAutomation returns the deleteAutomation script.
+func (mock *Mock) DeleteAutomation() *connectormock.Mutation[resend.DeleteAutomationInput, resend.DeletedAutomation] {
+	return mock.deleteAutomation
+}
+
+// DuplicateAutomation returns the duplicateAutomation script.
+func (mock *Mock) DuplicateAutomation() *connectormock.Mutation[resend.DuplicateAutomationInput, resend.AutomationReference] {
+	return mock.duplicateAutomation
+}
+
+// StopAutomation returns the stopAutomation script.
+func (mock *Mock) StopAutomation() *connectormock.Mutation[resend.StopAutomationInput, resend.AutomationStatus] {
+	return mock.stopAutomation
+}
+
+// ListAutomationRuns returns the listAutomationRuns script.
+func (mock *Mock) ListAutomationRuns() *connectormock.Query[resend.ListAutomationRunsInput, resend.AutomationRunPage] {
+	return mock.listAutomationRuns
+}
+
+// GetAutomationRun returns the getAutomationRun script.
+func (mock *Mock) GetAutomationRun() *connectormock.Query[resend.GetAutomationRunInput, resend.AutomationRun] {
+	return mock.getAutomationRun
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -1006,6 +1078,33 @@ func (operations mockOperations) DeleteEvent() sdkgo.Mutation[resend.DeleteEvent
 }
 func (operations mockOperations) SendEvent() sdkgo.Mutation[resend.SendEventInput, resend.EventSendReference] {
 	return operations.mock.sendEvent
+}
+func (operations mockOperations) CreateAutomation() sdkgo.Mutation[resend.CreateAutomationInput, resend.AutomationReference] {
+	return operations.mock.createAutomation
+}
+func (operations mockOperations) GetAutomation() sdkgo.Query[resend.GetAutomationInput, resend.Automation] {
+	return operations.mock.getAutomation
+}
+func (operations mockOperations) ListAutomations() sdkgo.Query[resend.ListAutomationsInput, resend.AutomationPage] {
+	return operations.mock.listAutomations
+}
+func (operations mockOperations) UpdateAutomation() sdkgo.Mutation[resend.UpdateAutomationInput, resend.AutomationReference] {
+	return operations.mock.updateAutomation
+}
+func (operations mockOperations) DeleteAutomation() sdkgo.Mutation[resend.DeleteAutomationInput, resend.DeletedAutomation] {
+	return operations.mock.deleteAutomation
+}
+func (operations mockOperations) DuplicateAutomation() sdkgo.Mutation[resend.DuplicateAutomationInput, resend.AutomationReference] {
+	return operations.mock.duplicateAutomation
+}
+func (operations mockOperations) StopAutomation() sdkgo.Mutation[resend.StopAutomationInput, resend.AutomationStatus] {
+	return operations.mock.stopAutomation
+}
+func (operations mockOperations) ListAutomationRuns() sdkgo.Query[resend.ListAutomationRunsInput, resend.AutomationRunPage] {
+	return operations.mock.listAutomationRuns
+}
+func (operations mockOperations) GetAutomationRun() sdkgo.Query[resend.GetAutomationRunInput, resend.AutomationRun] {
+	return operations.mock.getAutomationRun
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -4349,4 +4448,353 @@ func SendEventSendEventDefault() connectormock.Case[resend.EventSendReference] {
 // SendEventDefault is the manifest default, sendEventDefault, which New installs.
 func SendEventDefault() connectormock.Case[resend.EventSendReference] {
 	return SendEventSendEventDefault()
+}
+
+// CreateAutomationCreated selects the created branch: Resend completed the automation request.
+func CreateAutomationCreated(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.CreateAutomationBranchCreated, value, failure)
+}
+
+// CreateAutomationProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateAutomationProviderRejected(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.CreateAutomationBranchProviderRejected, value, failure)
+}
+
+// CreateAutomationDefect selects the defect branch: Local input or credentials are invalid.
+func CreateAutomationDefect(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.CreateAutomationBranchDefect, value, failure)
+}
+
+// CreateAutomationUncertain returns an uncertain createAutomation outcome.
+func CreateAutomationUncertain(value resend.AutomationReference, failure sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateAutomationRetry asks Dex to retry the createAutomation Step, after the delay when it is positive.
+func CreateAutomationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Retry[resend.AutomationReference](failure, after)
+}
+
+// CreateAutomationCreateAutomationDefault is the manifest mock createAutomationDefault: Resend completed the automation request.
+func CreateAutomationCreateAutomationDefault() connectormock.Case[resend.AutomationReference] {
+	value := connectormock.MustDecodeOutput[resend.AutomationReference](`{"id":"automation-1"}`)
+	return connectormock.Branch(resend.CreateAutomationBranchCreated, value, nil)
+}
+
+// CreateAutomationDefault is the manifest default, createAutomationDefault, which New installs.
+func CreateAutomationDefault() connectormock.Case[resend.AutomationReference] {
+	return CreateAutomationCreateAutomationDefault()
+}
+
+// GetAutomationFound selects the found branch: Resend completed the automation request.
+func GetAutomationFound(value resend.Automation, failure *sdkgo.Failure) connectormock.Case[resend.Automation] {
+	return connectormock.Branch(resend.GetAutomationBranchFound, value, failure)
+}
+
+// GetAutomationNotFound selects the notFound branch: The automation resource does not exist.
+func GetAutomationNotFound(value resend.Automation, failure *sdkgo.Failure) connectormock.Case[resend.Automation] {
+	return connectormock.Branch(resend.GetAutomationBranchNotFound, value, failure)
+}
+
+// GetAutomationProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetAutomationProviderRejected(value resend.Automation, failure *sdkgo.Failure) connectormock.Case[resend.Automation] {
+	return connectormock.Branch(resend.GetAutomationBranchProviderRejected, value, failure)
+}
+
+// GetAutomationInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetAutomationInvalidResponse(value resend.Automation, failure *sdkgo.Failure) connectormock.Case[resend.Automation] {
+	return connectormock.Branch(resend.GetAutomationBranchInvalidResponse, value, failure)
+}
+
+// GetAutomationDefect selects the defect branch: Local input or credentials are invalid.
+func GetAutomationDefect(value resend.Automation, failure *sdkgo.Failure) connectormock.Case[resend.Automation] {
+	return connectormock.Branch(resend.GetAutomationBranchDefect, value, failure)
+}
+
+// GetAutomationRetry asks Dex to retry the getAutomation Step, after the delay when it is positive.
+func GetAutomationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Automation] {
+	return connectormock.Retry[resend.Automation](failure, after)
+}
+
+// GetAutomationGetAutomationDefault is the manifest mock getAutomationDefault: Resend completed the automation request.
+func GetAutomationGetAutomationDefault() connectormock.Case[resend.Automation] {
+	value := connectormock.MustDecodeOutput[resend.Automation](`{"id":"automation-1","name":"Welcome","status":"disabled"}`)
+	return connectormock.Branch(resend.GetAutomationBranchFound, value, nil)
+}
+
+// GetAutomationDefault is the manifest default, getAutomationDefault, which New installs.
+func GetAutomationDefault() connectormock.Case[resend.Automation] {
+	return GetAutomationGetAutomationDefault()
+}
+
+// ListAutomationsListed selects the listed branch: Resend completed the automation request.
+func ListAutomationsListed(value resend.AutomationPage, failure *sdkgo.Failure) connectormock.Case[resend.AutomationPage] {
+	return connectormock.Branch(resend.ListAutomationsBranchListed, value, failure)
+}
+
+// ListAutomationsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListAutomationsProviderRejected(value resend.AutomationPage, failure *sdkgo.Failure) connectormock.Case[resend.AutomationPage] {
+	return connectormock.Branch(resend.ListAutomationsBranchProviderRejected, value, failure)
+}
+
+// ListAutomationsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListAutomationsInvalidResponse(value resend.AutomationPage, failure *sdkgo.Failure) connectormock.Case[resend.AutomationPage] {
+	return connectormock.Branch(resend.ListAutomationsBranchInvalidResponse, value, failure)
+}
+
+// ListAutomationsDefect selects the defect branch: Local input or credentials are invalid.
+func ListAutomationsDefect(value resend.AutomationPage, failure *sdkgo.Failure) connectormock.Case[resend.AutomationPage] {
+	return connectormock.Branch(resend.ListAutomationsBranchDefect, value, failure)
+}
+
+// ListAutomationsRetry asks Dex to retry the listAutomations Step, after the delay when it is positive.
+func ListAutomationsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.AutomationPage] {
+	return connectormock.Retry[resend.AutomationPage](failure, after)
+}
+
+// ListAutomationsListAutomationsDefault is the manifest mock listAutomationsDefault: Resend completed the automation request.
+func ListAutomationsListAutomationsDefault() connectormock.Case[resend.AutomationPage] {
+	value := connectormock.MustDecodeOutput[resend.AutomationPage](`{"data":[{"id":"automation-1","name":"Welcome","status":"disabled"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListAutomationsBranchListed, value, nil)
+}
+
+// ListAutomationsDefault is the manifest default, listAutomationsDefault, which New installs.
+func ListAutomationsDefault() connectormock.Case[resend.AutomationPage] {
+	return ListAutomationsListAutomationsDefault()
+}
+
+// UpdateAutomationUpdated selects the updated branch: Resend completed the automation request.
+func UpdateAutomationUpdated(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.UpdateAutomationBranchUpdated, value, failure)
+}
+
+// UpdateAutomationNotFound selects the notFound branch: The automation resource does not exist.
+func UpdateAutomationNotFound(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.UpdateAutomationBranchNotFound, value, failure)
+}
+
+// UpdateAutomationProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateAutomationProviderRejected(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.UpdateAutomationBranchProviderRejected, value, failure)
+}
+
+// UpdateAutomationInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateAutomationInvalidResponse(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.UpdateAutomationBranchInvalidResponse, value, failure)
+}
+
+// UpdateAutomationDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateAutomationDefect(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.UpdateAutomationBranchDefect, value, failure)
+}
+
+// UpdateAutomationRetry asks Dex to retry the updateAutomation Step, after the delay when it is positive.
+func UpdateAutomationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Retry[resend.AutomationReference](failure, after)
+}
+
+// UpdateAutomationUpdateAutomationDefault is the manifest mock updateAutomationDefault: Resend completed the automation request.
+func UpdateAutomationUpdateAutomationDefault() connectormock.Case[resend.AutomationReference] {
+	value := connectormock.MustDecodeOutput[resend.AutomationReference](`{"id":"automation-1"}`)
+	return connectormock.Branch(resend.UpdateAutomationBranchUpdated, value, nil)
+}
+
+// UpdateAutomationDefault is the manifest default, updateAutomationDefault, which New installs.
+func UpdateAutomationDefault() connectormock.Case[resend.AutomationReference] {
+	return UpdateAutomationUpdateAutomationDefault()
+}
+
+// DeleteAutomationDeleted selects the deleted branch: Resend completed the automation request.
+func DeleteAutomationDeleted(value resend.DeletedAutomation, failure *sdkgo.Failure) connectormock.Case[resend.DeletedAutomation] {
+	return connectormock.Branch(resend.DeleteAutomationBranchDeleted, value, failure)
+}
+
+// DeleteAutomationNotFound selects the notFound branch: The automation resource does not exist.
+func DeleteAutomationNotFound(value resend.DeletedAutomation, failure *sdkgo.Failure) connectormock.Case[resend.DeletedAutomation] {
+	return connectormock.Branch(resend.DeleteAutomationBranchNotFound, value, failure)
+}
+
+// DeleteAutomationProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteAutomationProviderRejected(value resend.DeletedAutomation, failure *sdkgo.Failure) connectormock.Case[resend.DeletedAutomation] {
+	return connectormock.Branch(resend.DeleteAutomationBranchProviderRejected, value, failure)
+}
+
+// DeleteAutomationInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteAutomationInvalidResponse(value resend.DeletedAutomation, failure *sdkgo.Failure) connectormock.Case[resend.DeletedAutomation] {
+	return connectormock.Branch(resend.DeleteAutomationBranchInvalidResponse, value, failure)
+}
+
+// DeleteAutomationDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteAutomationDefect(value resend.DeletedAutomation, failure *sdkgo.Failure) connectormock.Case[resend.DeletedAutomation] {
+	return connectormock.Branch(resend.DeleteAutomationBranchDefect, value, failure)
+}
+
+// DeleteAutomationRetry asks Dex to retry the deleteAutomation Step, after the delay when it is positive.
+func DeleteAutomationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedAutomation] {
+	return connectormock.Retry[resend.DeletedAutomation](failure, after)
+}
+
+// DeleteAutomationDeleteAutomationDefault is the manifest mock deleteAutomationDefault: Resend completed the automation request.
+func DeleteAutomationDeleteAutomationDefault() connectormock.Case[resend.DeletedAutomation] {
+	value := connectormock.MustDecodeOutput[resend.DeletedAutomation](`{"id":"automation-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteAutomationBranchDeleted, value, nil)
+}
+
+// DeleteAutomationDefault is the manifest default, deleteAutomationDefault, which New installs.
+func DeleteAutomationDefault() connectormock.Case[resend.DeletedAutomation] {
+	return DeleteAutomationDeleteAutomationDefault()
+}
+
+// DuplicateAutomationDuplicated selects the duplicated branch: Resend completed the automation request.
+func DuplicateAutomationDuplicated(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.DuplicateAutomationBranchDuplicated, value, failure)
+}
+
+// DuplicateAutomationProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DuplicateAutomationProviderRejected(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.DuplicateAutomationBranchProviderRejected, value, failure)
+}
+
+// DuplicateAutomationDefect selects the defect branch: Local input or credentials are invalid.
+func DuplicateAutomationDefect(value resend.AutomationReference, failure *sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Branch(resend.DuplicateAutomationBranchDefect, value, failure)
+}
+
+// DuplicateAutomationUncertain returns an uncertain duplicateAutomation outcome.
+func DuplicateAutomationUncertain(value resend.AutomationReference, failure sdkgo.Failure) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// DuplicateAutomationRetry asks Dex to retry the duplicateAutomation Step, after the delay when it is positive.
+func DuplicateAutomationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.AutomationReference] {
+	return connectormock.Retry[resend.AutomationReference](failure, after)
+}
+
+// DuplicateAutomationDuplicateAutomationDefault is the manifest mock duplicateAutomationDefault: Resend completed the automation request.
+func DuplicateAutomationDuplicateAutomationDefault() connectormock.Case[resend.AutomationReference] {
+	value := connectormock.MustDecodeOutput[resend.AutomationReference](`{"id":"automation-2"}`)
+	return connectormock.Branch(resend.DuplicateAutomationBranchDuplicated, value, nil)
+}
+
+// DuplicateAutomationDefault is the manifest default, duplicateAutomationDefault, which New installs.
+func DuplicateAutomationDefault() connectormock.Case[resend.AutomationReference] {
+	return DuplicateAutomationDuplicateAutomationDefault()
+}
+
+// StopAutomationStopped selects the stopped branch: Resend completed the automation request.
+func StopAutomationStopped(value resend.AutomationStatus, failure *sdkgo.Failure) connectormock.Case[resend.AutomationStatus] {
+	return connectormock.Branch(resend.StopAutomationBranchStopped, value, failure)
+}
+
+// StopAutomationNotFound selects the notFound branch: The automation resource does not exist.
+func StopAutomationNotFound(value resend.AutomationStatus, failure *sdkgo.Failure) connectormock.Case[resend.AutomationStatus] {
+	return connectormock.Branch(resend.StopAutomationBranchNotFound, value, failure)
+}
+
+// StopAutomationProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func StopAutomationProviderRejected(value resend.AutomationStatus, failure *sdkgo.Failure) connectormock.Case[resend.AutomationStatus] {
+	return connectormock.Branch(resend.StopAutomationBranchProviderRejected, value, failure)
+}
+
+// StopAutomationInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func StopAutomationInvalidResponse(value resend.AutomationStatus, failure *sdkgo.Failure) connectormock.Case[resend.AutomationStatus] {
+	return connectormock.Branch(resend.StopAutomationBranchInvalidResponse, value, failure)
+}
+
+// StopAutomationDefect selects the defect branch: Local input or credentials are invalid.
+func StopAutomationDefect(value resend.AutomationStatus, failure *sdkgo.Failure) connectormock.Case[resend.AutomationStatus] {
+	return connectormock.Branch(resend.StopAutomationBranchDefect, value, failure)
+}
+
+// StopAutomationRetry asks Dex to retry the stopAutomation Step, after the delay when it is positive.
+func StopAutomationRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.AutomationStatus] {
+	return connectormock.Retry[resend.AutomationStatus](failure, after)
+}
+
+// StopAutomationStopAutomationDefault is the manifest mock stopAutomationDefault: Resend completed the automation request.
+func StopAutomationStopAutomationDefault() connectormock.Case[resend.AutomationStatus] {
+	value := connectormock.MustDecodeOutput[resend.AutomationStatus](`{"id":"automation-1","status":"disabled"}`)
+	return connectormock.Branch(resend.StopAutomationBranchStopped, value, nil)
+}
+
+// StopAutomationDefault is the manifest default, stopAutomationDefault, which New installs.
+func StopAutomationDefault() connectormock.Case[resend.AutomationStatus] {
+	return StopAutomationStopAutomationDefault()
+}
+
+// ListAutomationRunsListed selects the listed branch: Resend completed the automation request.
+func ListAutomationRunsListed(value resend.AutomationRunPage, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRunPage] {
+	return connectormock.Branch(resend.ListAutomationRunsBranchListed, value, failure)
+}
+
+// ListAutomationRunsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListAutomationRunsProviderRejected(value resend.AutomationRunPage, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRunPage] {
+	return connectormock.Branch(resend.ListAutomationRunsBranchProviderRejected, value, failure)
+}
+
+// ListAutomationRunsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListAutomationRunsInvalidResponse(value resend.AutomationRunPage, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRunPage] {
+	return connectormock.Branch(resend.ListAutomationRunsBranchInvalidResponse, value, failure)
+}
+
+// ListAutomationRunsDefect selects the defect branch: Local input or credentials are invalid.
+func ListAutomationRunsDefect(value resend.AutomationRunPage, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRunPage] {
+	return connectormock.Branch(resend.ListAutomationRunsBranchDefect, value, failure)
+}
+
+// ListAutomationRunsRetry asks Dex to retry the listAutomationRuns Step, after the delay when it is positive.
+func ListAutomationRunsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.AutomationRunPage] {
+	return connectormock.Retry[resend.AutomationRunPage](failure, after)
+}
+
+// ListAutomationRunsListAutomationRunsDefault is the manifest mock listAutomationRunsDefault: Resend completed the automation request.
+func ListAutomationRunsListAutomationRunsDefault() connectormock.Case[resend.AutomationRunPage] {
+	value := connectormock.MustDecodeOutput[resend.AutomationRunPage](`{"data":[{"id":"run-1","status":"completed"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListAutomationRunsBranchListed, value, nil)
+}
+
+// ListAutomationRunsDefault is the manifest default, listAutomationRunsDefault, which New installs.
+func ListAutomationRunsDefault() connectormock.Case[resend.AutomationRunPage] {
+	return ListAutomationRunsListAutomationRunsDefault()
+}
+
+// GetAutomationRunFound selects the found branch: Resend completed the automation request.
+func GetAutomationRunFound(value resend.AutomationRun, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRun] {
+	return connectormock.Branch(resend.GetAutomationRunBranchFound, value, failure)
+}
+
+// GetAutomationRunNotFound selects the notFound branch: The automation resource does not exist.
+func GetAutomationRunNotFound(value resend.AutomationRun, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRun] {
+	return connectormock.Branch(resend.GetAutomationRunBranchNotFound, value, failure)
+}
+
+// GetAutomationRunProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetAutomationRunProviderRejected(value resend.AutomationRun, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRun] {
+	return connectormock.Branch(resend.GetAutomationRunBranchProviderRejected, value, failure)
+}
+
+// GetAutomationRunInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetAutomationRunInvalidResponse(value resend.AutomationRun, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRun] {
+	return connectormock.Branch(resend.GetAutomationRunBranchInvalidResponse, value, failure)
+}
+
+// GetAutomationRunDefect selects the defect branch: Local input or credentials are invalid.
+func GetAutomationRunDefect(value resend.AutomationRun, failure *sdkgo.Failure) connectormock.Case[resend.AutomationRun] {
+	return connectormock.Branch(resend.GetAutomationRunBranchDefect, value, failure)
+}
+
+// GetAutomationRunRetry asks Dex to retry the getAutomationRun Step, after the delay when it is positive.
+func GetAutomationRunRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.AutomationRun] {
+	return connectormock.Retry[resend.AutomationRun](failure, after)
+}
+
+// GetAutomationRunGetAutomationRunDefault is the manifest mock getAutomationRunDefault: Resend completed the automation request.
+func GetAutomationRunGetAutomationRunDefault() connectormock.Case[resend.AutomationRun] {
+	value := connectormock.MustDecodeOutput[resend.AutomationRun](`{"id":"run-1","status":"completed"}`)
+	return connectormock.Branch(resend.GetAutomationRunBranchFound, value, nil)
+}
+
+// GetAutomationRunDefault is the manifest default, getAutomationRunDefault, which New installs.
+func GetAutomationRunDefault() connectormock.Case[resend.AutomationRun] {
+	return GetAutomationRunGetAutomationRunDefault()
 }

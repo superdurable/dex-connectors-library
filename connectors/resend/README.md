@@ -236,6 +236,16 @@ Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and
 credentials never enter a Dex result, receipt, Stream, or log.
 
+## Automations
+
+`CreateAutomation` and `DuplicateAutomation` use bounded `limited` retries.
+Create reads back matching name, status, and graph after an unknown send.
+Get/list, absolute updates, deletion, stop, and run status reads are safe.
+Results omit automation step configurations, run outputs, and errors because
+they can contain message content. The runnable
+[`create-automation` example](go/examples/create-automation/README.md)
+exercises graph creation through a real Dex Worker and generated provider mock.
+
 ## Automation events
 
 `CreateEvent` and `SendEvent` use bounded `limited` retries. Create reads

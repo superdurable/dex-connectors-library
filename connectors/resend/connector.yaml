@@ -1577,3 +1577,152 @@ spec:
     execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
     mocks:
     - {name: sendEventDefault, branch: sent, default: true, description: Resend completed the event request., output: {event: order.paid}}
+  - name: createAutomation
+    goName: CreateAutomation
+    inputType: CreateAutomationInput
+    outputType: AutomationReference
+    kind: mutation
+    description: Create a named automation graph with a trigger step.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the automation request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createAutomationDefault, branch: created, default: true, description: Resend completed the automation request., output: {id: automation-1}}
+  - name: getAutomation
+    goName: GetAutomation
+    inputType: GetAutomationInput
+    outputType: Automation
+    kind: query
+    description: Retrieve automation metadata without graph configuration.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getAutomationDefault, branch: found, default: true, description: Resend completed the automation request., output: {id: automation-1, name: Welcome, status: disabled}}
+  - name: listAutomations
+    goName: ListAutomations
+    inputType: ListAutomationsInput
+    outputType: AutomationPage
+    kind: query
+    description: List automation metadata by optional status.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the automation request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listAutomationsDefault, branch: listed, default: true, description: Resend completed the automation request., output: {data: [{id: automation-1, name: Welcome, status: disabled}], has_more: false}}
+  - name: updateAutomation
+    goName: UpdateAutomation
+    inputType: UpdateAutomationInput
+    outputType: AutomationReference
+    kind: mutation
+    description: Replace selected absolute automation graph or status fields.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateAutomationDefault, branch: updated, default: true, description: Resend completed the automation request., output: {id: automation-1}}
+  - name: deleteAutomation
+    goName: DeleteAutomation
+    inputType: DeleteAutomationInput
+    outputType: DeletedAutomation
+    kind: mutation
+    description: Delete an automation graph.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteAutomationDefault, branch: deleted, default: true, description: Resend completed the automation request., output: {id: automation-1, deleted: true}}
+  - name: duplicateAutomation
+    goName: DuplicateAutomation
+    inputType: DuplicateAutomationInput
+    outputType: AutomationReference
+    kind: mutation
+    description: Copy an automation graph.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: duplicated, goName: Duplicated, description: Resend completed the automation request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: duplicateAutomationDefault, branch: duplicated, default: true, description: Resend completed the automation request., output: {id: automation-2}}
+  - name: stopAutomation
+    goName: StopAutomation
+    inputType: StopAutomationInput
+    outputType: AutomationStatus
+    kind: mutation
+    description: Stop and disable an automation.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: stopped, goName: Stopped, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: stopAutomationDefault, branch: stopped, default: true, description: Resend completed the automation request., output: {id: automation-1, status: disabled}}
+  - name: listAutomationRuns
+    goName: ListAutomationRuns
+    inputType: ListAutomationRunsInput
+    outputType: AutomationRunPage
+    kind: query
+    description: List automation run status without step outputs.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the automation request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listAutomationRunsDefault, branch: listed, default: true, description: Resend completed the automation request., output: {data: [{id: run-1, status: completed}], has_more: false}}
+  - name: getAutomationRun
+    goName: GetAutomationRun
+    inputType: GetAutomationRunInput
+    outputType: AutomationRun
+    kind: query
+    description: Retrieve one automation run status without step outputs.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the automation request.}
+    - {id: notFound, goName: NotFound, description: The automation resource does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getAutomationRunDefault, branch: found, default: true, description: Resend completed the automation request., output: {id: run-1, status: completed}}
