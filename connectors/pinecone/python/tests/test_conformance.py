@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/pinecone/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/pinecone/scenarios.json")
+    if scenario["operation"] in {"upsertVectors", "queryVectors"}
+]
 CONNECTION = sdk.ConnectionRef("pinecone", "pinecone")
 
 
@@ -32,8 +36,7 @@ class _ConformanceUpsertVectorsOperation:
 
     async def invoke(self, call, input):
         vectors = tuple(
-            pinecone.Vector(**vector) if isinstance(vector, dict) else vector
-            for vector in input.vectors
+            pinecone.Vector(**vector) if isinstance(vector, dict) else vector for vector in input.vectors
         )
         return await self.operation.invoke(call, pinecone.UpsertVectorsInput(input.namespace, vectors))
 

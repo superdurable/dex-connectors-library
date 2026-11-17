@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted personio connection. Script each operation through its accessor.
 type Mock struct {
-	connection personio.Connection
-	getPerson  *connectormock.Query[personio.GetPersonInput, personio.PersonProfile]
+	connection  personio.Connection
+	listPersons *connectormock.Query[personio.ListPersonsInput, personio.PersonPage]
+	getPerson   *connectormock.Query[personio.GetPersonInput, personio.PersonProfile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +27,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getPerson: connectormock.NewQuery[personio.GetPersonInput, personio.PersonProfile](t, personio.GetPersonDefinition),
+		listPersons: connectormock.NewQuery[personio.ListPersonsInput, personio.PersonPage](t, personio.ListPersonsDefinition),
+		getPerson:   connectormock.NewQuery[personio.GetPersonInput, personio.PersonProfile](t, personio.GetPersonDefinition),
 	}
+	mock.listPersons.Default(ListPersonsDefault())
 	mock.getPerson.Default(GetPersonDefault())
 	connection, err := personio.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "personio", Name: connectionName})
 	if err != nil {
@@ -40,6 +43,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() personio.Connection { return mock.connection }
 
+// ListPersons returns the listPersons script.
+func (mock *Mock) ListPersons() *connectormock.Query[personio.ListPersonsInput, personio.PersonPage] {
+	return mock.listPersons
+}
+
 // GetPerson returns the getPerson script.
 func (mock *Mock) GetPerson() *connectormock.Query[personio.GetPersonInput, personio.PersonProfile] {
 	return mock.getPerson
@@ -47,9 +55,46 @@ func (mock *Mock) GetPerson() *connectormock.Query[personio.GetPersonInput, pers
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListPersons() sdkgo.Query[personio.ListPersonsInput, personio.PersonPage] {
+	return operations.mock.listPersons
+}
 func (operations mockOperations) GetPerson() sdkgo.Query[personio.GetPersonInput, personio.PersonProfile] {
 	return operations.mock.getPerson
 }
+
+// ListPersonsListed selects the listed branch: Personio returned one page of selected persons.
+func ListPersonsListed(value personio.PersonPage, failure *sdkgo.Failure) connectormock.Case[personio.PersonPage] {
+	return connectormock.Branch(personio.ListPersonsBranchListed, value, failure)
+}
+
+// ListPersonsProviderRejected selects the providerRejected branch: Personio conclusively rejected the list request.
+func ListPersonsProviderRejected(value personio.PersonPage, failure *sdkgo.Failure) connectormock.Case[personio.PersonPage] {
+	return connectormock.Branch(personio.ListPersonsBranchProviderRejected, value, failure)
+}
+
+// ListPersonsInvalidResponse selects the invalidResponse branch: Personio returned malformed or oversized JSON.
+func ListPersonsInvalidResponse(value personio.PersonPage, failure *sdkgo.Failure) connectormock.Case[personio.PersonPage] {
+	return connectormock.Branch(personio.ListPersonsBranchInvalidResponse, value, failure)
+}
+
+// ListPersonsDefect selects the defect branch: Local filters or connection credentials are invalid.
+func ListPersonsDefect(value personio.PersonPage, failure *sdkgo.Failure) connectormock.Case[personio.PersonPage] {
+	return connectormock.Branch(personio.ListPersonsBranchDefect, value, failure)
+}
+
+// ListPersonsRetry asks Dex to retry the listPersons Step, after the delay when it is positive.
+func ListPersonsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[personio.PersonPage] {
+	return connectormock.Retry[personio.PersonPage](failure, after)
+}
+
+// ListPersonsListedDefault is the manifest mock listedDefault: A sample page of Personio persons is returned.
+func ListPersonsListedDefault() connectormock.Case[personio.PersonPage] {
+	value := connectormock.MustDecodeOutput[personio.PersonPage](`{"persons":[{"id":"3003","firstName":"Jane","lastName":"Doe"}],"nextCursor":""}`)
+	return connectormock.Branch(personio.ListPersonsBranchListed, value, nil)
+}
+
+// ListPersonsDefault is the manifest default, listedDefault, which New installs.
+func ListPersonsDefault() connectormock.Case[personio.PersonPage] { return ListPersonsListedDefault() }
 
 // GetPersonFound selects the found branch: Personio returned the selected person.
 func GetPersonFound(value personio.PersonProfile, failure *sdkgo.Failure) connectormock.Case[personio.PersonProfile] {

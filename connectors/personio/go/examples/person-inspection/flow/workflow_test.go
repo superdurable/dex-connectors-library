@@ -24,3 +24,12 @@ func TestPersonInspectionFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestPersonListFlowIdentity(t *testing.T) {
+	mock := personiomock.New(t, ConnectionName)
+	flow := NewPersonListFlow(mock.Connection())
+	require.Equal(t, PersonListFlowType, dex.GetFinalFlowType(flow))
+	require.Equal(t, "StartListPersons", dex.GetFinalStepType[personio.ListPersonsInput](startPersonList{}))
+	_, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+}

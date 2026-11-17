@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { PayPalClient } from '../src/client.js';
 import { GetOrderInputSchema, ListTransactionsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/paypal/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/paypal/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'getOrder' || scenario.operation === 'listTransactions');
 const connection = { provider: 'paypal', name: 'paypal-test' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePayPal));

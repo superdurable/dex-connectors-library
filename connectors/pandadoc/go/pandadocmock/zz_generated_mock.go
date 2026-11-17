@@ -17,8 +17,13 @@ import (
 
 // Mock is a scripted pandadoc connection. Script each operation through its accessor.
 type Mock struct {
-	connection  pandadoc.Connection
-	getDocument *connectormock.Query[pandadoc.GetDocumentInput, pandadoc.DocumentStatus]
+	connection     pandadoc.Connection
+	getDocument    *connectormock.Query[pandadoc.GetDocumentInput, pandadoc.DocumentStatus]
+	listDocuments  *connectormock.Query[pandadoc.ListDocumentsInput, pandadoc.DocumentPage]
+	updateDocument *connectormock.Mutation[pandadoc.UpdateDocumentInput, pandadoc.DocumentAction]
+	deleteDocument *connectormock.Mutation[pandadoc.DeleteDocumentInput, pandadoc.DocumentAction]
+	createDocument *connectormock.Mutation[pandadoc.CreateDocumentInput, pandadoc.DocumentStatus]
+	sendDocument   *connectormock.Mutation[pandadoc.SendDocumentInput, pandadoc.DocumentAction]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +31,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getDocument: connectormock.NewQuery[pandadoc.GetDocumentInput, pandadoc.DocumentStatus](t, pandadoc.GetDocumentDefinition),
+		getDocument:    connectormock.NewQuery[pandadoc.GetDocumentInput, pandadoc.DocumentStatus](t, pandadoc.GetDocumentDefinition),
+		listDocuments:  connectormock.NewQuery[pandadoc.ListDocumentsInput, pandadoc.DocumentPage](t, pandadoc.ListDocumentsDefinition),
+		updateDocument: connectormock.NewMutation[pandadoc.UpdateDocumentInput, pandadoc.DocumentAction](t, pandadoc.UpdateDocumentDefinition),
+		deleteDocument: connectormock.NewMutation[pandadoc.DeleteDocumentInput, pandadoc.DocumentAction](t, pandadoc.DeleteDocumentDefinition),
+		createDocument: connectormock.NewMutation[pandadoc.CreateDocumentInput, pandadoc.DocumentStatus](t, pandadoc.CreateDocumentDefinition),
+		sendDocument:   connectormock.NewMutation[pandadoc.SendDocumentInput, pandadoc.DocumentAction](t, pandadoc.SendDocumentDefinition),
 	}
 	mock.getDocument.Default(GetDocumentDefault())
+	mock.listDocuments.Default(ListDocumentsDefault())
+	mock.updateDocument.Default(UpdateDocumentDefault())
+	mock.deleteDocument.Default(DeleteDocumentDefault())
+	mock.createDocument.Default(CreateDocumentDefault())
+	mock.sendDocument.Default(SendDocumentDefault())
 	connection, err := pandadoc.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "pandadoc", Name: connectionName})
 	if err != nil {
 		t.Fatalf("pandadoc mock connection: %v", err)
@@ -45,10 +60,50 @@ func (mock *Mock) GetDocument() *connectormock.Query[pandadoc.GetDocumentInput, 
 	return mock.getDocument
 }
 
+// ListDocuments returns the listDocuments script.
+func (mock *Mock) ListDocuments() *connectormock.Query[pandadoc.ListDocumentsInput, pandadoc.DocumentPage] {
+	return mock.listDocuments
+}
+
+// UpdateDocument returns the updateDocument script.
+func (mock *Mock) UpdateDocument() *connectormock.Mutation[pandadoc.UpdateDocumentInput, pandadoc.DocumentAction] {
+	return mock.updateDocument
+}
+
+// DeleteDocument returns the deleteDocument script.
+func (mock *Mock) DeleteDocument() *connectormock.Mutation[pandadoc.DeleteDocumentInput, pandadoc.DocumentAction] {
+	return mock.deleteDocument
+}
+
+// CreateDocument returns the createDocument script.
+func (mock *Mock) CreateDocument() *connectormock.Mutation[pandadoc.CreateDocumentInput, pandadoc.DocumentStatus] {
+	return mock.createDocument
+}
+
+// SendDocument returns the sendDocument script.
+func (mock *Mock) SendDocument() *connectormock.Mutation[pandadoc.SendDocumentInput, pandadoc.DocumentAction] {
+	return mock.sendDocument
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetDocument() sdkgo.Query[pandadoc.GetDocumentInput, pandadoc.DocumentStatus] {
 	return operations.mock.getDocument
+}
+func (operations mockOperations) ListDocuments() sdkgo.Query[pandadoc.ListDocumentsInput, pandadoc.DocumentPage] {
+	return operations.mock.listDocuments
+}
+func (operations mockOperations) UpdateDocument() sdkgo.Mutation[pandadoc.UpdateDocumentInput, pandadoc.DocumentAction] {
+	return operations.mock.updateDocument
+}
+func (operations mockOperations) DeleteDocument() sdkgo.Mutation[pandadoc.DeleteDocumentInput, pandadoc.DocumentAction] {
+	return operations.mock.deleteDocument
+}
+func (operations mockOperations) CreateDocument() sdkgo.Mutation[pandadoc.CreateDocumentInput, pandadoc.DocumentStatus] {
+	return operations.mock.createDocument
+}
+func (operations mockOperations) SendDocument() sdkgo.Mutation[pandadoc.SendDocumentInput, pandadoc.DocumentAction] {
+	return operations.mock.sendDocument
 }
 
 // GetDocumentFound selects the found branch: PandaDoc returned the document.
@@ -90,4 +145,184 @@ func GetDocumentFoundDefault() connectormock.Case[pandadoc.DocumentStatus] {
 // GetDocumentDefault is the manifest default, foundDefault, which New installs.
 func GetDocumentDefault() connectormock.Case[pandadoc.DocumentStatus] {
 	return GetDocumentFoundDefault()
+}
+
+// ListDocumentsListed selects the listed branch: PandaDoc returned a document page.
+func ListDocumentsListed(value pandadoc.DocumentPage, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentPage] {
+	return connectormock.Branch(pandadoc.ListDocumentsBranchListed, value, failure)
+}
+
+// ListDocumentsProviderRejected selects the providerRejected branch: PandaDoc rejected the search.
+func ListDocumentsProviderRejected(value pandadoc.DocumentPage, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentPage] {
+	return connectormock.Branch(pandadoc.ListDocumentsBranchProviderRejected, value, failure)
+}
+
+// ListDocumentsInvalidResponse selects the invalidResponse branch: PandaDoc returned malformed or oversized JSON.
+func ListDocumentsInvalidResponse(value pandadoc.DocumentPage, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentPage] {
+	return connectormock.Branch(pandadoc.ListDocumentsBranchInvalidResponse, value, failure)
+}
+
+// ListDocumentsDefect selects the defect branch: The page request or connection is invalid.
+func ListDocumentsDefect(value pandadoc.DocumentPage, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentPage] {
+	return connectormock.Branch(pandadoc.ListDocumentsBranchDefect, value, failure)
+}
+
+// ListDocumentsRetry asks Dex to retry the listDocuments Step, after the delay when it is positive.
+func ListDocumentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pandadoc.DocumentPage] {
+	return connectormock.Retry[pandadoc.DocumentPage](failure, after)
+}
+
+// ListDocumentsListDocumentsDefault is the manifest mock listDocumentsDefault: One document in a search result.
+func ListDocumentsListDocumentsDefault() connectormock.Case[pandadoc.DocumentPage] {
+	value := connectormock.MustDecodeOutput[pandadoc.DocumentPage](`{"results":[{"id":"fANp5wW5EwY7AkiTkTGekZ","name":"Example agreement","status":"document.draft"}],"count":1}`)
+	return connectormock.Branch(pandadoc.ListDocumentsBranchListed, value, nil)
+}
+
+// ListDocumentsDefault is the manifest default, listDocumentsDefault, which New installs.
+func ListDocumentsDefault() connectormock.Case[pandadoc.DocumentPage] {
+	return ListDocumentsListDocumentsDefault()
+}
+
+// UpdateDocumentUpdated selects the updated branch: PandaDoc accepted the draft update.
+func UpdateDocumentUpdated(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.UpdateDocumentBranchUpdated, value, failure)
+}
+
+// UpdateDocumentNotFound selects the notFound branch: The document does not exist.
+func UpdateDocumentNotFound(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.UpdateDocumentBranchNotFound, value, failure)
+}
+
+// UpdateDocumentProviderRejected selects the providerRejected branch: PandaDoc rejected the draft update.
+func UpdateDocumentProviderRejected(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.UpdateDocumentBranchProviderRejected, value, failure)
+}
+
+// UpdateDocumentDefect selects the defect branch: The document ID, name, or connection is invalid.
+func UpdateDocumentDefect(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.UpdateDocumentBranchDefect, value, failure)
+}
+
+// UpdateDocumentRetry asks Dex to retry the updateDocument Step, after the delay when it is positive.
+func UpdateDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Retry[pandadoc.DocumentAction](failure, after)
+}
+
+// UpdateDocumentUpdateDocumentDefault is the manifest mock updateDocumentDefault: A renamed draft document.
+func UpdateDocumentUpdateDocumentDefault() connectormock.Case[pandadoc.DocumentAction] {
+	value := connectormock.MustDecodeOutput[pandadoc.DocumentAction](`{"documentId":"fANp5wW5EwY7AkiTkTGekZ"}`)
+	return connectormock.Branch(pandadoc.UpdateDocumentBranchUpdated, value, nil)
+}
+
+// UpdateDocumentDefault is the manifest default, updateDocumentDefault, which New installs.
+func UpdateDocumentDefault() connectormock.Case[pandadoc.DocumentAction] {
+	return UpdateDocumentUpdateDocumentDefault()
+}
+
+// DeleteDocumentDeleted selects the deleted branch: PandaDoc deleted the document or it was already absent.
+func DeleteDocumentDeleted(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.DeleteDocumentBranchDeleted, value, failure)
+}
+
+// DeleteDocumentProviderRejected selects the providerRejected branch: PandaDoc rejected the deletion.
+func DeleteDocumentProviderRejected(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.DeleteDocumentBranchProviderRejected, value, failure)
+}
+
+// DeleteDocumentDefect selects the defect branch: The document ID or connection is invalid.
+func DeleteDocumentDefect(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.DeleteDocumentBranchDefect, value, failure)
+}
+
+// DeleteDocumentRetry asks Dex to retry the deleteDocument Step, after the delay when it is positive.
+func DeleteDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Retry[pandadoc.DocumentAction](failure, after)
+}
+
+// DeleteDocumentDeleteDocumentDefault is the manifest mock deleteDocumentDefault: A deleted document.
+func DeleteDocumentDeleteDocumentDefault() connectormock.Case[pandadoc.DocumentAction] {
+	value := connectormock.MustDecodeOutput[pandadoc.DocumentAction](`{"documentId":"fANp5wW5EwY7AkiTkTGekZ"}`)
+	return connectormock.Branch(pandadoc.DeleteDocumentBranchDeleted, value, nil)
+}
+
+// DeleteDocumentDefault is the manifest default, deleteDocumentDefault, which New installs.
+func DeleteDocumentDefault() connectormock.Case[pandadoc.DocumentAction] {
+	return DeleteDocumentDeleteDocumentDefault()
+}
+
+// CreateDocumentCreated selects the created branch: PandaDoc returned the new document.
+func CreateDocumentCreated(value pandadoc.DocumentStatus, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentStatus] {
+	return connectormock.Branch(pandadoc.CreateDocumentBranchCreated, value, failure)
+}
+
+// CreateDocumentProviderRejected selects the providerRejected branch: PandaDoc rejected creation.
+func CreateDocumentProviderRejected(value pandadoc.DocumentStatus, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentStatus] {
+	return connectormock.Branch(pandadoc.CreateDocumentBranchProviderRejected, value, failure)
+}
+
+// CreateDocumentUncertain returns an uncertain createDocument outcome.
+func CreateDocumentUncertain(value pandadoc.DocumentStatus, failure sdkgo.Failure) connectormock.Case[pandadoc.DocumentStatus] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDocumentDefect selects the defect branch: The template, recipients, name, or connection is invalid.
+func CreateDocumentDefect(value pandadoc.DocumentStatus, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentStatus] {
+	return connectormock.Branch(pandadoc.CreateDocumentBranchDefect, value, failure)
+}
+
+// CreateDocumentRetry asks Dex to retry the createDocument Step, after the delay when it is positive.
+func CreateDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pandadoc.DocumentStatus] {
+	return connectormock.Retry[pandadoc.DocumentStatus](failure, after)
+}
+
+// CreateDocumentCreateDocumentDefault is the manifest mock createDocumentDefault: A document created from a template.
+func CreateDocumentCreateDocumentDefault() connectormock.Case[pandadoc.DocumentStatus] {
+	value := connectormock.MustDecodeOutput[pandadoc.DocumentStatus](`{"id":"fANp5wW5EwY7AkiTkTGekZ","name":"Example agreement","status":"document.uploaded"}`)
+	return connectormock.Branch(pandadoc.CreateDocumentBranchCreated, value, nil)
+}
+
+// CreateDocumentDefault is the manifest default, createDocumentDefault, which New installs.
+func CreateDocumentDefault() connectormock.Case[pandadoc.DocumentStatus] {
+	return CreateDocumentCreateDocumentDefault()
+}
+
+// SendDocumentSent selects the sent branch: PandaDoc accepted the send request.
+func SendDocumentSent(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.SendDocumentBranchSent, value, failure)
+}
+
+// SendDocumentNotFound selects the notFound branch: The document does not exist.
+func SendDocumentNotFound(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.SendDocumentBranchNotFound, value, failure)
+}
+
+// SendDocumentProviderRejected selects the providerRejected branch: PandaDoc rejected the send request.
+func SendDocumentProviderRejected(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.SendDocumentBranchProviderRejected, value, failure)
+}
+
+// SendDocumentUncertain returns an uncertain sendDocument outcome.
+func SendDocumentUncertain(value pandadoc.DocumentAction, failure sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendDocumentDefect selects the defect branch: The document ID or connection is invalid.
+func SendDocumentDefect(value pandadoc.DocumentAction, failure *sdkgo.Failure) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Branch(pandadoc.SendDocumentBranchDefect, value, failure)
+}
+
+// SendDocumentRetry asks Dex to retry the sendDocument Step, after the delay when it is positive.
+func SendDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pandadoc.DocumentAction] {
+	return connectormock.Retry[pandadoc.DocumentAction](failure, after)
+}
+
+// SendDocumentSendDocumentDefault is the manifest mock sendDocumentDefault: PandaDoc accepted the send request.
+func SendDocumentSendDocumentDefault() connectormock.Case[pandadoc.DocumentAction] {
+	value := connectormock.MustDecodeOutput[pandadoc.DocumentAction](`{"documentId":"fANp5wW5EwY7AkiTkTGekZ"}`)
+	return connectormock.Branch(pandadoc.SendDocumentBranchSent, value, nil)
+}
+
+// SendDocumentDefault is the manifest default, sendDocumentDefault, which New installs.
+func SendDocumentDefault() connectormock.Case[pandadoc.DocumentAction] {
+	return SendDocumentSendDocumentDefault()
 }

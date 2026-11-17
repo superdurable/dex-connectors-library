@@ -41,12 +41,28 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetPayoutBatch() sdkgo.Query[GetPayoutBatchInput, PayoutBatch]
+	GetPayoutItem() sdkgo.Query[GetPayoutItemInput, PayoutItem]
+	CreatePayoutBatch() sdkgo.Mutation[CreatePayoutBatchInput, PayoutBatch]
+	CancelPayoutItem() sdkgo.Mutation[CancelPayoutItemInput, PayoutItem]
 	GetOrder() sdkgo.Query[GetOrderInput, Order]
 	ListTransactions() sdkgo.Query[ListTransactionsInput, TransactionPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetPayoutBatch() sdkgo.Query[GetPayoutBatchInput, PayoutBatch] {
+	return operations.client.GetPayoutBatch()
+}
+func (operations clientOperations) GetPayoutItem() sdkgo.Query[GetPayoutItemInput, PayoutItem] {
+	return operations.client.GetPayoutItem()
+}
+func (operations clientOperations) CreatePayoutBatch() sdkgo.Mutation[CreatePayoutBatchInput, PayoutBatch] {
+	return operations.client.CreatePayoutBatch()
+}
+func (operations clientOperations) CancelPayoutItem() sdkgo.Mutation[CancelPayoutItemInput, PayoutItem] {
+	return operations.client.CancelPayoutItem()
+}
 func (operations clientOperations) GetOrder() sdkgo.Query[GetOrderInput, Order] {
 	return operations.client.GetOrder()
 }
@@ -194,6 +210,308 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential client_secret is required")
 	}
 	return nil
+}
+
+const GetPayoutBatchBranchFound sdkgo.BranchID = "found"
+const GetPayoutBatchBranchNotFound sdkgo.BranchID = "notFound"
+const GetPayoutBatchBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPayoutBatchBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPayoutBatchBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPayoutBatchDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPayoutBatch"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPayoutBatchBranchFound, Description: "Payout batch details were read."},
+		{ID: GetPayoutBatchBranchNotFound, Description: "The payout batch does not exist.", Optional: true},
+		{ID: GetPayoutBatchBranchProviderRejected, Description: "PayPal rejected the request.", Optional: true},
+		{ID: GetPayoutBatchBranchInvalidResponse, Description: "PayPal returned invalid JSON.", Optional: true},
+		{ID: GetPayoutBatchBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPayoutBatchResult = sdkgo.QueryResult[PayoutBatch]
+
+type GetPayoutBatchStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=paypal"`
+	operationID                    struct{}                                       `connector:"operationId=getPayoutBatch"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPayoutBatchInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPayoutBatchResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPayoutBatchResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPayoutBatchResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPayoutBatchResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPayoutBatchResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PayoutBatch]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetPayoutBatchStep[IN any](config GetPayoutBatchStepConfig[IN]) sdkgo.QueryStep[IN, GetPayoutBatchInput, PayoutBatch] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paypal connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPayoutBatchInput, PayoutBatch]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPayoutBatch(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPayoutBatchResult] {
+			branches := make([]sdkgo.BranchTarget[GetPayoutBatchResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPayoutBatchBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPayoutBatchBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPayoutBatchBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPayoutBatchBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPayoutBatchBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPayoutItemBranchFound sdkgo.BranchID = "found"
+const GetPayoutItemBranchNotFound sdkgo.BranchID = "notFound"
+const GetPayoutItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPayoutItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPayoutItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPayoutItemDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPayoutItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPayoutItemBranchFound, Description: "Payout item details were read."},
+		{ID: GetPayoutItemBranchNotFound, Description: "The payout item does not exist.", Optional: true},
+		{ID: GetPayoutItemBranchProviderRejected, Description: "PayPal rejected the request.", Optional: true},
+		{ID: GetPayoutItemBranchInvalidResponse, Description: "PayPal returned invalid JSON.", Optional: true},
+		{ID: GetPayoutItemBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPayoutItemResult = sdkgo.QueryResult[PayoutItem]
+
+type GetPayoutItemStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=paypal"`
+	operationID                    struct{}                                      `connector:"operationId=getPayoutItem"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPayoutItemInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPayoutItemResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPayoutItemResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPayoutItemResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPayoutItemResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPayoutItemResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PayoutItem]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetPayoutItemStep[IN any](config GetPayoutItemStepConfig[IN]) sdkgo.QueryStep[IN, GetPayoutItemInput, PayoutItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paypal connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPayoutItemInput, PayoutItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPayoutItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPayoutItemResult] {
+			branches := make([]sdkgo.BranchTarget[GetPayoutItemResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPayoutItemBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPayoutItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPayoutItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPayoutItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPayoutItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePayoutBatchBranchCreated sdkgo.BranchID = "created"
+const CreatePayoutBatchBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePayoutBatchBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreatePayoutBatchBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePayoutBatchDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPayoutBatch"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePayoutBatchBranchCreated, Description: "PayPal accepted the payout batch."},
+		{ID: CreatePayoutBatchBranchProviderRejected, Description: "PayPal rejected the payout batch.", Optional: true},
+		{ID: CreatePayoutBatchBranchInvalidResponse, Description: "PayPal returned invalid JSON.", Optional: true},
+		{ID: CreatePayoutBatchBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreatePayoutBatchResult = sdkgo.MutationResult[PayoutBatch]
+
+type CreatePayoutBatchStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=paypal"`
+	operationID                       struct{}                                          `connector:"operationId=createPayoutBatch"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePayoutBatchInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePayoutBatchResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreatePayoutBatchResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreatePayoutBatchResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreatePayoutBatchResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PayoutBatch]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewCreatePayoutBatchStep[IN any](config CreatePayoutBatchStepConfig[IN]) sdkgo.MutationStep[IN, CreatePayoutBatchInput, PayoutBatch] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paypal connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePayoutBatchInput, PayoutBatch]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePayoutBatch(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePayoutBatchResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePayoutBatchResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePayoutBatchBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePayoutBatchBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreatePayoutBatchBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePayoutBatchBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelPayoutItemBranchCanceled sdkgo.BranchID = "canceled"
+const CancelPayoutItemBranchNotFound sdkgo.BranchID = "notFound"
+const CancelPayoutItemBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelPayoutItemBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelPayoutItemBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelPayoutItemDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelPayoutItem"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelPayoutItemBranchCanceled, Description: "The unclaimed payout item was canceled."},
+		{ID: CancelPayoutItemBranchNotFound, Description: "The payout item does not exist.", Optional: true},
+		{ID: CancelPayoutItemBranchProviderRejected, Description: "PayPal rejected the cancellation.", Optional: true},
+		{ID: CancelPayoutItemBranchInvalidResponse, Description: "PayPal returned invalid JSON.", Optional: true},
+		{ID: CancelPayoutItemBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CancelPayoutItemResult = sdkgo.MutationResult[PayoutItem]
+
+type CancelPayoutItemStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=paypal"`
+	operationID                       struct{}                                         `connector:"operationId=cancelPayoutItem"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelPayoutItemInput                   `connector:"mapToOperationInput"`
+	Canceled                          sdkgo.Target[CancelPayoutItemResult]             `connector:"branch=canceled"`
+	NotFound                          sdkgo.Target[CancelPayoutItemResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[CancelPayoutItemResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelPayoutItemResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelPayoutItemResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PayoutItem]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewCancelPayoutItemStep[IN any](config CancelPayoutItemStepConfig[IN]) sdkgo.MutationStep[IN, CancelPayoutItemInput, PayoutItem] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("paypal connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelPayoutItemInput, PayoutItem]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelPayoutItem(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelPayoutItemResult] {
+			branches := make([]sdkgo.BranchTarget[CancelPayoutItemResult], 0, 5)
+			if config.Canceled.HasStep() {
+				branches = append(branches, config.Canceled.BranchTarget(CancelPayoutItemBranchCanceled))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(CancelPayoutItemBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelPayoutItemBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelPayoutItemBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelPayoutItemBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetOrderBranchFound sdkgo.BranchID = "found"

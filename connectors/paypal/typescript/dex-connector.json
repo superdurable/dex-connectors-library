@@ -1,6 +1,6 @@
 {
   "connectorId": "paypal",
-  "releaseTag": "connectors/paypal/go/v0.2.0",
+  "releaseTag": "connectors/paypal/go/v0.3.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-paypal",

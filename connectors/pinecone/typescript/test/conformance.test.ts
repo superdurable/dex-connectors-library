@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { PineconeClient } from '../src/client.js';
 import { QueryVectorsInputSchema, UpsertVectorsInputSchema, type UpsertVectorsInput, type UpsertVectorsOutput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/pinecone/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/pinecone/scenarios.json', import.meta.url))
+  .filter(scenario => scenario.operation === 'upsertVectors' || scenario.operation === 'queryVectors');
 const connection = { provider: 'pinecone', name: 'pinecone' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePinecone));

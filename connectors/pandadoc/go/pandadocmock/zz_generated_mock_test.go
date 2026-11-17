@@ -20,6 +20,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[pandadoc.DocumentStatus](`{"id":"fANp5wW5EwY7AkiTkTGekZ","name":"Example agreement","status":"document.completed"}`)
 			return err
 		}},
+		{name: "listDocuments/listDocumentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pandadoc.DocumentPage](`{"results":[{"id":"fANp5wW5EwY7AkiTkTGekZ","name":"Example agreement","status":"document.draft"}],"count":1}`)
+			return err
+		}},
+		{name: "updateDocument/updateDocumentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pandadoc.DocumentAction](`{"documentId":"fANp5wW5EwY7AkiTkTGekZ"}`)
+			return err
+		}},
+		{name: "deleteDocument/deleteDocumentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pandadoc.DocumentAction](`{"documentId":"fANp5wW5EwY7AkiTkTGekZ"}`)
+			return err
+		}},
+		{name: "createDocument/createDocumentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pandadoc.DocumentStatus](`{"id":"fANp5wW5EwY7AkiTkTGekZ","name":"Example agreement","status":"document.uploaded"}`)
+			return err
+		}},
+		{name: "sendDocument/sendDocumentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pandadoc.DocumentAction](`{"documentId":"fANp5wW5EwY7AkiTkTGekZ"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +52,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetDocument().Definition().Operation.OperationID != "getDocument" {
 		t.Errorf("getDocument mock has another definition")
+	}
+	if mock.ListDocuments().Definition().Operation.OperationID != "listDocuments" {
+		t.Errorf("listDocuments mock has another definition")
+	}
+	if mock.UpdateDocument().Definition().Operation.OperationID != "updateDocument" {
+		t.Errorf("updateDocument mock has another definition")
+	}
+	if mock.DeleteDocument().Definition().Operation.OperationID != "deleteDocument" {
+		t.Errorf("deleteDocument mock has another definition")
+	}
+	if mock.CreateDocument().Definition().Operation.OperationID != "createDocument" {
+		t.Errorf("createDocument mock has another definition")
+	}
+	if mock.SendDocument().Definition().Operation.OperationID != "sendDocument" {
+		t.Errorf("sendDocument mock has another definition")
 	}
 }

@@ -1,19 +1,24 @@
 # Pinecone connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pinecone/go@v0.2.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pinecone/go@v0.3.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/pinecone`.
 
-This Dex connector exposes `upsertVectors`, `queryVectors`. The runnable [sample Flow](go/examples/sample-pinecone/flow/workflow.go) uses `upsertVectors` with the static `pinecone` connection. Each operation uses the generated typed Step factory.
+The Go connector exposes `upsertVectors`, `queryVectors`, `fetchVectors`, `listVectorIDs`, `describeIndexStats`, `updateVector`, `deleteVectors`, and `clearNamespace`. The runnable [sample Flows](go/examples/sample-pinecone/README.md) use `upsertVectors` and `fetchVectors` with the static `pinecone` connection. Each operation uses a generated typed Step factory. Python and TypeScript v0.1.0 still implement only `upsertVectors` and `queryVectors`.
 
 ## Provider contract
 
-`upsertVectors` replaces vectors by stable ID. It is safe to repeat with the same vector IDs and values. Supply the unique index host as `baseUrl`; there is no safe universal default. The connector pins Pinecone API version `2025-04`. Query supports dense vectors only. The upsert input accepts string-valued metadata so Dex Web can render a strict start form.
+`upsertVectors` replaces vectors by stable ID. `updateVector` replaces dense values and adds or replaces named metadata fields. `deleteVectors` removes selected IDs; `clearNamespace` deletes all vectors in an explicitly named namespace. These writes are safe to repeat with the same input. `fetchVectors` returns dense values without stored metadata. `listVectorIDs` works only for serverless indexes. Supply the unique index host as `baseUrl`; there is no safe universal default. The connector pins Pinecone API version `2025-04`. Query supports dense vectors only. The upsert and update inputs accept string-valued metadata so Dex Web can render a strict start form.
 
 Official documentation used for the endpoint, authentication, and response contract:
 
 - [https://docs.pinecone.io/reference/api/2025-04/data-plane/upsert](https://docs.pinecone.io/reference/api/2025-04/data-plane/upsert)
 - [https://docs.pinecone.io/reference/api/2025-04/data-plane/query](https://docs.pinecone.io/reference/api/2025-04/data-plane/query)
+- [Fetch vectors](https://docs.pinecone.io/reference/api/2025-04/data-plane/fetch)
+- [List vector IDs](https://docs.pinecone.io/reference/api/2025-04/data-plane/list)
+- [Update a vector](https://docs.pinecone.io/reference/api/2025-04/data-plane/update)
+- [Delete vectors](https://docs.pinecone.io/reference/api/2025-04/data-plane/delete)
+- [Index statistics](https://docs.pinecone.io/reference/api/2025-04/data-plane/describeindexstats)
 - [https://docs.pinecone.io/guides/manage-data/target-an-index](https://docs.pinecone.io/guides/manage-data/target-an-index)
 
 The Python package is [`dex-connector-pinecone`](python/README.md), imported as
@@ -52,4 +57,4 @@ The mock defaults represent the same Meridian example resource across both opera
 
 ## Verification limits
 
-The provider HTTP behavior is tested with local `httptest` servers, and the sample's mapping has a deterministic unit test. No live provider account or Dex stack was used during this batch. Real provider authorization, permissions, response variants, and the mock-backed Dex integration remain unverified locally; CI covers the Dex integration.
+The provider HTTP behavior is tested with recorded local scenarios, and the sample's mapping has a deterministic unit test. A mock-backed Flow runs against real local Dex during verification. No live provider account was available; live authorization, permissions, and response variants remain unverified.

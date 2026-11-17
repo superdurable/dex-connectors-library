@@ -78,3 +78,101 @@ func TestMockBackedFlowWithRealDex(t *testing.T) {
 	require.Equal(t, pagerduty.ListIncidentsInput(input), calls[0].Input)
 	require.Equal(t, pagerduty.ListIncidentsBranchListed, calls[0].Branch)
 }
+
+func TestMockBackedUserLookupWithRealDex(t *testing.T) {
+	mock := pagerdutymock.New(t, ConnectionName)
+	flow := NewUserLookupFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopContext), <-workerResult, client.Close(), cache.Close()))
+	})
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	require.NoError(t, worker.WaitPullRegistered(registrationContext))
+	cancelRegistration()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := "pagerduty-user-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	input := UserLookupRequest(pagerduty.GetUserInput{ID: "PXPGF42"})
+	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	var result dex.FlowResult
+	for {
+		result, err = client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+		var timeout *dex.LongPollTimeoutError
+		if errors.As(err, &timeout) {
+			continue
+		}
+		require.NoError(t, err)
+		break
+	}
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output pagerduty.User
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "PXPGF42", output.ID)
+	var display map[string]any
+	require.NoError(t, client.InvokeRPC(ctx, flowID, flow.GetDexDisplay, nil, &display))
+	require.Contains(t, display, "pagerduty-user-lookup-outcome")
+	calls := mock.GetUser().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, pagerduty.GetUserBranchFound, calls[0].Branch)
+}
+
+func TestMockBackedIncidentUpdateWithRealDex(t *testing.T) {
+	mock := pagerdutymock.New(t, ConnectionName)
+	flow := NewIncidentUpdateFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopContext), <-workerResult, client.Close(), cache.Close()))
+	})
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	require.NoError(t, worker.WaitPullRegistered(registrationContext))
+	cancelRegistration()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := "pagerduty-update-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	input := IncidentUpdateRequest(pagerduty.UpdateIncidentInput{ID: "P123456", Status: "acknowledged", FromUserEmail: "responder@example.com"})
+	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	var result dex.FlowResult
+	for {
+		result, err = client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+		var timeout *dex.LongPollTimeoutError
+		if errors.As(err, &timeout) {
+			continue
+		}
+		require.NoError(t, err)
+		break
+	}
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output pagerduty.Incident
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Equal(t, "acknowledged", output.Status)
+	var display map[string]any
+	require.NoError(t, client.InvokeRPC(ctx, flowID, flow.GetDexDisplay, nil, &display))
+	require.Contains(t, display, "pagerduty-updated-incident")
+	calls := mock.UpdateIncident().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, pagerduty.UpdateIncidentBranchUpdated, calls[0].Branch)
+}
