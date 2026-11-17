@@ -27,8 +27,9 @@ func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	flow := NewFlow(mock.Connection())
 	publishFlow := NewPublishFlow(mock.Connection())
 	subscriptionFlow := NewSubscriptionListingFlow(mock.Connection())
+	topicAttributesFlow := NewTopicAttributesFlow(mock.Connection())
 	notificationFlow := NewNotificationFlow()
-	registry, err := dex.NewRegistry([]dex.Flow{flow, publishFlow, subscriptionFlow, notificationFlow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow, publishFlow, subscriptionFlow, topicAttributesFlow, notificationFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -82,6 +83,16 @@ func TestTopicListingUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, subscriptionResult.DecodeSingleOutput(&subscriptions))
 	require.Len(t, subscriptions.Subscriptions, 1)
 	require.Len(t, mock.ListSubscriptionsByTopic().Calls(), 1)
+	attributesID := "sns-topic-attributes-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, topicAttributesFlow, attributesID, sns.TopicARNInput{TopicARN: "arn:aws:sns:us-east-1:123456789012:example-topic"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	attributesResult, err := client.WaitForFlow(ctx, attributesID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, attributesResult.Status, attributesResult.ErrorMessage)
+	var attributes sns.TopicAttributes
+	require.NoError(t, attributesResult.DecodeSingleOutput(&attributes))
+	require.Equal(t, "Operations", attributes.Attributes["DisplayName"])
+	require.Len(t, mock.GetTopicAttributes().Calls(), 1)
 	notificationEvent := sdkgo.TriggerEvent[sns.SNSNotification]{
 		ID: "11111111-1111-4111-8111-111111111111", OccurredAt: time.Now().UTC(),
 		Payload: sns.SNSNotification{

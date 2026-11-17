@@ -43,7 +43,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 	notificationFlow := topiclisting.NewNotificationFlow()
-	registry, err := dex.NewRegistry([]dex.Flow{topiclisting.NewFlow(connection), topiclisting.NewPublishFlow(connection), topiclisting.NewSubscriptionListingFlow(connection), notificationFlow})
+	registry, err := dex.NewRegistry([]dex.Flow{topiclisting.NewFlow(connection), topiclisting.NewPublishFlow(connection), topiclisting.NewSubscriptionListingFlow(connection), topiclisting.NewTopicAttributesFlow(connection), notificationFlow})
 	if err != nil {
 		return fmt.Errorf("register Amazon SNS topic listing Flow: %w", err)
 	}

@@ -46,6 +46,7 @@ type Operations interface {
 	CreateTopic() sdkgo.Mutation[CreateTopicInput, TopicIdentity]
 	DeleteTopic() sdkgo.Mutation[TopicARNInput, TopicIdentity]
 	SetTopicAttribute() sdkgo.Mutation[SetTopicAttributeInput, TopicIdentity]
+	GetTopicAttributes() sdkgo.Query[TopicARNInput, TopicAttributes]
 	PublishMessage() sdkgo.Mutation[PublishMessageInput, PublishedMessage]
 	ListTopics() sdkgo.Query[ListTopicsInput, TopicPage]
 	SubscribeEndpoint() sdkgo.Mutation[SubscribeEndpointInput, SubscriptionIdentity]
@@ -66,6 +67,9 @@ func (operations clientOperations) DeleteTopic() sdkgo.Mutation[TopicARNInput, T
 }
 func (operations clientOperations) SetTopicAttribute() sdkgo.Mutation[SetTopicAttributeInput, TopicIdentity] {
 	return operations.client.SetTopicAttribute()
+}
+func (operations clientOperations) GetTopicAttributes() sdkgo.Query[TopicARNInput, TopicAttributes] {
+	return operations.client.GetTopicAttributes()
 }
 func (operations clientOperations) PublishMessage() sdkgo.Mutation[PublishMessageInput, PublishedMessage] {
 	return operations.client.PublishMessage()
@@ -470,6 +474,83 @@ func NewSetTopicAttributeStep[IN any](config SetTopicAttributeStepConfig[IN]) sd
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SetTopicAttributeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTopicAttributesBranchFound sdkgo.BranchID = "found"
+const GetTopicAttributesBranchMissing sdkgo.BranchID = "missing"
+const GetTopicAttributesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTopicAttributesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTopicAttributesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTopicAttributesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTopicAttributes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTopicAttributesBranchFound, Description: "SNS returned the topic's attributes."},
+		{ID: GetTopicAttributesBranchMissing, Description: "The topic is absent.", Optional: true},
+		{ID: GetTopicAttributesBranchProviderRejected, Description: "SNS refused the read.", Optional: true},
+		{ID: GetTopicAttributesBranchInvalidResponse, Description: "SNS returned invalid attribute XML.", Optional: true},
+		{ID: GetTopicAttributesBranchDefect, Description: "The topic ARN or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTopicAttributesResult = sdkgo.QueryResult[TopicAttributes]
+
+type GetTopicAttributesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=amazon-sns"`
+	operationID                    struct{}                                           `connector:"operationId=getTopicAttributes"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) TopicARNInput                             `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=found"`
+	Missing                        sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTopicAttributesResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TopicAttributes]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetTopicAttributesStep[IN any](config GetTopicAttributesStepConfig[IN]) sdkgo.QueryStep[IN, TopicARNInput, TopicAttributes] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-sns connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, TopicARNInput, TopicAttributes]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTopicAttributes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTopicAttributesResult] {
+			branches := make([]sdkgo.BranchTarget[GetTopicAttributesResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTopicAttributesBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(GetTopicAttributesBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTopicAttributesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTopicAttributesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTopicAttributesBranchDefect))
 			}
 			return branches
 		}(),

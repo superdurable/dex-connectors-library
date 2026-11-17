@@ -65,7 +65,7 @@ spec:
     guide:
       startURL: https://console.aws.amazon.com/iam
       steps:
-        - Open IAM > Users > Create user for Dex. Grant sns:ListTopics and the operation permissions you use (sns:CreateTopic, sns:DeleteTopic, sns:SetTopicAttributes, sns:Publish, sns:Subscribe, sns:Unsubscribe, sns:ListSubscriptionsByTopic, sns:ListSubscriptions, sns:GetSubscriptionAttributes, sns:SetSubscriptionAttributes); do not use the root user. Topics and subscriptions are visible at https://console.aws.amazon.com/sns in the selected Region.
+        - Open IAM > Users > Create user for Dex. Grant sns:ListTopics and the operation permissions you use (sns:CreateTopic, sns:DeleteTopic, sns:GetTopicAttributes, sns:SetTopicAttributes, sns:Publish, sns:Subscribe, sns:Unsubscribe, sns:ListSubscriptionsByTopic, sns:ListSubscriptions, sns:GetSubscriptionAttributes, sns:SetSubscriptionAttributes); do not use the root user. Topics and subscriptions are visible at https://console.aws.amazon.com/sns in the selected Region.
         - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
         - Open https://console.aws.amazon.com/sns > Topics, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Copy the full Topic ARN from a selected topic for deleteTopic, setTopicAttribute, or publishMessage. Leave nextToken blank for the first listTopics page; pass the returned token for the next page.
         - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
@@ -133,6 +133,23 @@ spec:
           default: true
           description: The display name was replaced.
           output: {topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic'}
+    - name: getTopicAttributes
+      goName: GetTopicAttributes
+      inputType: TopicARNInput
+      outputType: TopicAttributes
+      kind: query
+      description: Read one topic's non-secret SNS settings.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: SNS returned the topic's attributes.}
+        - {id: missing, goName: Missing, description: The topic is absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SNS refused the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SNS returned invalid attribute XML., optional: true}
+        - {id: defect, goName: Defect, description: The topic ARN or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundTopicAttributes, branch: found, default: true, description: SNS returned a topic's settings., output: {topicARN: 'arn:aws:sns:us-east-1:123456789012:example-topic', attributes: {DisplayName: Operations, TracingConfig: PassThrough}}}
     - name: publishMessage
       goName: PublishMessage
       inputType: PublishMessageInput

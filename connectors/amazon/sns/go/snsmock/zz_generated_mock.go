@@ -21,6 +21,7 @@ type Mock struct {
 	createTopic               *connectormock.Mutation[sns.CreateTopicInput, sns.TopicIdentity]
 	deleteTopic               *connectormock.Mutation[sns.TopicARNInput, sns.TopicIdentity]
 	setTopicAttribute         *connectormock.Mutation[sns.SetTopicAttributeInput, sns.TopicIdentity]
+	getTopicAttributes        *connectormock.Query[sns.TopicARNInput, sns.TopicAttributes]
 	publishMessage            *connectormock.Mutation[sns.PublishMessageInput, sns.PublishedMessage]
 	listTopics                *connectormock.Query[sns.ListTopicsInput, sns.TopicPage]
 	subscribeEndpoint         *connectormock.Mutation[sns.SubscribeEndpointInput, sns.SubscriptionIdentity]
@@ -39,6 +40,7 @@ func New(t testing.TB, connectionName string) *Mock {
 		createTopic:               connectormock.NewMutation[sns.CreateTopicInput, sns.TopicIdentity](t, sns.CreateTopicDefinition),
 		deleteTopic:               connectormock.NewMutation[sns.TopicARNInput, sns.TopicIdentity](t, sns.DeleteTopicDefinition),
 		setTopicAttribute:         connectormock.NewMutation[sns.SetTopicAttributeInput, sns.TopicIdentity](t, sns.SetTopicAttributeDefinition),
+		getTopicAttributes:        connectormock.NewQuery[sns.TopicARNInput, sns.TopicAttributes](t, sns.GetTopicAttributesDefinition),
 		publishMessage:            connectormock.NewMutation[sns.PublishMessageInput, sns.PublishedMessage](t, sns.PublishMessageDefinition),
 		listTopics:                connectormock.NewQuery[sns.ListTopicsInput, sns.TopicPage](t, sns.ListTopicsDefinition),
 		subscribeEndpoint:         connectormock.NewMutation[sns.SubscribeEndpointInput, sns.SubscriptionIdentity](t, sns.SubscribeEndpointDefinition),
@@ -51,6 +53,7 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createTopic.Default(CreateTopicDefault())
 	mock.deleteTopic.Default(DeleteTopicDefault())
 	mock.setTopicAttribute.Default(SetTopicAttributeDefault())
+	mock.getTopicAttributes.Default(GetTopicAttributesDefault())
 	mock.publishMessage.Default(PublishMessageDefault())
 	mock.listTopics.Default(ListTopicsDefault())
 	mock.subscribeEndpoint.Default(SubscribeEndpointDefault())
@@ -83,6 +86,11 @@ func (mock *Mock) DeleteTopic() *connectormock.Mutation[sns.TopicARNInput, sns.T
 // SetTopicAttribute returns the setTopicAttribute script.
 func (mock *Mock) SetTopicAttribute() *connectormock.Mutation[sns.SetTopicAttributeInput, sns.TopicIdentity] {
 	return mock.setTopicAttribute
+}
+
+// GetTopicAttributes returns the getTopicAttributes script.
+func (mock *Mock) GetTopicAttributes() *connectormock.Query[sns.TopicARNInput, sns.TopicAttributes] {
+	return mock.getTopicAttributes
 }
 
 // PublishMessage returns the publishMessage script.
@@ -135,6 +143,9 @@ func (operations mockOperations) DeleteTopic() sdkgo.Mutation[sns.TopicARNInput,
 }
 func (operations mockOperations) SetTopicAttribute() sdkgo.Mutation[sns.SetTopicAttributeInput, sns.TopicIdentity] {
 	return operations.mock.setTopicAttribute
+}
+func (operations mockOperations) GetTopicAttributes() sdkgo.Query[sns.TopicARNInput, sns.TopicAttributes] {
+	return operations.mock.getTopicAttributes
 }
 func (operations mockOperations) PublishMessage() sdkgo.Mutation[sns.PublishMessageInput, sns.PublishedMessage] {
 	return operations.mock.publishMessage
@@ -248,6 +259,47 @@ func SetTopicAttributeUpdatedDefault() connectormock.Case[sns.TopicIdentity] {
 // SetTopicAttributeDefault is the manifest default, updatedDefault, which New installs.
 func SetTopicAttributeDefault() connectormock.Case[sns.TopicIdentity] {
 	return SetTopicAttributeUpdatedDefault()
+}
+
+// GetTopicAttributesFound selects the found branch: SNS returned the topic's attributes.
+func GetTopicAttributesFound(value sns.TopicAttributes, failure *sdkgo.Failure) connectormock.Case[sns.TopicAttributes] {
+	return connectormock.Branch(sns.GetTopicAttributesBranchFound, value, failure)
+}
+
+// GetTopicAttributesMissing selects the missing branch: The topic is absent.
+func GetTopicAttributesMissing(value sns.TopicAttributes, failure *sdkgo.Failure) connectormock.Case[sns.TopicAttributes] {
+	return connectormock.Branch(sns.GetTopicAttributesBranchMissing, value, failure)
+}
+
+// GetTopicAttributesProviderRejected selects the providerRejected branch: SNS refused the read.
+func GetTopicAttributesProviderRejected(value sns.TopicAttributes, failure *sdkgo.Failure) connectormock.Case[sns.TopicAttributes] {
+	return connectormock.Branch(sns.GetTopicAttributesBranchProviderRejected, value, failure)
+}
+
+// GetTopicAttributesInvalidResponse selects the invalidResponse branch: SNS returned invalid attribute XML.
+func GetTopicAttributesInvalidResponse(value sns.TopicAttributes, failure *sdkgo.Failure) connectormock.Case[sns.TopicAttributes] {
+	return connectormock.Branch(sns.GetTopicAttributesBranchInvalidResponse, value, failure)
+}
+
+// GetTopicAttributesDefect selects the defect branch: The topic ARN or credentials are invalid.
+func GetTopicAttributesDefect(value sns.TopicAttributes, failure *sdkgo.Failure) connectormock.Case[sns.TopicAttributes] {
+	return connectormock.Branch(sns.GetTopicAttributesBranchDefect, value, failure)
+}
+
+// GetTopicAttributesRetry asks Dex to retry the getTopicAttributes Step, after the delay when it is positive.
+func GetTopicAttributesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[sns.TopicAttributes] {
+	return connectormock.Retry[sns.TopicAttributes](failure, after)
+}
+
+// GetTopicAttributesFoundTopicAttributes is the manifest mock foundTopicAttributes: SNS returned a topic's settings.
+func GetTopicAttributesFoundTopicAttributes() connectormock.Case[sns.TopicAttributes] {
+	value := connectormock.MustDecodeOutput[sns.TopicAttributes](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","attributes":{"DisplayName":"Operations","TracingConfig":"PassThrough"}}`)
+	return connectormock.Branch(sns.GetTopicAttributesBranchFound, value, nil)
+}
+
+// GetTopicAttributesDefault is the manifest default, foundTopicAttributes, which New installs.
+func GetTopicAttributesDefault() connectormock.Case[sns.TopicAttributes] {
+	return GetTopicAttributesFoundTopicAttributes()
 }
 
 // PublishMessagePublished selects the published branch: AWS accepted the message.

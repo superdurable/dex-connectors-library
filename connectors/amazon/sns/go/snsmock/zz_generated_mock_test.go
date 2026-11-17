@@ -28,6 +28,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sns.TopicIdentity](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic"}`)
 			return err
 		}},
+		{name: "getTopicAttributes/foundTopicAttributes/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sns.TopicAttributes](`{"topicARN":"arn:aws:sns:us-east-1:123456789012:example-topic","attributes":{"DisplayName":"Operations","TracingConfig":"PassThrough"}}`)
+			return err
+		}},
 		{name: "publishMessage/publishedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[sns.PublishedMessage](`{"messageID":"example-message-id"}`)
 			return err
@@ -94,6 +98,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SetTopicAttribute().Definition().Operation.OperationID != "setTopicAttribute" {
 		t.Errorf("setTopicAttribute mock has another definition")
+	}
+	if mock.GetTopicAttributes().Definition().Operation.OperationID != "getTopicAttributes" {
+		t.Errorf("getTopicAttributes mock has another definition")
 	}
 	if mock.PublishMessage().Definition().Operation.OperationID != "publishMessage" {
 		t.Errorf("publishMessage mock has another definition")

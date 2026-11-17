@@ -26,6 +26,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createTopic":               newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateTopic(), reference, scenario.CallID),
 		"deleteTopic":               newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteTopic(), reference, scenario.CallID),
 		"setTopicAttribute":         newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.SetTopicAttribute(), reference, scenario.CallID),
+		"getTopicAttributes":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetTopicAttributes(), reference),
 		"publishMessage":            newConformanceMutationInvocation(t, scenario.Input, publishContext, client.PublishMessage(), reference, scenario.CallID),
 		"subscribeEndpoint":         newConformanceMutationInvocation(t, scenario.Input, publishContext, client.SubscribeEndpoint(), reference, scenario.CallID),
 		"listSubscriptionsByTopic":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSubscriptionsByTopic(), reference),
