@@ -1,6 +1,6 @@
 # Sage Intacct invoice inspection
 
-This Go Flow calls `sageintacct.NewGetInvoiceStep` for one invoice key and stores the selected `InvoiceSummary` in a Dex Attribute before completion. The static Dex Web connection name is `sage-intacct`.
+This example includes a Flow that calls `sageintacct.NewGetInvoiceStep` for one invoice key and stores the selected `InvoiceSummary` in a Dex Attribute before completion. `InvoiceListFlow` calls `sageintacct.NewListInvoicesStep` for one page. The static Dex Web connection name is `sage-intacct`. The mock integration test starts both Flows against a real Dex server.
 
 From the repository root, generate the strict FDG 2.0 graph:
 
