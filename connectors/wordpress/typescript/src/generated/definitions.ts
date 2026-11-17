@@ -20,9 +20,9 @@ export const CreatePostBranch = {
 export const CreatePostBranchCreated = CreatePostBranch.Created;
 /** WordPress conclusively rejected the new post. */
 export const CreatePostBranchProviderRejected = CreatePostBranch.ProviderRejected;
-/** The request may have reached WordPress but no post ID was confirmed; do not resend automatically. */
+/** WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another. */
 export const CreatePostBranchUncertain = CreatePostBranch.Uncertain;
-/** Local post input, connection credentials, or dispatch checkpoint is invalid. */
+/** Local post input, connection credentials, or dispatch fence is invalid before any send. */
 export const CreatePostBranchDefect = CreatePostBranch.Defect;
 /** Manifest definition for createPost. */
 export const CreatePostDefinition: MutationDefinition = {
@@ -30,10 +30,12 @@ export const CreatePostDefinition: MutationDefinition = {
   branches: [
     { id: "created", description: "WordPress created the post and returned its numeric ID." },
     { id: "providerRejected", description: "WordPress conclusively rejected the new post.", optional: true },
-    { id: "uncertain", description: "The request may have reached WordPress but no post ID was confirmed; do not resend automatically.", optional: true },
-    { id: "defect", description: "Local post input, connection credentials, or dispatch checkpoint is invalid.", optional: true },
+    { id: "uncertain", description: "WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another.", optional: true },
+    { id: "defect", description: "Local post input, connection credentials, or dispatch fence is invalid before any send.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+  repeatOnUnknown: "limited",
+  maxSends: 3,
 };
 /** Manifest metadata for createPost. */
 export const CreatePostMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

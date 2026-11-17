@@ -6,17 +6,17 @@ metadata:
   description: Read published posts and create drafts or published posts through WordPress REST API.
   company: WordPress
   categories: [marketing]
-  version: v0.1.0
+  version: v0.1.1
 spec:
   provider: wordpress
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-wordpress
       operations: [createPost, getPost, listPosts]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-wordpress'
       operations: [createPost, getPost, listPosts]
       triggers: []
@@ -72,15 +72,15 @@ spec:
       inputType: CreatePostInput
       outputType: CreatedPost
       kind: mutation
-      description: Create one draft or published post. If WordPress does not confirm the outcome, inspect Posts before creating another.
+      description: Create one draft or published post. An unknown outcome resends up to the send cap, so Posts may show a duplicate.
       idempotency: required
       authorization: required
       branches:
         - {id: created, goName: Created, description: WordPress created the post and returned its numeric ID.}
         - {id: providerRejected, goName: ProviderRejected, description: WordPress conclusively rejected the new post., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The request may have reached WordPress but no post ID was confirmed; do not resend automatically., optional: true}
-        - {id: defect, goName: Defect, description: "Local post input, connection credentials, or dispatch checkpoint is invalid.", optional: true}
-      # Sync exposes the single-dispatch heartbeat to retries; WordPress provides no create-post idempotency key.
+        - {id: uncertain, goName: Uncertain, description: "WordPress may have created the post, but the send cap was reached or WordPress returned a post ID without a complete confirmation; inspect Posts before creating another.", optional: true}
+        - {id: defect, goName: Defect, description: "Local post input, connection credentials, or dispatch fence is invalid before any send.", optional: true}
+      # Sync exposes the single-dispatch heartbeat to retries; WordPress provides no create-post idempotency key or read-back.
       execution:
         executeMethodTimeout: 30s
         durability: sync

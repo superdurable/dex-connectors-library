@@ -1,6 +1,6 @@
 # WordPress post creation Flow
 
-This runnable Flow calls `createPost` with the static `wordpress` connection and completes with the new post's numeric ID and status. Empty status creates a draft for editorial review. Optional branches, including `uncertain`, are unwired so they fail the Flow. If creation becomes uncertain, inspect WordPress Posts before considering a new Flow.
+This runnable Flow calls `createPost` with the static `wordpress` connection and completes with the new post's numeric ID and status. Empty status creates a draft for editorial review. Optional branches, including `uncertain`, are unwired so they fail the Flow. An unknown outcome resends up to the send cap before `uncertain`; if creation becomes uncertain, inspect WordPress Posts before considering a new Flow.
 
 ## Strict FDG 2.0 generation
 

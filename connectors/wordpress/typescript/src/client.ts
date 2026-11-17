@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry,
+  definitionMaxSends, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry,
   type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt,
   type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
@@ -18,6 +18,8 @@ import type {
 } from './generated/models.js';
 
 const createdStatuses = new Set(['draft', 'publish', 'pending', 'private', 'future']);
+// Only these statuses prove WordPress refused a write; other 4xx statuses leave the outcome unknown.
+const definiteRefusalStatuses = new Set([400, 401, 403, 404, 411, 413, 414, 415, 422]);
 const emptyCreatedPost: CreatedPost = { id: 0, status: '' };
 const emptyPost: Post = {
   id: 0, slug: '', status: '', link: '', title: { rendered: '' },
@@ -128,20 +130,36 @@ export class CreatePostOperation implements Mutation<CreatePostInput, CreatedPos
   /** Keep stable Dex call identity; WordPress receives no deduplication key. */
   idempotencyKey(callId: string): string { return callId; }
 
-  /** Claim a checkpoint before dispatch and classify the create response. */
+  /**
+   * Create under a single-dispatch fence. WordPress has no create idempotency key, so an unknown
+   * outcome retries while possible sends stay below the send cap and selects uncertain at the cap.
+   * A definite refusal is never resent.
+   */
   async invoke(call: Call, input: CreatePostInput): Promise<MutationAttempt<CreatedPost>> {
-    let fence: ReturnType<typeof newFence>;
-    try { fence = newFence(call, CreatePostDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
-    catch { return createFailure('defect', 'LOCAL_DEFECT'); }
-    if (fence.decide().kind !== 'sendAllowed') return createUncertain('TRANSPORT');
     const status = input?.status || 'draft';
     if (!input || typeof input.title !== 'string' || !input.title.trim() ||
       typeof input.content !== 'string' || (status !== 'draft' && status !== 'publish'))
       return createFailure('defect', 'VALIDATION');
     const payload = Buffer.from(JSON.stringify({ title: input.title, content: input.content, status }));
     if (payload.byteLength > this.client.maxPostBytes) return createFailure('defect', 'VALIDATION');
+    const operationMaxSends = definitionMaxSends(CreatePostDefinition);
+    let fence: ReturnType<typeof newFence>;
+    try {
+      fence = newFence(call, CreatePostDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000,
+        { maxSends: operationMaxSends });
+    } catch { return createFailure('defect', 'LOCAL_DEFECT'); }
+    const decision = fence.decide();
+    if (decision.kind === 'failClosed') return createRetry('AVAILABILITY');
+    if (decision.kind === 'readBackRequired') return createUncertain('TRANSPORT');
+    // A saved post ID proves WordPress created the post, so it is never resent.
+    if (decision.kind === 'readBackThenResendAllowed' && decision.marker?.providerId) return createUncertain('TRANSPORT');
+    const priorSendUpperBound = decision.priorSendUpperBound ?? 0;
+    // This attempt's send would be the last one the cap allows when no further send remains.
+    const canResendUnknownOutcome = priorSendUpperBound + 1 < effectiveMaxSends(call, operationMaxSends);
+    // An earlier send may have created the post, so a refusal of a resend proves nothing.
+    const hasPossibleEarlierSend = priorSendUpperBound > 0;
     const authorization = await this.client.authorization(call);
-    if (!authorization) return createFailure('defect', 'AUTHENTICATION');
+    if (!authorization) return localCreateFailure(fence, hasPossibleEarlierSend, 'AUTHENTICATION');
     let exchange: WordPressExchange;
     try {
       exchange = await fence.dispatch(signal => this.client.exchange(call, 'POST',
@@ -151,37 +169,75 @@ export class CreatePostOperation implements Mutation<CreatePostInput, CreatedPos
     } catch (error) {
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError)
         return createRetry('TRANSPORT');
-      return createUncertain('TRANSPORT');
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT');
     }
     if (exchange.error === 'request') {
       if (!exchange.requestSent) {
-        try { await fence.recordCanResend(); return createRetry('TRANSPORT'); }
-        catch { /* The claimed marker still blocks another send. */ }
+        try { await fence.recordCanResend(); }
+        catch { /* A lost canResend checkpoint leaves the claim, which the next attempt counts. */ }
+        return createRetry('TRANSPORT');
       }
-      return createUncertain('TRANSPORT');
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT');
     }
     if (exchange.status === 429 || exchange.status === 503) {
       try { await fence.recordCanResend(); }
       catch { return createRetry('AVAILABILITY'); }
       return createRetry(exchange.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', exchange.retryAfterMs);
     }
-    if (exchange.status >= 500 || exchange.status === 408 || exchange.status === 409)
-      return createUncertain('AVAILABILITY');
-    if (exchange.status === 401) return createFailure('providerRejected', 'AUTHENTICATION');
-    if (exchange.status === 403) return createFailure('providerRejected', 'AUTHORIZATION');
-    if (exchange.status >= 400 && exchange.status < 500)
-      return createFailure('providerRejected', 'PROVIDER_REJECTION');
-    if (exchange.status !== 201) return createUncertain('PROTOCOL');
-    if (exchange.error) return createUncertain('TRANSPORT');
+    const isDefiniteRefusal = definiteRefusalStatuses.has(exchange.status);
+    if (!isDefiniteRefusal && (exchange.status < 200 || exchange.status >= 300))
+      return resendOrSelectUncertain(canResendUnknownOutcome, 'AVAILABILITY', exchange.retryAfterMs);
+    if (exchange.error) return resendOrSelectUncertain(canResendUnknownOutcome, 'TRANSPORT');
     const body = parseJSON(exchange.body);
-    if (!isRecord(body) || !Number.isSafeInteger(body.id) || (body.id as number) <= 0 ||
-      typeof body.status !== 'string' || !createdStatuses.has(body.status))
-      return createUncertain('PROTOCOL');
+    // A positive post ID in the body means WordPress created the post.
+    const isAccepted = isRecord(body) && Number.isSafeInteger(body.id) && (body.id as number) > 0;
+    if (isDefiniteRefusal) {
+      if (isAccepted) return createUncertain('PROTOCOL');
+      return rejectOrSelectUncertain(fence, hasPossibleEarlierSend, rejectionKind(exchange.status));
+    }
+    if (!isAccepted || !isRecord(body)) return resendOrSelectUncertain(canResendUnknownOutcome, 'PROTOCOL');
     const id = body.id as number;
     try { await fence.recordProviderId(String(id)); }
-    catch { /* The claimed marker still blocks another send. */ }
+    catch { /* A lost provider-ID checkpoint leaves the claim, which still counts this send. */ }
+    // WordPress reported a post ID, so an unexpected response is never resent.
+    if (exchange.status !== 201 || typeof body.status !== 'string' || !createdStatuses.has(body.status))
+      return createUncertain('PROTOCOL');
     return newMutationBranch('created', { id, status: body.status });
   }
+}
+
+/** The Fence's own rule: a cap of 1 never resends, and otherwise an application override wins. */
+function effectiveMaxSends(call: Call, operationMaxSends: number): number {
+  return operationMaxSends >= 2 ? call.maxSendsOverride ?? operationMaxSends : 1;
+}
+
+/** Retry a possibly created post while the send cap allows another send, else select uncertain. */
+function resendOrSelectUncertain(canResendUnknownOutcome: boolean, kind: Failure['kind'], after = 0): MutationAttempt<CreatedPost> {
+  // The claim stays the last marker, so the next attempt counts this send.
+  return canResendUnknownOutcome ? createRetry(kind, after) : createUncertain(kind);
+}
+
+/** Select providerRejected only when no earlier send may have created the post. */
+async function rejectOrSelectUncertain(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean,
+  kind: Failure['kind']): Promise<MutationAttempt<CreatedPost>> {
+  if (hasPossibleEarlierSend) return createUncertain(kind);
+  try { await fence.recordCanResend(); }
+  catch { /* The branch is terminal, so a lost canResend checkpoint cannot cause a resend. */ }
+  return createFailure('providerRejected', kind);
+}
+
+/** Select defect only when no earlier send may have created the post. */
+async function localCreateFailure(fence: ReturnType<typeof newFence>, hasPossibleEarlierSend: boolean,
+  kind: Failure['kind']): Promise<MutationAttempt<CreatedPost>> {
+  // notSent would hide the earlier possible send, so nothing is recorded.
+  if (hasPossibleEarlierSend) return createRetry(kind);
+  try { await fence.recordNotSent(); }
+  catch { /* The branch is terminal, so a lost notSent checkpoint cannot cause a resend. */ }
+  return createFailure('defect', kind);
+}
+
+function rejectionKind(status: number): Failure['kind'] {
+  return status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
 }
 
 /** Read one published WordPress post by numeric ID. */
