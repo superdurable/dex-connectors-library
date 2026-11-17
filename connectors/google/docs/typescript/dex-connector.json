@@ -1,6 +1,6 @@
 {
   "connectorId": "google-docs",
-  "releaseTag": "connectors/google/docs/go/v0.24.0",
+  "releaseTag": "connectors/google/docs/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-docs",

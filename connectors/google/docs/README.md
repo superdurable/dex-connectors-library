@@ -330,7 +330,7 @@ mock.GetDocumentText().Respond(
 ```
 
 Install the v0.23.0 connector with
-`go get github.com/superdurable/dex-connectors-library/connectors/google/docs/go@v0.24.0`
+`go get github.com/superdurable/dex-connectors-library/connectors/google/docs/go@v0.24.1`
 after this release is published.
 
 ## Verification
