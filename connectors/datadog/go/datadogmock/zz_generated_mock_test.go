@@ -24,6 +24,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[datadog.MonitorsPage](`{"monitors":[{"id":12345,"name":"Meridian API latency","type":"metric alert","overall_state":"OK"}]}`)
 			return err
 		}},
+		{name: "getMonitor/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[datadog.Monitor](`{"id":12345,"name":"Meridian API latency","type":"metric alert","overall_state":"OK"}`)
+			return err
+		}},
+		{name: "updateMonitor/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[datadog.Monitor](`{"id":12345,"name":"Meridian API latency","type":"metric alert","overall_state":"OK"}`)
+			return err
+		}},
+		{name: "deleteMonitor/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[datadog.DeletedMonitor](`{"monitorId":12345}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +51,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListMonitors().Definition().Operation.OperationID != "listMonitors" {
 		t.Errorf("listMonitors mock has another definition")
+	}
+	if mock.GetMonitor().Definition().Operation.OperationID != "getMonitor" {
+		t.Errorf("getMonitor mock has another definition")
+	}
+	if mock.UpdateMonitor().Definition().Operation.OperationID != "updateMonitor" {
+		t.Errorf("updateMonitor mock has another definition")
+	}
+	if mock.DeleteMonitor().Definition().Operation.OperationID != "deleteMonitor" {
+		t.Errorf("deleteMonitor mock has another definition")
 	}
 }

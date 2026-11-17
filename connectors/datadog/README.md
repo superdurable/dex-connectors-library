@@ -1,6 +1,6 @@
 # Datadog connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/datadog/go@v0.3.0`.
+After the v0.4.0 release, install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/datadog/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/datadog`.
 
@@ -21,14 +21,17 @@ authorization and provider behavior have not been verified.
 | Factory | Endpoint | Input | Output | Required branch | Optional branches |
 | --- | --- | --- | --- | --- | --- |
 | NewQueryMetricsStep | GET /api/v1/query | `From`, `To` (Unix seconds), and Datadog `Query` expression | `MetricsQuery.Status` and `Series` with millisecond timestamps in `Pointlist` | `queried` | `providerRejected`, `invalidResponse`, `defect` |
-| NewListMonitorsStep | GET /api/v1/monitor | zero-based `Page` and `PageSize` (zero selects 100) | `MonitorsPage.Monitors` | `listed` | `providerRejected`, `invalidResponse`, `defect |
+| NewListMonitorsStep | GET /api/v1/monitor | zero-based `Page` and `PageSize` (zero selects 100) | `MonitorsPage.Monitors` | `listed` | `providerRejected`, `invalidResponse`, `defect` |
+| NewGetMonitorStep | GET /api/v1/monitor/{id} | positive `MonitorID` from Monitors > select a monitor | monitor ID, name, type, and state | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewUpdateMonitorStep | PUT /api/v1/monitor/{id} | positive `MonitorID` and at least one absolute `Name`, `Message`, or `Query` value | updated monitor summary | `updated` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
+| NewDeleteMonitorStep | DELETE /api/v1/monitor/{id} | positive `MonitorID`; does not force dependent resource deletion | deleted monitor ID | `deleted` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 
-Both operations are read-only Queries. `Page` and `PageSize` are optional in the
+`queryMetrics`, `listMonitors`, and `getMonitor` are read-only Queries. `updateMonitor` and `deleteMonitor` are safe-to-repeat Mutations. `Page` and `PageSize` are optional in the
 input schema, so `{}` lists the first page of 100 monitors.
 
 ## Authorization
 
-Create an API key in [Organization Settings > API Keys](https://app.datadoghq.com/organization-settings/api-keys) and an application key in [Organization Settings > Application Keys](https://app.datadoghq.com/organization-settings/application-keys). Give the application key `timeseries_query` and `monitors_read` permissions. The connector sends the secrets in `DD-API-KEY` and `DD-APPLICATION-KEY` headers. The default API host serves the US site; set `baseUrl` to your regional API host for another Datadog site.
+Create an API key in [Organization Settings > API Keys](https://app.datadoghq.com/organization-settings/api-keys) and an application key in [Organization Settings > Application Keys](https://app.datadoghq.com/organization-settings/application-keys). Give the application key `timeseries_query`, `monitors_read`, and `monitors_write` permissions. The connector sends the secrets in `DD-API-KEY` and `DD-APPLICATION-KEY` headers. The default API host serves the US site; set `baseUrl` to your regional API host for another Datadog site. Find a monitor ID in **Monitors > Manage Monitors > select monitor**; use its numeric ID, not its name. An omitted `Name`, `Message`, or `Query` in an update keeps that field; an explicitly empty `Message` clears it.
 
 `baseUrl`, `timeout`, and `maxResponseBytes` have manifest defaults. The connection form gives the provider URL, setup path, units, and blank behavior for every field. Secrets are resolved for each call and are never copied into Flow input, Results, Failures, receipts, or logs.
 
@@ -52,12 +55,15 @@ The generated `datadogmock` package installs these default answers:
 - `queryMetrics`: one `system.cpu.user` series with a 0.23 point.
 - `listMonitors`: monitor 12345 named Meridian API latency.
 
-The [mock-backed example test](go/examples/datadog-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
+The [mock-backed example test](go/examples/datadog-lookup/flow/workflow_mock_integration_test.go) runs the metric query and `getMonitor` defaults through a real Dex Worker and Client in CI.
 
 ## Official API references
 
 - [https://docs.datadoghq.com/api/latest/metrics/query-timeseries-points/](https://docs.datadoghq.com/api/latest/metrics/query-timeseries-points/)
 - [https://docs.datadoghq.com/api/latest/monitors/get-all-monitors/](https://docs.datadoghq.com/api/latest/monitors/get-all-monitors/)
+- [https://docs.datadoghq.com/api/latest/monitors/get-a-monitors-details/](https://docs.datadoghq.com/api/latest/monitors/get-a-monitors-details/)
+- [https://docs.datadoghq.com/api/latest/monitors/edit-a-monitor/](https://docs.datadoghq.com/api/latest/monitors/edit-a-monitor/)
+- [https://docs.datadoghq.com/api/latest/monitors/delete-a-monitor/](https://docs.datadoghq.com/api/latest/monitors/delete-a-monitor/)
 - [https://docs.datadoghq.com/api/latest/authentication/](https://docs.datadoghq.com/api/latest/authentication/)
 - [https://docs.datadoghq.com/account_management/api-app-keys/](https://docs.datadoghq.com/account_management/api-app-keys/)
 

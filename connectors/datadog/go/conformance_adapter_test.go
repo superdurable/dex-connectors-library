@@ -22,5 +22,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"queryMetrics": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.QueryMetrics(), testConnection),
 		"listMonitors": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListMonitors(), testConnection),
+		"getMonitor": newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.GetMonitor(), testConnection),
+		"updateMonitor": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.UpdateMonitor(), testConnection, scenario.CallID),
+		"deleteMonitor": newConformanceMutationInvocation(t, scenario.Input, testContext{}, client.DeleteMonitor(), testConnection, scenario.CallID),
 	}}
 }

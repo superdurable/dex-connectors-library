@@ -24,7 +24,8 @@ import (
 func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	mock := datadogmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	monitorFlow := NewMonitorInspectionFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, monitorFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -66,4 +67,14 @@ func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	require.Equal(t, request, calls[0].Input)
 	require.Equal(t, datadog.QueryMetricsBranchQueried, calls[0].Branch)
 	require.Equal(t, flowID, calls[0].FlowID)
+	monitorFlowID := "datadog-monitor-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(contextWithDeadline, monitorFlow, monitorFlowID, datadog.GetMonitorInput{MonitorID: 12345}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	monitorResult, err := client.WaitForFlow(contextWithDeadline, monitorFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, monitorResult.Status, monitorResult.ErrorMessage)
+	var monitor datadog.Monitor
+	require.NoError(t, monitorResult.DecodeSingleOutput(&monitor))
+	require.Equal(t, int64(12345), monitor.ID)
+	require.Len(t, mock.GetMonitor().Calls(), 1)
 }

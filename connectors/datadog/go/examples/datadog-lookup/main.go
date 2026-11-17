@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{lookupflow.NewFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{lookupflow.NewFlow(connection), lookupflow.NewMonitorInspectionFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Datadog lookup Flow: %w", err)
 	}

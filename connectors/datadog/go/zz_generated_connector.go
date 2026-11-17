@@ -43,6 +43,9 @@ type Connection struct {
 type Operations interface {
 	QueryMetrics() sdkgo.Query[QueryMetricsInput, MetricsQuery]
 	ListMonitors() sdkgo.Query[ListMonitorsInput, MonitorsPage]
+	GetMonitor() sdkgo.Query[GetMonitorInput, Monitor]
+	UpdateMonitor() sdkgo.Mutation[UpdateMonitorInput, Monitor]
+	DeleteMonitor() sdkgo.Mutation[DeleteMonitorInput, DeletedMonitor]
 }
 
 type clientOperations struct{ client *Client }
@@ -52,6 +55,15 @@ func (operations clientOperations) QueryMetrics() sdkgo.Query[QueryMetricsInput,
 }
 func (operations clientOperations) ListMonitors() sdkgo.Query[ListMonitorsInput, MonitorsPage] {
 	return operations.client.ListMonitors()
+}
+func (operations clientOperations) GetMonitor() sdkgo.Query[GetMonitorInput, Monitor] {
+	return operations.client.GetMonitor()
+}
+func (operations clientOperations) UpdateMonitor() sdkgo.Mutation[UpdateMonitorInput, Monitor] {
+	return operations.client.UpdateMonitor()
+}
+func (operations clientOperations) DeleteMonitor() sdkgo.Mutation[DeleteMonitorInput, DeletedMonitor] {
+	return operations.client.DeleteMonitor()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +342,237 @@ func NewListMonitorsStep[IN any](config ListMonitorsStepConfig[IN]) sdkgo.QueryS
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListMonitorsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetMonitorBranchFound sdkgo.BranchID = "found"
+const GetMonitorBranchNotFound sdkgo.BranchID = "notFound"
+const GetMonitorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetMonitorBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetMonitorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetMonitorDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMonitor"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetMonitorBranchFound, Description: "Datadog returned the monitor."},
+		{ID: GetMonitorBranchNotFound, Description: "Datadog did not expose the monitor.", Optional: true},
+		{ID: GetMonitorBranchProviderRejected, Description: "Datadog rejected the lookup.", Optional: true},
+		{ID: GetMonitorBranchInvalidResponse, Description: "Datadog returned malformed or oversized JSON.", Optional: true},
+		{ID: GetMonitorBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetMonitorResult = sdkgo.QueryResult[Monitor]
+
+type GetMonitorStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                   `connector:"connectorId=datadog"`
+	operationID                    struct{}                                   `connector:"operationId=getMonitor"`
+	StepType                       string                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                      `connector:"annotations"`
+	Connection                     Connection                                 `connector:"connection"`
+	ConnectionName                 string                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetMonitorInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetMonitorResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetMonitorResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetMonitorResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetMonitorResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetMonitorResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Monitor]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                           `connector:"stepOptionsOverride"`
+}
+
+func NewGetMonitorStep[IN any](config GetMonitorStepConfig[IN]) sdkgo.QueryStep[IN, GetMonitorInput, Monitor] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("datadog connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMonitorInput, Monitor]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetMonitor(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetMonitorResult] {
+			branches := make([]sdkgo.BranchTarget[GetMonitorResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetMonitorBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetMonitorBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetMonitorBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetMonitorBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetMonitorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateMonitorBranchUpdated sdkgo.BranchID = "updated"
+const UpdateMonitorBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateMonitorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateMonitorBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateMonitorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateMonitorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateMonitor"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateMonitorBranchUpdated, Description: "Datadog returned the updated monitor."},
+		{ID: UpdateMonitorBranchNotFound, Description: "Datadog did not expose the monitor.", Optional: true},
+		{ID: UpdateMonitorBranchProviderRejected, Description: "Datadog rejected the update.", Optional: true},
+		{ID: UpdateMonitorBranchInvalidResponse, Description: "Datadog returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateMonitorBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateMonitorResult = sdkgo.MutationResult[Monitor]
+
+type UpdateMonitorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                      `connector:"connectorId=datadog"`
+	operationID                       struct{}                                      `connector:"operationId=updateMonitor"`
+	StepType                          string                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                        Connection                                    `connector:"connection"`
+	ConnectionName                    string                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateMonitorInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateMonitorResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateMonitorResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateMonitorResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateMonitorResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateMonitorResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Monitor]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateMonitorStep[IN any](config UpdateMonitorStepConfig[IN]) sdkgo.MutationStep[IN, UpdateMonitorInput, Monitor] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("datadog connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateMonitorInput, Monitor]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateMonitor(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateMonitorResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateMonitorResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateMonitorBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateMonitorBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateMonitorBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateMonitorBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateMonitorBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteMonitorBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteMonitorBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteMonitorBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteMonitorBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteMonitorBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteMonitorDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteMonitor"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteMonitorBranchDeleted, Description: "Datadog confirmed monitor deletion."},
+		{ID: DeleteMonitorBranchNotFound, Description: "Datadog did not expose the monitor.", Optional: true},
+		{ID: DeleteMonitorBranchProviderRejected, Description: "Datadog rejected the deletion.", Optional: true},
+		{ID: DeleteMonitorBranchInvalidResponse, Description: "Datadog returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteMonitorBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteMonitorResult = sdkgo.MutationResult[DeletedMonitor]
+
+type DeleteMonitorStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=datadog"`
+	operationID                       struct{}                                             `connector:"operationId=deleteMonitor"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteMonitorInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteMonitorResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteMonitorResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteMonitorResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteMonitorResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteMonitorResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedMonitor]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteMonitorStep[IN any](config DeleteMonitorStepConfig[IN]) sdkgo.MutationStep[IN, DeleteMonitorInput, DeletedMonitor] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("datadog connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteMonitorInput, DeletedMonitor]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteMonitor(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteMonitorResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteMonitorResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteMonitorBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteMonitorBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteMonitorBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteMonitorBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteMonitorBranchDefect))
 			}
 			return branches
 		}(),
