@@ -5,12 +5,9 @@ import type { AsyncContext } from '@superdurable/dex';
 import { MarkerSchema, type Marker } from './index.js';
 
 /** Heartbeat field mapping each call ID of a Step attempt to its marker. */
-export const CheckpointMarkersField = 'singleDispatchMarkers';
+const CheckpointMarkersField = 'singleDispatchMarkers';
 
-/**
- * Shared state of one Step attempt. Several SDK copies may share it, so it holds plain data only;
- * changing its shape requires a new registry key.
- */
+/** SDK copies share this plain data; changing its shape requires a new registry key. */
 interface StepCheckpoint {
   attempt: number;
   markers: Map<string, Marker>;
@@ -19,7 +16,7 @@ interface StepCheckpoint {
 
 const stepCheckpointRegistryKey = Symbol.for('@superdurable/connectors-sdk/singleDispatchCheckpoints/v1');
 
-/** Returns the checkpoint shared by every Fence of the context's current attempt, in any SDK copy. */
+/** Returns the checkpoint every Fence of this attempt shares, in any SDK copy. */
 export function stepCheckpointFor(context: AsyncContext): StepCheckpoint {
   const holder = globalThis as unknown as Record<symbol, WeakMap<object, StepCheckpoint> | undefined>;
   const registry = holder[stepCheckpointRegistryKey] ??= new WeakMap<object, StepCheckpoint>();
@@ -30,10 +27,7 @@ export function stepCheckpointFor(context: AsyncContext): StepCheckpoint {
   return checkpoint;
 }
 
-/**
- * Persists every known marker with `marker` replacing its call ID's entry, committing it only after
- * the heartbeat succeeds. Writes queue so the last persisted value holds every committed entry.
- */
+/** Queued writes commit only after the heartbeat succeeds, so the last value has every entry. */
 export async function recordStepCheckpoint(context: AsyncContext, checkpoint: StepCheckpoint, marker: Marker): Promise<void> {
   const write = checkpoint.tail.then(async () => {
     const markers = new Map(checkpoint.markers);
@@ -45,11 +39,7 @@ export async function recordStepCheckpoint(context: AsyncContext, checkpoint: St
   await write;
 }
 
-/**
- * Reads the checkpoint map, dropping every entry that is not a valid marker or whose key differs
- * from its `callId`. Any other value, such as a single marker from an earlier release, yields none.
- * The format is internal to the connector SDKs and may change.
- */
+/** Drops unreadable or mis-keyed entries; any non-map value, legacy markers included, yields none. */
 export function markersFromHeartbeat(heartbeat: unknown): Map<string, Marker> {
   const markers = new Map<string, Marker>();
   if (!isPlainObject(heartbeat)) return markers;
