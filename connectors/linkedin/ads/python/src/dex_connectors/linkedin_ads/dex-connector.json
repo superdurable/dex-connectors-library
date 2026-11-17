@@ -1,6 +1,6 @@
 {
   "connectorId": "linkedin-ads",
-  "releaseTag": "connectors/linkedin/ads/go/v0.1.0",
+  "releaseTag": "connectors/linkedin/ads/go/v0.2.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-linkedin-ads",

@@ -5,10 +5,11 @@
 package lucid
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -69,6 +70,18 @@ type providerResponse struct {
 }
 
 func (client *Client) search(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodPost, path, []byte(`{"excludeTrashed":true}`))
+}
+
+func (client *Client) searchWithBody(call sdkgo.Call, path string, body []byte) providerResponse {
+	return client.request(call, http.MethodPost, path, body)
+}
+
+func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodGet, path, nil)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string, payload []byte) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -77,12 +90,18 @@ func (client *Client) search(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiKey) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, strings.NewReader(`{"excludeTrashed":true}`))
+	var requestBody io.Reader
+	if payload != nil {
+		requestBody = bytes.NewReader(payload)
+	}
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, requestBody)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Content-Type", "application/json")
+	if method == http.MethodPost {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 	request.Header.Set("Lucid-Api-Version", "1")
 	response, err := client.httpClient.Do(request)

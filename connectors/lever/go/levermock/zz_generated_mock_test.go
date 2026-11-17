@@ -16,8 +16,104 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listOpportunities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.OpportunitiesPage](`{"opportunities":[{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}],"nextOffset":""}`)
+			return err
+		}},
 		{name: "getOpportunity/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[lever.OpportunityStage](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}`)
+			return err
+		}},
+		{name: "updateOpportunityStage/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.OpportunityStage](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}`)
+			return err
+		}},
+		{name: "setOpportunityArchiveState/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.OpportunityArchiveState](`{"opportunityId":"250d8f03-738a-4bba-a671-8a3d73477145","archived":true,"reasonId":"63dd55b2-a99f-4e7b-985f-22c7bf80ab42"}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.CreatedOpportunity](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145"}`)
+			return err
+		}},
+		{name: "getPosting/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+			return err
+		}},
+		{name: "listPostings/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.PostingsPage](`{"postings":[{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}]}`)
+			return err
+		}},
+		{name: "createPosting/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+			return err
+		}},
+		{name: "updatePosting/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.Posting](`{"id":"f2f01e16-27f8-4711-a728-7d49499795a0","title":"Infrastructure Engineer","state":"draft"}`)
+			return err
+		}},
+		{name: "getNote/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NoteSummary](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3","createdAt":1420312438111,"commentCount":1}`)
+			return err
+		}},
+		{name: "listNotes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NotesPage](`{"notes":[{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3","createdAt":1420312438111,"commentCount":1}]}`)
+			return err
+		}},
+		{name: "createNote/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+			return err
+		}},
+		{name: "updateNote/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+			return err
+		}},
+		{name: "deleteNote/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.NoteIdentity](`{"id":"b1dbbcfe-281c-46a0-8f51-57049158d3f3"}`)
+			return err
+		}},
+		{name: "getInterview/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+			return err
+		}},
+		{name: "listInterviews/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewsPage](`{"interviews":[{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}]}`)
+			return err
+		}},
+		{name: "createInterview/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+			return err
+		}},
+		{name: "updateInterview/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewSummary](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421","panelId":"fdb313e8-13c5-47de-9e51-6a21a4d76ff6","date":1794906000000,"durationMinutes":30}`)
+			return err
+		}},
+		{name: "deleteInterview/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.InterviewIdentity](`{"id":"6ff55c8e-fe04-4eb4-835a-630b1c0da421"}`)
+			return err
+		}},
+		{name: "getUser/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+			return err
+		}},
+		{name: "listUsers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UsersPage](`{"users":[{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}]}`)
+			return err
+		}},
+		{name: "createUser/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+			return err
+		}},
+		{name: "updateUser/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
+			return err
+		}},
+		{name: "deactivateUser/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":false}`)
+			return err
+		}},
+		{name: "reactivateUser/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.UserSummary](`{"id":"8d49b010-cc6a-4f40-ace5-e86061c677ed","accessRole":"interviewer","active":true}`)
 			return err
 		}},
 	}
@@ -30,7 +126,79 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListOpportunities().Definition().Operation.OperationID != "listOpportunities" {
+		t.Errorf("listOpportunities mock has another definition")
+	}
 	if mock.GetOpportunity().Definition().Operation.OperationID != "getOpportunity" {
 		t.Errorf("getOpportunity mock has another definition")
+	}
+	if mock.UpdateOpportunityStage().Definition().Operation.OperationID != "updateOpportunityStage" {
+		t.Errorf("updateOpportunityStage mock has another definition")
+	}
+	if mock.SetOpportunityArchiveState().Definition().Operation.OperationID != "setOpportunityArchiveState" {
+		t.Errorf("setOpportunityArchiveState mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
+	}
+	if mock.GetPosting().Definition().Operation.OperationID != "getPosting" {
+		t.Errorf("getPosting mock has another definition")
+	}
+	if mock.ListPostings().Definition().Operation.OperationID != "listPostings" {
+		t.Errorf("listPostings mock has another definition")
+	}
+	if mock.CreatePosting().Definition().Operation.OperationID != "createPosting" {
+		t.Errorf("createPosting mock has another definition")
+	}
+	if mock.UpdatePosting().Definition().Operation.OperationID != "updatePosting" {
+		t.Errorf("updatePosting mock has another definition")
+	}
+	if mock.GetNote().Definition().Operation.OperationID != "getNote" {
+		t.Errorf("getNote mock has another definition")
+	}
+	if mock.ListNotes().Definition().Operation.OperationID != "listNotes" {
+		t.Errorf("listNotes mock has another definition")
+	}
+	if mock.CreateNote().Definition().Operation.OperationID != "createNote" {
+		t.Errorf("createNote mock has another definition")
+	}
+	if mock.UpdateNote().Definition().Operation.OperationID != "updateNote" {
+		t.Errorf("updateNote mock has another definition")
+	}
+	if mock.DeleteNote().Definition().Operation.OperationID != "deleteNote" {
+		t.Errorf("deleteNote mock has another definition")
+	}
+	if mock.GetInterview().Definition().Operation.OperationID != "getInterview" {
+		t.Errorf("getInterview mock has another definition")
+	}
+	if mock.ListInterviews().Definition().Operation.OperationID != "listInterviews" {
+		t.Errorf("listInterviews mock has another definition")
+	}
+	if mock.CreateInterview().Definition().Operation.OperationID != "createInterview" {
+		t.Errorf("createInterview mock has another definition")
+	}
+	if mock.UpdateInterview().Definition().Operation.OperationID != "updateInterview" {
+		t.Errorf("updateInterview mock has another definition")
+	}
+	if mock.DeleteInterview().Definition().Operation.OperationID != "deleteInterview" {
+		t.Errorf("deleteInterview mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
+	}
+	if mock.ListUsers().Definition().Operation.OperationID != "listUsers" {
+		t.Errorf("listUsers mock has another definition")
+	}
+	if mock.CreateUser().Definition().Operation.OperationID != "createUser" {
+		t.Errorf("createUser mock has another definition")
+	}
+	if mock.UpdateUser().Definition().Operation.OperationID != "updateUser" {
+		t.Errorf("updateUser mock has another definition")
+	}
+	if mock.DeactivateUser().Definition().Operation.OperationID != "deactivateUser" {
+		t.Errorf("deactivateUser mock has another definition")
+	}
+	if mock.ReactivateUser().Definition().Operation.OperationID != "reactivateUser" {
+		t.Errorf("reactivateUser mock has another definition")
 	}
 }

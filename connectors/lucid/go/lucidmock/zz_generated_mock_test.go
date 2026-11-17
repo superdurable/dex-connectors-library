@@ -20,6 +20,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[lucid.DocumentsPage](`{"documents":[{"id":"110808fd-4553-4316-bccf-4f25ff59a532","title":"Example document"}],"nextPageToken":""}`)
 			return err
 		}},
+		{name: "getDocument/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lucid.DocumentDetails](`{"id":"110808fd-4553-4316-bccf-4f25ff59a532","title":"Example document","product":"lucidchart","version":2,"pageCount":1,"canEdit":false}`)
+			return err
+		}},
+		{name: "searchDocuments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lucid.DocumentsPage](`{"documents":[{"id":"110808fd-4553-4316-bccf-4f25ff59a532","title":"Example document"}],"nextPageToken":""}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +40,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.ListDocuments().Definition().Operation.OperationID != "listDocuments" {
 		t.Errorf("listDocuments mock has another definition")
+	}
+	if mock.GetDocument().Definition().Operation.OperationID != "getDocument" {
+		t.Errorf("getDocument mock has another definition")
+	}
+	if mock.SearchDocuments().Definition().Operation.OperationID != "searchDocuments" {
+		t.Errorf("searchDocuments mock has another definition")
 	}
 }

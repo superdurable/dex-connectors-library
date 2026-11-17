@@ -29,6 +29,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listAdAccounts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAdAccounts(), reference),
+		"listAdAccounts":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAdAccounts(), reference),
+		"listCampaignGroups": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaignGroups(), reference),
+		"listCampaigns":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
+		"listCreatives":      newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCreatives(), reference),
+		"getAdAccount":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetAdAccount(), reference),
+		"getCampaignGroup":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaignGroup(), reference),
+		"getCampaign":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaign(), reference),
+		"getCreative":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCreative(), reference),
 	}}
 }
