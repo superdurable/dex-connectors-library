@@ -1,0 +1,52 @@
+{
+  "connectorId": "chuanglan",
+  "releaseTag": "connectors/chuanglan/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-chuanglan",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetBalanceStep",
+      "kind": "query",
+      "operationId": "getBalance",
+      "inputType": "GetBalanceInput",
+      "description": "Read the number of domestic SMS messages remaining for the connected API account.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetBalanceInput has no fields because the connected domestic SMS account identifies the balance.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

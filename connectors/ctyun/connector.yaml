@@ -9,6 +9,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: ctyun
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-ctyun"
+      operations: [listKnowledgeBases]
+      triggers: []
   codegen:
     go:
       package: ctyun

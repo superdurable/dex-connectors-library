@@ -9,3 +9,7 @@ At the [Dada Open Platform](https://newopen.imdada.cn), sign in as a developer, 
 The [API request rules](https://newopen.imdada.cn/#/development/file/api) define a JSON POST to the production HTTPS domain, and the [signature guide](https://newopen.imdada.cn/#/development/file/algorithm) defines uppercase MD5 of `app_secret` + sorted key/value pairs + `app_secret`. The connector signs each request and never sends `app_secret` itself. HTTP 429, HTTP 5xx, and transport failures retry. Definite provider rejections select optional `providerRejected`; malformed or oversized responses select optional `invalidResponse`. The example leaves optional branches unwired, so those outcomes fail the Flow. The public documentation does not state a fee for this status Query; check current pricing in the portal.
 
 The runnable example is in [`go/examples/order-status`](go/examples/order-status). Provider tests verify the official signature vector and HTTP request against a local server. Live merchant authorization and production order status remain unverified without user-controlled credentials and an existing delivery order.
+
+## TypeScript
+
+The [TypeScript package](typescript/README.md) implements the same signed query and includes a runnable Dex Flow. Its 13 provider scenarios replay Go-recorded requests and retry decisions.
