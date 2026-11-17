@@ -33,6 +33,25 @@ func TestUpdateTaskSendsAbsoluteFields(t *testing.T) {
 	require.Equal(t, name, result.Value.Name)
 }
 
+func TestUpdateTaskAssignsMovesAndSetsDue(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(request.Body).Decode(&body))
+		require.Equal(t, map[string]any{"assigned_to_id": float64(7), "section_id": float64(9), "due": "2026-11-18T00:00:00Z"}, body)
+		_, err := writer.Write([]byte(`{"id":15,"status":1,"name":"Moved Task"}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	assigneeID, sectionID, due := int64(7), int64(9), "2026-11-18T00:00:00Z"
+	result, err := sdkgo.RunMutation(queryContext{}, newTestClient(t, server.URL, 0).UpdateTask(), testConnection, UpdateTaskInput{TaskID: "15", AssignedToID: &assigneeID, SectionID: &sectionID, Due: &due})
+	require.NoError(t, err)
+	require.Equal(t, UpdateTaskBranchUpdated, result.Branch)
+	invalidDue := "tomorrow"
+	invalid, err := sdkgo.RunMutation(queryContext{}, newTestClient(t, server.URL, 0).UpdateTask(), testConnection, UpdateTaskInput{TaskID: "15", Due: &invalidDue})
+	require.NoError(t, err)
+	require.Equal(t, UpdateTaskBranchDefect, invalid.Branch)
+}
+
 func TestUpdateTaskClassifiesOutcomes(t *testing.T) {
 	name := "Updated Task Name"
 	for _, testCase := range []struct {

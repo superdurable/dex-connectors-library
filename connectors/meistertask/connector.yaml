@@ -56,6 +56,7 @@ spec:
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret positive numeric task ID in MeisterTask task details or GET /tasks and pass it as taskId; blank is invalid. The token owner needs access to the task.
         - Find non-secret positive project IDs in MeisterTask Projects or GET /projects. Pass one as projectId for getProject or updateProject; blank is invalid. ListProjects page and items are positive integers, with zero selecting the provider first page or size; blank status uses active projects.
         - Find non-secret positive section IDs in a MeisterTask project board or GET /sections. Pass one as sectionId for getSection or updateSection; createSection needs its parent projectId. Blank IDs or names are invalid; blank list status uses active sections.
+        - For updateTask, find assignedToId in the project member list (GET /projects/{projectId}/members), sectionId in the project board or GET /sections, and provide due as an RFC 3339 timestamp such as 2026-11-18T00:00:00Z. Omit each field to leave its current value unchanged.
   operations:
     - name: listSections
       goName: ListSections
@@ -267,7 +268,7 @@ spec:
       inputType: UpdateTaskInput
       outputType: TaskSummary
       kind: mutation
-      description: Set a task's name, notes, or status to absolute values.
+      description: Set a task's name, notes, status, assignee, destination section, or due timestamp to absolute values.
       idempotency: required
       authorization: required
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}

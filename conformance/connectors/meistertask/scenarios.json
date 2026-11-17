@@ -332,8 +332,11 @@
           "method": "PUT",
           "path": "/tasks/15",
           "requestBody": {
+            "assigned_to_id": 7,
+            "due": "2026-11-18T00:00:00Z",
             "name": "Updated Task Name",
             "notes": "New notes",
+            "section_id": 9,
             "status": 2
           },
           "requestHeaders": {
@@ -365,8 +368,11 @@
       },
       "idempotencyKey": "137b79e3-55a6-5209-8113-65a24b6140ed",
       "input": {
+        "assignedToId": 7,
+        "due": "2026-11-18T00:00:00Z",
         "name": "Updated Task Name",
         "notes": "New notes",
+        "sectionId": 9,
         "status": 2,
         "taskId": "15"
       },

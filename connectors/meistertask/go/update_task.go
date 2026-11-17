@@ -26,6 +26,12 @@ type UpdateTaskInput struct {
 	Notes *string `json:"notes,omitempty"`
 	// Status sets 1 open, 2 completed, 8 trashed, or 18 completed and archived.
 	Status *int `json:"status,omitempty"`
+	// AssignedToID replaces the assignee with a positive person ID.
+	AssignedToID *int64 `json:"assignedToId,omitempty"`
+	// SectionID moves the task to a positive destination section ID.
+	SectionID *int64 `json:"sectionId,omitempty"`
+	// Due replaces the due date with an RFC 3339 timestamp.
+	Due *string `json:"due,omitempty"`
 }
 
 // UpdateTaskOperation replaces selected fields of one task.
@@ -44,16 +50,22 @@ func (UpdateTaskOperation) IdempotencyKey(callID sdkgo.CallID, _ UpdateTaskInput
 
 // Invoke sends one absolute update and classifies definite and unknown outcomes.
 func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInput) sdkgo.MutationAttempt[TaskSummary] {
-	if !validTaskID(input.TaskID) || (input.Name == nil && input.Notes == nil && input.Status == nil) ||
+	if !validTaskID(input.TaskID) || (input.Name == nil && input.Notes == nil && input.Status == nil && input.AssignedToID == nil && input.SectionID == nil && input.Due == nil) ||
 		(input.Name != nil && strings.TrimSpace(*input.Name) == "") ||
-		(input.Status != nil && *input.Status != 1 && *input.Status != 2 && *input.Status != 8 && *input.Status != 18) {
+		(input.Status != nil && *input.Status != 1 && *input.Status != 2 && *input.Status != 8 && *input.Status != 18) ||
+		(input.AssignedToID != nil && !validTaskID(strconv.FormatInt(*input.AssignedToID, 10))) ||
+		(input.SectionID != nil && !validTaskID(strconv.FormatInt(*input.SectionID, 10))) ||
+		(input.Due != nil && !validDueDate(*input.Due)) {
 		return updateTaskBranch(UpdateTaskBranchDefect, sdkgo.FailureValidation, "task ID or update fields are invalid")
 	}
 	payload, err := json.Marshal(struct {
-		Name   *string `json:"name,omitempty"`
-		Notes  *string `json:"notes,omitempty"`
-		Status *int    `json:"status,omitempty"`
-	}{Name: input.Name, Notes: input.Notes, Status: input.Status})
+		Name         *string `json:"name,omitempty"`
+		Notes        *string `json:"notes,omitempty"`
+		Status       *int    `json:"status,omitempty"`
+		AssignedToID *int64  `json:"assigned_to_id,omitempty"`
+		SectionID    *int64  `json:"section_id,omitempty"`
+		Due          *string `json:"due,omitempty"`
+	}{Name: input.Name, Notes: input.Notes, Status: input.Status, AssignedToID: input.AssignedToID, SectionID: input.SectionID, Due: input.Due})
 	if err != nil {
 		return updateTaskBranch(UpdateTaskBranchDefect, sdkgo.FailureLocalDefect, "task update could not be encoded")
 	}
@@ -87,6 +99,11 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 		return updateTaskBranch(UpdateTaskBranchInvalidResponse, sdkgo.FailureProtocol, "MeisterTask returned invalid task JSON")
 	}
 	return sdkgo.NewMutationBranch(UpdateTaskBranchUpdated, taskSummary, nil, sdkgo.Receipt{})
+}
+
+func validDueDate(value string) bool {
+	_, err := time.Parse(time.RFC3339, value)
+	return err == nil
 }
 
 func (client *Client) put(call sdkgo.Call, path string, payload []byte) providerResponse {
