@@ -153,28 +153,36 @@ func TestSMTPNewMessageIsSubmittedOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, harness.smtp.MailCount())
 }
 
-func TestLostSMTPAnswerFailsTheFlowAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostSMTPAnswerIsResentWithTheSameMessageIDWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t)
 	seedCustomerThread(t, harness)
 	harness.smtp.DropNextEndOfDataReply()
 
-	result := harness.waitForFlow(t, harness.startReply(t, "lost-answer", integrationInput()))
+	outcome := harness.runReply(t, "lost-answer", integrationInput())
+	require.Equal(t, ReplyActionReplied, outcome.Action)
+	submissions := harness.smtp.Submissions()
+	require.Len(t, submissions, 2, "the lost answer is resent once")
+	requireSameMessageID(t, submissions)
+}
+
+func TestLostSMTPAnswersFailTheFlowAtTheSendCapWithRealDex(t *testing.T) {
+	harness := newReplyHarness(t)
+	seedCustomerThread(t, harness)
+	harness.smtp.DropNextEndOfDataReplies(int(email.ReplyToMessageDefinition.MaxSends))
+
+	result := harness.waitForFlow(t, harness.startReply(t, "lost-answers", integrationInput()))
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
 	submissions := harness.smtp.Submissions()
-	require.Len(t, submissions, 1, "the server accepted the reply, but the Flow must not resend it")
-	header, _ := readSubmission(t, submissions[0])
-	messageID, err := header.MessageID()
-	require.NoError(t, err)
-	require.NotEmpty(t, messageID)
-	require.Equal(t, 1, harness.smtp.MailCount())
+	require.Len(t, submissions, int(email.ReplyToMessageDefinition.MaxSends), "the reply is resent only up to the send cap")
+	requireSameMessageID(t, submissions)
 	require.Empty(t, harness.imap.Messages(t, "INBOX")[1].Flags, "an uncertain reply does not mark the message answered")
 }
 
-// TestLostWorkerDuringSMTPSubmissionFailsUncertainWithoutResendingWithRealDex replaces the Worker while the SMTP
-// server holds its answer; the next attempt finds the submission checkpoint and submits nothing.
-func TestLostWorkerDuringSMTPSubmissionFailsUncertainWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringSMTPSubmissionResendsBelowTheSendCapWithRealDex replaces the Worker while the SMTP server
+// holds its answer; the next attempt counts the possible submission and sends the reply once more.
+func TestLostWorkerDuringSMTPSubmissionResendsBelowTheSendCapWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t)
 	seedCustomerThread(t, harness)
 	release := make(chan struct{})
@@ -186,12 +194,26 @@ func TestLostWorkerDuringSMTPSubmissionFailsUncertainWithoutResendingWithRealDex
 
 	result := harness.waitForFlow(t, flowID)
 	close(release)
-	require.Equal(t, dex.FlowFailed, result.Status)
-	require.Contains(t, result.ErrorMessage, "uncertain")
-	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	harness.smtp.WaitForHeldReplies()
-	require.Equal(t, 1, harness.smtp.MailCount(), "the attempt on the new Worker did not resend the reply")
-	require.Equal(t, 1, harness.smtp.DataCount())
+	require.Equal(t, 2, harness.smtp.DataCount(), "the attempt on the new Worker resent the reply once")
+	requireSameMessageID(t, harness.smtp.Submissions())
+}
+
+// requireSameMessageID checks that every resubmission repeats the first Message-ID.
+func requireSameMessageID(t *testing.T, submissions []mailtest.Submission) {
+	t.Helper()
+	var first string
+	for _, submission := range submissions {
+		header, _ := readSubmission(t, submission)
+		messageID, err := header.MessageID()
+		require.NoError(t, err)
+		require.NotEmpty(t, messageID)
+		if first == "" {
+			first = messageID
+		}
+		require.Equal(t, first, messageID)
+	}
 }
 
 func TestTemporarySMTPRefusalIsRetriedAndSendsOnceWithRealDex(t *testing.T) {

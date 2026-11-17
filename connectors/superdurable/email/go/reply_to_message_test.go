@@ -76,18 +76,45 @@ func TestReplyToMessageSendsNothingWhenTheSourceIsMissingOrUnusable(t *testing.T
 	require.Zero(t, fixture.smtp.AuthCount())
 }
 
-func TestReplyToMessageAfterAnEarlierClaimIsUncertainWithoutReadingOrSending(t *testing.T) {
+func TestReplyToMessageAtTheSendCapIsUncertainWithoutReadingOrSending(t *testing.T) {
 	fixture := newMailFixture(t)
 	source := fixture.appendMessage(t, "INBOX", plainMessage("jane@acme.example.com", testUsername, "Hello", "hello@acme.example.com", "Body."),
 		nil, januaryTwentyEighth)
-	first := newEmailDexContext("claimed-reply")
-	first.recordedHeartbeat = []byte(`{"emailSubmittedCallId":"earlier"}`)
-	result, err := sdkgo.RunMutation(first.nextAttempt(), fixture.client(t).ReplyToMessage(), emailConnection, email.ReplyToMessageInput{
-		Message: source, Text: "Hello.",
-	})
+	input := email.ReplyToMessageInput{Message: source, Text: "Hello."}
+	attempt := newEmailDexContext("capped-reply")
+	for range email.ReplyToMessageDefinition.MaxSends - 1 {
+		fixture.smtp.DropNextEndOfDataReply()
+		_, err := sdkgo.RunMutation(attempt, fixture.client(t).ReplyToMessage(), emailConnection, input)
+		requireRetry(t, err, sdkgo.FailureTransport)
+		attempt = attempt.nextAttempt()
+	}
+	fixture.smtp.DropNextEndOfDataReply()
+	result, err := sdkgo.RunMutation(attempt, fixture.client(t).ReplyToMessage(), emailConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, email.ReplyToMessageBranchUncertain, result.Branch)
-	require.Equal(t, "dex-"+string(result.Receipt.CallID)+"@example.com", result.Value.MessageID)
-	require.Zero(t, fixture.imap.LoginCount(), "the source may have moved since, so it is not read")
-	require.Zero(t, fixture.smtp.AuthCount())
+	logins := fixture.imap.LoginCount()
+
+	replayed, err := sdkgo.RunMutation(attempt.nextAttempt(), fixture.client(t).ReplyToMessage(), emailConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, email.ReplyToMessageBranchUncertain, replayed.Branch)
+	require.Equal(t, "dex-"+string(replayed.Receipt.CallID)+"@example.com", replayed.Value.MessageID)
+	require.Equal(t, logins, fixture.imap.LoginCount(), "the source may have moved since, so it is not read")
+	require.Len(t, fixture.smtp.Submissions(), int(email.ReplyToMessageDefinition.MaxSends))
+}
+
+func TestReplyToMessageMissingSourceAfterAnEarlierPossibleSubmissionIsUncertain(t *testing.T) {
+	fixture := newMailFixture(t)
+	source := fixture.appendMessage(t, "INBOX", plainMessage("jane@acme.example.com", testUsername, "Hello", "hello@acme.example.com", "Body."),
+		nil, januaryTwentyEighth)
+	fixture.smtp.DropNextEndOfDataReply()
+	first := newEmailDexContext("moved-source")
+	_, err := sdkgo.RunMutation(first, fixture.client(t).ReplyToMessage(), emailConnection, email.ReplyToMessageInput{Message: source, Text: "Hello."})
+	requireRetry(t, err, sdkgo.FailureTransport)
+
+	missing := source
+	missing.UID = 999
+	result, err := sdkgo.RunMutation(first.nextAttempt(), fixture.client(t).ReplyToMessage(), emailConnection, email.ReplyToMessageInput{Message: missing, Text: "Hello."})
+	require.NoError(t, err)
+	require.Equal(t, email.ReplyToMessageBranchUncertain, result.Branch, "the first reply may have been accepted")
+	require.Len(t, fixture.smtp.Submissions(), 1)
 }

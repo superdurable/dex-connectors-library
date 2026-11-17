@@ -6,17 +6,17 @@ metadata:
   description: Search, read, flag, and move messages in any IMAP mailbox and send new messages or threaded replies over SMTP, for mail providers other than Gmail and Microsoft 365.
   company: Super Durable
   categories: [communication]
-  version: v0.23.0
+  version: v0.23.1
 spec:
   provider: email
   languages:
     python:
-      version: v0.1.0
+      version: v0.1.1
       package: dex-connector-superdurable-email
       operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setFlags]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-superdurable-email"
       operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setFlags]
       triggers: []
@@ -213,18 +213,21 @@ spec:
       inputType: SendMessageInput
       outputType: SentMessage
       kind: mutation
-      description: Send one plain-text message over SMTP with a Message-ID derived from the Step's idempotency key. SMTP has no idempotency, so the Step runs with sync durability and submits at most once per Step execution.
+      description: Send one plain-text message over SMTP with a Message-ID derived from the Step's idempotency key. SMTP has no idempotency, so the Step runs with sync durability and counts its submissions in a checkpoint; a submission whose answer was lost is sent again, with the same Message-ID, while the send cap allows.
       idempotency: required
       branches:
         - {id: sent, goName: Sent, description: The SMTP server accepted the message for delivery.}
-        - {id: providerRejected, goName: ProviderRejected, description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, so nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The message was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The SMTP server conclusively refused the login, TLS, sender, a recipient, or the message, and no earlier attempt may have submitted it, so nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 150s
         heartbeatTimeout: 150s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "A repeated SMTP submission could send the email twice because Message-ID is not a server deduplication key and no sent-mail read-back exists."}}
+        # A duplicate email is acceptable; SMTP has no idempotency key and no sent-mail read-back.
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "Message-ID is not a server deduplication key and no sent-mail read-back exists, so each lost answer may resend the email; ten attempts within ten minutes fit the three possible submissions plus temporary SMTP refusals, and stop a late duplicate."}}
       mocks:
         - name: newCustomerMessage
           branch: sent
@@ -240,20 +243,23 @@ spec:
       inputType: ReplyToMessageInput
       outputType: SentMessage
       kind: mutation
-      description: Reply to one IMAP message over SMTP with In-Reply-To, References, and a Re subject so mail clients thread it, submitting at most once per Step execution like sendMessage.
+      description: Reply to one IMAP message over SMTP with In-Reply-To, References, and a Re subject so mail clients thread it, counting its submissions and resending one whose answer was lost while the send cap allows, like sendMessage.
       idempotency: required
       branches:
         - {id: sent, goName: Sent, description: The SMTP server accepted the reply for delivery.}
-        - {id: notFound, goName: NotFound, description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, so nothing was sent.", optional: true}
-        - {id: providerRejected, goName: ProviderRejected, description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, so nothing was sent.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "The source message has no usable reply address or could not be parsed, so nothing was sent.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The reply was submitted but the server's answer was lost, so it may have been sent; the connector never submits it again.", optional: true}
+        - {id: notFound, goName: NotFound, description: "The source mailbox does not exist, its UIDVALIDITY changed, or no message has the UID, and no earlier attempt may have submitted the reply, so nothing was sent.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "The IMAP or SMTP server conclusively refused the login, TLS, read, sender, a recipient, or the reply, and no earlier attempt may have submitted it, so nothing was sent.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "The source message has no usable reply address or could not be parsed, and no earlier attempt may have submitted the reply, so nothing was sent.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "Submissions may have been sent as often as the send cap allows, but the server's answer to the last one was lost or a later attempt could not settle it; the connector does not submit the reply again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 150s
         heartbeatTimeout: 150s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "A repeated SMTP submission could send the reply twice because Message-ID is not a server deduplication key and no sent-mail read-back exists."}}
+        # A duplicate reply is acceptable; SMTP has no idempotency key and no sent-mail read-back.
+        repeatOnUnknown: limited
+        maxSends: 3
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "Message-ID is not a server deduplication key and no sent-mail read-back exists, so each lost answer may resend the reply; ten attempts within ten minutes fit the three possible submissions plus temporary IMAP and SMTP failures, and stop a late duplicate."}}
       mocks:
         - name: threadedRefundReply
           branch: sent
@@ -287,6 +293,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # A message moves once; a repeat finds it in the destination by its Message-ID.
+        repeatOnUnknown: safe
       mocks:
         - name: archivedCustomerRequest
           branch: moved
@@ -316,6 +324,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        # Absolute flag values make a repeated STORE leave the message in the same state.
+        repeatOnUnknown: safe
       mocks:
         - name: markedCustomerRequest
           branch: updated

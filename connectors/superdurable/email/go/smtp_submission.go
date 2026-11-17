@@ -153,7 +153,7 @@ func (submission *smtpSubmission) sendContent(content []byte) submissionResult {
 			return notSentResult(submission.classify("the end of the message", err))
 		}
 		return submissionResult{outcome: submissionUncertain, failure: emailFailure(sdkgo.FailureTransport, submission.operation,
-			"the message was submitted but the SMTP server's answer did not arrive, so it may have been sent; it is not submitted again")}
+			"the message was submitted but the SMTP server's answer did not arrive, so it may have been sent")}
 	}
 	// The server accepted the message; QUIT is a courtesy and cannot change that, so its wait is short.
 	submission.smtp.CommandTimeout = quitAnswerTimeout

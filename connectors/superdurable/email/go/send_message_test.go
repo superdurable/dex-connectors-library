@@ -6,6 +6,7 @@ package email_test
 import (
 	"bytes"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -38,8 +39,14 @@ func TestSendMessageSubmitsOneMessageWithAStableMessageID(t *testing.T) {
 	require.Equal(t, testUsername, result.Value.From, "a blank fromAddress uses the complete username")
 	require.Equal(t, []string{"jane@acme.example.com", "finance@acme.example.com", "audit@example.com"}, result.Value.Recipients)
 	require.False(t, result.Value.SentAt.IsZero())
-	require.JSONEq(t, `{"emailSubmittedCallId":"`+string(result.Receipt.CallID)+`"}`, string(ctx.recordedHeartbeat),
-		"the submission marker is recorded before the message is sent")
+	require.JSONEq(t, `{"emailSubmittedCallId":"`+string(result.Receipt.CallID)+`","emailAttempt":1,"emailSubmissionCount":1,"emailAccepted":true}`,
+		string(ctx.recordedHeartbeat), "the claim before the message and the acceptance after it are recorded")
+	require.Equal(t, 2, ctx.heartbeatCount)
+
+	replayed, err := sdkgo.RunMutation(ctx.nextAttempt(), fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, email.SendMessageBranchUncertain, replayed.Branch, "a replay after an accepted submission never resubmits")
+	require.Len(t, fixture.smtp.Submissions(), 1)
 
 	submissions := fixture.smtp.Submissions()
 	require.Len(t, submissions, 1)
@@ -65,56 +72,110 @@ func TestSendMessageSubmitsOneMessageWithAStableMessageID(t *testing.T) {
 		"a line holding only a dot survives dot-stuffing, and SMTP ends the message with a line break")
 }
 
-func TestSendMessageNeverSubmitsAgainAfterAnEarlierAttemptClaimed(t *testing.T) {
+func TestSendMessageRetriesWithoutSubmittingAfterAForeignCheckpoint(t *testing.T) {
 	fixture := newMailFixture(t)
-	first := newEmailDexContext("claimed")
+	first := newEmailDexContext("foreign")
 	first.recordedHeartbeat = []byte(`{"emailSubmittedCallId":"earlier"}`)
-	result, err := sdkgo.RunMutation(first.nextAttempt(), fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
-	require.NoError(t, err)
-	require.Equal(t, email.SendMessageBranchUncertain, result.Branch)
-	require.Equal(t, "an earlier attempt of this Step may have submitted the message, so it is not submitted again", result.Failure.Message)
-	require.Equal(t, "dex-"+string(result.Receipt.CallID)+"@example.com", result.Value.MessageID, "the Message-ID to look for is still reported")
-	require.True(t, result.Value.SentAt.IsZero())
+	_, err := sdkgo.RunMutation(first.nextAttempt(), fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
+	require.Equal(t, "the submission checkpoint could not be read; nothing was submitted in this attempt", requireRetry(t, err, sdkgo.FailureAvailability))
 	require.Zero(t, fixture.smtp.AuthCount(), "the attempt never connects")
 }
 
-func TestSendMessageRetriesOnlyWhenTheServerProvablyDidNotAccept(t *testing.T) {
+func TestSendMessageResubmitsAfterALegacyCheckpointBelowTheSendCap(t *testing.T) {
+	callID := sendMessageCallID(t, "legacy")
 	fixture := newMailFixture(t)
-	fixture.smtp.FailNextMailCommands(1)
-	client := fixture.client(t)
-	first := newEmailDexContext("temporary")
-	_, err := sdkgo.RunMutation(first, client.SendMessage(), emailConnection, validSendMessageInput())
-	message := requireRetry(t, err, sdkgo.FailureAvailability)
-	require.Equal(t, "the SMTP server answered MAIL FROM with 451 4.3.0", message)
-	require.NotContains(t, message, mailtest.SentinelText)
-	require.Nil(t, first.recordedHeartbeat, "a provable refusal clears the marker so the retry may submit")
-	require.Equal(t, 2, first.heartbeatCount)
-
-	result, err := sdkgo.RunMutation(first.nextAttempt(), client.SendMessage(), emailConnection, validSendMessageInput())
+	first := newEmailDexContext("legacy")
+	// A marker written before bounded resend holds only the Call ID, so the earlier attempt counts once.
+	first.recordedHeartbeat = []byte(`{"emailSubmittedCallId":"` + string(callID) + `"}`)
+	second := first.nextAttempt()
+	result, err := sdkgo.RunMutation(second, fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, email.SendMessageBranchSent, result.Branch)
-	require.Len(t, fixture.smtp.Submissions(), 1)
-	require.Equal(t, 2, fixture.smtp.MailCount())
+	require.JSONEq(t, `{"emailSubmittedCallId":"`+string(callID)+`","emailAttempt":2,"emailSubmissionCount":2,"emailAccepted":true}`,
+		string(second.recordedHeartbeat))
 }
 
-func TestSendMessageAnswerLostAfterTheFinalDotIsUncertainAndNeverResent(t *testing.T) {
+func TestSendMessageRetriesATemporaryRefusalWithoutCountingIt(t *testing.T) {
 	fixture := newMailFixture(t)
-	fixture.smtp.DropNextEndOfDataReply()
+	fixture.smtp.FailNextMailCommands(3)
 	client := fixture.client(t)
-	first := newEmailDexContext("lost-answer")
-	result, err := sdkgo.RunMutation(first, client.SendMessage(), emailConnection, validSendMessageInput())
-	require.NoError(t, err)
-	require.Equal(t, email.SendMessageBranchUncertain, result.Branch)
-	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-	require.Contains(t, result.Failure.Message, "may have been sent")
-	require.Len(t, fixture.smtp.Submissions(), 1, "the server did accept the message")
-	require.NotNil(t, first.recordedHeartbeat, "the marker stays, so a replayed attempt submits nothing")
+	attempt := newEmailDexContext("temporary")
+	for range 3 {
+		_, err := sdkgo.RunMutation(attempt, client.SendMessage(), emailConnection, validSendMessageInput())
+		message := requireRetry(t, err, sdkgo.FailureAvailability)
+		require.Equal(t, "the SMTP server answered MAIL FROM with 451 4.3.0", message)
+		require.NotContains(t, message, mailtest.SentinelText)
+		require.NotContains(t, string(attempt.recordedHeartbeat), "emailSubmissionCount", "a provable refusal is not counted")
+		attempt = attempt.nextAttempt()
+	}
 
-	replayed, err := sdkgo.RunMutation(first.nextAttempt(), client.SendMessage(), emailConnection, validSendMessageInput())
+	result, err := sdkgo.RunMutation(attempt, client.SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, email.SendMessageBranchSent, result.Branch, "three refusals leave the whole send cap")
+	require.Len(t, fixture.smtp.Submissions(), 1)
+	require.Equal(t, 4, fixture.smtp.MailCount())
+}
+
+func TestSendMessageResubmitsALostAnswerUntilTheSendCap(t *testing.T) {
+	fixture := newMailFixture(t)
+	client := fixture.client(t)
+	attempt := newEmailDexContext("lost-answer")
+	for submission := 1; submission < int(email.SendMessageDefinition.MaxSends); submission++ {
+		fixture.smtp.DropNextEndOfDataReply()
+		_, err := sdkgo.RunMutation(attempt, client.SendMessage(), emailConnection, validSendMessageInput())
+		require.Contains(t, requireRetry(t, err, sdkgo.FailureTransport), "may have been sent")
+		require.Contains(t, string(attempt.recordedHeartbeat), `"emailSubmissionCount":`+strconv.Itoa(submission))
+		attempt = attempt.nextAttempt()
+	}
+	fixture.smtp.DropNextEndOfDataReply()
+	result, err := sdkgo.RunMutation(attempt, client.SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, email.SendMessageBranchUncertain, result.Branch, "the last submission the cap allows is not repeated")
+	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
+
+	replayed, err := sdkgo.RunMutation(attempt.nextAttempt(), client.SendMessage(), emailConnection, validSendMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, email.SendMessageBranchUncertain, replayed.Branch)
 	require.Equal(t, result.Value.MessageID, replayed.Value.MessageID)
-	require.Equal(t, 1, fixture.smtp.MailCount(), "the replayed attempt never connected")
+	submissions := fixture.smtp.Submissions()
+	require.Len(t, submissions, int(email.SendMessageDefinition.MaxSends), "the replayed attempt never connected")
+	for _, submission := range submissions {
+		header, _ := readSubmittedMessage(t, submission.Data)
+		messageID, err := header.MessageID()
+		require.NoError(t, err)
+		require.Equal(t, result.Value.MessageID, messageID, "every resubmission repeats the Message-ID")
+	}
+}
+
+func TestSendMessageResubmitsALostAnswerOnceAndReportsTheAcceptedOne(t *testing.T) {
+	fixture := newMailFixture(t)
+	fixture.smtp.DropNextEndOfDataReply()
+	client := fixture.client(t)
+	first := newEmailDexContext("lost-then-sent")
+	_, err := sdkgo.RunMutation(first, client.SendMessage(), emailConnection, validSendMessageInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+	result, err := sdkgo.RunMutation(first.nextAttempt(), client.SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, email.SendMessageBranchSent, result.Branch)
+	require.Len(t, fixture.smtp.Submissions(), 2)
+}
+
+func TestSendMessageRefusalAfterAnEarlierPossibleSubmissionIsUncertain(t *testing.T) {
+	fixture := newMailFixture(t)
+	fixture.smtp.DropNextEndOfDataReply()
+	first := newEmailDexContext("lost-then-refused")
+	_, err := sdkgo.RunMutation(first, fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
+	requireRetry(t, err, sdkgo.FailureTransport)
+
+	fixture.smtp.RejectRecipient("finance@acme.example.com")
+	result, err := sdkgo.RunMutation(first.nextAttempt(), fixture.client(t).SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, email.SendMessageBranchUncertain, result.Branch, "the first submission may have been accepted")
+
+	unusable := fixture.clientWithCredentials(t, email.Credentials{Username: testUsername})
+	result, err = sdkgo.RunMutation(first.nextAttempt(), unusable.SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	require.Equal(t, email.SendMessageBranchUncertain, result.Branch, "unusable credentials after a possible submission are not a defect")
 }
 
 func TestSendMessageRejectedRecipientSendsNothing(t *testing.T) {
@@ -130,7 +191,8 @@ func TestSendMessageRejectedRecipientSendsNothing(t *testing.T) {
 	require.Equal(t, "the SMTP server answered RCPT TO for recipient 2 of 2 with 550 5.1.1", result.Failure.Message)
 	requireNoSecretsOrServerText(t, result.Failure)
 	require.Zero(t, fixture.smtp.DataCount())
-	require.Nil(t, ctx.recordedHeartbeat)
+	require.JSONEq(t, `{"emailSubmittedCallId":"`+string(result.Receipt.CallID)+`","emailAttempt":1}`, string(ctx.recordedHeartbeat),
+		"the refusal is recorded as not submitted")
 }
 
 func TestSendMessageRequiresAVerifiedTLSServerAndTheRightPassword(t *testing.T) {
@@ -148,7 +210,7 @@ func TestSendMessageRequiresAVerifiedTLSServerAndTheRightPassword(t *testing.T) 
 		require.Equal(t, email.SendMessageBranchProviderRejected, result.Branch)
 		require.Contains(t, result.Failure.Message, "does not offer STARTTLS")
 		require.Zero(t, fixture.smtp.AuthCount(), "the password is never sent over plaintext")
-		require.Nil(t, ctx.recordedHeartbeat)
+		require.NotContains(t, string(ctx.recordedHeartbeat), "emailSubmissionCount", "nothing was submitted")
 	})
 	t.Run("wrong password", func(t *testing.T) {
 		fixture := newMailFixture(t)
@@ -212,6 +274,14 @@ func TestSendMessageRejectsInvalidInputWithoutConnecting(t *testing.T) {
 		require.Zero(t, ctx.heartbeatCount, name)
 	}
 	require.Zero(t, fixture.smtp.MailCount())
+}
+
+// sendMessageCallID returns the Call ID of a sendMessage Step execution named step.
+func sendMessageCallID(t *testing.T, step string) sdkgo.CallID {
+	t.Helper()
+	result, err := sdkgo.RunMutation(newEmailDexContext(step), newMailFixture(t).client(t).SendMessage(), emailConnection, validSendMessageInput())
+	require.NoError(t, err)
+	return result.Receipt.CallID
 }
 
 // readSubmittedMessage parses a submitted message and returns its header and decoded text.

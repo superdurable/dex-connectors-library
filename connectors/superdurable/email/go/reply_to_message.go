@@ -40,61 +40,70 @@ type ReplyToMessageOperation struct {
 func (ReplyToMessageOperation) Definition() sdkgo.MutationDefinition { return ReplyToMessageDefinition }
 
 // IdempotencyKey uses the stable connector Call ID. SMTP has no idempotency key, so the key only forms the
-// Message-ID; single submission comes from a Dex heartbeat checkpoint instead.
+// Message-ID, which a resubmission repeats; a Dex heartbeat checkpoint counts the submissions instead.
 func (ReplyToMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ ReplyToMessageInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke checks for an earlier submission first, then reads the source headers over IMAP without setting
-// \Seen, builds the threaded reply, and submits it at most once per Step execution.
+// Invoke reads the submission checkpoint first, then reads the source headers over IMAP without setting
+// \Seen, builds the threaded reply, and submits it, at most call.MaxSends() times per Step execution. After
+// an earlier possible submission, a source that can no longer be read or answered selects uncertain.
 func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMessageInput) sdkgo.MutationAttempt[SentMessage] {
 	if err := validateReplyToMessageInput(input); err != nil {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SentMessage{},
 			emailFailurePointer(sdkgo.FailureValidation, replyToMessageOperation, err.Error()), sdkgo.Receipt{})
 	}
+	decision := decideSubmission(call)
 	credentials, failure := operation.client.resolveCredentials(call, replyToMessageOperation)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SentMessage{}, failure, sdkgo.Receipt{})
+		return operation.refuseBeforeReading(decision, ReplyToMessageBranchDefect, *failure, SentMessage{})
 	}
 	sender, err := operation.client.messageSender(credentials)
 	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SentMessage{},
-			emailFailurePointer(sdkgo.FailureValidation, replyToMessageOperation, err.Error()), sdkgo.Receipt{})
+		return operation.refuseBeforeReading(decision, ReplyToMessageBranchDefect,
+			emailFailure(sdkgo.FailureValidation, replyToMessageOperation, err.Error()), SentMessage{})
 	}
 	messageID, err := deriveMessageID(call.IdempotencyKey, sender.address)
 	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SentMessage{},
-			emailFailurePointer(sdkgo.FailureLocalDefect, replyToMessageOperation, err.Error()), sdkgo.Receipt{})
+		return operation.refuseBeforeReading(decision, ReplyToMessageBranchDefect,
+			emailFailure(sdkgo.FailureLocalDefect, replyToMessageOperation, err.Error()), SentMessage{From: sender.address})
 	}
-	// An earlier attempt may have submitted already; the source may since have moved, so read nothing first.
-	if hasEarlierSubmissionClaim(call) {
-		attempt, _ := submissionAttemptBeforeSend(submissionAlreadyClaimed, replyToMessageOperation,
-			SentMessage{MessageID: messageID, From: sender.address})
+	identity := SentMessage{MessageID: messageID, From: sender.address}
+	if attempt, isTerminal := submissionAttemptBeforeSend(decision, replyToMessageOperation, identity); isTerminal {
 		return attempt
 	}
 	ctx, cancel := context.WithTimeout(call.Context, submissionOperationTimeout)
 	defer cancel()
 	source, readFailure := operation.readReplySource(ctx, credentials, input.Message)
 	if readFailure != nil {
-		return replyAttemptForReadFailure(readFailure)
+		return replyAttemptForReadFailure(call, decision, readFailure, identity)
 	}
 	message, err := buildReply(sender, messageID, source, input)
 	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchInvalidResponse, SentMessage{},
-			emailFailurePointer(sdkgo.FailureProtocol, replyToMessageOperation, err.Error()), sdkgo.Receipt{})
+		return refuseBeforeSubmitting(decision, ReplyToMessageBranchInvalidResponse,
+			emailFailure(sdkgo.FailureProtocol, replyToMessageOperation, err.Error()), replyToMessageOperation, identity)
 	}
 	content, err := message.render()
 	if err != nil {
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SentMessage{},
-			emailFailurePointer(sdkgo.FailureLocalDefect, replyToMessageOperation, "the reply could not be rendered"), sdkgo.Receipt{})
+		return refuseBeforeSubmitting(decision, ReplyToMessageBranchDefect,
+			emailFailure(sdkgo.FailureLocalDefect, replyToMessageOperation, "the reply could not be rendered"), replyToMessageOperation, identity)
 	}
-	if attempt, isTerminal := submissionAttemptBeforeSend(claimSingleSubmission(call), replyToMessageOperation, message.sentMessage()); isTerminal {
+	return submitOnce(call, decision, replyToMessageOperation, message.sentMessage(), singleSubmissionBranches{
+		sent: ReplyToMessageBranchSent, providerRejected: ReplyToMessageBranchProviderRejected,
+	}, func() submissionResult {
+		return operation.client.submitMessage(ctx, credentials, sender.address, message.envelopeRecipients(), content, replyToMessageOperation)
+	})
+}
+
+// refuseBeforeReading lets the checkpoint decide first, then selects branch or, after an earlier possible
+// submission, uncertain.
+func (ReplyToMessageOperation) refuseBeforeReading(
+	decision submissionDecision, branch sdkgo.BranchID, failure sdkgo.Failure, identity SentMessage,
+) sdkgo.MutationAttempt[SentMessage] {
+	if attempt, isTerminal := submissionAttemptBeforeSend(decision, replyToMessageOperation, identity); isTerminal {
 		return attempt
 	}
-	result := operation.client.submitMessage(ctx, credentials, sender.address, message.envelopeRecipients(), content, replyToMessageOperation)
-	return submissionAttemptForResult(call, result, message.sentMessage(), singleSubmissionBranches{
-		sent: ReplyToMessageBranchSent, providerRejected: ReplyToMessageBranchProviderRejected,
-	})
+	return refuseBeforeSubmitting(decision, branch, failure, replyToMessageOperation, identity)
 }
 
 // readReplySource reads the source message's envelope and References header in its own IMAP session.
@@ -198,15 +207,15 @@ func validateReplyToMessageInput(input ReplyToMessageInput) error {
 }
 
 // replyAttemptForReadFailure maps a failed source read; nothing was submitted, so nothing is uncertain.
-func replyAttemptForReadFailure(failure *serverFailure) sdkgo.MutationAttempt[SentMessage] {
+func replyAttemptForReadFailure(call sdkgo.Call, decision submissionDecision, failure *serverFailure, identity SentMessage) sdkgo.MutationAttempt[SentMessage] {
 	switch failure.outcome {
 	case outcomeRetryable:
-		return sdkgo.NewMutationRetry[SentMessage](failure.failure, 0)
+		return retryBeforeSubmitting(call, decision, failure.failure)
 	case outcomeNotFound:
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchNotFound, SentMessage{}, &failure.failure, sdkgo.Receipt{})
+		return refuseBeforeSubmitting(decision, ReplyToMessageBranchNotFound, failure.failure, replyToMessageOperation, identity)
 	case outcomeInvalidResponse:
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchInvalidResponse, SentMessage{}, &failure.failure, sdkgo.Receipt{})
+		return refuseBeforeSubmitting(decision, ReplyToMessageBranchInvalidResponse, failure.failure, replyToMessageOperation, identity)
 	default:
-		return sdkgo.NewMutationBranch(ReplyToMessageBranchProviderRejected, SentMessage{}, &failure.failure, sdkgo.Receipt{})
+		return refuseBeforeSubmitting(decision, ReplyToMessageBranchProviderRejected, failure.failure, replyToMessageOperation, identity)
 	}
 }

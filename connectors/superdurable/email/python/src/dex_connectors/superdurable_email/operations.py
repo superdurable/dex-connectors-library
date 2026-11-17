@@ -9,7 +9,7 @@ import imaplib
 import quopri
 import re
 import smtplib
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from email.headerregistry import Address
 from email.message import EmailMessage
@@ -750,51 +750,162 @@ def _smtp_submit(
             session.close()
 
 
-async def _has_submission_claim(call: Call) -> bool:
+@dataclass(frozen=True, slots=True)
+class _SubmissionMarker:
+    """Dex heartbeat checkpoint counting the possible submissions of one Call ID, wire-compatible with Go."""
+
+    submitted_call_id: str = field(metadata={"dex_json_name": "emailSubmittedCallId"})
+    # Zero marks a marker written before bounded resend, which held only the Call ID.
+    attempt: int = field(default=0, metadata={"dex_json_name": "emailAttempt", "dex_json_omit_default": True})
+    # Possibly accepted submissions up to and including attempt; a provable non-acceptance is not counted.
+    submission_count: int = field(
+        default=0, metadata={"dex_json_name": "emailSubmissionCount", "dex_json_omit_default": True}
+    )
+    is_accepted: bool = field(
+        default=False, metadata={"dex_json_name": "emailAccepted", "dex_json_omit_default": True}
+    )
+
+
+_SUBMISSION_ALLOWED = "allowed"
+_SUBMISSION_CAP_REACHED = "capReached"
+_SUBMISSION_UNTRUSTED = "untrusted"
+_SUBMISSION_ACCEPTED = "accepted"
+
+
+@dataclass(frozen=True, slots=True)
+class _SubmissionDecision:
+    """What this attempt may do before it submits, with an upper bound of earlier submissions."""
+
+    kind: str
+    maximum_prior_submissions: int
+    max_sends: int
+
+    @property
+    def has_possible_earlier_submission(self) -> bool:
+        return self.maximum_prior_submissions > 0
+
+    @property
+    def can_resend_unknown_outcome(self) -> bool:
+        return self.maximum_prior_submissions + 1 < self.max_sends
+
+
+def _decide_submission_from_marker(
+    call_id: str, attempt: int, max_sends: int, marker: _SubmissionMarker | None
+) -> _SubmissionDecision:
+    """Apply the Go checkpoint rules to the last marker, which is None when none was found."""
+    if marker is None or (marker.submitted_call_id == call_id and marker.attempt == 0):
+        prior = max(attempt - 1, 0)
+    elif marker.submitted_call_id != call_id or (
+        marker.attempt >= attempt or marker.submission_count < 0 or marker.submission_count > marker.attempt
+    ):
+        return _SubmissionDecision(_SUBMISSION_UNTRUSTED, 0, max_sends)
+    elif marker.is_accepted:
+        return _SubmissionDecision(_SUBMISSION_ACCEPTED, 0, max_sends)
+    else:
+        prior = marker.submission_count + (attempt - 1 - marker.attempt)
+    kind = _SUBMISSION_CAP_REACHED if prior >= max_sends else _SUBMISSION_ALLOWED
+    return _SubmissionDecision(kind, prior, max_sends)
+
+
+def _decide_submission(call: Call) -> _SubmissionDecision:
+    """Read the last checkpoint before credentials or any server is contacted."""
     context = call.context
     if context is None:
-        return True
+        return _SubmissionDecision(_SUBMISSION_UNTRUSTED, 0, call.max_sends)
     try:
-        return context.has_last_heartbeat_value()
+        attempt = context.attempt
+        marker: _SubmissionMarker | None = None
+        if context.has_last_heartbeat_value():
+            marker = context.get_last_heartbeat_value(_SubmissionMarker)
+            if not isinstance(marker, _SubmissionMarker):
+                raise ValueError("invalid submission checkpoint")
     except Exception:
+        return _SubmissionDecision(_SUBMISSION_UNTRUSTED, 0, call.max_sends)
+    return _decide_submission_from_marker(str(call.id), attempt, call.max_sends, marker)
+
+
+async def _record_marker(call: Call, submission_count: int, *, is_accepted: bool = False) -> bool:
+    if call.context is None:
+        return False
+    try:
+        await call.context.heartbeat(
+            _SubmissionMarker(str(call.id), call.context.attempt, submission_count, is_accepted)
+        )
         return True
+    except Exception:
+        # A lost record leaves an earlier marker or none, so the next attempt can only overcount.
+        return False
 
 
-async def _claim_submission(call: Call, operation: str) -> MutationAttempt[SentMessage] | None:
-    context = call.context
-    if context is None:
+def _uncertain_without_submitting(
+    operation: str, sent: SentMessage, reason: str
+) -> MutationAttempt[SentMessage]:
+    # This attempt did not submit, so the earlier attempt's Date header is unknown.
+    return MutationAttempt.uncertain(
+        replace(sent, sent_at=datetime.min.replace(tzinfo=UTC)),
+        _failure(FailureKind.TRANSPORT, operation, reason),
+        _receipt(sent.message_id),
+    )
+
+
+def _attempt_before_submitting(
+    decision: _SubmissionDecision, operation: str, sent: SentMessage
+) -> MutationAttempt[SentMessage] | None:
+    """Return the attempt for a decision that does not permit submitting, or None."""
+    if decision.kind == _SUBMISSION_UNTRUSTED:
         return MutationAttempt.retry(
             _failure(
                 FailureKind.AVAILABILITY,
                 operation,
-                "Dex did not record the submission checkpoint; nothing was submitted",
+                "the submission checkpoint could not be read; nothing was submitted in this attempt",
             )
         )
-    try:
-        await context.heartbeat({"emailSubmittedCallId": str(call.id)})
-        return None
-    except Exception:
-        return MutationAttempt.retry(
-            _failure(
-                FailureKind.AVAILABILITY,
-                operation,
-                "Dex did not record the submission checkpoint; nothing was submitted",
-            )
+    if decision.kind == _SUBMISSION_ACCEPTED:
+        return _uncertain_without_submitting(
+            operation,
+            sent,
+            "an earlier attempt of this Step submitted the message and the server accepted it, "
+            "but its result was lost; it is not submitted again",
         )
+    if decision.kind == _SUBMISSION_CAP_REACHED:
+        return _uncertain_without_submitting(
+            operation,
+            sent,
+            "earlier attempts of this Step may have submitted the message as often as its send cap allows, "
+            "so it is not submitted again",
+        )
+    return None
 
 
-async def _release_submission(call: Call) -> None:
-    if call.context is not None:
-        try:
-            await call.context.heartbeat()
-        except Exception:
-            # A retained marker safely prevents a later retry from resubmitting.
-            pass
+def _refuse_before_submitting(
+    decision: _SubmissionDecision, branch: str, failure: Failure, operation: str, sent: SentMessage
+) -> MutationAttempt[SentMessage]:
+    """Select branch for a failure before submitting, or uncertain after an earlier possible submission."""
+    blocked = _attempt_before_submitting(decision, operation, sent)
+    if blocked is not None:
+        return blocked
+    if decision.has_possible_earlier_submission:
+        return _uncertain_without_submitting(
+            operation,
+            sent,
+            "an earlier attempt of this Step may have submitted the message, and this attempt could not "
+            "submit it: " + failure.message,
+        )
+    return MutationAttempt.branch_result(branch, SentMessage(), _receipt(), failure)
+
+
+async def _retry_before_submitting(
+    call: Call, decision: _SubmissionDecision, failure: Failure
+) -> MutationAttempt[SentMessage]:
+    """Record the earlier count, so this attempt is not counted, and return Retry."""
+    await _record_marker(call, decision.maximum_prior_submissions)
+    return MutationAttempt.retry(failure)
 
 
 async def _submit_attempt(
     client: Client,
     call: Call,
+    decision: _SubmissionDecision,
     credentials: Any,
     sender: str,
     recipients: tuple[str, ...],
@@ -802,19 +913,36 @@ async def _submit_attempt(
     sent: SentMessage,
     operation: str,
 ) -> MutationAttempt[SentMessage]:
-    claim = await _claim_submission(call, operation)
-    if claim is not None:
-        return claim
+    """Claim, submit, and map the outcome like Go's submitOnce."""
+    if not await _record_marker(call, decision.maximum_prior_submissions + 1):
+        return MutationAttempt.retry(
+            _failure(
+                FailureKind.AVAILABILITY,
+                operation,
+                "Dex did not record the submission checkpoint; nothing was submitted",
+            )
+        )
     try:
         await asyncio.to_thread(_smtp_submit, client, credentials, sender, recipients, content, operation)
-        return MutationAttempt.branch_result("sent", sent, _receipt(sent.message_id))
     except MailFailure as error:
         if error.outcome == "uncertain":
+            if decision.can_resend_unknown_outcome:
+                # The claim stays the last marker, so the next attempt counts this submission.
+                return MutationAttempt.retry(error.failure)
             return MutationAttempt.uncertain(sent, error.failure, _receipt(sent.message_id))
-        await _release_submission(call)
+        await _record_marker(call, decision.maximum_prior_submissions)
         if error.outcome == "retry":
             return MutationAttempt.retry(error.failure)
+        if decision.has_possible_earlier_submission:
+            return _uncertain_without_submitting(
+                operation,
+                sent,
+                "an earlier attempt of this Step may have submitted the message, and the server refused "
+                "this one: " + error.failure.message,
+            )
         return MutationAttempt.branch_result("providerRejected", SentMessage(), _receipt(), error.failure)
+    await _record_marker(call, decision.maximum_prior_submissions + 1, is_accepted=True)
+    return MutationAttempt.branch_result("sent", sent, _receipt(sent.message_id))
 
 
 class SendMessageOperation:
@@ -849,10 +977,13 @@ class SendMessageOperation:
                 _receipt(),
                 _failure(FailureKind.VALIDATION, operation, "invalid recipients, subject, or text"),
             )
+        decision = _decide_submission(call)
+        sent = SentMessage()
         try:
             credentials = await self.client.resolve_credentials(call, operation)
             sender = self.client.sender(credentials, operation)
             identifier = _message_identifier(call.idempotency_key, sender)
+            sent = SentMessage(identifier, sender)
             recipients = _unique_recipients(input.to, input.cc, input.bcc)
             content, now = _render_message(
                 sender,
@@ -865,27 +996,22 @@ class SendMessageOperation:
                 identifier,
             )
             sent = SentMessage(identifier, sender, recipients, input.subject, sent_at=now)
-            if await _has_submission_claim(call):
-                return MutationAttempt.uncertain(
-                    replace(sent, sent_at=datetime.min.replace(tzinfo=UTC)),
-                    _failure(
-                        FailureKind.TRANSPORT, operation, "an earlier attempt may have submitted the message"
-                    ),
-                    _receipt(identifier),
-                )
-            return await _submit_attempt(
-                self.client, call, credentials, sender, recipients, content, sent, operation
-            )
         except MailFailure as error:
-            return MutationAttempt.branch_result("defect", SentMessage(), _receipt(), error.failure)
+            return _refuse_before_submitting(decision, "defect", error.failure, operation, sent)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                "defect", SentMessage(), _receipt(), _failure(FailureKind.VALIDATION, operation, str(error))
+            return _refuse_before_submitting(
+                decision, "defect", _failure(FailureKind.VALIDATION, operation, str(error)), operation, sent
             )
+        blocked = _attempt_before_submitting(decision, operation, sent)
+        if blocked is not None:
+            return blocked
+        return await _submit_attempt(
+            self.client, call, decision, credentials, sender, recipients, content, sent, operation
+        )
 
 
 class ReplyToMessageOperation:
-    """Read one source message and submit a threaded SMTP reply once."""
+    """Read one source message and submit a threaded SMTP reply, at most max_sends times per Step."""
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -899,7 +1025,7 @@ class ReplyToMessageOperation:
         return IdempotencyKey(call_id)
 
     async def invoke(self, call: Call, input: ReplyToMessageInput) -> MutationAttempt[SentMessage]:
-        """Preserve threading and refuse to re-send a claimed submission."""
+        """Preserve threading and resubmit a lost answer only below the send cap."""
         operation = "replyToMessage"
         if (
             not _valid_reference(input.message)
@@ -912,19 +1038,23 @@ class ReplyToMessageOperation:
                 _receipt(),
                 _failure(FailureKind.VALIDATION, operation, "invalid message reference, text, or recipients"),
             )
+        decision = _decide_submission(call)
+        identity = SentMessage()
         try:
             credentials = await self.client.resolve_credentials(call, operation)
             sender = self.client.sender(credentials, operation)
             identifier = _message_identifier(call.idempotency_key, sender)
-            if await _has_submission_claim(call):
-                sent = SentMessage(identifier, sender)
-                return MutationAttempt.uncertain(
-                    sent,
-                    _failure(
-                        FailureKind.TRANSPORT, operation, "an earlier attempt may have submitted the message"
-                    ),
-                    _receipt(identifier),
-                )
+            identity = SentMessage(identifier, sender)
+        except MailFailure as error:
+            return _refuse_before_submitting(decision, "defect", error.failure, operation, identity)
+        except ValueError as error:
+            failure = _failure(FailureKind.VALIDATION, operation, str(error))
+            return _refuse_before_submitting(decision, "defect", failure, operation, identity)
+        # The source may have moved since an earlier submission, so the checkpoint decides before reading it.
+        blocked = _attempt_before_submitting(decision, operation, identity)
+        if blocked is not None:
+            return blocked
+        try:
             source = await asyncio.to_thread(
                 _read_message, self.client, credentials, input.message, operation, False
             )
@@ -937,13 +1067,14 @@ class ReplyToMessageOperation:
                 )
             )
             if not to:
-                return MutationAttempt.branch_result(
+                return _refuse_before_submitting(
+                    decision,
                     "invalidResponse",
-                    SentMessage(),
-                    _receipt(),
                     _failure(
                         FailureKind.PROTOCOL, operation, "the source message has no usable reply address"
                     ),
+                    operation,
+                    identity,
                 )
             cc = (
                 tuple(
@@ -961,11 +1092,12 @@ class ReplyToMessageOperation:
                 if address.lower() != sender.lower() and address.lower() not in {item.lower() for item in to}
             )
             if len(to) + len(cc) > 50:
-                return MutationAttempt.branch_result(
+                return _refuse_before_submitting(
+                    decision,
                     "invalidResponse",
-                    SentMessage(),
-                    _receipt(),
                     _failure(FailureKind.PROTOCOL, operation, "the reply has too many recipients"),
+                    operation,
+                    identity,
                 )
             trimmed_subject = source.subject.strip()
             subject = (
@@ -990,28 +1122,18 @@ class ReplyToMessageOperation:
             )
             recipients = _unique_recipients(to, cc)
             sent = SentMessage(identifier, sender, recipients, subject, source.message_id, references, now)
-            return await _submit_attempt(
-                self.client, call, credentials, sender, recipients, content, sent, operation
-            )
         except MailFailure as error:
-            if error.outcome == "not_found":
-                return MutationAttempt.branch_result("notFound", SentMessage(), _receipt(), error.failure)
             if error.outcome == "retry":
-                return MutationAttempt.retry(error.failure)
-            return MutationAttempt.branch_result(
-                "invalidResponse"
-                if error.outcome == "invalid"
-                else "providerRejected"
-                if error.outcome == "rejected"
-                else "defect",
-                SentMessage(),
-                _receipt(),
-                error.failure,
-            )
+                return await _retry_before_submitting(call, decision, error.failure)
+            branches = {"not_found": "notFound", "invalid": "invalidResponse", "rejected": "providerRejected"}
+            branch = branches.get(error.outcome, "defect")
+            return _refuse_before_submitting(decision, branch, error.failure, operation, identity)
         except ValueError as error:
-            return MutationAttempt.branch_result(
-                "defect", SentMessage(), _receipt(), _failure(FailureKind.VALIDATION, operation, str(error))
-            )
+            failure = _failure(FailureKind.VALIDATION, operation, str(error))
+            return _refuse_before_submitting(decision, "defect", failure, operation, identity)
+        return await _submit_attempt(
+            self.client, call, decision, credentials, sender, recipients, content, sent, operation
+        )
 
 
 def _uid_command(
