@@ -17,9 +17,10 @@ const (
 	// FlowType is the stable example Flow identity.
 	FlowType = "FreshsalesContactViewDiscovery"
 	// ConnectionName is the static Dex Web connection used by this example.
-	ConnectionName    = "freshsales"
-	operationStepType = "CallListContactViews"
-	contactsStepType  = "CallListContacts"
+	ConnectionName       = "freshsales"
+	operationStepType    = "CallListContactViews"
+	contactsStepType     = "CallListContacts"
+	accountViewsStepType = "CallListAccountViews"
 )
 
 var contactViewsAttribute = dex.DefineAttribute[freshsales.ContactViews]("freshsales-contact-views")
@@ -54,6 +55,13 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: contactsStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Freshsales", Explanation: "Read the first page of the selected contact view."},
 			Connection:  flow.connection, MapToOperationInput: MapToContactsInput,
+			Listed: sdkgo.GoTo(afterContacts{}),
+		})),
+		dex.DefineStep(afterContacts{}),
+		dex.DefineStep(freshsales.NewListAccountViewsStep(freshsales.ListAccountViewsStepConfig[freshsales.ListAccountViewsInput]{
+			StepType: accountViewsStepType, ConnectionName: ConnectionName,
+			Annotations: sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Freshsales", Explanation: "Discover available sales account views."},
+			Connection:  flow.connection, MapToOperationInput: MapToAccountViewsInput,
 			Listed: sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
@@ -104,6 +112,11 @@ func MapToContactsInput(input freshsales.ListContactsInput) freshsales.ListConta
 	return input
 }
 
+// MapToAccountViewsInput preserves the empty account view query input.
+func MapToAccountViewsInput(input freshsales.ListAccountViewsInput) freshsales.ListAccountViewsInput {
+	return input
+}
+
 // dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Pass the typed start input to the provider Step."
 type startRequest struct{ dex.StepDefaults }
@@ -133,14 +146,25 @@ func (afterViews) Execute(ctx dex.Context, result freshsales.ListContactViewsRes
 	return dex.GoTo(sdkgo.StepRef[freshsales.ListContactsInput](contactsStepType), freshsales.ListContactsInput{ViewID: strconv.FormatInt(result.Value.Views[0].ID, 10), Page: 1}), nil
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:group group-id:provider group-label:"Freshsales"
+// dex:explanation text:"Discover sales account views after listing contacts."
+type afterContacts struct {
 	dex.StepDefaultsNoWaitFor[freshsales.ListContactsResult]
 }
 
+func (afterContacts) GetStepType() string { return "AfterContacts" }
+func (afterContacts) Execute(_ dex.Context, _ freshsales.ListContactsResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[freshsales.ListAccountViewsInput](accountViewsStepType), freshsales.ListAccountViewsInput{}), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow with the provider's typed result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[freshsales.ListAccountViewsResult]
+}
+
 func (completeResult) GetStepType() string { return "CompleteListContactViews" }
-func (completeResult) Execute(ctx dex.Context, _ freshsales.ListContactsResult) (*dex.StepDecision, error) {
+func (completeResult) Execute(ctx dex.Context, _ freshsales.ListAccountViewsResult) (*dex.StepDecision, error) {
 	views, err := contactViewsAttribute.Get(ctx)
 	if err != nil {
 		return nil, err

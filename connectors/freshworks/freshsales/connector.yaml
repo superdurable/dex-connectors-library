@@ -160,3 +160,101 @@ spec:
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:
         - {name: deletedDefault, branch: deleted, default: true, description: Example deleted contact., output: {contactId: '144', deleted: true}}
+    - name: listAccountViews
+      goName: ListAccountViews
+      inputType: ListAccountViewsInput
+      outputType: CRMViews
+      kind: query
+      description: List available sales account views.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Freshsales confirmed the listAccountViews outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example listAccountViews result., output: {views: [{id: 1, name: All Accounts}]}}
+    - name: getAccount
+      goName: GetAccount
+      inputType: GetAccountInput
+      outputType: CRMRecordMetadata
+      kind: query
+      description: Read one sales account identity and name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Freshsales confirmed the getAccount outcome.}
+        - {id: notFound, goName: NotFound, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Example getAccount result., output: {id: 301, name: Acme}}
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: CRMRecordsPage
+      kind: query
+      description: List one page of sales accounts from a view.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Freshsales confirmed the listAccounts outcome.}
+        - {id: notFound, goName: NotFound, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Example listAccounts result., output: {records: [{id: 301, name: Acme}], page: 1, total: 1}}
+    - name: createAccount
+      goName: CreateAccount
+      inputType: CreateAccountInput
+      outputType: CRMRecordMetadata
+      kind: mutation
+      description: Create a sales account with bounded duplicate sends.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Freshsales confirmed the createAccount outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The create may have succeeded without a confirmed ID., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: Example createAccount result., output: {id: 301, name: Acme}}
+    - name: updateAccount
+      goName: UpdateAccount
+      inputType: UpdateAccountInput
+      outputType: CRMRecordMetadata
+      kind: mutation
+      description: Replace one sales account name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Freshsales confirmed the updateAccount outcome.}
+        - {id: notFound, goName: NotFound, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Example updateAccount result., output: {id: 301, name: Acme Updated}}
+    - name: deleteAccount
+      goName: DeleteAccount
+      inputType: DeleteAccountInput
+      outputType: DeletedCRMRecord
+      kind: mutation
+      description: Delete one sales account without deleting associated contacts or deals.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Freshsales confirmed the deleteAccount outcome.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales could not complete the requested operation., optional: true}
+        - {id: defect, goName: Defect, description: Freshsales could not complete the requested operation., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Example deleteAccount result., output: {id: 301, deleted: true}}
