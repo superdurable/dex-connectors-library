@@ -1,11 +1,11 @@
 # PagerDuty connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pagerduty/go@v0.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pagerduty/go@v0.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/pagerduty`.
 
 This Dex connector calls the public PagerDuty JSON API. Its
-manifest version is `v0.3.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.4.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`incident-review` example](go/examples/incident-review/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
@@ -20,8 +20,12 @@ The Python package is [`dex-connector-pagerduty`](python/README.md), imported as
 | --- | --- | --- |
 | `listIncidents` | query | IncidentPage |
 | `getIncident` | query | Incident |
+| `listIncidentNotes` | query | IncidentNotes |
+| `listLogEntries` | query | LogEntryPage |
+| `getLogEntry` | query | LogEntry |
+| `getUser` | query | User |
 
-`listIncidents` uses PagerDuty's default one-month date window unless a later release adds filters. This connector is read-only. Events API deduplication does not prove a repeated trigger is safe after incident resolution, so `triggerEvent` is omitted.
+`listIncidents` uses PagerDuty's default one-month date window unless a later release adds filters. The new reads use the same API key and do not require another connection field. Events API deduplication does not prove a repeated trigger is safe after incident resolution, so `triggerEvent` is omitted.
 
 ## Authorization
 
@@ -64,6 +68,9 @@ flow := NewFlow(mock.Connection())
 
 - [https://docs.pagerduty.com/developer/api/reference/rest/incidents/list-incidents](https://docs.pagerduty.com/developer/api/reference/rest/incidents/list-incidents)
 - [https://docs.pagerduty.com/developer/api/reference/rest/incidents/get-incident](https://docs.pagerduty.com/developer/api/reference/rest/incidents/get-incident)
+- [https://docs.pagerduty.com/developer/api/reference/rest/incidents/list-incident-notes](https://docs.pagerduty.com/developer/api/reference/rest/incidents/list-incident-notes)
+- [https://docs.pagerduty.com/developer/api/reference/rest/log-entries/list-log-entries](https://docs.pagerduty.com/developer/api/reference/rest/log-entries/list-log-entries)
+- [https://docs.pagerduty.com/developer/api/reference/rest/log-entries/get-log-entry](https://docs.pagerduty.com/developer/api/reference/rest/log-entries/get-log-entry)
 - [https://docs.pagerduty.com/developer/authentication](https://docs.pagerduty.com/developer/authentication)
 
 The HTTP unit tests verify request shapes and local classification against

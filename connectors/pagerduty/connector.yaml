@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: pagerduty
   displayName: PagerDuty
-  description: Read and act through the PagerDuty public API.
+  description: Read incidents, notes, log entries, and users through the PagerDuty public API.
   company: PagerDuty
   categories: [developer-tools]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: pagerduty
   languages:
@@ -144,3 +144,168 @@ spec:
         id: P123456
         title: API latency
         status: triggered
+  - name: listIncidentNotes
+    goName: ListIncidentNotes
+    inputType: ListIncidentNotesInput
+    outputType: IncidentNotes
+    kind: query
+    description: List notes attached to a PagerDuty incident.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: PagerDuty returned incident notes.
+    - id: notFound
+      goName: NotFound
+      description: The incident does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The incident ID or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listIncidentNotesDefault
+      branch: listed
+      description: A representative incident note list.
+      default: true
+      output:
+        notes:
+        - id: PWL7QXS
+          content: Investigating the alert.
+          created_at: '2026-01-01T00:00:00Z'
+  - name: listLogEntries
+    goName: ListLogEntries
+    inputType: ListLogEntriesInput
+    outputType: LogEntryPage
+    kind: query
+    description: List PagerDuty incident log entries across the account.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: PagerDuty returned log entries.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The page request or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listLogEntriesDefault
+      branch: listed
+      description: A representative log entry page.
+      default: true
+      output:
+        log_entries:
+        - id: Q02JTSNZWHSEKV
+          type: trigger_log_entry
+          summary: Triggered through the API
+        limit: 25
+        offset: 0
+        more: false
+  - name: getLogEntry
+    goName: GetLogEntry
+    inputType: GetLogEntryInput
+    outputType: LogEntry
+    kind: query
+    description: Read one PagerDuty incident log entry.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: PagerDuty returned the log entry.
+    - id: notFound
+      goName: NotFound
+      description: The log entry does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The log entry ID or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getLogEntryDefault
+      branch: found
+      description: A representative log entry.
+      default: true
+      output:
+        id: Q02JTSNZWHSEKV
+        type: trigger_log_entry
+        summary: Triggered through the API
+  - name: getUser
+    goName: GetUser
+    inputType: GetUserInput
+    outputType: User
+    kind: query
+    description: Read one PagerDuty user profile.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: PagerDuty returned the user.
+    - id: notFound
+      goName: NotFound
+      description: The user does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: PagerDuty rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: PagerDuty returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: The user ID or connection is invalid.
+      optional: true
+    execution:
+      repeatOnUnknown: safe
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getUserDefault
+      branch: found
+      description: A representative user.
+      default: true
+      output:
+        id: PXPGF42
+        name: Example Responder
+        email: responder@example.com

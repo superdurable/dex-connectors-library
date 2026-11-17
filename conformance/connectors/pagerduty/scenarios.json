@@ -676,6 +676,1221 @@
       },
       "name": "getIncident-defect",
       "operation": "getIncident"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"notes\":[{\"id\":\"PWL7QXS\",\"content\":\"Investigating the alert.\",\"created_at\":\"2026-01-01T00:00:00Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "notes": [
+            {
+              "content": "Investigating the alert.",
+              "created_at": "2026-01-01T00:00:00Z",
+              "id": "PWL7QXS"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "incidentId": "P123456"
+      },
+      "name": "listIncidentNotes-success",
+      "operation": "listIncidentNotes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "incidentId": "P123456"
+      },
+      "name": "listIncidentNotes-rejected",
+      "operation": "listIncidentNotes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "incidentId": "P123456"
+      },
+      "name": "listIncidentNotes-invalid-response",
+      "operation": "listIncidentNotes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "incidentId": "P123456"
+      },
+      "name": "listIncidentNotes-rate-limit",
+      "operation": "listIncidentNotes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "incidentId": "P123456"
+      },
+      "name": "listIncidentNotes-unavailable",
+      "operation": "listIncidentNotes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "incidentId": "P123456"
+      },
+      "name": "listIncidentNotes-transport",
+      "operation": "listIncidentNotes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "notes": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "incidentId": ""
+      },
+      "name": "listIncidentNotes-defect",
+      "operation": "listIncidentNotes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456/notes",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "notes": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "incidentId": "P123456"
+      },
+      "name": "listIncidentNotes-not-found",
+      "operation": "listIncidentNotes"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000009",
+      "exchanges": [
+        {
+          "body": "{\"log_entries\":[{\"id\":\"Q02JTSNZWHSEKV\",\"type\":\"trigger_log_entry\",\"summary\":\"Triggered through the API\"}],\"limit\":25,\"offset\":1,\"more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "limit": 25,
+          "log_entries": [
+            {
+              "id": "Q02JTSNZWHSEKV",
+              "summary": "Triggered through the API",
+              "type": "trigger_log_entry"
+            }
+          ],
+          "more": false,
+          "offset": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listLogEntries-success",
+      "operation": "listLogEntries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000010",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "limit": 0,
+          "log_entries": [],
+          "more": false,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listLogEntries-rejected",
+      "operation": "listLogEntries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000011",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "limit": 0,
+          "log_entries": [],
+          "more": false,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listLogEntries-invalid-response",
+      "operation": "listLogEntries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000012",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listLogEntries-rate-limit",
+      "operation": "listLogEntries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000013",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listLogEntries-unavailable",
+      "operation": "listLogEntries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000014",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listLogEntries-transport",
+      "operation": "listLogEntries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000015",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "limit": 0,
+          "log_entries": [],
+          "more": false,
+          "offset": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": -1,
+        "offset": 1
+      },
+      "name": "listLogEntries-defect",
+      "operation": "listLogEntries"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000016",
+      "exchanges": [
+        {
+          "body": "{\"log_entry\":{\"id\":\"Q02JTSNZWHSEKV\",\"type\":\"trigger_log_entry\",\"summary\":\"Triggered through the API\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries/Q02JTSNZWHSEKV",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "Q02JTSNZWHSEKV",
+          "summary": "Triggered through the API",
+          "type": "trigger_log_entry"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "Q02JTSNZWHSEKV"
+      },
+      "name": "getLogEntry-success",
+      "operation": "getLogEntry"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000017",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries/Q02JTSNZWHSEKV",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "summary": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "Q02JTSNZWHSEKV"
+      },
+      "name": "getLogEntry-rejected",
+      "operation": "getLogEntry"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000018",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries/Q02JTSNZWHSEKV",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "summary": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "Q02JTSNZWHSEKV"
+      },
+      "name": "getLogEntry-invalid-response",
+      "operation": "getLogEntry"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000019",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries/Q02JTSNZWHSEKV",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "Q02JTSNZWHSEKV"
+      },
+      "name": "getLogEntry-rate-limit",
+      "operation": "getLogEntry"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000020",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries/Q02JTSNZWHSEKV",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "Q02JTSNZWHSEKV"
+      },
+      "name": "getLogEntry-unavailable",
+      "operation": "getLogEntry"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000021",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries/Q02JTSNZWHSEKV",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "Q02JTSNZWHSEKV"
+      },
+      "name": "getLogEntry-transport",
+      "operation": "getLogEntry"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000022",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "summary": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getLogEntry-defect",
+      "operation": "getLogEntry"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000023",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/log_entries/Q02JTSNZWHSEKV",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "summary": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "Q02JTSNZWHSEKV"
+      },
+      "name": "getLogEntry-not-found",
+      "operation": "getLogEntry"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000024",
+      "exchanges": [
+        {
+          "body": "{\"user\":{\"id\":\"PXPGF42\",\"name\":\"Example Responder\",\"email\":\"responder@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/PXPGF42",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "responder@example.com",
+          "id": "PXPGF42",
+          "name": "Example Responder"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "PXPGF42"
+      },
+      "name": "getUser-success",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000025",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/PXPGF42",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "PXPGF42"
+      },
+      "name": "getUser-rejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000026",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/PXPGF42",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "PXPGF42"
+      },
+      "name": "getUser-invalid-response",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000027",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/PXPGF42",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "PXPGF42"
+      },
+      "name": "getUser-rate-limit",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000028",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/PXPGF42",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "PXPGF42"
+      },
+      "name": "getUser-unavailable",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000029",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/PXPGF42",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "PXPGF42"
+      },
+      "name": "getUser-transport",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000030",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getUser-defect",
+      "operation": "getUser"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000031",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/PXPGF42",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "PXPGF42"
+      },
+      "name": "getUser-not-found",
+      "operation": "getUser"
     }
   ],
   "schemaVersion": 1

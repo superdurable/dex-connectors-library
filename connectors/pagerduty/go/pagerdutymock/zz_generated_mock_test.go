@@ -24,6 +24,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[pagerduty.Incident](`{"id":"P123456","title":"API latency","status":"triggered"}`)
 			return err
 		}},
+		{name: "listIncidentNotes/listIncidentNotesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pagerduty.IncidentNotes](`{"notes":[{"id":"PWL7QXS","content":"Investigating the alert.","created_at":"2026-01-01T00:00:00Z"}]}`)
+			return err
+		}},
+		{name: "listLogEntries/listLogEntriesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pagerduty.LogEntryPage](`{"log_entries":[{"id":"Q02JTSNZWHSEKV","type":"trigger_log_entry","summary":"Triggered through the API"}],"limit":25,"offset":0,"more":false}`)
+			return err
+		}},
+		{name: "getLogEntry/getLogEntryDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pagerduty.LogEntry](`{"id":"Q02JTSNZWHSEKV","type":"trigger_log_entry","summary":"Triggered through the API"}`)
+			return err
+		}},
+		{name: "getUser/getUserDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[pagerduty.User](`{"id":"PXPGF42","name":"Example Responder","email":"responder@example.com"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +55,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetIncident().Definition().Operation.OperationID != "getIncident" {
 		t.Errorf("getIncident mock has another definition")
+	}
+	if mock.ListIncidentNotes().Definition().Operation.OperationID != "listIncidentNotes" {
+		t.Errorf("listIncidentNotes mock has another definition")
+	}
+	if mock.ListLogEntries().Definition().Operation.OperationID != "listLogEntries" {
+		t.Errorf("listLogEntries mock has another definition")
+	}
+	if mock.GetLogEntry().Definition().Operation.OperationID != "getLogEntry" {
+		t.Errorf("getLogEntry mock has another definition")
+	}
+	if mock.GetUser().Definition().Operation.OperationID != "getUser" {
+		t.Errorf("getUser mock has another definition")
 	}
 }

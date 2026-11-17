@@ -18,7 +18,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIKey: sdkgo.NewSecretString("test-secret-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listIncidents": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListIncidents(), testConnection),
-		"getIncident":   newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetIncident(), testConnection),
+		"listIncidents":     newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListIncidents(), testConnection),
+		"getIncident":       newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetIncident(), testConnection),
+		"listIncidentNotes": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListIncidentNotes(), testConnection),
+		"listLogEntries":    newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListLogEntries(), testConnection),
+		"getLogEntry":       newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetLogEntry(), testConnection),
+		"getUser":           newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetUser(), testConnection),
 	}}
 }

@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { PagerDutyClient } from '../src/client.js';
 import { GetIncidentInputSchema, ListIncidentsInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/pagerduty/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/pagerduty/scenarios.json', import.meta.url))
+  .filter(scenario => ['listIncidents', 'getIncident'].includes(scenario.operation));
 const connection = { provider: 'pagerduty', name: 'pagerduty' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePagerDuty));
 

@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted pagerduty connection. Script each operation through its accessor.
 type Mock struct {
-	connection    pagerduty.Connection
-	listIncidents *connectormock.Query[pagerduty.ListIncidentsInput, pagerduty.IncidentPage]
-	getIncident   *connectormock.Query[pagerduty.GetIncidentInput, pagerduty.Incident]
+	connection        pagerduty.Connection
+	listIncidents     *connectormock.Query[pagerduty.ListIncidentsInput, pagerduty.IncidentPage]
+	getIncident       *connectormock.Query[pagerduty.GetIncidentInput, pagerduty.Incident]
+	listIncidentNotes *connectormock.Query[pagerduty.ListIncidentNotesInput, pagerduty.IncidentNotes]
+	listLogEntries    *connectormock.Query[pagerduty.ListLogEntriesInput, pagerduty.LogEntryPage]
+	getLogEntry       *connectormock.Query[pagerduty.GetLogEntryInput, pagerduty.LogEntry]
+	getUser           *connectormock.Query[pagerduty.GetUserInput, pagerduty.User]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +31,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listIncidents: connectormock.NewQuery[pagerduty.ListIncidentsInput, pagerduty.IncidentPage](t, pagerduty.ListIncidentsDefinition),
-		getIncident:   connectormock.NewQuery[pagerduty.GetIncidentInput, pagerduty.Incident](t, pagerduty.GetIncidentDefinition),
+		listIncidents:     connectormock.NewQuery[pagerduty.ListIncidentsInput, pagerduty.IncidentPage](t, pagerduty.ListIncidentsDefinition),
+		getIncident:       connectormock.NewQuery[pagerduty.GetIncidentInput, pagerduty.Incident](t, pagerduty.GetIncidentDefinition),
+		listIncidentNotes: connectormock.NewQuery[pagerduty.ListIncidentNotesInput, pagerduty.IncidentNotes](t, pagerduty.ListIncidentNotesDefinition),
+		listLogEntries:    connectormock.NewQuery[pagerduty.ListLogEntriesInput, pagerduty.LogEntryPage](t, pagerduty.ListLogEntriesDefinition),
+		getLogEntry:       connectormock.NewQuery[pagerduty.GetLogEntryInput, pagerduty.LogEntry](t, pagerduty.GetLogEntryDefinition),
+		getUser:           connectormock.NewQuery[pagerduty.GetUserInput, pagerduty.User](t, pagerduty.GetUserDefinition),
 	}
 	mock.listIncidents.Default(ListIncidentsDefault())
 	mock.getIncident.Default(GetIncidentDefault())
+	mock.listIncidentNotes.Default(ListIncidentNotesDefault())
+	mock.listLogEntries.Default(ListLogEntriesDefault())
+	mock.getLogEntry.Default(GetLogEntryDefault())
+	mock.getUser.Default(GetUserDefault())
 	connection, err := pagerduty.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "pagerduty", Name: connectionName})
 	if err != nil {
 		t.Fatalf("pagerduty mock connection: %v", err)
@@ -53,6 +65,26 @@ func (mock *Mock) GetIncident() *connectormock.Query[pagerduty.GetIncidentInput,
 	return mock.getIncident
 }
 
+// ListIncidentNotes returns the listIncidentNotes script.
+func (mock *Mock) ListIncidentNotes() *connectormock.Query[pagerduty.ListIncidentNotesInput, pagerduty.IncidentNotes] {
+	return mock.listIncidentNotes
+}
+
+// ListLogEntries returns the listLogEntries script.
+func (mock *Mock) ListLogEntries() *connectormock.Query[pagerduty.ListLogEntriesInput, pagerduty.LogEntryPage] {
+	return mock.listLogEntries
+}
+
+// GetLogEntry returns the getLogEntry script.
+func (mock *Mock) GetLogEntry() *connectormock.Query[pagerduty.GetLogEntryInput, pagerduty.LogEntry] {
+	return mock.getLogEntry
+}
+
+// GetUser returns the getUser script.
+func (mock *Mock) GetUser() *connectormock.Query[pagerduty.GetUserInput, pagerduty.User] {
+	return mock.getUser
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListIncidents() sdkgo.Query[pagerduty.ListIncidentsInput, pagerduty.IncidentPage] {
@@ -60,6 +92,18 @@ func (operations mockOperations) ListIncidents() sdkgo.Query[pagerduty.ListIncid
 }
 func (operations mockOperations) GetIncident() sdkgo.Query[pagerduty.GetIncidentInput, pagerduty.Incident] {
 	return operations.mock.getIncident
+}
+func (operations mockOperations) ListIncidentNotes() sdkgo.Query[pagerduty.ListIncidentNotesInput, pagerduty.IncidentNotes] {
+	return operations.mock.listIncidentNotes
+}
+func (operations mockOperations) ListLogEntries() sdkgo.Query[pagerduty.ListLogEntriesInput, pagerduty.LogEntryPage] {
+	return operations.mock.listLogEntries
+}
+func (operations mockOperations) GetLogEntry() sdkgo.Query[pagerduty.GetLogEntryInput, pagerduty.LogEntry] {
+	return operations.mock.getLogEntry
+}
+func (operations mockOperations) GetUser() sdkgo.Query[pagerduty.GetUserInput, pagerduty.User] {
+	return operations.mock.getUser
 }
 
 // ListIncidentsListed selects the listed branch: PagerDuty returned the requested result.
@@ -138,3 +182,160 @@ func GetIncidentGetIncidentDefault() connectormock.Case[pagerduty.Incident] {
 func GetIncidentDefault() connectormock.Case[pagerduty.Incident] {
 	return GetIncidentGetIncidentDefault()
 }
+
+// ListIncidentNotesListed selects the listed branch: PagerDuty returned incident notes.
+func ListIncidentNotesListed(value pagerduty.IncidentNotes, failure *sdkgo.Failure) connectormock.Case[pagerduty.IncidentNotes] {
+	return connectormock.Branch(pagerduty.ListIncidentNotesBranchListed, value, failure)
+}
+
+// ListIncidentNotesNotFound selects the notFound branch: The incident does not exist.
+func ListIncidentNotesNotFound(value pagerduty.IncidentNotes, failure *sdkgo.Failure) connectormock.Case[pagerduty.IncidentNotes] {
+	return connectormock.Branch(pagerduty.ListIncidentNotesBranchNotFound, value, failure)
+}
+
+// ListIncidentNotesProviderRejected selects the providerRejected branch: PagerDuty rejected the request.
+func ListIncidentNotesProviderRejected(value pagerduty.IncidentNotes, failure *sdkgo.Failure) connectormock.Case[pagerduty.IncidentNotes] {
+	return connectormock.Branch(pagerduty.ListIncidentNotesBranchProviderRejected, value, failure)
+}
+
+// ListIncidentNotesInvalidResponse selects the invalidResponse branch: PagerDuty returned malformed or oversized JSON.
+func ListIncidentNotesInvalidResponse(value pagerduty.IncidentNotes, failure *sdkgo.Failure) connectormock.Case[pagerduty.IncidentNotes] {
+	return connectormock.Branch(pagerduty.ListIncidentNotesBranchInvalidResponse, value, failure)
+}
+
+// ListIncidentNotesDefect selects the defect branch: The incident ID or connection is invalid.
+func ListIncidentNotesDefect(value pagerduty.IncidentNotes, failure *sdkgo.Failure) connectormock.Case[pagerduty.IncidentNotes] {
+	return connectormock.Branch(pagerduty.ListIncidentNotesBranchDefect, value, failure)
+}
+
+// ListIncidentNotesRetry asks Dex to retry the listIncidentNotes Step, after the delay when it is positive.
+func ListIncidentNotesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pagerduty.IncidentNotes] {
+	return connectormock.Retry[pagerduty.IncidentNotes](failure, after)
+}
+
+// ListIncidentNotesListIncidentNotesDefault is the manifest mock listIncidentNotesDefault: A representative incident note list.
+func ListIncidentNotesListIncidentNotesDefault() connectormock.Case[pagerduty.IncidentNotes] {
+	value := connectormock.MustDecodeOutput[pagerduty.IncidentNotes](`{"notes":[{"id":"PWL7QXS","content":"Investigating the alert.","created_at":"2026-01-01T00:00:00Z"}]}`)
+	return connectormock.Branch(pagerduty.ListIncidentNotesBranchListed, value, nil)
+}
+
+// ListIncidentNotesDefault is the manifest default, listIncidentNotesDefault, which New installs.
+func ListIncidentNotesDefault() connectormock.Case[pagerduty.IncidentNotes] {
+	return ListIncidentNotesListIncidentNotesDefault()
+}
+
+// ListLogEntriesListed selects the listed branch: PagerDuty returned log entries.
+func ListLogEntriesListed(value pagerduty.LogEntryPage, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntryPage] {
+	return connectormock.Branch(pagerduty.ListLogEntriesBranchListed, value, failure)
+}
+
+// ListLogEntriesProviderRejected selects the providerRejected branch: PagerDuty rejected the request.
+func ListLogEntriesProviderRejected(value pagerduty.LogEntryPage, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntryPage] {
+	return connectormock.Branch(pagerduty.ListLogEntriesBranchProviderRejected, value, failure)
+}
+
+// ListLogEntriesInvalidResponse selects the invalidResponse branch: PagerDuty returned malformed or oversized JSON.
+func ListLogEntriesInvalidResponse(value pagerduty.LogEntryPage, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntryPage] {
+	return connectormock.Branch(pagerduty.ListLogEntriesBranchInvalidResponse, value, failure)
+}
+
+// ListLogEntriesDefect selects the defect branch: The page request or connection is invalid.
+func ListLogEntriesDefect(value pagerduty.LogEntryPage, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntryPage] {
+	return connectormock.Branch(pagerduty.ListLogEntriesBranchDefect, value, failure)
+}
+
+// ListLogEntriesRetry asks Dex to retry the listLogEntries Step, after the delay when it is positive.
+func ListLogEntriesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pagerduty.LogEntryPage] {
+	return connectormock.Retry[pagerduty.LogEntryPage](failure, after)
+}
+
+// ListLogEntriesListLogEntriesDefault is the manifest mock listLogEntriesDefault: A representative log entry page.
+func ListLogEntriesListLogEntriesDefault() connectormock.Case[pagerduty.LogEntryPage] {
+	value := connectormock.MustDecodeOutput[pagerduty.LogEntryPage](`{"log_entries":[{"id":"Q02JTSNZWHSEKV","type":"trigger_log_entry","summary":"Triggered through the API"}],"limit":25,"offset":0,"more":false}`)
+	return connectormock.Branch(pagerduty.ListLogEntriesBranchListed, value, nil)
+}
+
+// ListLogEntriesDefault is the manifest default, listLogEntriesDefault, which New installs.
+func ListLogEntriesDefault() connectormock.Case[pagerduty.LogEntryPage] {
+	return ListLogEntriesListLogEntriesDefault()
+}
+
+// GetLogEntryFound selects the found branch: PagerDuty returned the log entry.
+func GetLogEntryFound(value pagerduty.LogEntry, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntry] {
+	return connectormock.Branch(pagerduty.GetLogEntryBranchFound, value, failure)
+}
+
+// GetLogEntryNotFound selects the notFound branch: The log entry does not exist.
+func GetLogEntryNotFound(value pagerduty.LogEntry, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntry] {
+	return connectormock.Branch(pagerduty.GetLogEntryBranchNotFound, value, failure)
+}
+
+// GetLogEntryProviderRejected selects the providerRejected branch: PagerDuty rejected the request.
+func GetLogEntryProviderRejected(value pagerduty.LogEntry, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntry] {
+	return connectormock.Branch(pagerduty.GetLogEntryBranchProviderRejected, value, failure)
+}
+
+// GetLogEntryInvalidResponse selects the invalidResponse branch: PagerDuty returned malformed or oversized JSON.
+func GetLogEntryInvalidResponse(value pagerduty.LogEntry, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntry] {
+	return connectormock.Branch(pagerduty.GetLogEntryBranchInvalidResponse, value, failure)
+}
+
+// GetLogEntryDefect selects the defect branch: The log entry ID or connection is invalid.
+func GetLogEntryDefect(value pagerduty.LogEntry, failure *sdkgo.Failure) connectormock.Case[pagerduty.LogEntry] {
+	return connectormock.Branch(pagerduty.GetLogEntryBranchDefect, value, failure)
+}
+
+// GetLogEntryRetry asks Dex to retry the getLogEntry Step, after the delay when it is positive.
+func GetLogEntryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pagerduty.LogEntry] {
+	return connectormock.Retry[pagerduty.LogEntry](failure, after)
+}
+
+// GetLogEntryGetLogEntryDefault is the manifest mock getLogEntryDefault: A representative log entry.
+func GetLogEntryGetLogEntryDefault() connectormock.Case[pagerduty.LogEntry] {
+	value := connectormock.MustDecodeOutput[pagerduty.LogEntry](`{"id":"Q02JTSNZWHSEKV","type":"trigger_log_entry","summary":"Triggered through the API"}`)
+	return connectormock.Branch(pagerduty.GetLogEntryBranchFound, value, nil)
+}
+
+// GetLogEntryDefault is the manifest default, getLogEntryDefault, which New installs.
+func GetLogEntryDefault() connectormock.Case[pagerduty.LogEntry] {
+	return GetLogEntryGetLogEntryDefault()
+}
+
+// GetUserFound selects the found branch: PagerDuty returned the user.
+func GetUserFound(value pagerduty.User, failure *sdkgo.Failure) connectormock.Case[pagerduty.User] {
+	return connectormock.Branch(pagerduty.GetUserBranchFound, value, failure)
+}
+
+// GetUserNotFound selects the notFound branch: The user does not exist.
+func GetUserNotFound(value pagerduty.User, failure *sdkgo.Failure) connectormock.Case[pagerduty.User] {
+	return connectormock.Branch(pagerduty.GetUserBranchNotFound, value, failure)
+}
+
+// GetUserProviderRejected selects the providerRejected branch: PagerDuty rejected the request.
+func GetUserProviderRejected(value pagerduty.User, failure *sdkgo.Failure) connectormock.Case[pagerduty.User] {
+	return connectormock.Branch(pagerduty.GetUserBranchProviderRejected, value, failure)
+}
+
+// GetUserInvalidResponse selects the invalidResponse branch: PagerDuty returned malformed or oversized JSON.
+func GetUserInvalidResponse(value pagerduty.User, failure *sdkgo.Failure) connectormock.Case[pagerduty.User] {
+	return connectormock.Branch(pagerduty.GetUserBranchInvalidResponse, value, failure)
+}
+
+// GetUserDefect selects the defect branch: The user ID or connection is invalid.
+func GetUserDefect(value pagerduty.User, failure *sdkgo.Failure) connectormock.Case[pagerduty.User] {
+	return connectormock.Branch(pagerduty.GetUserBranchDefect, value, failure)
+}
+
+// GetUserRetry asks Dex to retry the getUser Step, after the delay when it is positive.
+func GetUserRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[pagerduty.User] {
+	return connectormock.Retry[pagerduty.User](failure, after)
+}
+
+// GetUserGetUserDefault is the manifest mock getUserDefault: A representative user.
+func GetUserGetUserDefault() connectormock.Case[pagerduty.User] {
+	value := connectormock.MustDecodeOutput[pagerduty.User](`{"id":"PXPGF42","name":"Example Responder","email":"responder@example.com"}`)
+	return connectormock.Branch(pagerduty.GetUserBranchFound, value, nil)
+}
+
+// GetUserDefault is the manifest default, getUserDefault, which New installs.
+func GetUserDefault() connectormock.Case[pagerduty.User] { return GetUserGetUserDefault() }

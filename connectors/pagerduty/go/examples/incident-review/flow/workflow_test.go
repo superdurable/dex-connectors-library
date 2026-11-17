@@ -26,3 +26,11 @@ func TestFlowIdentityAndMapping(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, pagerduty.Connection{}, mockConnection)
 }
+
+func TestUserLookupFlowIdentityAndMapping(t *testing.T) {
+	require.Equal(t, UserLookupFlowType, dex.GetFinalFlowType(NewUserLookupFlow(pagerduty.Connection{})))
+	require.Equal(t, "PrepareUserLookup", dex.GetFinalStepType[UserLookupRequest](prepareUserLookup{}))
+	require.Equal(t, "CompleteUserLookup", dex.GetFinalStepType[pagerduty.GetUserResult](completeUserLookup{}))
+	request := UserLookupRequest(pagerduty.GetUserInput{ID: "PXPGF42"})
+	require.Equal(t, "PXPGF42", pagerduty.GetUserInput(request).ID)
+}
