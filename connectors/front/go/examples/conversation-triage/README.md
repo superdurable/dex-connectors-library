@@ -31,7 +31,7 @@ missing contact still permits triage. An uncertain comment, a missing or merged
 conversation, a rejected request, an invalid response, and a local defect fail
 the Flow with the connector's safe message. The Flow never writes to the customer.
 
-The same Worker also registers `FrontContactDirectory`. Start it explicitly with a `GetContactInput` containing a Front `crd_` contact ID. It calls `getContact`, then `listContacts` for one 25-contact page, and completes with that page. Its mock integration test runs both Steps against a real Dex Worker and Client.
+The same Worker also registers `FrontContactDirectory`. Start it explicitly with a `GetContactInput` containing a Front `crd_` contact ID. It calls `getContact`, `listContacts` for one 25-contact page, `listInboxes`, `listTags` for one page, and `listTeammates`, then completes with the teammate directory. Its mock integration test runs all five Steps against a real Dex Worker and Client.
 
 ## 1. Generate the Flow Definition
 

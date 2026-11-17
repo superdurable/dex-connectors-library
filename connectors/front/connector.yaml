@@ -309,3 +309,48 @@ spec:
         - {id: defect, goName: Defect, description: "Page input or connection is invalid.", optional: true}
       mocks:
         - {name: listedDefault, branch: listed, default: true, description: "Example contact page.", output: {contacts: [{id: crd_100, name: Jane Smith, handles: [{handle: "jane@acme.example.com", source: email}]}]}}
+    - name: listInboxes
+      goName: ListInboxes
+      inputType: ListInboxesInput
+      outputType: DirectoryPage
+      kind: query
+      description: "Read accessible Front inbox IDs and names."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned the accessible resource list."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied the resource read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid resource list.", optional: true}
+        - {id: defect, goName: Defect, description: "Input or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example listInboxes result.", output: {records: [{id: inb_100, name: Support}]}}
+    - name: listTags
+      goName: ListTags
+      inputType: ListTagsInput
+      outputType: DirectoryPage
+      kind: query
+      description: "Read one bounded page of Front tags."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned the accessible resource list."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied the resource read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid resource list.", optional: true}
+        - {id: defect, goName: Defect, description: "Input or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example listTags result.", output: {records: [{id: tag_100, name: triaged}]}}
+    - name: listTeammates
+      goName: ListTeammates
+      inputType: ListTeammatesInput
+      outputType: DirectoryPage
+      kind: query
+      description: "Read accessible teammate IDs and names."
+      idempotency: none
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: "Front returned the accessible resource list."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Front denied the resource read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Front returned an invalid resource list.", optional: true}
+        - {id: defect, goName: Defect, description: "Input or connection is invalid.", optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: "Example listTeammates result.", output: {records: [{id: tea_100, name: Leela}]}}

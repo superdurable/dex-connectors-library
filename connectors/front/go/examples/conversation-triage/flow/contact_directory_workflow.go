@@ -12,8 +12,11 @@ import (
 )
 
 const (
-	directoryGetContactStepType   = "DirectoryGetContact"
-	directoryListContactsStepType = "DirectoryListContacts"
+	directoryGetContactStepType    = "DirectoryGetContact"
+	directoryListContactsStepType  = "DirectoryListContacts"
+	directoryListInboxesStepType   = "DirectoryListInboxes"
+	directoryListTagsStepType      = "DirectoryListTags"
+	directoryListTeammatesStepType = "DirectoryListTeammates"
 )
 
 var directoryContactIDAttribute = dex.DefineAttribute[string]("front-directory-contact-id")
@@ -75,7 +78,25 @@ func (flow *ContactDirectoryFlow) GetSteps() []dex.StepDef {
 		dex.DefineStep(front.NewListContactsStep(front.ListContactsStepConfig[front.ListContactsInput]{
 			StepType: directoryListContactsStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations:         sdkgo.StepAnnotations{GroupID: "front-read", GroupLabel: "Front reads", Explanation: "Read one company contact page."},
-			MapToOperationInput: mapDirectoryContactsInput, Listed: sdkgo.GoTo(completeContactDirectory{}),
+			MapToOperationInput: mapDirectoryContactsInput, Listed: sdkgo.GoTo(afterDirectoryContacts{}),
+		})),
+		dex.DefineStep(afterDirectoryContacts{}),
+		dex.DefineStep(front.NewListInboxesStep(front.ListInboxesStepConfig[front.ListInboxesInput]{
+			StepType: directoryListInboxesStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "front-read", GroupLabel: "Front reads", Explanation: "Read accessible inbox IDs and names."},
+			MapToOperationInput: mapDirectoryInboxesInput, Listed: sdkgo.GoTo(afterDirectoryInboxes{}),
+		})),
+		dex.DefineStep(afterDirectoryInboxes{}),
+		dex.DefineStep(front.NewListTagsStep(front.ListTagsStepConfig[front.ListTagsInput]{
+			StepType: directoryListTagsStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "front-read", GroupLabel: "Front reads", Explanation: "Read one page of accessible tags."},
+			MapToOperationInput: mapDirectoryTagsInput, Listed: sdkgo.GoTo(afterDirectoryTags{}),
+		})),
+		dex.DefineStep(afterDirectoryTags{}),
+		dex.DefineStep(front.NewListTeammatesStep(front.ListTeammatesStepConfig[front.ListTeammatesInput]{
+			StepType: directoryListTeammatesStepType, ConnectionName: ConnectionName, Connection: flow.connection,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "front-read", GroupLabel: "Front reads", Explanation: "Read accessible teammate IDs and names."},
+			MapToOperationInput: mapDirectoryTeammatesInput, Listed: sdkgo.GoTo(completeContactDirectory{}),
 		})),
 		dex.DefineStep(completeContactDirectory{}),
 	}
@@ -92,6 +113,11 @@ func readDirectoryContactID(ctx dex.Context) (string, error) {
 
 func mapDirectoryContactInput(input front.GetContactInput) front.GetContactInput      { return input }
 func mapDirectoryContactsInput(input front.ListContactsInput) front.ListContactsInput { return input }
+func mapDirectoryInboxesInput(input front.ListInboxesInput) front.ListInboxesInput    { return input }
+func mapDirectoryTagsInput(input front.ListTagsInput) front.ListTagsInput             { return input }
+func mapDirectoryTeammatesInput(input front.ListTeammatesInput) front.ListTeammatesInput {
+	return input
+}
 
 // dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Start a contact read using the supplied Front contact ID."
@@ -119,14 +145,47 @@ func (afterDirectoryContact) Execute(ctx dex.Context, result front.GetContactRes
 	return dex.GoTo(sdkgo.StepRef[front.ListContactsInput](directoryListContactsStepType), front.ListContactsInput{PageSize: 25}), nil
 }
 
-// dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete with the typed company contact page."
-type completeContactDirectory struct {
+// dex:group group-id:front-read group-label:"Front reads"
+// dex:explanation text:"List inboxes after the bounded contact page."
+type afterDirectoryContacts struct {
 	dex.StepDefaultsNoWaitFor[front.ListContactsResult]
 }
 
+func (afterDirectoryContacts) GetStepType() string { return "AfterDirectoryContacts" }
+func (afterDirectoryContacts) Execute(_ dex.Context, _ front.ListContactsResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[front.ListInboxesInput](directoryListInboxesStepType), front.ListInboxesInput{}), nil
+}
+
+// dex:group group-id:front-read group-label:"Front reads"
+// dex:explanation text:"List tags after reading accessible inboxes."
+type afterDirectoryInboxes struct {
+	dex.StepDefaultsNoWaitFor[front.ListInboxesResult]
+}
+
+func (afterDirectoryInboxes) GetStepType() string { return "AfterDirectoryInboxes" }
+func (afterDirectoryInboxes) Execute(_ dex.Context, _ front.ListInboxesResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[front.ListTagsInput](directoryListTagsStepType), front.ListTagsInput{PageSize: 25}), nil
+}
+
+// dex:group group-id:front-read group-label:"Front reads"
+// dex:explanation text:"List teammates after one bounded tag page."
+type afterDirectoryTags struct {
+	dex.StepDefaultsNoWaitFor[front.ListTagsResult]
+}
+
+func (afterDirectoryTags) GetStepType() string { return "AfterDirectoryTags" }
+func (afterDirectoryTags) Execute(_ dex.Context, _ front.ListTagsResult) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[front.ListTeammatesInput](directoryListTeammatesStepType), front.ListTeammatesInput{}), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete with the accessible teammate directory."
+type completeContactDirectory struct {
+	dex.StepDefaultsNoWaitFor[front.ListTeammatesResult]
+}
+
 func (completeContactDirectory) GetStepType() string { return "CompleteContactDirectory" }
-func (completeContactDirectory) Execute(_ dex.Context, result front.ListContactsResult) (*dex.StepDecision, error) {
+func (completeContactDirectory) Execute(_ dex.Context, result front.ListTeammatesResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(result.Value), nil
 }
 

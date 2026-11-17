@@ -25,6 +25,9 @@ type Mock struct {
 	findContactByEmail  *connectormock.Query[front.FindContactByEmailInput, front.FindContactByEmailOutput]
 	getContact          *connectormock.Query[front.GetContactInput, front.Contact]
 	listContacts        *connectormock.Query[front.ListContactsInput, front.ContactsPage]
+	listInboxes         *connectormock.Query[front.ListInboxesInput, front.DirectoryPage]
+	listTags            *connectormock.Query[front.ListTagsInput, front.DirectoryPage]
+	listTeammates       *connectormock.Query[front.ListTeammatesInput, front.DirectoryPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -39,6 +42,9 @@ func New(t testing.TB, connectionName string) *Mock {
 		findContactByEmail:  connectormock.NewQuery[front.FindContactByEmailInput, front.FindContactByEmailOutput](t, front.FindContactByEmailDefinition),
 		getContact:          connectormock.NewQuery[front.GetContactInput, front.Contact](t, front.GetContactDefinition),
 		listContacts:        connectormock.NewQuery[front.ListContactsInput, front.ContactsPage](t, front.ListContactsDefinition),
+		listInboxes:         connectormock.NewQuery[front.ListInboxesInput, front.DirectoryPage](t, front.ListInboxesDefinition),
+		listTags:            connectormock.NewQuery[front.ListTagsInput, front.DirectoryPage](t, front.ListTagsDefinition),
+		listTeammates:       connectormock.NewQuery[front.ListTeammatesInput, front.DirectoryPage](t, front.ListTeammatesDefinition),
 	}
 	mock.searchConversations.Default(SearchConversationsDefault())
 	mock.getConversation.Default(GetConversationDefault())
@@ -47,6 +53,9 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.findContactByEmail.Default(FindContactByEmailDefault())
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
+	mock.listInboxes.Default(ListInboxesDefault())
+	mock.listTags.Default(ListTagsDefault())
+	mock.listTeammates.Default(ListTeammatesDefault())
 	connection, err := front.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "front", Name: connectionName})
 	if err != nil {
 		t.Fatalf("front mock connection: %v", err)
@@ -93,6 +102,21 @@ func (mock *Mock) ListContacts() *connectormock.Query[front.ListContactsInput, f
 	return mock.listContacts
 }
 
+// ListInboxes returns the listInboxes script.
+func (mock *Mock) ListInboxes() *connectormock.Query[front.ListInboxesInput, front.DirectoryPage] {
+	return mock.listInboxes
+}
+
+// ListTags returns the listTags script.
+func (mock *Mock) ListTags() *connectormock.Query[front.ListTagsInput, front.DirectoryPage] {
+	return mock.listTags
+}
+
+// ListTeammates returns the listTeammates script.
+func (mock *Mock) ListTeammates() *connectormock.Query[front.ListTeammatesInput, front.DirectoryPage] {
+	return mock.listTeammates
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) SearchConversations() sdkgo.Query[front.SearchConversationsInput, front.SearchConversationsOutput] {
@@ -115,6 +139,15 @@ func (operations mockOperations) GetContact() sdkgo.Query[front.GetContactInput,
 }
 func (operations mockOperations) ListContacts() sdkgo.Query[front.ListContactsInput, front.ContactsPage] {
 	return operations.mock.listContacts
+}
+func (operations mockOperations) ListInboxes() sdkgo.Query[front.ListInboxesInput, front.DirectoryPage] {
+	return operations.mock.listInboxes
+}
+func (operations mockOperations) ListTags() sdkgo.Query[front.ListTagsInput, front.DirectoryPage] {
+	return operations.mock.listTags
+}
+func (operations mockOperations) ListTeammates() sdkgo.Query[front.ListTeammatesInput, front.DirectoryPage] {
+	return operations.mock.listTeammates
 }
 
 // SearchConversationsSearched selects the searched branch: Front returned one page of matching conversations; it may be empty.
@@ -478,3 +511,107 @@ func ListContactsListedDefault() connectormock.Case[front.ContactsPage] {
 
 // ListContactsDefault is the manifest default, listedDefault, which New installs.
 func ListContactsDefault() connectormock.Case[front.ContactsPage] { return ListContactsListedDefault() }
+
+// ListInboxesListed selects the listed branch: Front returned the accessible resource list.
+func ListInboxesListed(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListInboxesBranchListed, value, failure)
+}
+
+// ListInboxesProviderRejected selects the providerRejected branch: Front denied the resource read.
+func ListInboxesProviderRejected(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListInboxesBranchProviderRejected, value, failure)
+}
+
+// ListInboxesInvalidResponse selects the invalidResponse branch: Front returned an invalid resource list.
+func ListInboxesInvalidResponse(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListInboxesBranchInvalidResponse, value, failure)
+}
+
+// ListInboxesDefect selects the defect branch: Input or connection is invalid.
+func ListInboxesDefect(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListInboxesBranchDefect, value, failure)
+}
+
+// ListInboxesRetry asks Dex to retry the listInboxes Step, after the delay when it is positive.
+func ListInboxesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Retry[front.DirectoryPage](failure, after)
+}
+
+// ListInboxesListedDefault is the manifest mock listedDefault: Example listInboxes result.
+func ListInboxesListedDefault() connectormock.Case[front.DirectoryPage] {
+	value := connectormock.MustDecodeOutput[front.DirectoryPage](`{"records":[{"id":"inb_100","name":"Support"}]}`)
+	return connectormock.Branch(front.ListInboxesBranchListed, value, nil)
+}
+
+// ListInboxesDefault is the manifest default, listedDefault, which New installs.
+func ListInboxesDefault() connectormock.Case[front.DirectoryPage] { return ListInboxesListedDefault() }
+
+// ListTagsListed selects the listed branch: Front returned the accessible resource list.
+func ListTagsListed(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListTagsBranchListed, value, failure)
+}
+
+// ListTagsProviderRejected selects the providerRejected branch: Front denied the resource read.
+func ListTagsProviderRejected(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListTagsBranchProviderRejected, value, failure)
+}
+
+// ListTagsInvalidResponse selects the invalidResponse branch: Front returned an invalid resource list.
+func ListTagsInvalidResponse(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListTagsBranchInvalidResponse, value, failure)
+}
+
+// ListTagsDefect selects the defect branch: Input or connection is invalid.
+func ListTagsDefect(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListTagsBranchDefect, value, failure)
+}
+
+// ListTagsRetry asks Dex to retry the listTags Step, after the delay when it is positive.
+func ListTagsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Retry[front.DirectoryPage](failure, after)
+}
+
+// ListTagsListedDefault is the manifest mock listedDefault: Example listTags result.
+func ListTagsListedDefault() connectormock.Case[front.DirectoryPage] {
+	value := connectormock.MustDecodeOutput[front.DirectoryPage](`{"records":[{"id":"tag_100","name":"triaged"}]}`)
+	return connectormock.Branch(front.ListTagsBranchListed, value, nil)
+}
+
+// ListTagsDefault is the manifest default, listedDefault, which New installs.
+func ListTagsDefault() connectormock.Case[front.DirectoryPage] { return ListTagsListedDefault() }
+
+// ListTeammatesListed selects the listed branch: Front returned the accessible resource list.
+func ListTeammatesListed(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListTeammatesBranchListed, value, failure)
+}
+
+// ListTeammatesProviderRejected selects the providerRejected branch: Front denied the resource read.
+func ListTeammatesProviderRejected(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListTeammatesBranchProviderRejected, value, failure)
+}
+
+// ListTeammatesInvalidResponse selects the invalidResponse branch: Front returned an invalid resource list.
+func ListTeammatesInvalidResponse(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListTeammatesBranchInvalidResponse, value, failure)
+}
+
+// ListTeammatesDefect selects the defect branch: Input or connection is invalid.
+func ListTeammatesDefect(value front.DirectoryPage, failure *sdkgo.Failure) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Branch(front.ListTeammatesBranchDefect, value, failure)
+}
+
+// ListTeammatesRetry asks Dex to retry the listTeammates Step, after the delay when it is positive.
+func ListTeammatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[front.DirectoryPage] {
+	return connectormock.Retry[front.DirectoryPage](failure, after)
+}
+
+// ListTeammatesListedDefault is the manifest mock listedDefault: Example listTeammates result.
+func ListTeammatesListedDefault() connectormock.Case[front.DirectoryPage] {
+	value := connectormock.MustDecodeOutput[front.DirectoryPage](`{"records":[{"id":"tea_100","name":"Leela"}]}`)
+	return connectormock.Branch(front.ListTeammatesBranchListed, value, nil)
+}
+
+// ListTeammatesDefault is the manifest default, listedDefault, which New installs.
+func ListTeammatesDefault() connectormock.Case[front.DirectoryPage] {
+	return ListTeammatesListedDefault()
+}

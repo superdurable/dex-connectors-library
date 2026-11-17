@@ -23,8 +23,12 @@ type frontConformanceContext struct {
 func (context *frontConformanceContext) Attempt() int32 { return context.attempt }
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
+	token := testAPIToken
+	if scenario.Name == "listInboxes-defect" || scenario.Name == "listTeammates-defect" {
+		token = ""
+	}
 	client, err := front.New(front.Config{}, sdkgo.StaticCredentialProvider[front.Credentials]{
-		frontConnection: {APIToken: sdkgo.NewSecretString(testAPIToken)},
+		frontConnection: {APIToken: sdkgo.NewSecretString(token)},
 	}, front.WithAPIBaseURL(endpoint), front.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := &frontConformanceContext{testDexContext: newTestDexContext("conformance"), attempt: 1}
@@ -39,5 +43,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"findContactByEmail":  newConformanceQueryInvocation(t, scenario.Input, context, client.FindContactByEmail(), frontConnection),
 		"getContact":          newConformanceQueryInvocation(t, scenario.Input, context, client.GetContact(), frontConnection),
 		"listContacts":        newConformanceQueryInvocation(t, scenario.Input, context, client.ListContacts(), frontConnection),
+		"listInboxes":         newConformanceQueryInvocation(t, scenario.Input, context, client.ListInboxes(), frontConnection),
+		"listTags":            newConformanceQueryInvocation(t, scenario.Input, context, client.ListTags(), frontConnection),
+		"listTeammates":       newConformanceQueryInvocation(t, scenario.Input, context, client.ListTeammates(), frontConnection),
 	}}
 }

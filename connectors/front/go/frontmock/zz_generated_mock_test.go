@@ -48,6 +48,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[front.ContactsPage](`{"contacts":[{"id":"crd_100","name":"Jane Smith","handles":[{"handle":"jane@acme.example.com","source":"email"}]}]}`)
 			return err
 		}},
+		{name: "listInboxes/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.DirectoryPage](`{"records":[{"id":"inb_100","name":"Support"}]}`)
+			return err
+		}},
+		{name: "listTags/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.DirectoryPage](`{"records":[{"id":"tag_100","name":"triaged"}]}`)
+			return err
+		}},
+		{name: "listTeammates/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[front.DirectoryPage](`{"records":[{"id":"tea_100","name":"Leela"}]}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -78,5 +90,14 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
 		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.ListInboxes().Definition().Operation.OperationID != "listInboxes" {
+		t.Errorf("listInboxes mock has another definition")
+	}
+	if mock.ListTags().Definition().Operation.OperationID != "listTags" {
+		t.Errorf("listTags mock has another definition")
+	}
+	if mock.ListTeammates().Definition().Operation.OperationID != "listTeammates" {
+		t.Errorf("listTeammates mock has another definition")
 	}
 }

@@ -31,8 +31,12 @@ The Front connector connects a Dex application to the
 | `findContactByEmail` | Query | The contact whose email handle equals one address | `found` |
 | `getContact` | Query | One contact by Front ID | `found` |
 | `listContacts` | Query | One bounded page of company contacts | `listed` |
+| `listInboxes` | Query | Accessible inbox IDs and names | `listed` |
+| `listTags` | Query | One bounded page of accessible tags | `listed` |
+| `listTeammates` | Query | Accessible teammate IDs and names | `listed` |
 
 The new contact reads need `contacts:read`, which the existing authorization guide already grants. Contact creation and updates require `contacts:write`, and deletion requires `contacts:delete`; these scopes are outside the existing token guide.
+The directory reads need `inboxes:read`, `tags:read`, and `teammates:read`, which the existing guide already grants. Tag creation requires `tags:write`, and channel listing requires `channels:read`; those scopes are outside the existing guide.
 
 Every other branch is optional: `notFound`, `providerRejected`,
 `invalidResponse`, and `defect`. `getConversation` adds `merged`;

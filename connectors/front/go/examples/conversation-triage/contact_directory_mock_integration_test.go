@@ -53,9 +53,12 @@ func TestContactDirectoryUsesFrontMocksWithRealDex(t *testing.T) {
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var output front.ContactsPage
+	var output front.DirectoryPage
 	require.NoError(t, result.DecodeSingleOutput(&output))
-	require.Equal(t, "crd_100", output.Contacts[0].ID)
+	require.Equal(t, "tea_100", output.Records[0].ID)
 	require.Len(t, mock.GetContact().Calls(), 1)
 	require.Len(t, mock.ListContacts().Calls(), 1)
+	require.Len(t, mock.ListInboxes().Calls(), 1)
+	require.Len(t, mock.ListTags().Calls(), 1)
+	require.Len(t, mock.ListTeammates().Calls(), 1)
 }
