@@ -5495,7 +5495,7 @@
       "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
       "exchanges": [
         {
-          "body": "{\"results\":{\"123\":\"SUCCESS\"}}",
+          "body": "{\"results\":{\"567\":\"Successfully applied tag\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -6278,6 +6278,55 @@
       },
       "name": "removeContactTag-defect",
       "operation": "removeContactTag"
+    },
+    {
+      "callId": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "exchanges": [
+        {
+          "body": "{\"results\":{\"567\":\"Failed to apply tag\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/rest/v2/tags/567/contacts:applyTags",
+          "requestBody": {
+            "contact_ids": [
+              "123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-keap-personal-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "changed": false,
+          "contactId": "",
+          "tagId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d567b878-8dda-536f-8684-9de0c68fb3f2",
+      "input": {
+        "contactId": "123",
+        "tagId": "567"
+      },
+      "name": "applyContactTag-resultRejected",
+      "operation": "applyContactTag"
     }
   ],
   "schemaVersion": 1

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
@@ -182,8 +183,11 @@ func (client *Client) changeContactTag(call sdkgo.Call, input ContactTagInput, o
 		var wire struct {
 			Results map[string]string `json:"results"`
 		}
-		if json.Unmarshal(response.body, &wire) != nil || wire.Results == nil || wire.Results[input.ContactID] == "" {
+		if json.Unmarshal(response.body, &wire) != nil || wire.Results == nil || wire.Results[input.TagID] == "" {
 			return keapMutationBranch(operationName, invalid, ContactTagChange{}, sdkgo.FailureProtocol, "Keap returned invalid tag application JSON")
+		}
+		if !strings.EqualFold(wire.Results[input.TagID], "Successfully applied tag") {
+			return keapMutationBranch(operationName, rejected, ContactTagChange{}, sdkgo.FailureProviderRejection, "Keap did not confirm tag application")
 		}
 	} else {
 		if response.status != 204 && response.status != 200 {
