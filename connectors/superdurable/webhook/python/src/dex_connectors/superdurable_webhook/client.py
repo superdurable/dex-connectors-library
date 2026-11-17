@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Signed Standard Webhooks delivery client."""
+"""Signed webhook delivery and inbound request verification client."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class Client:
-    """Hold validated delivery settings and resolve the signing secret per call."""
+    """Hold validated send and receive settings and resolve the signing secret per call."""
 
     def __init__(
         self,
@@ -34,6 +34,10 @@ class Client:
             raise ValueError("webhook settings and credentials are required")
         if config.max_body_bytes <= 0:
             raise ValueError("webhook maxBodyBytes must be positive")
+        from .triggers import _validate_config
+
+        _validate_config(config)
+        self.config = config
         self.delivery_url = _validate_delivery_url(config.delivery_url)
         self.max_body_bytes = config.max_body_bytes
         self.credentials = credentials

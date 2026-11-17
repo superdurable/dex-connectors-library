@@ -2,6 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Public event delivery models."""
 
-from ._generated.models import SendEventInput, SendEventOutput
+from ._generated.models import (
+    RequestReceivedTriggerConfiguration,
+    SendEventInput,
+    SendEventOutput,
+    WebhookRequestEvent,
+)
 
-__all__ = ["SendEventInput", "SendEventOutput"]
+__all__ = ["RequestReceivedTriggerConfiguration", "SendEventInput", "SendEventOutput", "WebhookRequestEvent"]

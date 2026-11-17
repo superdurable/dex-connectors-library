@@ -22,11 +22,12 @@ webhooks, and any Standard Webhooks sender.
 
 ## Python package
 
-The [Python package](python/README.md) implements `sendEvent` v0.1.0. It has
-no Trigger. Its [runnable Flow](python/examples/send_event/README.md) uses the
-static `webhook-forwarding` connection, signs one JSON event, and verifies a
-retry through a real Dex Worker and Client. The existing Go package continues
-to provide `requestReceived`.
+The [Python package](python/README.md) implements `sendEvent` and
+`requestReceived` v0.2.0. Its [send example](python/examples/send_event/README.md)
+uses the static `webhook-forwarding` connection. Its
+[receive example](python/examples/request_received/README.md) mounts an ASGI
+webhook, records verified events in a durable inbox, and starts a Dex Flow.
+Both examples run through a real Dex Worker and Client in integration tests.
 
 ## Architecture
 

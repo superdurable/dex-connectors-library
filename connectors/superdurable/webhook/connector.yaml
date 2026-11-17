@@ -11,9 +11,9 @@ spec:
   provider: webhook
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [sendEvent]
-      triggers: []
+      triggers: [requestReceived]
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-superdurable-webhook'

@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-superdurable-webhook",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -48,6 +48,16 @@
           "payload"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "define_request_received_trigger_binding",
+      "kind": "trigger",
+      "triggerName": "requestReceived",
+      "fields": {
+        "connectionName": "connection_name",
+        "bindingName": "binding_name",
+        "configurationUI": "configuration_ui"
       }
     }
   ]
