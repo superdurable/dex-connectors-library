@@ -7,7 +7,8 @@ import { ExchangeRecorder, loadScenarios, replay, withScenarioHTTPServer, type S
 import { PostmarkClient } from '../src/client.js';
 import { GetMessageDetailsInputSchema, ListOutboundMessagesInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/postmark/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/postmark/scenarios.json', import.meta.url))
+  .filter(scenario => ['listOutboundMessages', 'getMessageDetails'].includes(scenario.operation));
 const connection = { provider: 'postmark', name: 'postmark' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePostmark));

@@ -1,6 +1,6 @@
 # Plaid connector
 
-The Go, Python, and TypeScript `getAccounts` Query returns account IDs, types, and subtypes for one linked Plaid Item. Names, masks, balances, and credentials stay out of Dex Results. Plaid's `ITEM_NOT_FOUND` error for a removed or unknown Item selects `notFound`; other Plaid errors, including `INVALID_ACCESS_TOKEN`, select `providerRejected`.
+The Go, Python, and TypeScript `getAccounts` Query returns account IDs, types, and subtypes for one linked Plaid Item. Go also provides `getItem` to read the Item ID, institution ID, and enabled products, plus `removeItem` to disconnect that Item. Names, masks, balances, and credentials stay out of Dex Results. Plaid's `ITEM_NOT_FOUND` error for a removed or unknown Item selects `notFound` for reads; removal treats it as an already disconnected Item. Other Plaid errors, including `INVALID_ACCESS_TOKEN`, select `providerRejected`.
 
 ## Connect
 
@@ -10,4 +10,4 @@ Leave `baseUrl` blank for Sandbox at `https://sandbox.plaid.com`, or use `https:
 
 ## Examples and verification
 
-Run the [Go](go/examples/accounts-inspection/README.md), [Python](python/examples/accounts_inspection/README.md), or [TypeScript](typescript/examples/accounts-inspection/README.md) Flow with the static `plaid` connection. Go-recorded conformance checks requests, branches, retries, and outputs across all three languages. Local integration tests exercise real Dex with fixture providers. Real Plaid authorization and account retrieval remain unverified.
+Run the [Go](go/examples/accounts-inspection/README.md), [Python](python/examples/accounts_inspection/README.md), or [TypeScript](typescript/examples/accounts-inspection/README.md) Flow with the static `plaid` connection. The Go example also reads the Item after the accounts; `removeItem` is an explicit offboarding action that invalidates this connection's access token and should be placed in its own Flow when needed. Go-recorded conformance checks requests, branches, retries, and outputs; unchanged language packages replay their declared `getAccounts` scenarios. Local integration tests exercise real Dex with fixture providers. Real Plaid authorization, account retrieval, and removal remain unverified.

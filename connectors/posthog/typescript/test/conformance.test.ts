@@ -10,7 +10,7 @@ import {
   type Scenario,
 } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/posthog/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/posthog/scenarios.json', import.meta.url)).filter(scenario => ['captureEvent', 'listInsights'].includes(scenario.operation));
 const connection = { provider: 'posthog', name: 'posthog' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePostHog));
 

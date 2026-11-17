@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted posthog connection. Script each operation through its accessor.
 type Mock struct {
-	connection   posthog.Connection
-	captureEvent *connectormock.Mutation[posthog.CaptureEventInput, posthog.CapturedEvent]
-	listInsights *connectormock.Query[posthog.ListInsightsInput, posthog.InsightsPage]
+	connection      posthog.Connection
+	createAlias     *connectormock.Mutation[posthog.CreateAliasInput, posthog.CapturedEvent]
+	identifyPerson  *connectormock.Mutation[posthog.IdentifyPersonInput, posthog.CapturedEvent]
+	trackPageView   *connectormock.Mutation[posthog.TrackPageViewInput, posthog.CapturedEvent]
+	trackScreenView *connectormock.Mutation[posthog.TrackScreenViewInput, posthog.CapturedEvent]
+	captureEvent    *connectormock.Mutation[posthog.CaptureEventInput, posthog.CapturedEvent]
+	listInsights    *connectormock.Query[posthog.ListInsightsInput, posthog.InsightsPage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +31,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		captureEvent: connectormock.NewMutation[posthog.CaptureEventInput, posthog.CapturedEvent](t, posthog.CaptureEventDefinition),
-		listInsights: connectormock.NewQuery[posthog.ListInsightsInput, posthog.InsightsPage](t, posthog.ListInsightsDefinition),
+		createAlias:     connectormock.NewMutation[posthog.CreateAliasInput, posthog.CapturedEvent](t, posthog.CreateAliasDefinition),
+		identifyPerson:  connectormock.NewMutation[posthog.IdentifyPersonInput, posthog.CapturedEvent](t, posthog.IdentifyPersonDefinition),
+		trackPageView:   connectormock.NewMutation[posthog.TrackPageViewInput, posthog.CapturedEvent](t, posthog.TrackPageViewDefinition),
+		trackScreenView: connectormock.NewMutation[posthog.TrackScreenViewInput, posthog.CapturedEvent](t, posthog.TrackScreenViewDefinition),
+		captureEvent:    connectormock.NewMutation[posthog.CaptureEventInput, posthog.CapturedEvent](t, posthog.CaptureEventDefinition),
+		listInsights:    connectormock.NewQuery[posthog.ListInsightsInput, posthog.InsightsPage](t, posthog.ListInsightsDefinition),
 	}
+	mock.createAlias.Default(CreateAliasDefault())
+	mock.identifyPerson.Default(IdentifyPersonDefault())
+	mock.trackPageView.Default(TrackPageViewDefault())
+	mock.trackScreenView.Default(TrackScreenViewDefault())
 	mock.captureEvent.Default(CaptureEventDefault())
 	mock.listInsights.Default(ListInsightsDefault())
 	connection, err := posthog.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "posthog", Name: connectionName})
@@ -43,6 +55,26 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() posthog.Connection { return mock.connection }
 
+// CreateAlias returns the createAlias script.
+func (mock *Mock) CreateAlias() *connectormock.Mutation[posthog.CreateAliasInput, posthog.CapturedEvent] {
+	return mock.createAlias
+}
+
+// IdentifyPerson returns the identifyPerson script.
+func (mock *Mock) IdentifyPerson() *connectormock.Mutation[posthog.IdentifyPersonInput, posthog.CapturedEvent] {
+	return mock.identifyPerson
+}
+
+// TrackPageView returns the trackPageView script.
+func (mock *Mock) TrackPageView() *connectormock.Mutation[posthog.TrackPageViewInput, posthog.CapturedEvent] {
+	return mock.trackPageView
+}
+
+// TrackScreenView returns the trackScreenView script.
+func (mock *Mock) TrackScreenView() *connectormock.Mutation[posthog.TrackScreenViewInput, posthog.CapturedEvent] {
+	return mock.trackScreenView
+}
+
 // CaptureEvent returns the captureEvent script.
 func (mock *Mock) CaptureEvent() *connectormock.Mutation[posthog.CaptureEventInput, posthog.CapturedEvent] {
 	return mock.captureEvent
@@ -55,11 +87,167 @@ func (mock *Mock) ListInsights() *connectormock.Query[posthog.ListInsightsInput,
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateAlias() sdkgo.Mutation[posthog.CreateAliasInput, posthog.CapturedEvent] {
+	return operations.mock.createAlias
+}
+func (operations mockOperations) IdentifyPerson() sdkgo.Mutation[posthog.IdentifyPersonInput, posthog.CapturedEvent] {
+	return operations.mock.identifyPerson
+}
+func (operations mockOperations) TrackPageView() sdkgo.Mutation[posthog.TrackPageViewInput, posthog.CapturedEvent] {
+	return operations.mock.trackPageView
+}
+func (operations mockOperations) TrackScreenView() sdkgo.Mutation[posthog.TrackScreenViewInput, posthog.CapturedEvent] {
+	return operations.mock.trackScreenView
+}
 func (operations mockOperations) CaptureEvent() sdkgo.Mutation[posthog.CaptureEventInput, posthog.CapturedEvent] {
 	return operations.mock.captureEvent
 }
 func (operations mockOperations) ListInsights() sdkgo.Query[posthog.ListInsightsInput, posthog.InsightsPage] {
 	return operations.mock.listInsights
+}
+
+// CreateAliasAccepted selects the accepted branch: PostHog accepted the alias event for processing.
+func CreateAliasAccepted(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.CreateAliasBranchAccepted, value, failure)
+}
+
+// CreateAliasQuotaLimited selects the quotaLimited branch: PostHog reported an event quota limit.
+func CreateAliasQuotaLimited(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.CreateAliasBranchQuotaLimited, value, failure)
+}
+
+// CreateAliasProviderRejected selects the providerRejected branch: PostHog conclusively rejected the alias event.
+func CreateAliasProviderRejected(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.CreateAliasBranchProviderRejected, value, failure)
+}
+
+// CreateAliasDefect selects the defect branch: Alias input or project token is invalid.
+func CreateAliasDefect(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.CreateAliasBranchDefect, value, failure)
+}
+
+// CreateAliasRetry asks Dex to retry the createAlias Step, after the delay when it is positive.
+func CreateAliasRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Retry[posthog.CapturedEvent](failure, after)
+}
+
+// CreateAliasAcceptedDefault is the manifest mock acceptedDefault: One alias event was accepted.
+func CreateAliasAcceptedDefault() connectormock.Case[posthog.CapturedEvent] {
+	value := connectormock.MustDecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
+	return connectormock.Branch(posthog.CreateAliasBranchAccepted, value, nil)
+}
+
+// CreateAliasDefault is the manifest default, acceptedDefault, which New installs.
+func CreateAliasDefault() connectormock.Case[posthog.CapturedEvent] {
+	return CreateAliasAcceptedDefault()
+}
+
+// IdentifyPersonAccepted selects the accepted branch: PostHog accepted the identify event for processing.
+func IdentifyPersonAccepted(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.IdentifyPersonBranchAccepted, value, failure)
+}
+
+// IdentifyPersonQuotaLimited selects the quotaLimited branch: PostHog reported an event quota limit.
+func IdentifyPersonQuotaLimited(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.IdentifyPersonBranchQuotaLimited, value, failure)
+}
+
+// IdentifyPersonProviderRejected selects the providerRejected branch: PostHog conclusively rejected the identify event.
+func IdentifyPersonProviderRejected(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.IdentifyPersonBranchProviderRejected, value, failure)
+}
+
+// IdentifyPersonDefect selects the defect branch: Person input or project token is invalid.
+func IdentifyPersonDefect(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.IdentifyPersonBranchDefect, value, failure)
+}
+
+// IdentifyPersonRetry asks Dex to retry the identifyPerson Step, after the delay when it is positive.
+func IdentifyPersonRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Retry[posthog.CapturedEvent](failure, after)
+}
+
+// IdentifyPersonAcceptedDefault is the manifest mock acceptedDefault: One identify event was accepted.
+func IdentifyPersonAcceptedDefault() connectormock.Case[posthog.CapturedEvent] {
+	value := connectormock.MustDecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
+	return connectormock.Branch(posthog.IdentifyPersonBranchAccepted, value, nil)
+}
+
+// IdentifyPersonDefault is the manifest default, acceptedDefault, which New installs.
+func IdentifyPersonDefault() connectormock.Case[posthog.CapturedEvent] {
+	return IdentifyPersonAcceptedDefault()
+}
+
+// TrackPageViewAccepted selects the accepted branch: PostHog accepted the page view for processing.
+func TrackPageViewAccepted(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.TrackPageViewBranchAccepted, value, failure)
+}
+
+// TrackPageViewQuotaLimited selects the quotaLimited branch: PostHog reported an event quota limit.
+func TrackPageViewQuotaLimited(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.TrackPageViewBranchQuotaLimited, value, failure)
+}
+
+// TrackPageViewProviderRejected selects the providerRejected branch: PostHog conclusively rejected the page view.
+func TrackPageViewProviderRejected(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.TrackPageViewBranchProviderRejected, value, failure)
+}
+
+// TrackPageViewDefect selects the defect branch: Page view input or project token is invalid.
+func TrackPageViewDefect(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.TrackPageViewBranchDefect, value, failure)
+}
+
+// TrackPageViewRetry asks Dex to retry the trackPageView Step, after the delay when it is positive.
+func TrackPageViewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Retry[posthog.CapturedEvent](failure, after)
+}
+
+// TrackPageViewAcceptedDefault is the manifest mock acceptedDefault: One page view was accepted.
+func TrackPageViewAcceptedDefault() connectormock.Case[posthog.CapturedEvent] {
+	value := connectormock.MustDecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
+	return connectormock.Branch(posthog.TrackPageViewBranchAccepted, value, nil)
+}
+
+// TrackPageViewDefault is the manifest default, acceptedDefault, which New installs.
+func TrackPageViewDefault() connectormock.Case[posthog.CapturedEvent] {
+	return TrackPageViewAcceptedDefault()
+}
+
+// TrackScreenViewAccepted selects the accepted branch: PostHog accepted the screen view for processing.
+func TrackScreenViewAccepted(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.TrackScreenViewBranchAccepted, value, failure)
+}
+
+// TrackScreenViewQuotaLimited selects the quotaLimited branch: PostHog reported an event quota limit.
+func TrackScreenViewQuotaLimited(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.TrackScreenViewBranchQuotaLimited, value, failure)
+}
+
+// TrackScreenViewProviderRejected selects the providerRejected branch: PostHog conclusively rejected the screen view.
+func TrackScreenViewProviderRejected(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.TrackScreenViewBranchProviderRejected, value, failure)
+}
+
+// TrackScreenViewDefect selects the defect branch: Screen view input or project token is invalid.
+func TrackScreenViewDefect(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Branch(posthog.TrackScreenViewBranchDefect, value, failure)
+}
+
+// TrackScreenViewRetry asks Dex to retry the trackScreenView Step, after the delay when it is positive.
+func TrackScreenViewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[posthog.CapturedEvent] {
+	return connectormock.Retry[posthog.CapturedEvent](failure, after)
+}
+
+// TrackScreenViewAcceptedDefault is the manifest mock acceptedDefault: One screen view was accepted.
+func TrackScreenViewAcceptedDefault() connectormock.Case[posthog.CapturedEvent] {
+	value := connectormock.MustDecodeOutput[posthog.CapturedEvent](`{"eventId":"4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed","accepted":true}`)
+	return connectormock.Branch(posthog.TrackScreenViewBranchAccepted, value, nil)
+}
+
+// TrackScreenViewDefault is the manifest default, acceptedDefault, which New installs.
+func TrackScreenViewDefault() connectormock.Case[posthog.CapturedEvent] {
+	return TrackScreenViewAcceptedDefault()
 }
 
 // CaptureEventAccepted selects the accepted branch: PostHog accepted the event for processing, without confirming ingestion.

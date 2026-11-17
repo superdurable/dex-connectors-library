@@ -1,6 +1,6 @@
 # Plaid accounts inspection Flow
 
-This runnable Flow calls `getAccounts` through the static `plaid` connection. It persists the selected account routing summaries in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Flow calls `getAccounts` and then `getItem` through the static `plaid` connection. It persists the selected account routing summaries in an Attribute and exposes them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 

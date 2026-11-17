@@ -8,7 +8,7 @@ import { PinterestClient } from '../src/client.js';
 import { ListPinsInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, loadScenarios, replay, type ExchangeRecorder, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/pinterest/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/pinterest/scenarios.json', import.meta.url)).filter(scenario => scenario.operation === 'listPins');
 const connection = { provider: 'pinterest', name: 'pinterest' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokePinterest, ''));
 

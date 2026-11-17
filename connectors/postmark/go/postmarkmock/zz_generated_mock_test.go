@@ -24,6 +24,74 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[postmark.MessageDetails](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","subject":"Welcome","status":"Sent"}`)
 			return err
 		}},
+		{name: "sendEmail/sendEmailDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
+			return err
+		}},
+		{name: "listTemplates/listTemplatesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.TemplatePage](`{"totalCount":1,"templates":[{"templateId":1234,"name":"Welcome","alias":"welcome-v1","active":true}]}`)
+			return err
+		}},
+		{name: "getTemplate/getTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome","alias":"welcome-v1","active":true}`)
+			return err
+		}},
+		{name: "createTemplate/createTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome","alias":"dex-1234","active":true}`)
+			return err
+		}},
+		{name: "updateTemplate/updateTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Template](`{"templateId":1234,"name":"Welcome revised","alias":"welcome-v1","active":true}`)
+			return err
+		}},
+		{name: "deleteTemplate/deleteTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.DeletedTemplate](`{"deleted":true}`)
+			return err
+		}},
+		{name: "listBounces/listBouncesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.BouncePage](`{"totalCount":1,"bounces":[{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":true,"canActivate":true}]}`)
+			return err
+		}},
+		{name: "getBounce/getBounceDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":true,"canActivate":true}`)
+			return err
+		}},
+		{name: "activateBounce/activateBounceDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.Bounce](`{"id":692560173,"type":"HardBounce","email":"recipient@example.com","inactive":false,"canActivate":true}`)
+			return err
+		}},
+		{name: "listSuppressions/listSuppressionsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SuppressionPage](`{"suppressions":[{"emailAddress":"recipient@example.com","suppressionReason":"ManualSuppression","origin":"Customer"}]}`)
+			return err
+		}},
+		{name: "createSuppression/createSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Suppressed"}`)
+			return err
+		}},
+		{name: "deleteSuppression/deleteSuppressionDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SuppressionAction](`{"emailAddress":"recipient@example.com","status":"Deleted"}`)
+			return err
+		}},
+		{name: "sendEmailWithTemplate/sendEmailWithTemplateDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.SentEmail](`{"messageId":"0ac29aee-e1cd-480d-b08d-4f48548ff48d","to":"recipient@example.com"}`)
+			return err
+		}},
+		{name: "listInboundMessages/listInboundMessagesDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.InboundMessagePage](`{"totalCount":1,"inboundMessages":[{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","from":"sender@example.com","to":"inbox@example.com","subject":"Request","status":"Processed"}]}`)
+			return err
+		}},
+		{name: "getInboundMessageDetails/getInboundMessageDetailsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.InboundMessage](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","from":"sender@example.com","to":"inbox@example.com","subject":"Request","status":"Processed"}`)
+			return err
+		}},
+		{name: "bypassInboundMessage/bypassInboundMessageDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.InboundMessageAction](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","accepted":true}`)
+			return err
+		}},
+		{name: "retryInboundMessage/retryInboundMessageDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[postmark.InboundMessageAction](`{"messageId":"cc5727a0-ea30-4e79-baea-aa43c9628ac4","accepted":true}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +107,56 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetMessageDetails().Definition().Operation.OperationID != "getMessageDetails" {
 		t.Errorf("getMessageDetails mock has another definition")
+	}
+	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
+		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.ListTemplates().Definition().Operation.OperationID != "listTemplates" {
+		t.Errorf("listTemplates mock has another definition")
+	}
+	if mock.GetTemplate().Definition().Operation.OperationID != "getTemplate" {
+		t.Errorf("getTemplate mock has another definition")
+	}
+	if mock.CreateTemplate().Definition().Operation.OperationID != "createTemplate" {
+		t.Errorf("createTemplate mock has another definition")
+	}
+	if mock.UpdateTemplate().Definition().Operation.OperationID != "updateTemplate" {
+		t.Errorf("updateTemplate mock has another definition")
+	}
+	if mock.DeleteTemplate().Definition().Operation.OperationID != "deleteTemplate" {
+		t.Errorf("deleteTemplate mock has another definition")
+	}
+	if mock.ListBounces().Definition().Operation.OperationID != "listBounces" {
+		t.Errorf("listBounces mock has another definition")
+	}
+	if mock.GetBounce().Definition().Operation.OperationID != "getBounce" {
+		t.Errorf("getBounce mock has another definition")
+	}
+	if mock.ActivateBounce().Definition().Operation.OperationID != "activateBounce" {
+		t.Errorf("activateBounce mock has another definition")
+	}
+	if mock.ListSuppressions().Definition().Operation.OperationID != "listSuppressions" {
+		t.Errorf("listSuppressions mock has another definition")
+	}
+	if mock.CreateSuppression().Definition().Operation.OperationID != "createSuppression" {
+		t.Errorf("createSuppression mock has another definition")
+	}
+	if mock.DeleteSuppression().Definition().Operation.OperationID != "deleteSuppression" {
+		t.Errorf("deleteSuppression mock has another definition")
+	}
+	if mock.SendEmailWithTemplate().Definition().Operation.OperationID != "sendEmailWithTemplate" {
+		t.Errorf("sendEmailWithTemplate mock has another definition")
+	}
+	if mock.ListInboundMessages().Definition().Operation.OperationID != "listInboundMessages" {
+		t.Errorf("listInboundMessages mock has another definition")
+	}
+	if mock.GetInboundMessageDetails().Definition().Operation.OperationID != "getInboundMessageDetails" {
+		t.Errorf("getInboundMessageDetails mock has another definition")
+	}
+	if mock.BypassInboundMessage().Definition().Operation.OperationID != "bypassInboundMessage" {
+		t.Errorf("bypassInboundMessage mock has another definition")
+	}
+	if mock.RetryInboundMessage().Definition().Operation.OperationID != "retryInboundMessage" {
+		t.Errorf("retryInboundMessage mock has another definition")
 	}
 }

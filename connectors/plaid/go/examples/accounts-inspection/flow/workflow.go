@@ -18,6 +18,7 @@ const (
 	// ConnectionName is the static Dex Web connection used by this example.
 	ConnectionName    = "plaid"
 	operationStepType = "CallGetAccounts"
+	itemStepType      = "CallGetItem"
 )
 
 var accountsAttribute = dex.DefineAttribute[plaid.AccountsSnapshot]("plaid-accounts")
@@ -45,6 +46,14 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Plaid", Explanation: "Read linked accounts from Plaid."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
+			Found:               sdkgo.GoTo(saveAccounts{}),
+		})),
+		dex.DefineStep(saveAccounts{}),
+		dex.DefineStep(plaid.NewGetItemStep(plaid.GetItemStepConfig[plaid.GetItemInput]{
+			StepType: itemStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Plaid", Explanation: "Read the identity of the linked Plaid Item."},
+			Connection:          flow.connection,
+			MapToOperationInput: func(input plaid.GetItemInput) plaid.GetItemInput { return input },
 			Found:               sdkgo.GoTo(completeResult{}),
 		})),
 		dex.DefineStep(completeResult{}),
@@ -103,17 +112,32 @@ func (startRequest) Execute(_ dex.Context, input plaid.GetAccountsInput) (*dex.S
 }
 
 // dex:group group-id:result group-label:"Result"
-// dex:explanation text:"Complete the Flow with the provider's typed result."
-type completeResult struct {
+// dex:explanation text:"Save the account summary before reading the linked Item."
+type saveAccounts struct {
 	dex.StepDefaultsNoWaitFor[plaid.GetAccountsResult]
 }
 
-func (completeResult) GetStepType() string { return "CompleteGetAccounts" }
-func (completeResult) Execute(ctx dex.Context, result plaid.GetAccountsResult) (*dex.StepDecision, error) {
+func (saveAccounts) GetStepType() string { return "SaveGetAccounts" }
+func (saveAccounts) Execute(ctx dex.Context, result plaid.GetAccountsResult) (*dex.StepDecision, error) {
 	if err := accountsAttribute.Set(ctx, result.Value); err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(result.Value), nil
+	return dex.GoTo(sdkgo.StepRef[plaid.GetItemInput](itemStepType), plaid.GetItemInput{}), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete after the Item read, retaining the account summary as the Flow result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[plaid.GetItemResult]
+}
+
+func (completeResult) GetStepType() string { return "CompleteGetAccounts" }
+func (completeResult) Execute(ctx dex.Context, _ plaid.GetItemResult) (*dex.StepDecision, error) {
+	accounts, err := accountsAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(accounts), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

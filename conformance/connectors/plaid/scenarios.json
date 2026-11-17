@@ -440,6 +440,569 @@
       },
       "name": "getAccounts-invalidAccessTokenError",
       "operation": "getAccounts"
+    },
+    {
+      "callId": "60000000-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"item\":{\"item_id\":\"item_123456\",\"institution_id\":\"ins_109508\",\"products\":[\"auth\"]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "institutionId": "ins_109508",
+          "itemId": "item_123456",
+          "products": [
+            "auth"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getItem-found",
+      "operation": "getItem"
+    },
+    {
+      "callId": "60000000-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{\"error_type\":\"ITEM_ERROR\",\"error_code\":\"ITEM_NOT_FOUND\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "itemId": "",
+          "products": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getItem-notFound",
+      "operation": "getItem"
+    },
+    {
+      "callId": "60000000-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "itemId": "",
+          "products": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getItem-providerRejected",
+      "operation": "getItem"
+    },
+    {
+      "callId": "60000000-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{\"item\":{\"item_id\":\"bad id\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "itemId": "",
+          "products": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getItem-invalidResponse",
+      "operation": "getItem"
+    },
+    {
+      "callId": "60000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getItem-final429",
+      "operation": "getItem"
+    },
+    {
+      "callId": "60000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getItem-final503",
+      "operation": "getItem"
+    },
+    {
+      "callId": "60000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getItem-transportFailure",
+      "operation": "getItem"
+    },
+    {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "body": "{\"request_id\":\"example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "removed": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-removed",
+      "operation": "removeItem"
+    },
+    {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "body": "{\"error_type\":\"ITEM_ERROR\",\"error_code\":\"ITEM_NOT_FOUND\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "removed": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-alreadyAbsent",
+      "operation": "removeItem"
+    },
+    {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "removed": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-providerRejected",
+      "operation": "removeItem"
+    },
+    {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-final429",
+      "operation": "removeItem"
+    },
+    {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-final503",
+      "operation": "removeItem"
+    },
+    {
+      "callId": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/item/remove",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c61f62d4-7350-5798-b1b9-50e548e0dae0",
+      "input": {},
+      "name": "removeItem-transportFailure",
+      "operation": "removeItem"
     }
   ],
   "schemaVersion": 1
