@@ -48,7 +48,7 @@ mkdir -p /tmp/todoist-release
 GOWORK=off go run ./cmd/connectorctl release-artifact \
   --manifest connectors/doist/todoist/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go \
-  --version v0.4.0 --tag connectors/doist/todoist/go/v0.4.0 \
+  --version v0.4.1 --tag connectors/doist/todoist/go/v0.4.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/todoist-release/connector-release.json \
   --digest-output /tmp/todoist-release/connector-release.json.sha256
@@ -115,7 +115,8 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 It verifies read-only listing makes no writes, the complete lifecycle, a
 rate-limited or unavailable create that retries with the same provider request identity,
 multi-page verification, deletion that applies before a 503 and then returns
-404 on retry, a lost create response that remains uncertain, a create answer
+404 on retry, lost create responses that resend the same request ID up to the
+send cap of 3 and then remain uncertain, a create answer
 with only a task ID that the connector confirms by reading it, invalid input,
 description-only updates, clearing a description, updating both fields,
 read/update retry, a credential read that fails once and then retries,
