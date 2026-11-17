@@ -40,6 +40,10 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListMeetings() sdkgo.Query[ListMeetingsInput, MeetingPage]
+	GetMeeting() sdkgo.Query[GetMeetingInput, MeetingActivity]
+	UpdateMeeting() sdkgo.Mutation[UpdateMeetingInput, MeetingActivity]
+	DeleteMeeting() sdkgo.Mutation[DeleteMeetingInput, DeletedMeeting]
 	ListSMS() sdkgo.Query[ListSMSInput, SMSPage]
 	GetSMS() sdkgo.Query[GetSMSInput, SMSActivity]
 	CreateSMS() sdkgo.Mutation[CreateSMSInput, SMSActivity]
@@ -84,6 +88,18 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListMeetings() sdkgo.Query[ListMeetingsInput, MeetingPage] {
+	return operations.client.ListMeetings()
+}
+func (operations clientOperations) GetMeeting() sdkgo.Query[GetMeetingInput, MeetingActivity] {
+	return operations.client.GetMeeting()
+}
+func (operations clientOperations) UpdateMeeting() sdkgo.Mutation[UpdateMeetingInput, MeetingActivity] {
+	return operations.client.UpdateMeeting()
+}
+func (operations clientOperations) DeleteMeeting() sdkgo.Mutation[DeleteMeetingInput, DeletedMeeting] {
+	return operations.client.DeleteMeeting()
+}
 func (operations clientOperations) ListSMS() sdkgo.Query[ListSMSInput, SMSPage] {
 	return operations.client.ListSMS()
 }
@@ -340,6 +356,304 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListMeetingsBranchListed sdkgo.BranchID = "listed"
+const ListMeetingsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListMeetingsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListMeetingsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListMeetingsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listMeetings"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListMeetingsBranchListed, Description: "Close returned the listMeetings result."},
+		{ID: ListMeetingsBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: ListMeetingsBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: ListMeetingsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListMeetingsResult = sdkgo.QueryResult[MeetingPage]
+
+type ListMeetingsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=close"`
+	operationID                    struct{}                                       `connector:"operationId=listMeetings"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListMeetingsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListMeetingsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListMeetingsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListMeetingsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListMeetingsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MeetingPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewListMeetingsStep[IN any](config ListMeetingsStepConfig[IN]) sdkgo.QueryStep[IN, ListMeetingsInput, MeetingPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListMeetingsInput, MeetingPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListMeetings(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListMeetingsResult] {
+			branches := make([]sdkgo.BranchTarget[ListMeetingsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListMeetingsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListMeetingsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListMeetingsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListMeetingsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetMeetingBranchFound sdkgo.BranchID = "found"
+const GetMeetingBranchNotFound sdkgo.BranchID = "notFound"
+const GetMeetingBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetMeetingBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetMeetingBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetMeetingDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getMeeting"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetMeetingBranchFound, Description: "Close returned the getMeeting result."},
+		{ID: GetMeetingBranchNotFound, Description: "The meeting activity does not exist.", Optional: true},
+		{ID: GetMeetingBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: GetMeetingBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: GetMeetingBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetMeetingResult = sdkgo.QueryResult[MeetingActivity]
+
+type GetMeetingStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=close"`
+	operationID                    struct{}                                           `connector:"operationId=getMeeting"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetMeetingInput                           `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetMeetingResult]                     `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetMeetingResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetMeetingResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetMeetingResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetMeetingResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[MeetingActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewGetMeetingStep[IN any](config GetMeetingStepConfig[IN]) sdkgo.QueryStep[IN, GetMeetingInput, MeetingActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetMeetingInput, MeetingActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetMeeting(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetMeetingResult] {
+			branches := make([]sdkgo.BranchTarget[GetMeetingResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetMeetingBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetMeetingBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetMeetingBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetMeetingBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetMeetingBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateMeetingBranchUpdated sdkgo.BranchID = "updated"
+const UpdateMeetingBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateMeetingBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateMeetingBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateMeetingBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateMeetingDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateMeeting"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateMeetingBranchUpdated, Description: "Close returned the updateMeeting result."},
+		{ID: UpdateMeetingBranchNotFound, Description: "The meeting activity does not exist.", Optional: true},
+		{ID: UpdateMeetingBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: UpdateMeetingBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateMeetingBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateMeetingResult = sdkgo.MutationResult[MeetingActivity]
+
+type UpdateMeetingStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=close"`
+	operationID                       struct{}                                              `connector:"operationId=updateMeeting"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateMeetingInput                           `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateMeetingResult]                     `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateMeetingResult]                     `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateMeetingResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateMeetingResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateMeetingResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[MeetingActivity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateMeetingStep[IN any](config UpdateMeetingStepConfig[IN]) sdkgo.MutationStep[IN, UpdateMeetingInput, MeetingActivity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateMeetingInput, MeetingActivity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateMeeting(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateMeetingResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateMeetingResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateMeetingBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateMeetingBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateMeetingBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateMeetingBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateMeetingBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteMeetingBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteMeetingBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteMeetingBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteMeetingBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteMeetingDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteMeeting"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteMeetingBranchDeleted, Description: "Close returned the deleteMeeting result."},
+		{ID: DeleteMeetingBranchProviderRejected, Description: "Close conclusively rejected the request.", Optional: true},
+		{ID: DeleteMeetingBranchInvalidResponse, Description: "Close returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteMeetingBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteMeetingResult = sdkgo.MutationResult[DeletedMeeting]
+
+type DeleteMeetingStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                             `connector:"connectorId=close"`
+	operationID                       struct{}                                             `connector:"operationId=deleteMeeting"`
+	StepType                          string                                               `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                        Connection                                           `connector:"connection"`
+	ConnectionName                    string                                               `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteMeetingInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteMeetingResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteMeetingResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteMeetingResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteMeetingResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedMeeting]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteMeetingStep[IN any](config DeleteMeetingStepConfig[IN]) sdkgo.MutationStep[IN, DeleteMeetingInput, DeletedMeeting] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("close connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteMeetingInput, DeletedMeeting]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteMeeting(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteMeetingResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteMeetingResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteMeetingBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteMeetingBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteMeetingBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteMeetingBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListSMSBranchListed sdkgo.BranchID = "listed"

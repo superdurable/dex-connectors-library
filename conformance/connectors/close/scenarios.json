@@ -13905,6 +13905,1235 @@
       },
       "name": "deleteSMS-transportFailure",
       "operation": "deleteSMS"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"acti_meeting_meridian1\",\"lead_id\":\"lead_meridian1\",\"title\":\"Review\",\"status\":\"completed\",\"starts_at\":\"2026-11-16T12:00:00Z\",\"ends_at\":\"2026-11-16T13:00:00Z\",\"user_note_html\":\"\u003cp\u003eFollow-up\u003c/p\u003e\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "meetings": [
+            {
+              "endsAt": "2026-11-16T13:00:00Z",
+              "id": "acti_meeting_meridian1",
+              "leadId": "lead_meridian1",
+              "startsAt": "2026-11-16T12:00:00Z",
+              "status": "completed",
+              "title": "Review",
+              "userNoteHTML": "\u003cp\u003eFollow-up\u003c/p\u003e"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listMeetings-listed",
+      "operation": "listMeetings"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "meetings": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listMeetings-providerRejected",
+      "operation": "listMeetings"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "meetings": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listMeetings-invalidResponse",
+      "operation": "listMeetings"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "meetings": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "bad"
+      },
+      "name": "listMeetings-defect",
+      "operation": "listMeetings"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listMeetings-rateLimit",
+      "operation": "listMeetings"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listMeetings-serverUnavailable",
+      "operation": "listMeetings"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listMeetings-transportFailure",
+      "operation": "listMeetings"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_meeting_meridian1\",\"lead_id\":\"lead_meridian1\",\"title\":\"Review\",\"status\":\"completed\",\"starts_at\":\"2026-11-16T12:00:00Z\",\"ends_at\":\"2026-11-16T13:00:00Z\",\"user_note_html\":\"\u003cp\u003eFollow-up\u003c/p\u003e\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "endsAt": "2026-11-16T13:00:00Z",
+          "id": "acti_meeting_meridian1",
+          "leadId": "lead_meridian1",
+          "startsAt": "2026-11-16T12:00:00Z",
+          "status": "completed",
+          "title": "Review",
+          "userNoteHTML": "\u003cp\u003eFollow-up\u003c/p\u003e"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "getMeeting-found",
+      "operation": "getMeeting"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "leadId": "",
+          "startsAt": "",
+          "status": "",
+          "title": "",
+          "userNoteHTML": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "getMeeting-notFound",
+      "operation": "getMeeting"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "leadId": "",
+          "startsAt": "",
+          "status": "",
+          "title": "",
+          "userNoteHTML": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "getMeeting-providerRejected",
+      "operation": "getMeeting"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "leadId": "",
+          "startsAt": "",
+          "status": "",
+          "title": "",
+          "userNoteHTML": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "getMeeting-invalidResponse",
+      "operation": "getMeeting"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "leadId": "",
+          "startsAt": "",
+          "status": "",
+          "title": "",
+          "userNoteHTML": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "meetingId": "bad"
+      },
+      "name": "getMeeting-defect",
+      "operation": "getMeeting"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "getMeeting-rateLimit",
+      "operation": "getMeeting"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "getMeeting-serverUnavailable",
+      "operation": "getMeeting"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "getMeeting-transportFailure",
+      "operation": "getMeeting"
+    },
+    {
+      "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_meeting_meridian1\",\"lead_id\":\"lead_meridian1\",\"title\":\"Review\",\"status\":\"completed\",\"starts_at\":\"2026-11-16T12:00:00Z\",\"ends_at\":\"2026-11-16T13:00:00Z\",\"user_note_html\":\"\u003cp\u003eUpdated\u003c/p\u003e\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestBody": {
+            "outcome_id": "outcome_meridian1",
+            "user_note_html": "\u003cp\u003eUpdated\u003c/p\u003e"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "endsAt": "2026-11-16T13:00:00Z",
+          "id": "acti_meeting_meridian1",
+          "leadId": "lead_meridian1",
+          "startsAt": "2026-11-16T12:00:00Z",
+          "status": "completed",
+          "title": "Review",
+          "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "input": {
+        "meetingId": "acti_meeting_meridian1",
+        "outcomeId": "outcome_meridian1",
+        "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+      },
+      "name": "updateMeeting-updated",
+      "operation": "updateMeeting"
+    },
+    {
+      "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestBody": {
+            "outcome_id": "outcome_meridian1",
+            "user_note_html": "\u003cp\u003eUpdated\u003c/p\u003e"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "leadId": "",
+          "startsAt": "",
+          "status": "",
+          "title": "",
+          "userNoteHTML": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "input": {
+        "meetingId": "acti_meeting_meridian1",
+        "outcomeId": "outcome_meridian1",
+        "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+      },
+      "name": "updateMeeting-notFound",
+      "operation": "updateMeeting"
+    },
+    {
+      "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestBody": {
+            "outcome_id": "outcome_meridian1",
+            "user_note_html": "\u003cp\u003eUpdated\u003c/p\u003e"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "leadId": "",
+          "startsAt": "",
+          "status": "",
+          "title": "",
+          "userNoteHTML": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "input": {
+        "meetingId": "acti_meeting_meridian1",
+        "outcomeId": "outcome_meridian1",
+        "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+      },
+      "name": "updateMeeting-providerRejected",
+      "operation": "updateMeeting"
+    },
+    {
+      "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestBody": {
+            "outcome_id": "outcome_meridian1",
+            "user_note_html": "\u003cp\u003eUpdated\u003c/p\u003e"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "leadId": "",
+          "startsAt": "",
+          "status": "",
+          "title": "",
+          "userNoteHTML": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "input": {
+        "meetingId": "acti_meeting_meridian1",
+        "outcomeId": "outcome_meridian1",
+        "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+      },
+      "name": "updateMeeting-invalidResponse",
+      "operation": "updateMeeting"
+    },
+    {
+      "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endsAt": "",
+          "id": "",
+          "leadId": "",
+          "startsAt": "",
+          "status": "",
+          "title": "",
+          "userNoteHTML": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "input": {
+        "meetingId": "bad",
+        "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+      },
+      "name": "updateMeeting-defect",
+      "operation": "updateMeeting"
+    },
+    {
+      "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestBody": {
+            "outcome_id": "outcome_meridian1",
+            "user_note_html": "\u003cp\u003eUpdated\u003c/p\u003e"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "input": {
+        "meetingId": "acti_meeting_meridian1",
+        "outcomeId": "outcome_meridian1",
+        "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+      },
+      "name": "updateMeeting-rateLimit",
+      "operation": "updateMeeting"
+    },
+    {
+      "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestBody": {
+            "outcome_id": "outcome_meridian1",
+            "user_note_html": "\u003cp\u003eUpdated\u003c/p\u003e"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "input": {
+        "meetingId": "acti_meeting_meridian1",
+        "outcomeId": "outcome_meridian1",
+        "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+      },
+      "name": "updateMeeting-serverUnavailable",
+      "operation": "updateMeeting"
+    },
+    {
+      "callId": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestBody": {
+            "outcome_id": "outcome_meridian1",
+            "user_note_html": "\u003cp\u003eUpdated\u003c/p\u003e"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b048d3d2-703a-58ec-8f48-ce39d7d0f4ad",
+      "input": {
+        "meetingId": "acti_meeting_meridian1",
+        "outcomeId": "outcome_meridian1",
+        "userNoteHTML": "\u003cp\u003eUpdated\u003c/p\u003e"
+      },
+      "name": "updateMeeting-transportFailure",
+      "operation": "updateMeeting"
+    },
+    {
+      "callId": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "meetingId": "acti_meeting_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "deleteMeeting-deleted",
+      "operation": "deleteMeeting"
+    },
+    {
+      "callId": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "meetingId": "acti_meeting_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "deleteMeeting-alreadyDeleted",
+      "operation": "deleteMeeting"
+    },
+    {
+      "callId": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "meetingId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "deleteMeeting-providerRejected",
+      "operation": "deleteMeeting"
+    },
+    {
+      "callId": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "meetingId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "input": {
+        "meetingId": "bad"
+      },
+      "name": "deleteMeeting-defect",
+      "operation": "deleteMeeting"
+    },
+    {
+      "callId": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "deleteMeeting-rateLimit",
+      "operation": "deleteMeeting"
+    },
+    {
+      "callId": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "deleteMeeting-serverUnavailable",
+      "operation": "deleteMeeting"
+    },
+    {
+      "callId": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/meeting/acti_meeting_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "deb93616-8673-51bc-bfd9-b6bdc2e4d5bf",
+      "input": {
+        "meetingId": "acti_meeting_meridian1"
+      },
+      "name": "deleteMeeting-transportFailure",
+      "operation": "deleteMeeting"
     }
   ],
   "schemaVersion": 1

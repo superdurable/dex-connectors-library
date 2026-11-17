@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listMeetings/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.MeetingPage](`{"meetings":[{"id":"acti_meeting_meridian1","leadId":"lead_meridian1","title":"Review","status":"completed"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getMeeting/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.MeetingActivity](`{"id":"acti_meeting_meridian1","leadId":"lead_meridian1","title":"Review","status":"completed"}`)
+			return err
+		}},
+		{name: "updateMeeting/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.MeetingActivity](`{"id":"acti_meeting_meridian1","leadId":"lead_meridian1","title":"Review","status":"completed","userNoteHTML":"\u003cp\u003eFollow-up\u003c/p\u003e"}`)
+			return err
+		}},
+		{name: "deleteMeeting/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedMeeting](`{"meetingId":"acti_meeting_meridian1"}`)
+			return err
+		}},
 		{name: "listSMS/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.SMSPage](`{"messages":[{"id":"acti_sms_meridian1","leadId":"lead_meridian1","status":"draft","text":"Hello"}],"hasMore":false}`)
 			return err
@@ -186,6 +202,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListMeetings().Definition().Operation.OperationID != "listMeetings" {
+		t.Errorf("listMeetings mock has another definition")
+	}
+	if mock.GetMeeting().Definition().Operation.OperationID != "getMeeting" {
+		t.Errorf("getMeeting mock has another definition")
+	}
+	if mock.UpdateMeeting().Definition().Operation.OperationID != "updateMeeting" {
+		t.Errorf("updateMeeting mock has another definition")
+	}
+	if mock.DeleteMeeting().Definition().Operation.OperationID != "deleteMeeting" {
+		t.Errorf("deleteMeeting mock has another definition")
+	}
 	if mock.ListSMS().Definition().Operation.OperationID != "listSMS" {
 		t.Errorf("listSMS mock has another definition")
 	}

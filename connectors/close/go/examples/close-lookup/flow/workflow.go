@@ -25,6 +25,7 @@ const notesStepType = "ReadCloseNotes"
 const callsStepType = "ReadCloseCalls"
 const emailsStepType = "ReadCloseEmails"
 const smsStepType = "ReadCloseSMS"
+const meetingsStepType = "ReadCloseMeetings"
 
 var selectedLeadAttribute = dex.DefineAttribute[close.Lead]("close-selected-lead")
 var selectedContactsAttribute = dex.DefineAttribute[[]close.Contact]("close-selected-contacts")
@@ -33,6 +34,7 @@ var selectedTasksAttribute = dex.DefineAttribute[[]close.Task]("close-selected-t
 var selectedNotesAttribute = dex.DefineAttribute[[]close.Note]("close-selected-notes")
 var selectedCallsAttribute = dex.DefineAttribute[[]close.CallActivity]("close-selected-calls")
 var selectedEmailsAttribute = dex.DefineAttribute[[]close.EmailActivity]("close-selected-emails")
+var selectedSMSAttribute = dex.DefineAttribute[[]close.SMSActivity]("close-selected-sms")
 
 // Request is the typed Start Flow input.
 type Request struct {
@@ -58,6 +60,8 @@ type Outcome struct {
 	Emails []close.EmailActivity `json:"emails"`
 	// Messages contains the first page of SMS activities.
 	Messages []close.SMSActivity `json:"messages"`
+	// Meetings contains the first page of meeting activities.
+	Meetings []close.MeetingActivity `json:"meetings"`
 }
 
 // Flow reads the first and second provider resources.
@@ -74,7 +78,7 @@ func (*Flow) GetFlowType() string { return FlowType }
 
 // GetPersistenceSchema declares the example's durable state.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{selectedLeadAttribute, selectedContactsAttribute, selectedOpportunitiesAttribute, selectedTasksAttribute, selectedNotesAttribute, selectedCallsAttribute, selectedEmailsAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{selectedLeadAttribute, selectedContactsAttribute, selectedOpportunitiesAttribute, selectedTasksAttribute, selectedNotesAttribute, selectedCallsAttribute, selectedEmailsAttribute, selectedSMSAttribute}}
 }
 
 // GetRPCs registers Dex Web summary and display views.
@@ -114,7 +118,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(afterCalls{}),
 		dex.DefineStep(close.NewListEmailsStep(close.ListEmailsStepConfig[close.ListEmailsInput]{StepType: emailsStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read emails belonging to the selected lead."}, MapToOperationInput: func(input close.ListEmailsInput) close.ListEmailsInput { return input }, Listed: sdkgo.GoTo(afterEmails{})})),
 		dex.DefineStep(afterEmails{}),
-		dex.DefineStep(close.NewListSMSStep(close.ListSMSStepConfig[close.ListSMSInput]{StepType: smsStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read SMS belonging to the selected lead."}, MapToOperationInput: func(input close.ListSMSInput) close.ListSMSInput { return input }, Listed: sdkgo.GoTo(completeLookup{})})),
+		dex.DefineStep(close.NewListSMSStep(close.ListSMSStepConfig[close.ListSMSInput]{StepType: smsStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read SMS belonging to the selected lead."}, MapToOperationInput: func(input close.ListSMSInput) close.ListSMSInput { return input }, Listed: sdkgo.GoTo(afterSMS{})})),
+		dex.DefineStep(afterSMS{}),
+		dex.DefineStep(close.NewListMeetingsStep(close.ListMeetingsStepConfig[close.ListMeetingsInput]{StepType: meetingsStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read meetings belonging to the selected lead."}, MapToOperationInput: func(input close.ListMeetingsInput) close.ListMeetingsInput { return input }, Listed: sdkgo.GoTo(completeLookup{})})),
 		dex.DefineStep(completeLookup{}),
 	}
 }
@@ -279,13 +285,30 @@ func (afterEmails) Execute(ctx dex.Context, result close.ListEmailsResult) (*dex
 }
 
 // dex:group group-id:close-lookup group-label:"Close lookup"
-// dex:explanation text:"Complete the Flow with the lead and related records."
-type completeLookup struct {
+// dex:explanation text:"Save SMS and request the lead's meeting activities."
+type afterSMS struct {
 	dex.StepDefaultsNoWaitFor[close.ListSMSResult]
 }
 
+func (afterSMS) Execute(ctx dex.Context, result close.ListSMSResult) (*dex.StepDecision, error) {
+	if err := selectedSMSAttribute.Set(ctx, result.Value.Messages); err != nil {
+		return nil, err
+	}
+	lead, err := selectedLeadAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[close.ListMeetingsInput](meetingsStepType), close.ListMeetingsInput{LeadID: lead.ID, Limit: 10}), nil
+}
+
+// dex:group group-id:close-lookup group-label:"Close lookup"
+// dex:explanation text:"Complete the Flow with the lead and related records."
+type completeLookup struct {
+	dex.StepDefaultsNoWaitFor[close.ListMeetingsResult]
+}
+
 func (completeLookup) GetStepType() string { return "CompleteCloseLookup" }
-func (completeLookup) Execute(ctx dex.Context, result close.ListSMSResult) (*dex.StepDecision, error) {
+func (completeLookup) Execute(ctx dex.Context, result close.ListMeetingsResult) (*dex.StepDecision, error) {
 	lead, err := selectedLeadAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -314,5 +337,9 @@ func (completeLookup) Execute(ctx dex.Context, result close.ListSMSResult) (*dex
 	if err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(Outcome{Lead: lead, Contacts: contacts, Opportunities: opportunities, Tasks: tasks, Notes: notes, Calls: calls, Emails: emails, Messages: result.Value.Messages}), nil
+	messages, err := selectedSMSAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(Outcome{Lead: lead, Contacts: contacts, Opportunities: opportunities, Tasks: tasks, Notes: notes, Calls: calls, Emails: emails, Messages: messages, Meetings: result.Value.Meetings}), nil
 }
