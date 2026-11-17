@@ -39,7 +39,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{adinspection.NewFlow(connection), adinspection.NewInsightsReportFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{adinspection.NewFlow(connection), adinspection.NewInsightsReportFlow(connection), adinspection.NewAdsListingFlow(connection)})
 	if err != nil {
 		return fmt.Errorf("register Meta Ads Insights ad inspection Flow: %w", err)
 	}

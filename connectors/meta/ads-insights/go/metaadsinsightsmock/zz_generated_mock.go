@@ -17,9 +17,12 @@ import (
 
 // Mock is a scripted meta-ads-insights connection. Script each operation through its accessor.
 type Mock struct {
-	connection  metaadsinsights.Connection
-	getInsights *connectormock.Query[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage]
-	getAd       *connectormock.Query[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata]
+	connection    metaadsinsights.Connection
+	listAds       *connectormock.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage]
+	listAdSets    *connectormock.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage]
+	listCampaigns *connectormock.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage]
+	getInsights   *connectormock.Query[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage]
+	getAd         *connectormock.Query[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +30,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getInsights: connectormock.NewQuery[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage](t, metaadsinsights.GetInsightsDefinition),
-		getAd:       connectormock.NewQuery[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata](t, metaadsinsights.GetAdDefinition),
+		listAds:       connectormock.NewQuery[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage](t, metaadsinsights.ListAdsDefinition),
+		listAdSets:    connectormock.NewQuery[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage](t, metaadsinsights.ListAdSetsDefinition),
+		listCampaigns: connectormock.NewQuery[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage](t, metaadsinsights.ListCampaignsDefinition),
+		getInsights:   connectormock.NewQuery[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage](t, metaadsinsights.GetInsightsDefinition),
+		getAd:         connectormock.NewQuery[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata](t, metaadsinsights.GetAdDefinition),
 	}
+	mock.listAds.Default(ListAdsDefault())
+	mock.listAdSets.Default(ListAdSetsDefault())
+	mock.listCampaigns.Default(ListCampaignsDefault())
 	mock.getInsights.Default(GetInsightsDefault())
 	mock.getAd.Default(GetAdDefault())
 	connection, err := metaadsinsights.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "meta-ads-insights", Name: connectionName})
@@ -43,6 +52,21 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() metaadsinsights.Connection { return mock.connection }
 
+// ListAds returns the listAds script.
+func (mock *Mock) ListAds() *connectormock.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage] {
+	return mock.listAds
+}
+
+// ListAdSets returns the listAdSets script.
+func (mock *Mock) ListAdSets() *connectormock.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage] {
+	return mock.listAdSets
+}
+
+// ListCampaigns returns the listCampaigns script.
+func (mock *Mock) ListCampaigns() *connectormock.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage] {
+	return mock.listCampaigns
+}
+
 // GetInsights returns the getInsights script.
 func (mock *Mock) GetInsights() *connectormock.Query[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage] {
 	return mock.getInsights
@@ -55,11 +79,143 @@ func (mock *Mock) GetAd() *connectormock.Query[metaadsinsights.GetAdInput, metaa
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListAds() sdkgo.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage] {
+	return operations.mock.listAds
+}
+func (operations mockOperations) ListAdSets() sdkgo.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage] {
+	return operations.mock.listAdSets
+}
+func (operations mockOperations) ListCampaigns() sdkgo.Query[metaadsinsights.ListMarketingObjectsInput, metaadsinsights.MarketingObjectsPage] {
+	return operations.mock.listCampaigns
+}
 func (operations mockOperations) GetInsights() sdkgo.Query[metaadsinsights.GetInsightsInput, metaadsinsights.InsightsPage] {
 	return operations.mock.getInsights
 }
 func (operations mockOperations) GetAd() sdkgo.Query[metaadsinsights.GetAdInput, metaadsinsights.AdMetadata] {
 	return operations.mock.getAd
+}
+
+// ListAdsListed selects the listed branch: Meta returned one ads page.
+func ListAdsListed(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdsBranchListed, value, failure)
+}
+
+// ListAdsNotFound selects the notFound branch: The ad account is missing or inaccessible.
+func ListAdsNotFound(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdsBranchNotFound, value, failure)
+}
+
+// ListAdsProviderRejected selects the providerRejected branch: Meta definitively rejected the listing.
+func ListAdsProviderRejected(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdsBranchProviderRejected, value, failure)
+}
+
+// ListAdsInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func ListAdsInvalidResponse(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdsBranchInvalidResponse, value, failure)
+}
+
+// ListAdsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListAdsDefect(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdsBranchDefect, value, failure)
+}
+
+// ListAdsRetry asks Dex to retry the listAds Step, after the delay when it is positive.
+func ListAdsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Retry[metaadsinsights.MarketingObjectsPage](failure, after)
+}
+
+// ListAdsListedDefault is the manifest mock listedDefault: One active example ad is listed.
+func ListAdsListedDefault() connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	value := connectormock.MustDecodeOutput[metaadsinsights.MarketingObjectsPage](`{"objects":[{"id":"123456789012345","name":"Spring campaign image","status":"ACTIVE","effectiveStatus":"ACTIVE"}],"nextCursor":""}`)
+	return connectormock.Branch(metaadsinsights.ListAdsBranchListed, value, nil)
+}
+
+// ListAdsDefault is the manifest default, listedDefault, which New installs.
+func ListAdsDefault() connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return ListAdsListedDefault()
+}
+
+// ListAdSetsListed selects the listed branch: Meta returned one ad sets page.
+func ListAdSetsListed(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdSetsBranchListed, value, failure)
+}
+
+// ListAdSetsNotFound selects the notFound branch: The ad account is missing or inaccessible.
+func ListAdSetsNotFound(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdSetsBranchNotFound, value, failure)
+}
+
+// ListAdSetsProviderRejected selects the providerRejected branch: Meta definitively rejected the listing.
+func ListAdSetsProviderRejected(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdSetsBranchProviderRejected, value, failure)
+}
+
+// ListAdSetsInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func ListAdSetsInvalidResponse(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdSetsBranchInvalidResponse, value, failure)
+}
+
+// ListAdSetsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListAdSetsDefect(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListAdSetsBranchDefect, value, failure)
+}
+
+// ListAdSetsRetry asks Dex to retry the listAdSets Step, after the delay when it is positive.
+func ListAdSetsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Retry[metaadsinsights.MarketingObjectsPage](failure, after)
+}
+
+// ListAdSetsListedDefault is the manifest mock listedDefault: One active example ad set is listed.
+func ListAdSetsListedDefault() connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	value := connectormock.MustDecodeOutput[metaadsinsights.MarketingObjectsPage](`{"objects":[{"id":"223456789012345","name":"Spring audience","status":"ACTIVE","effectiveStatus":"ACTIVE"}],"nextCursor":""}`)
+	return connectormock.Branch(metaadsinsights.ListAdSetsBranchListed, value, nil)
+}
+
+// ListAdSetsDefault is the manifest default, listedDefault, which New installs.
+func ListAdSetsDefault() connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return ListAdSetsListedDefault()
+}
+
+// ListCampaignsListed selects the listed branch: Meta returned one campaigns page.
+func ListCampaignsListed(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListCampaignsBranchListed, value, failure)
+}
+
+// ListCampaignsNotFound selects the notFound branch: The ad account is missing or inaccessible.
+func ListCampaignsNotFound(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListCampaignsBranchNotFound, value, failure)
+}
+
+// ListCampaignsProviderRejected selects the providerRejected branch: Meta definitively rejected the listing.
+func ListCampaignsProviderRejected(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListCampaignsBranchProviderRejected, value, failure)
+}
+
+// ListCampaignsInvalidResponse selects the invalidResponse branch: Meta returned malformed or oversized JSON.
+func ListCampaignsInvalidResponse(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListCampaignsBranchInvalidResponse, value, failure)
+}
+
+// ListCampaignsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListCampaignsDefect(value metaadsinsights.MarketingObjectsPage, failure *sdkgo.Failure) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Branch(metaadsinsights.ListCampaignsBranchDefect, value, failure)
+}
+
+// ListCampaignsRetry asks Dex to retry the listCampaigns Step, after the delay when it is positive.
+func ListCampaignsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return connectormock.Retry[metaadsinsights.MarketingObjectsPage](failure, after)
+}
+
+// ListCampaignsListedDefault is the manifest mock listedDefault: One active example campaign is listed.
+func ListCampaignsListedDefault() connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	value := connectormock.MustDecodeOutput[metaadsinsights.MarketingObjectsPage](`{"objects":[{"id":"323456789012345","name":"Spring campaign","status":"ACTIVE","effectiveStatus":"ACTIVE"}],"nextCursor":""}`)
+	return connectormock.Branch(metaadsinsights.ListCampaignsBranchListed, value, nil)
+}
+
+// ListCampaignsDefault is the manifest default, listedDefault, which New installs.
+func ListCampaignsDefault() connectormock.Case[metaadsinsights.MarketingObjectsPage] {
+	return ListCampaignsListedDefault()
 }
 
 // GetInsightsListed selects the listed branch: Meta returned one insights page.

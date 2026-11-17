@@ -2,6 +2,1188 @@
   "connector": "meta-ads-insights",
   "scenarios": [
     {
+      "callId": "55555555-0001-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"223456789012345\",\"name\":\"Spring\",\"status\":\"ACTIVE\",\"effective_status\":\"ACTIVE\"}],\"paging\":{\"next\":\"https://graph.facebook.com/next\",\"cursors\":{\"after\":\"cursorDEF\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/ads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "cursorDEF",
+          "objects": [
+            {
+              "effectiveStatus": "ACTIVE",
+              "id": "223456789012345",
+              "name": "Spring",
+              "status": "ACTIVE"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAds-listed",
+      "operation": "listAds"
+    },
+    {
+      "callId": "55555555-0002-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/ads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAds-notFound",
+      "operation": "listAds"
+    },
+    {
+      "callId": "55555555-0003-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/ads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAds-providerRejected",
+      "operation": "listAds"
+    },
+    {
+      "callId": "55555555-0004-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/ads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAds-invalidResponse",
+      "operation": "listAds"
+    },
+    {
+      "callId": "55555555-0005-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/ads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAds-retry429",
+      "operation": "listAds"
+    },
+    {
+      "callId": "55555555-0006-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/ads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAds-retry5xx",
+      "operation": "listAds"
+    },
+    {
+      "callId": "55555555-0007-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/ads",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAds-transportFailure",
+      "operation": "listAds"
+    },
+    {
+      "callId": "55555555-0008-4000-8000-000000000008",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "act_bad",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAds-defect",
+      "operation": "listAds"
+    },
+    {
+      "callId": "55555556-0001-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"223456789012345\",\"name\":\"Spring\",\"status\":\"ACTIVE\",\"effective_status\":\"ACTIVE\"}],\"paging\":{\"next\":\"https://graph.facebook.com/next\",\"cursors\":{\"after\":\"cursorDEF\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/adsets",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "cursorDEF",
+          "objects": [
+            {
+              "effectiveStatus": "ACTIVE",
+              "id": "223456789012345",
+              "name": "Spring",
+              "status": "ACTIVE"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAdSets-listed",
+      "operation": "listAdSets"
+    },
+    {
+      "callId": "55555556-0002-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/adsets",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAdSets-notFound",
+      "operation": "listAdSets"
+    },
+    {
+      "callId": "55555556-0003-4000-8000-000000000103",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/adsets",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAdSets-providerRejected",
+      "operation": "listAdSets"
+    },
+    {
+      "callId": "55555556-0004-4000-8000-000000000104",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/adsets",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAdSets-invalidResponse",
+      "operation": "listAdSets"
+    },
+    {
+      "callId": "55555556-0005-4000-8000-000000000105",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/adsets",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAdSets-retry429",
+      "operation": "listAdSets"
+    },
+    {
+      "callId": "55555556-0006-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/adsets",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAdSets-retry5xx",
+      "operation": "listAdSets"
+    },
+    {
+      "callId": "55555556-0007-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/adsets",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAdSets-transportFailure",
+      "operation": "listAdSets"
+    },
+    {
+      "callId": "55555556-0008-4000-8000-000000000108",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "act_bad",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listAdSets-defect",
+      "operation": "listAdSets"
+    },
+    {
+      "callId": "55555557-0001-4000-8000-000000000201",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"223456789012345\",\"name\":\"Spring\",\"status\":\"ACTIVE\",\"effective_status\":\"ACTIVE\"}],\"paging\":{\"next\":\"https://graph.facebook.com/next\",\"cursors\":{\"after\":\"cursorDEF\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/campaigns",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "cursorDEF",
+          "objects": [
+            {
+              "effectiveStatus": "ACTIVE",
+              "id": "223456789012345",
+              "name": "Spring",
+              "status": "ACTIVE"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listCampaigns-listed",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "55555557-0002-4000-8000-000000000202",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/campaigns",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listCampaigns-notFound",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "55555557-0003-4000-8000-000000000203",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/campaigns",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listCampaigns-providerRejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "55555557-0004-4000-8000-000000000204",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/campaigns",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listCampaigns-invalidResponse",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "55555557-0005-4000-8000-000000000205",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/campaigns",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listCampaigns-retry429",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "55555557-0006-4000-8000-000000000206",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/campaigns",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listCampaigns-retry5xx",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "55555557-0007-4000-8000-000000000207",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/act_123456789012345/campaigns",
+          "query": {
+            "after": [
+              "cursorABC"
+            ],
+            "fields": [
+              "id,name,status,effective_status"
+            ],
+            "limit": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-marketing-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456789012345",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listCampaigns-transportFailure",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "55555557-0008-4000-8000-000000000208",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "objects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "act_bad",
+        "after": "cursorABC",
+        "limit": 25
+      },
+      "name": "listCampaigns-defect",
+      "operation": "listCampaigns"
+    },
+    {
       "callId": "44444444-4444-4444-8444-444444444441",
       "exchanges": [
         {
