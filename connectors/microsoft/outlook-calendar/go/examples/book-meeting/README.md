@@ -1,11 +1,13 @@
 # Outlook Calendar book-meeting example
 
 This example runs one operation-only Flow from Dex Web **Start Flow**, books a
-meeting only after checking free/busy, and uses every Outlook Calendar
-operation:
+meeting only after checking free/busy, and uses the event and availability
+operations needed for that booking:
 
 1. `RecordMeetingRequest` validates the timed meeting and records it with the
    picked calendar;
+   `CheckSelectedCalendar` calls `outlookcalendar.NewGetCalendarStep` for a
+   picked calendar, and `VerifySelectedCalendar` requires it to be editable;
 2. `CheckAttendeeAvailability` calls `outlookcalendar.NewQueryFreeBusyStep`
    for the attendees over exactly the meeting window, and
    `EvaluateAttendeeAvailability` completes as `busy` when any attendee has
@@ -74,7 +76,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/outlook-calendar/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go \
-  --version v0.24.0 --tag connectors/microsoft/outlook-calendar/go/v0.24.0 \
+  --version v0.25.0 --tag connectors/microsoft/outlook-calendar/go/v0.25.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/outlook-calendar-release/connector-ui.tgz \
   --ui-digest /tmp/outlook-calendar-release/connector-ui.tgz.sha256 \

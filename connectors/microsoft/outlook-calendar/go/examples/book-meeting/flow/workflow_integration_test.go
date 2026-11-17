@@ -293,6 +293,8 @@ func (provider *fakeGraph) serveHTTP(response http.ResponseWriter, request *http
 	}
 	segments := strings.Split(strings.Trim(path, "/"), "/")
 	switch {
+	case request.Method == http.MethodGet && len(segments) == 2 && segments[0] == "calendars":
+		writeFakeJSON(response, http.StatusOK, map[string]any{"id": segments[1], "name": "Ops Team", "canEdit": true})
 	case request.Method == http.MethodPost && path == "/calendar/getSchedule":
 		provider.serveSchedule(response, body)
 	case request.Method == http.MethodGet && path == "/events":

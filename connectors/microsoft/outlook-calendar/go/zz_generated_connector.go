@@ -49,6 +49,12 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateCalendar() sdkgo.Mutation[CreateCalendarInput, Calendar]
+	UpdateCalendar() sdkgo.Mutation[UpdateCalendarInput, Calendar]
+	DeleteCalendar() sdkgo.Mutation[DeleteCalendarInput, DeleteCalendarOutput]
+	ListCalendars() sdkgo.Query[ListCalendarsInput, ListCalendarsOutput]
+	GetCalendar() sdkgo.Query[GetCalendarInput, Calendar]
+	DeleteEvent() sdkgo.Mutation[DeleteEventInput, DeleteEventOutput]
 	ListEvents() sdkgo.Query[ListEventsInput, ListEventsOutput]
 	GetEvent() sdkgo.Query[GetEventInput, Event]
 	CreateEvent() sdkgo.Mutation[CreateEventInput, CreateEventOutput]
@@ -58,6 +64,24 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateCalendar() sdkgo.Mutation[CreateCalendarInput, Calendar] {
+	return operations.client.CreateCalendar()
+}
+func (operations clientOperations) UpdateCalendar() sdkgo.Mutation[UpdateCalendarInput, Calendar] {
+	return operations.client.UpdateCalendar()
+}
+func (operations clientOperations) DeleteCalendar() sdkgo.Mutation[DeleteCalendarInput, DeleteCalendarOutput] {
+	return operations.client.DeleteCalendar()
+}
+func (operations clientOperations) ListCalendars() sdkgo.Query[ListCalendarsInput, ListCalendarsOutput] {
+	return operations.client.ListCalendars()
+}
+func (operations clientOperations) GetCalendar() sdkgo.Query[GetCalendarInput, Calendar] {
+	return operations.client.GetCalendar()
+}
+func (operations clientOperations) DeleteEvent() sdkgo.Mutation[DeleteEventInput, DeleteEventOutput] {
+	return operations.client.DeleteEvent()
+}
 func (operations clientOperations) ListEvents() sdkgo.Query[ListEventsInput, ListEventsOutput] {
 	return operations.client.ListEvents()
 }
@@ -289,6 +313,458 @@ func (credentials Credentials) validateSharedCredential() error {
 	return nil
 }
 
+const CreateCalendarBranchCreated sdkgo.BranchID = "created"
+const CreateCalendarBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCalendarBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CreateCalendarBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+const CreateCalendarBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+
+var CreateCalendarDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCalendar"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCalendarBranchCreated, Description: "Graph created the calendar."},
+		{ID: CreateCalendarBranchProviderRejected, Description: "Graph rejected calendar creation.", Optional: true},
+		{ID: CreateCalendarBranchInvalidResponse, Description: "Graph returned invalid calendar metadata.", Optional: true},
+		{ID: CreateCalendarBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+		{ID: CreateCalendarBranchUncertain, Description: "The send cap was reached without confirmation.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCalendarResult = sdkgo.MutationResult[Calendar]
+
+type CreateCalendarStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=outlook-calendar"`
+	operationID                       struct{}                                       `connector:"operationId=createCalendar"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                 `connector:"configurationUI"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCalendarInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCalendarResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCalendarResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CreateCalendarResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CreateCalendarResult]             `connector:"branch=defect,optional"`
+	Uncertain                         sdkgo.Target[CreateCalendarResult]             `connector:"branch=uncertain,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Calendar]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCalendarStep[IN any](config CreateCalendarStepConfig[IN]) sdkgo.MutationStep[IN, CreateCalendarInput, Calendar] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-calendar connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCalendarInput, Calendar]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.CreateCalendar(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCalendarResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCalendarResult], 0, 5)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCalendarBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCalendarBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CreateCalendarBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCalendarBranchDefect))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCalendarBranchUncertain))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateCalendarBranchUpdated sdkgo.BranchID = "updated"
+const UpdateCalendarBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateCalendarBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateCalendarBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateCalendarBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateCalendarDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateCalendar"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateCalendarBranchUpdated, Description: "The calendar was renamed."},
+		{ID: UpdateCalendarBranchNotFound, Description: "The calendar is absent.", Optional: true},
+		{ID: UpdateCalendarBranchProviderRejected, Description: "Graph rejected the rename.", Optional: true},
+		{ID: UpdateCalendarBranchInvalidResponse, Description: "Graph returned invalid calendar metadata.", Optional: true},
+		{ID: UpdateCalendarBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateCalendarResult = sdkgo.MutationResult[Calendar]
+
+type UpdateCalendarStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                       `connector:"connectorId=outlook-calendar"`
+	operationID                       struct{}                                       `connector:"operationId=updateCalendar"`
+	StepType                          string                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                          `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                 `connector:"configurationUI"`
+	Connection                        Connection                                     `connector:"connection"`
+	ConnectionName                    string                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateCalendarInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateCalendarResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateCalendarResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateCalendarResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateCalendarResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateCalendarResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Calendar]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateCalendarStep[IN any](config UpdateCalendarStepConfig[IN]) sdkgo.MutationStep[IN, UpdateCalendarInput, Calendar] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-calendar connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateCalendarInput, Calendar]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.UpdateCalendar(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateCalendarResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateCalendarResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateCalendarBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateCalendarBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateCalendarBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateCalendarBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateCalendarBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteCalendarBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteCalendarBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteCalendarBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteCalendarDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteCalendar"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteCalendarBranchDeleted, Description: "The calendar is absent."},
+		{ID: DeleteCalendarBranchProviderRejected, Description: "Graph rejected deletion.", Optional: true},
+		{ID: DeleteCalendarBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteCalendarResult = sdkgo.MutationResult[DeleteCalendarOutput]
+
+type DeleteCalendarStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=outlook-calendar"`
+	operationID                       struct{}                                                   `connector:"operationId=deleteCalendar"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                             `connector:"configurationUI"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteCalendarInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteCalendarResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteCalendarResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteCalendarResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteCalendarOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteCalendarStep[IN any](config DeleteCalendarStepConfig[IN]) sdkgo.MutationStep[IN, DeleteCalendarInput, DeleteCalendarOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-calendar connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteCalendarInput, DeleteCalendarOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteCalendar(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteCalendarResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteCalendarResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteCalendarBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteCalendarBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteCalendarBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListCalendarsBranchListed sdkgo.BranchID = "listed"
+const ListCalendarsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListCalendarsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListCalendarsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListCalendarsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listCalendars"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListCalendarsBranchListed, Description: "A page of calendars was listed."},
+		{ID: ListCalendarsBranchProviderRejected, Description: "Graph rejected the calendar list.", Optional: true},
+		{ID: ListCalendarsBranchInvalidResponse, Description: "Graph returned invalid calendar metadata.", Optional: true},
+		{ID: ListCalendarsBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListCalendarsResult = sdkgo.QueryResult[ListCalendarsOutput]
+
+type ListCalendarsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                               `connector:"connectorId=outlook-calendar"`
+	operationID                    struct{}                                               `connector:"operationId=listCalendars"`
+	StepType                       string                                                 `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                  `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                         `connector:"configurationUI"`
+	Connection                     Connection                                             `connector:"connection"`
+	ConnectionName                 string                                                 `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListCalendarsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListCalendarsResult]                      `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListCalendarsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListCalendarsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListCalendarsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListCalendarsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewListCalendarsStep[IN any](config ListCalendarsStepConfig[IN]) sdkgo.QueryStep[IN, ListCalendarsInput, ListCalendarsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-calendar connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListCalendarsInput, ListCalendarsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListCalendars(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListCalendarsResult] {
+			branches := make([]sdkgo.BranchTarget[ListCalendarsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListCalendarsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListCalendarsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListCalendarsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListCalendarsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCalendarBranchFound sdkgo.BranchID = "found"
+const GetCalendarBranchNotFound sdkgo.BranchID = "notFound"
+const GetCalendarBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCalendarBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCalendarBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCalendarDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCalendar"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCalendarBranchFound, Description: "The calendar was found."},
+		{ID: GetCalendarBranchNotFound, Description: "The calendar is absent.", Optional: true},
+		{ID: GetCalendarBranchProviderRejected, Description: "Graph rejected the calendar read.", Optional: true},
+		{ID: GetCalendarBranchInvalidResponse, Description: "Graph returned invalid calendar metadata.", Optional: true},
+		{ID: GetCalendarBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCalendarResult = sdkgo.QueryResult[Calendar]
+
+type GetCalendarStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=outlook-calendar"`
+	operationID                    struct{}                                    `connector:"operationId=getCalendar"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI              `connector:"configurationUI"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCalendarInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCalendarResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCalendarResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCalendarResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCalendarResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCalendarResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Calendar]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetCalendarStep[IN any](config GetCalendarStepConfig[IN]) sdkgo.QueryStep[IN, GetCalendarInput, Calendar] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-calendar connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCalendarInput, Calendar]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetCalendar(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCalendarResult] {
+			branches := make([]sdkgo.BranchTarget[GetCalendarResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCalendarBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCalendarBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCalendarBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCalendarBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCalendarBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteEventBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteEventDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteEventBranchDeleted, Description: "The event is absent."},
+		{ID: DeleteEventBranchProviderRejected, Description: "Graph rejected event deletion.", Optional: true},
+		{ID: DeleteEventBranchDefect, Description: "Local input or configuration is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteEventResult = sdkgo.MutationResult[DeleteEventOutput]
+
+type DeleteEventStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=outlook-calendar"`
+	operationID                       struct{}                                                `connector:"operationId=deleteEvent"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	ConfigurationUI                   sdkgo.ConnectorConfigurationUI                          `connector:"configurationUI"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteEventInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteEventResult]                         `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteEventResult]                         `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteEventResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteEventOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteEventStep[IN any](config DeleteEventStepConfig[IN]) sdkgo.MutationStep[IN, DeleteEventInput, DeleteEventOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("outlook-calendar connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteEventInput, DeleteEventOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.DeleteEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteEventResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteEventResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteEventBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteEventBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteEventBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const ListEventsBranchListed sdkgo.BranchID = "listed"
 const ListEventsBranchNotFound sdkgo.BranchID = "notFound"
 const ListEventsBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -465,6 +941,8 @@ var CreateEventDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type CreateEventResult = sdkgo.MutationResult[CreateEventOutput]
@@ -485,6 +963,8 @@ type CreateEventStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[CreateEventResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreateEventOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.MutationStep[IN, CreateEventInput, CreateEventOutput] {
@@ -517,6 +997,7 @@ func NewCreateEventStep[IN any](config CreateEventStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 
@@ -540,6 +1021,8 @@ var UpdateEventDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UpdateEventResult = sdkgo.MutationResult[UpdateEventOutput]
@@ -561,6 +1044,8 @@ type UpdateEventStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UpdateEventResult]                         `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UpdateEventOutput]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUpdateEventStep[IN any](config UpdateEventStepConfig[IN]) sdkgo.MutationStep[IN, UpdateEventInput, UpdateEventOutput] {
@@ -596,6 +1081,7 @@ func NewUpdateEventStep[IN any](config UpdateEventStepConfig[IN]) sdkgo.Mutation
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }
 

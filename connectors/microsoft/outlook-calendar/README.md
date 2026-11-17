@@ -22,6 +22,14 @@ application can move between them:
   start and end, or attendees of an existing event.
 - `outlookcalendar.NewQueryFreeBusyStep` returns the availability of 1 to 20
   users, distribution lists, or rooms through Graph `getSchedule`.
+- `outlookcalendar.NewListCalendarsStep` and `NewGetCalendarStep` read
+  calendar metadata without event content.
+- `outlookcalendar.NewCreateCalendarStep`, `NewUpdateCalendarStep`, and
+  `NewDeleteCalendarStep` manage calendars in the connection's mailbox.
+  Creation allows up to three sends; a lost response remains uncertain because
+  Graph permits duplicate calendar names.
+- `outlookcalendar.NewDeleteEventStep` removes an event and treats a later
+  not-found response as completed. Graph notifies existing attendees.
 
 This release has no Triggers; see [Triggers](#triggers).
 
@@ -55,12 +63,12 @@ returned refresh token as proof of `offline_access`.
 | Scope | Why |
 | --- | --- |
 | `offline_access` | Makes Microsoft return a refresh token, so Dex can renew the one-hour access token. |
-| `Calendars.ReadWrite` | Every operation and the calendar picker: calendar view, event reads, creates and updates, and `getSchedule`. It needs no administrator consent, though a tenant can require approval of user consent. |
+| `Calendars.ReadWrite` | Every operation and the calendar picker, including calendar and event deletion. It needs no administrator consent, though a tenant can require approval of user consent. |
 
 Scopes use Graph's short permission names, which Dex Web compares with the
 returned `scope` string. `Calendars.ReadWrite` is the narrowest permission that
 covers writes; `getSchedule` alone would need only `Calendars.ReadBasic`. The
-connector never deletes events, changes calendar settings, or reads mail.
+connector does not read mail.
 
 The refresh driver uses `sdkgo/oauthtoken`: the refresh-token grant at the
 `organizations` token endpoint with `ClientSecretPost` and no `scope`, which
@@ -332,4 +340,4 @@ mock := outlookcalendarmock.New(t, ConnectionName)
 flow, harness := newBookMeetingHarness(t, mock.Connection(), CalendarSelection{CalendarID: "team-calendar", CalendarName: "Ops Team"})
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go@v0.24.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go@v0.25.0`.
