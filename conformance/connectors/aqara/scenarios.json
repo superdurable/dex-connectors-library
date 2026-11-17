@@ -1,0 +1,554 @@
+{
+  "connector": "aqara",
+  "scenarios": [
+    {
+      "callId": "31f1a78b-b86f-41a1-b8a6-81f27a45bc8b",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"result\":{\"data\":[{\"did\":\"lumi.1\",\"model\":\"lumi.gateway.aqhm01\",\"deviceName\":\"Hub\",\"state\":1,\"modelType\":1,\"firmwareVersion\":\"3.2.6\"}],\"totalCount\":30}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3.0/open/api",
+          "requestBody": {
+            "data": {
+              "pageNum": 2,
+              "pageSize": 25
+            },
+            "intent": "query.device.info"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "access-token"
+            ],
+            "Appid": [
+              "app-id"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Keyid": [
+              "key-id"
+            ],
+            "Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "Sign": [
+              "5c08b70654d388532c9744a246abdd45"
+            ],
+            "Time": [
+              "1698315752000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "devices": [
+            {
+              "deviceId": "lumi.1",
+              "deviceName": "Hub",
+              "firmwareVersion": "3.2.6",
+              "model": "lumi.gateway.aqhm01",
+              "modelType": 1,
+              "online": true,
+              "parentDeviceId": "",
+              "positionId": "",
+              "timeZone": ""
+            }
+          ],
+          "pageNum": 2,
+          "pageSize": 25,
+          "totalCount": 30
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 25
+      },
+      "name": "listDevices-listed",
+      "operation": "listDevices"
+    },
+    {
+      "callId": "6f328b16-1f98-49a5-91fc-49bab91722a6",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"result\":{\"data\":[],\"totalCount\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3.0/open/api",
+          "requestBody": {
+            "data": {
+              "pageNum": 2,
+              "pageSize": 25
+            },
+            "intent": "query.device.info"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "access-token"
+            ],
+            "Appid": [
+              "app-id"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Keyid": [
+              "key-id"
+            ],
+            "Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "Sign": [
+              "5c08b70654d388532c9744a246abdd45"
+            ],
+            "Time": [
+              "1698315752000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "devices": [],
+          "pageNum": 2,
+          "pageSize": 25,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 25
+      },
+      "name": "listDevices-empty",
+      "operation": "listDevices"
+    },
+    {
+      "callId": "0abd7dbe-7989-47c6-bec7-0f666a9916cc",
+      "exchanges": [
+        {
+          "body": "{\"code\":2005}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3.0/open/api",
+          "requestBody": {
+            "data": {
+              "pageNum": 2,
+              "pageSize": 25
+            },
+            "intent": "query.device.info"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "access-token"
+            ],
+            "Appid": [
+              "app-id"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Keyid": [
+              "key-id"
+            ],
+            "Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "Sign": [
+              "5c08b70654d388532c9744a246abdd45"
+            ],
+            "Time": [
+              "1698315752000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "devices": [],
+          "pageNum": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 25
+      },
+      "name": "listDevices-providerRejected",
+      "operation": "listDevices"
+    },
+    {
+      "callId": "901ca67c-fccd-42a7-b8ef-b769b102a992",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"result\":{\"totalCount\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3.0/open/api",
+          "requestBody": {
+            "data": {
+              "pageNum": 2,
+              "pageSize": 25
+            },
+            "intent": "query.device.info"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "access-token"
+            ],
+            "Appid": [
+              "app-id"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Keyid": [
+              "key-id"
+            ],
+            "Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "Sign": [
+              "5c08b70654d388532c9744a246abdd45"
+            ],
+            "Time": [
+              "1698315752000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "devices": [],
+          "pageNum": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 25
+      },
+      "name": "listDevices-invalidResponse",
+      "operation": "listDevices"
+    },
+    {
+      "callId": "d13593a1-e84e-439b-af63-430eebaf19f4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "devices": [],
+          "pageNum": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 101
+      },
+      "name": "listDevices-defect",
+      "operation": "listDevices"
+    },
+    {
+      "callId": "f86fb53a-2133-49df-b287-2f1987642d61",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3.0/open/api",
+          "requestBody": {
+            "data": {
+              "pageNum": 2,
+              "pageSize": 25
+            },
+            "intent": "query.device.info"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "access-token"
+            ],
+            "Appid": [
+              "app-id"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Keyid": [
+              "key-id"
+            ],
+            "Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "Sign": [
+              "5c08b70654d388532c9744a246abdd45"
+            ],
+            "Time": [
+              "1698315752000"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 25
+      },
+      "name": "listDevices-rateLimit",
+      "operation": "listDevices"
+    },
+    {
+      "callId": "d2e99f54-5aa0-4ce3-8fd5-ee695ba57ca3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3.0/open/api",
+          "requestBody": {
+            "data": {
+              "pageNum": 2,
+              "pageSize": 25
+            },
+            "intent": "query.device.info"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "access-token"
+            ],
+            "Appid": [
+              "app-id"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Keyid": [
+              "key-id"
+            ],
+            "Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "Sign": [
+              "5c08b70654d388532c9744a246abdd45"
+            ],
+            "Time": [
+              "1698315752000"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 25
+      },
+      "name": "listDevices-serverRetry",
+      "operation": "listDevices"
+    },
+    {
+      "callId": "fa765603-a5b5-467b-9231-8d8765b22a86",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3.0/open/api",
+          "requestBody": {
+            "data": {
+              "pageNum": 2,
+              "pageSize": 25
+            },
+            "intent": "query.device.info"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "access-token"
+            ],
+            "Appid": [
+              "app-id"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Keyid": [
+              "key-id"
+            ],
+            "Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "Sign": [
+              "5c08b70654d388532c9744a246abdd45"
+            ],
+            "Time": [
+              "1698315752000"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 25
+      },
+      "name": "listDevices-transportFailure",
+      "operation": "listDevices"
+    },
+    {
+      "callId": "c4c5c32e-4978-4e96-a2f8-494e16cb08e2",
+      "exchanges": [
+        {
+          "body": "{\"code\":0,\"result\":{\"data\":[],\"totalCount\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3.0/open/api",
+          "requestBody": {
+            "data": {
+              "pageNum": 2,
+              "pageSize": 25
+            },
+            "intent": "query.device.info"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Accesstoken": [
+              "access-token"
+            ],
+            "Appid": [
+              "app-id"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Keyid": [
+              "key-id"
+            ],
+            "Nonce": [
+              "3156853299f313e23dc12e1703dc12e1"
+            ],
+            "Sign": [
+              "5c08b70654d388532c9744a246abdd45"
+            ],
+            "Time": [
+              "1698315752000"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "devices": [],
+          "pageNum": 0,
+          "pageSize": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNum": 2,
+        "pageSize": 25
+      },
+      "name": "listDevices-oversized",
+      "operation": "listDevices"
+    }
+  ],
+  "schemaVersion": 1
+}
