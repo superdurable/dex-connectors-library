@@ -1,48 +1,496 @@
-[
-  {
-    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
-    "attempt": 1,
-    "state": "notSent"
-  },
-  {
-    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
-    "attempt": 2,
-    "state": "claimed"
-  },
-  {
-    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
-    "attempt": 3,
-    "state": "canResend"
-  },
-  {
-    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
-    "attempt": 4,
-    "state": "claimed",
-    "providerId": "object-42"
-  },
-  {
-    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
-    "attempt": 5,
-    "state": "claimed",
-    "sendCount": 2
-  },
-  {
-    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
-    "attempt": 6,
-    "state": "notSent",
-    "sendCount": 2
-  },
-  {
-    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
-    "attempt": 7,
-    "state": "canResend",
-    "sendCount": 2
-  },
-  {
-    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
-    "attempt": 8,
-    "state": "claimed",
-    "providerId": "object-43",
-    "sendCount": 3
-  }
-]
+{
+  "markers": [
+    {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "attempt": 1,
+      "state": "notSent"
+    },
+    {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "attempt": 2,
+      "state": "claimed"
+    },
+    {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "attempt": 3,
+      "state": "canResend"
+    },
+    {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "attempt": 4,
+      "state": "claimed",
+      "providerId": "object-42"
+    },
+    {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "attempt": 5,
+      "state": "claimed",
+      "sendCount": 2
+    },
+    {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "attempt": 6,
+      "state": "notSent",
+      "sendCount": 2
+    },
+    {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "attempt": 7,
+      "state": "canResend",
+      "sendCount": 2
+    },
+    {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "attempt": 8,
+      "state": "claimed",
+      "providerId": "object-43",
+      "sendCount": 3
+    }
+  ],
+  "checkpointScenarios": [
+    {
+      "name": "two calls on attempt one both send",
+      "attempt": 1,
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "sendAllowed",
+          "maximumPriorSends": 0
+        },
+        {
+          "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "sendAllowed",
+          "maximumPriorSends": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        {
+          "singleDispatchMarkers": {
+            "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+              "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+              "attempt": 1,
+              "state": "claimed"
+            },
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 1,
+              "state": "claimed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "attempt two runs call B before call A",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "singleDispatchMarkers": {
+          "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+            "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+            "attempt": 1,
+            "state": "canResend"
+          },
+          "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+            "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+            "attempt": 1,
+            "state": "claimed"
+          }
+        }
+      },
+      "calls": [
+        {
+          "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "sendAllowed",
+          "maximumPriorSends": 0
+        },
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": true,
+          "providerId": "object-42",
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+              "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+              "attempt": 2,
+              "state": "claimed"
+            },
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 1,
+              "state": "claimed"
+            }
+          }
+        },
+        {
+          "singleDispatchMarkers": {
+            "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+              "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+              "attempt": 2,
+              "state": "claimed"
+            },
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 2,
+              "state": "claimed",
+              "sendCount": 2
+            }
+          }
+        },
+        {
+          "singleDispatchMarkers": {
+            "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+              "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+              "attempt": 2,
+              "state": "claimed"
+            },
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 2,
+              "state": "claimed",
+              "providerId": "object-42",
+              "sendCount": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "attempt two keeps call A's entry when only call B sends",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "singleDispatchMarkers": {
+          "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+            "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+            "attempt": 1,
+            "state": "notSent"
+          },
+          "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+            "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+            "attempt": 1,
+            "state": "claimed"
+          }
+        }
+      },
+      "calls": [
+        {
+          "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "sendAllowed",
+          "maximumPriorSends": 0
+        },
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "readBackRequired",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+              "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+              "attempt": 2,
+              "state": "claimed"
+            },
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 1,
+              "state": "claimed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "legacy own marker is ignored",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+        "attempt": 1,
+        "state": "notSent"
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "readBackRequired",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": []
+    },
+    {
+      "name": "legacy own marker is ignored under bounded resend",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+        "attempt": 1,
+        "state": "claimed",
+        "providerId": "object-42",
+        "sendCount": 1
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": true,
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 2,
+              "state": "claimed",
+              "sendCount": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "legacy foreign marker is ignored",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+        "attempt": 1,
+        "state": "notSent"
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": true,
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 2,
+              "state": "claimed",
+              "sendCount": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "garbage string is ignored",
+      "attempt": 2,
+      "previousHeartbeat": "not a checkpoint",
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": true,
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 2,
+              "state": "claimed",
+              "sendCount": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "garbage on attempt one is ignored",
+      "attempt": 1,
+      "previousHeartbeat": [
+        1,
+        2
+      ],
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "sendAllowed",
+          "maximumPriorSends": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 1,
+              "state": "claimed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "unknown object shape is ignored",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "progress": 3
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "readBackRequired",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": []
+    },
+    {
+      "name": "unreadable map entries are dropped",
+      "attempt": 3,
+      "previousHeartbeat": {
+        "singleDispatchMarkers": {
+          "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+            "attempt": 2,
+            "callId": "9e0f6c21-3b7a-5d4e-8f12-6a5b4c3d2e1f",
+            "state": "notSent"
+          },
+          "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+            "attempt": 2,
+            "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+            "extra": true,
+            "state": "notSent"
+          },
+          "9e0f6c21-3b7a-5d4e-8f12-6a5b4c3d2e1f": {
+            "attempt": "two",
+            "callId": "9e0f6c21-3b7a-5d4e-8f12-6a5b4c3d2e1f",
+            "state": "notSent"
+          }
+        }
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": true,
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 2
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 3,
+              "state": "claimed",
+              "sendCount": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "absent entry on attempt two uses the attempt-one bound",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "singleDispatchMarkers": {
+          "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+            "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+            "attempt": 1,
+            "state": "claimed"
+          }
+        }
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": true,
+          "decision": "readBackThenResendAllowed",
+          "maximumPriorSends": 1
+        },
+        {
+          "callId": "9e0f6c21-3b7a-5d4e-8f12-6a5b4c3d2e1f",
+          "maxSends": 1,
+          "dispatch": true,
+          "decision": "readBackRequired",
+          "maximumPriorSends": 1
+        }
+      ],
+      "heartbeats": [
+        {
+          "singleDispatchMarkers": {
+            "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10": {
+              "callId": "0b9d3c3e-6a51-5f0e-9a43-7d2f1f7c2b10",
+              "attempt": 1,
+              "state": "claimed"
+            },
+            "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+              "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+              "attempt": 2,
+              "state": "claimed",
+              "sendCount": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "impossible own entry fails closed",
+      "attempt": 2,
+      "previousHeartbeat": {
+        "singleDispatchMarkers": {
+          "5af8fafa-06ff-5b2d-bb13-04693809fabf": {
+            "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+            "attempt": 1,
+            "state": "claimed",
+            "sendCount": 2
+          }
+        }
+      },
+      "calls": [
+        {
+          "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+          "maxSends": 3,
+          "dispatch": true,
+          "decision": "failClosed",
+          "maximumPriorSends": 0
+        }
+      ],
+      "heartbeats": []
+    }
+  ]
+}

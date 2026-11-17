@@ -14,12 +14,14 @@ Run `cd sdkgo && UPDATE_CONFORMANCE_FIXTURES=1 GOWORK=off go test ./... -run '^T
 | `failures.json` | `sdkgo/errors.go:14` (every `FailureKind`), `sdkgo/errors.go:53` (`Failure` fields) |
 | `identity.json` | `sdkgo/types.go:25` (`CallID` validation), `sdkgo/types.go:151` (`Call`), `sdkgo/types.go:492` (length-prefixed SHA-1 UUID derivation), `sdkgo/types.go:353` (key fallback) |
 | `retry-policy.json` | `sdkgo/retry_policy.go:20` (default Dex retry policy) |
-| `single-dispatch-markers.json` | `sdkgo/singledispatch/fence.go:24` (states), `sdkgo/singledispatch/fence.go:36` (`Marker`, including the optional `sendCount`) |
+| `single-dispatch-markers.json` | `sdkgo/singledispatch/fence.go` (states and `Marker`, including the optional `sendCount`) in `markers`; `sdkgo/singledispatch/checkpoint.go` (the per-Step checkpoint map) in `checkpointScenarios`, recorded by `sdkgo/singledispatch/conformance_test.go` |
 | `connections.json` | `sdkgo/projectconfig/dexweb.go:20` (schema), `sdkgo/projectconfig/dexweb.go:38` (local connection), `sdkgo/projectconfig/dexweb.go:50` (file) |
 | `project-environment.json` | `sdkgo/projectconfig/environment.go:44` (Dex Web selector), `sdkgo/projectconfig/environment.go:66` (`DEX_PROJECT_*` loader) |
 | `project-storage.json` | `sdkgo/projectconfig/storage.go:25` (object version and ETag), `sdkgo/projectconfig/storage.go:77` (scope prefix), `sdkgo/projectconfig/connections.go:326` (connection key), `sdkgo/projectconfig/configuration.go:101` (snapshot), `sdkgo/projectconfig/trigger_inbox.go:85` (inbox key) |
 | `credential-broker.json` | `sdkgo/projectconfig/credential_broker.go:47` (status), `sdkgo/projectconfig/credential_broker.go:53` (request), `sdkgo/projectconfig/credential_broker.go:59` (response) |
 | `connectormock.json` | `sdkgo/types.go:113` (definitions), `sdkgo/connectormock/call.go:40` (recorded calls), `sdkgo/connectormock/report.go:18` (report location), `sdkgo/connectormock/report.go:30` (report row) |
+
+Each `checkpointScenarios` entry replays real Fences of one Step attempt in order: `previousHeartbeat` (absent when the previous attempt recorded none) is the raw value Dex returns, each call records its `decision` and `maximumPriorSends` and dispatches when `dispatch` is set and the decision permits it, and `heartbeats` lists every heartbeat value written. Python and TypeScript compare those values in compact JSON byte for byte. The checkpoint format is internal to the connector SDKs; hosts must not parse it.
 
 `MutationAttempt` and `QueryAttempt` select a terminal branch or request a Dex retry; they are private in-memory decisions (`sdkgo/errors.go:149`, `sdkgo/errors.go:114`). Only their validated `QueryResult` and `MutationResult` envelopes cross the JSON boundary. A Retry is **never serialized** as a terminal result. It continues under the Step retry policy, and exhaustion fails the Flow. An `uncertain` result is reserved for a potentially accepted non-repeatable write that read-back cannot confirm.
 

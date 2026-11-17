@@ -156,8 +156,8 @@ type AgentTool interface {
 	//     unknown when the Fence cannot prove that no request reached the
 	//     provider: this attempt recorded a claimed checkpoint (Dispatch ran),
 	//     even if RecordCanResend followed, or Decide withheld a send because
-	//     the prior checkpoint was missing after attempt one, unreadable,
-	//     foreign, invalid, claimed, carried a provider ID, or came from an
+	//     the call's prior checkpoint entry was missing after attempt one,
+	//     unreadable, invalid, claimed, carried a provider ID, or came from an
 	//     attempt other than the previous one, including when a send cap let
 	//     it return ReadBackThenResendAllowed;
 	//  5. a listed branch takes its listed outcome;

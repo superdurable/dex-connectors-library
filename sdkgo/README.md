@@ -585,20 +585,37 @@ Call `Decide` before credential resolution or provider lookups. Only
 provider ID, and otherwise selects uncertainty when no reliable read-back is
 available. Record `notSent` before a pre-send Retry and `canResend` before a
 Retry after a definite 429, 503, or proven undispatched request. A lost marker
-never authorizes a second write. The fence owns all heartbeats for this Step;
-do not record a nil heartbeat or allow another writer to replace its marker.
-Record a send-permitting marker only when the attempt has decided to return
-Retry; `RecordNotSent` ends the send path for that attempt.
+never authorizes a second write. The Fences own all heartbeats for this Step;
+do not record a nil heartbeat or allow another writer to replace their
+checkpoint. Record a send-permitting marker only when the attempt has decided
+to return Retry; `RecordNotSent` ends the send path for that attempt.
 Construct exactly one Fence per Step call per attempt. The Fence methods are
 safe for concurrent callers, and a five-second ticker re-records the claim
 while a send is running; a blocked heartbeat can delay `Dispatch` returning.
+
+From v0.39.0, one Step may make several fenced writes, such as an agent tool
+that sends a Gmail message and then posts a Slack thread reply, also from
+concurrent goroutines. Each Fence keeps the Marker of its own Call ID. Every
+heartbeat that any Fence of the Step attempt records carries the Markers of
+all its calls: the previous attempt's entries plus those recorded so far in
+this attempt, so Fences never lose each other's entries. `Decide` reads only
+its own Call ID's entry. A missing entry, or a heartbeat it cannot read,
+including the single Marker that releases before v0.39.0 recorded, counts as
+no marker: attempt one may send, and a later attempt assumes that each earlier
+attempt sent once, which can only overcount. Only a heartbeat read error from
+Dex, and an own entry with an impossible send count, fail closed.
+
+The heartbeat format is internal to the connector SDKs and may change between
+releases. Hosts, including agent hosts, must not parse it; classify a result
+by the connector's selected branch. Connector tests seed a prior attempt's
+checkpoint with `singledispatchtest.Context.SetPersistedMarkers`.
 The initial budget is the smaller of Execute timeout and remaining Step time.
 The request context ends after 7/12 of that budget by default, or at the
 fraction selected with `WithWriteWindow` (at most 5/6). A send is refused when
 less than budget/10 remains before that request deadline. Keep the default
 when read-back needs time; choose the window deliberately for long operations
 such as OpenAI `createResponse` (150-second Execute timeout, 87.5-second default
-request window). A foreign call's marker fails closed with an empty marker.
+request window).
 For an HTTP write, call `singledispatch.PrepareHTTPWrite(request)` after
 constructing the request and before `http.Client.Do` inside `Dispatch`'s send
 callback. Go's HTTP transport may otherwise transparently replay a request
@@ -610,8 +627,10 @@ replay. Under HTTP/1.1, a prepared bodyless POST, PUT, or PATCH uses
 migrating that endpoint.
 An HTTP request used by the fence is single-use.
 
-Legacy per-connector markers fail closed on first deploy of the shared fence.
-Plan reconciliation for in-flight calls before replacing their markers.
+An in-flight call whose previous attempt recorded a marker from before v0.39.0
+is decided as if no marker exists, so after attempt one it reads back or, with
+bounded resend, may resend while the attempt-count bound stays below the cap.
+Releases before v0.39.0 fail closed on the new checkpoint format.
 
 ### Bounded resend for `repeatOnUnknown: limited`
 
@@ -633,8 +652,7 @@ read-back may call `Dispatch` directly. A pre-send Retry under this decision
 records nothing, because `notSent` would let the next attempt skip read-back.
 At the cap, the decision is `ReadBackRequired` and an unconfirmed write selects
 `uncertain`. A capped Fence's markers record `sendCount`; an uncapped Fence's
-markers are unchanged, and a marker without the count is counted
-conservatively.
+markers omit it, and a marker without the count is counted conservatively.
 
 An application raises or lowers the cap of one Step with
 `MutationStepConfig.MaxSends`, or the generated factory's `MaxSends` field, from

@@ -810,7 +810,7 @@ func TestMutationAgentToolReadsPriorFenceCheckpoint(t *testing.T) {
 	tool, err = sdkgo.NewMutationAgentTool(declined, agentConnection, metadata)
 	require.NoError(t, err)
 	ctx = agentStepContext()
-	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{
+	require.NoError(t, ctx.SetPersistedMarkers(singledispatch.Marker{
 		CallID: firstCallID(t, overloaded), Attempt: 1, State: singledispatch.StateCanResend,
 	}))
 	ctx.AdvanceAttempt()

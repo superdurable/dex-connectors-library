@@ -392,11 +392,10 @@ guarantee.
 The fence reads the last checkpoint before credentials or provider lookups. It
 permits one send only on attempt one with no marker, or after the immediately
 preceding attempt recorded `notSent` or `canResend` for the same Call ID. A
-missing, foreign, stale, or claimed marker never authorizes another write,
+missing, stale, or claimed marker never authorizes another write,
 except through the [bounded resend](#bounded-resend) of a `limited` operation.
 Use exactly one Fence per Step call per attempt; separate Fence instances do
-not share an in-process send latch. A foreign marker fails closed with no
-provider identity exposed. The connector reads back a saved provider identity when possible; an
+not share an in-process send latch. The connector reads back a saved provider identity when possible; an
 unconfirmable possibly sent write selects `uncertain`. `notSent` is recorded
 before a pre-send Retry; `canResend` requires positive evidence that the
 provider did not process the request. The claim is the first heartbeat of the
@@ -421,11 +420,6 @@ unconditionally blocks Go's HTTP/2 replay of nil-body writes after a stream
 requests use `Transfer-Encoding: chunked`. Verify provider support before
 migrating an endpoint that requires a bodyless write.
 
-Legacy per-connector heartbeat markers are invalid to this shared fence and
-fail closed on the first deploy. Plan in-flight call reconciliation before
-replacing those markers; a saved legacy provider ID is not read back by this
-helper.
-
 `RecordHeartbeat` waits for a Worker frame, not backend persistence. If the
 claim frame is lost before persistence, the provider accepts the write, and
 the Worker dies, the next attempt sees no current claim. It fails closed to
@@ -435,21 +429,50 @@ retain its latest persisted marker or no marker. A persisted `notSent` or
 cannot. The fence does not guarantee exactly-once delivery or confirmation of
 an accepted write when the provider exposes no reliable read-back.
 
+#### Several fenced writes in one Step
+
+One Step may make several fenced writes with different Call IDs, such as an
+agent tool that sends a Gmail `sendMessage` and then a Slack
+`postThreadReply`, including concurrently. Every heartbeat a Fence records is
+the Step attempt's whole checkpoint: one marker per Call ID, holding the
+previous attempt's entries and every entry recorded so far in this attempt.
+The Fences of one Step attempt share that checkpoint in process (Go: per Step
+context; Python: per context object; TypeScript: per context object in a
+registry on `globalThis`, shared by every loaded SDK copy) and serialize their
+heartbeats, so none loses another's entry. An entry is committed only after
+its heartbeat succeeds. Fences of the Go, Python, and TypeScript SDKs record
+the same JSON for the same calls; the cross-language
+[`single-dispatch-markers.json`](../conformance/single-dispatch-markers.json)
+scenarios pin it.
+
+A Fence reads only its own Call ID's entry. A missing entry, an entry it cannot
+read or whose key differs from its Call ID, and any other heartbeat value,
+including the single marker that SDK releases before sdkgo v0.39.0, sdkpython
+0.13.0, and sdkts 0.13.0 recorded, count as no marker: attempt one may send,
+and a later attempt assumes every earlier attempt sent once. That bound can
+only overcount, so ignoring an unreadable checkpoint never permits more sends
+than the cap. Only a heartbeat read error from Dex, and an own entry with a
+send count that one send per attempt could not produce, fail closed. Earlier
+SDK releases fail closed on the new format.
+
+The checkpoint format is internal to the connector SDKs and may change. Hosts,
+including Dex agents and MCP servers, must not parse it; they classify a
+result by the branch the connector selects.
+
 #### Bounded resend
 
 A `limited` operation constructs its Fence with
 `singledispatch.WithMaxSends(call.MaxSends())`. Without that option, or with
-1, the Fence behaves exactly as described above and writes the same markers.
-With a cap of 2 or more, each marker also records `sendCount`, the number of
+1, the Fence behaves exactly as described above and its markers omit
+`sendCount`. With a cap of 2 or more, each marker also records `sendCount`, the number of
 possibly effective sends of the Call ID through that attempt: a claim counts its
 own send, `notSent` and `canResend` carry the count from before their claim, and
 a provider-ID claim keeps its claim's count. The next attempt computes an upper
 bound of earlier sends: none on attempt one; one per earlier attempt without a
 marker; otherwise the marker's count plus the attempts after it. A marker
 without a count, written by an uncapped Fence or an earlier release, counts its
-own attempt for a claim and the attempts before it otherwise. A foreign or
-invalid marker, including a count larger than its attempt allows, still fails
-closed.
+own attempt for a claim and the attempts before it otherwise. An own entry
+with a count larger than its attempt allows still fails closed.
 
 A decision that would require read-back becomes `ReadBackThenResendAllowed`
 while that bound is below the cap. The connector reads back first when it can:

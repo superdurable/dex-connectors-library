@@ -6,6 +6,13 @@
 // By default a Fence never resends after a possible dispatch. WithMaxSends enables bounded
 // resend for a repeatOnUnknown: limited operation: a later attempt may read back and then
 // send again while the possibly effective sends of the Call ID stay below the cap.
+//
+// One Step may run several fenced calls with different Call IDs, also concurrently. Every
+// heartbeat a Fence records holds one Marker per Call ID the Step attempt knows: the
+// previous attempt's entries plus the entries recorded so far in this attempt. Decide reads
+// only its own Call ID's entry and treats an unreadable heartbeat or a missing entry as no
+// marker. This checkpoint format is internal to the connector SDKs and may change; hosts
+// must not parse it.
 package singledispatch
 
 import (
@@ -32,7 +39,8 @@ const (
 	StateCanResend State = "canResend"
 )
 
-// Marker is the non-secret heartbeat checkpoint for a single call and attempt.
+// Marker is the non-secret checkpoint for a single call and attempt. A Fence records it
+// as its Call ID's entry in the Step attempt's heartbeat.
 type Marker struct {
 	// CallID identifies the stable connector call.
 	CallID sdkgo.CallID `json:"callId"`
@@ -78,7 +86,7 @@ type Decision struct {
 	Kind DecisionKind
 	// Marker is the prior checkpoint, including any provider identity.
 	Marker Marker
-	// Err reports an unreadable or invalid checkpoint.
+	// Err reports a heartbeat read error or an own entry with an impossible send count.
 	Err error
 	// MaximumPriorSends is an upper bound on the possibly effective sends of this Call ID
 	// before the current attempt. It is zero for FailClosed.
@@ -96,9 +104,12 @@ var (
 
 // Fence owns the checkpoint and send decision for one Step call and attempt.
 // Construct exactly one per call per attempt. Its methods are safe for concurrent callers.
-// A five-second ticker repeats the claim while Dispatch runs; a slow heartbeat can delay Dispatch's return.
+// Fences of different Call IDs in one Step share the attempt's heartbeat without losing
+// each other's entries. A five-second ticker repeats the claim while Dispatch runs; a slow
+// heartbeat can delay Dispatch's return.
 type Fence struct {
 	call               sdkgo.Call
+	checkpoint         *stepCheckpoint
 	writeDeadline      time.Time
 	minimumRequestTime time.Duration
 	heartbeatInterval  time.Duration
@@ -180,16 +191,20 @@ func NewFence(call sdkgo.Call, executeTimeout time.Duration, options ...FenceOpt
 	budget = max(budget, 0)
 	return &Fence{
 		call:               call,
-		writeDeadline:      startedAt.Add(time.Duration(float64(budget) * config.writeWindowFraction)),
+		checkpoint:         stepCheckpointFor(call.Context),
+		writeDeadline:     startedAt.Add(time.Duration(float64(budget) * config.writeWindowFraction)),
 		minimumRequestTime: budget / 10, heartbeatInterval: 5 * time.Second,
 		maxSends: config.maxSends,
 	}, nil
 }
 
-// Decide reads the last heartbeat before any credential or provider lookup.
-// On a later attempt, a missing, foreign, stale, claimed, or invalid checkpoint forbids a send,
+// Decide reads this Call ID's entry in the last heartbeat before any credential or provider lookup.
+// A missing entry and an unreadable heartbeat, including a single Marker from an earlier
+// release, count as no marker: attempt one may send, and a later attempt assumes each
+// earlier attempt sent once. On a later attempt, a missing, stale, or claimed checkpoint forbids a send,
 // except that a WithMaxSends cap of 2 or more permits a read-back and resend while the
-// upper bound of earlier sends stays below the cap. Foreign and invalid checkpoints always fail closed.
+// upper bound of earlier sends stays below the cap. A heartbeat read error and an own entry
+// with an impossible send count fail closed.
 func (fence *Fence) Decide() Decision {
 	fence.mu.Lock()
 	defer fence.mu.Unlock()
@@ -201,11 +216,15 @@ func (fence *Fence) Decide() Decision {
 		fenceobservation.ReportDecision(fence.attemptIdentity(), fence.decision.Kind == SendAllowed)
 	}()
 	attempt := fence.call.Context.Attempt()
-	var previous Marker
-	hasPrevious, err := fence.call.Context.GetLastHeartbeatValue(&previous)
+	var heartbeat any
+	hasHeartbeat, err := fence.call.Context.GetLastHeartbeatValue(&heartbeat)
 	if err != nil {
 		fence.decision = Decision{Kind: FailClosed, Err: err}
 		return fence.decision
+	}
+	previous, hasPrevious := Marker{}, false
+	if hasHeartbeat {
+		previous, hasPrevious = markersFromHeartbeat(heartbeat)[fence.call.ID]
 	}
 	if !hasPrevious {
 		if attempt == 1 {
@@ -214,10 +233,6 @@ func (fence *Fence) Decide() Decision {
 			// Each earlier attempt sends at most once.
 			fence.decision = Decision{Kind: fence.resendOrReadBack(attempt - 1), MaximumPriorSends: attempt - 1}
 		}
-		return fence.decision
-	}
-	if previous.CallID != fence.call.ID {
-		fence.decision = Decision{Kind: FailClosed, Err: errors.New("foreign single-dispatch checkpoint")}
 		return fence.decision
 	}
 	if !isValidMarker(previous) {
@@ -347,7 +362,7 @@ func (fence *Fence) resendOrReadBack(priorSends int32) DecisionKind {
 }
 
 func (fence *Fence) record(marker Marker) error {
-	if err := fence.call.Context.RecordHeartbeat(marker); err != nil {
+	if err := fence.checkpoint.record(fence.call.Context, marker); err != nil {
 		return err
 	}
 	fence.marker = marker
@@ -375,7 +390,7 @@ func (fence *Fence) repeatClaim(claim Marker, stop <-chan struct{}, stopped chan
 			fence.mu.Lock()
 			if fence.marker == claim {
 				// The claim is best-effort repetition; failure cannot authorize another send.
-				_ = fence.call.Context.RecordHeartbeat(claim)
+				_ = fence.checkpoint.record(fence.call.Context, claim)
 			}
 			fence.mu.Unlock()
 		}
