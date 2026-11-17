@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenari
 import { ElevenLabsClient } from '../src/client.js';
 import { CreateSpeechInputSchema, ListVoicesInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/elevenlabs/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/elevenlabs/scenarios.json', import.meta.url))
+  .filter(scenario => ['listVoices', 'createSpeech'].includes(scenario.operation));
 const connection = { provider: 'elevenlabs', name: 'elevenlabs' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeElevenLabs));

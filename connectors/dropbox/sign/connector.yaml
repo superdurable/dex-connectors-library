@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: dropbox-sign
   displayName: Dropbox Sign
-  description: Read a signature request's title and completion status without signer or document data.
+  description: Inspect and manage signature requests, send documents or templates for signing, remind signers, and manage templates.
   company: Dropbox
   categories: [files-documents]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: dropbox-sign
   languages:
@@ -76,3 +76,156 @@ spec:
           default: true
           description: One example signature request is returned.
           output: {id: fa5c8a0b0f492d768749333ad6fcc214c111e967, title: Example agreement, isComplete: true, isDeclined: false, hasError: false}
+    - name: listSignatureRequests
+      goName: ListSignatureRequests
+      inputType: ListSignatureRequestsInput
+      outputType: SignatureRequestPage
+      kind: query
+      description: Read one bounded page of accessible signature request titles and statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Dropbox Sign returned a signature request page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign conclusively rejected the list request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example signature request is listed.
+          output: {requests: [{id: fa5c8a0b0f492d768749333ad6fcc214c111e967, title: Example agreement, isComplete: false, isDeclined: false, hasError: false}], page: 1, totalPages: 1}
+    - name: sendSignatureRequest
+      goName: SendSignatureRequest
+      inputType: SendSignatureRequestInput
+      outputType: SignatureRequestStatus
+      kind: mutation
+      description: Send a signature request using a public HTTPS document URL and named signers.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Dropbox Sign returned the sent request.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign conclusively rejected the send., optional: true}
+        - {id: defect, goName: Defect, description: Document URL and signer input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The bounded send count ended without a confirmed request., optional: true}
+      mocks:
+        - {name: sentDocument, branch: sent, description: One example signature request was sent., default: true, output: {id: fa5c8a0b0f492d768749333ad6fcc214c111e967, title: Example agreement, isComplete: false, isDeclined: false, hasError: false}}
+    - name: sendSignatureRequestWithTemplate
+      goName: SendSignatureRequestWithTemplate
+      inputType: SendSignatureRequestWithTemplateInput
+      outputType: SignatureRequestStatus
+      kind: mutation
+      description: Send a signature request from a template with named signer roles.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Dropbox Sign returned the templated request.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign conclusively rejected the templated send., optional: true}
+        - {id: defect, goName: Defect, description: Template or signer input or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The bounded send count ended without a confirmed request., optional: true}
+      mocks:
+        - {name: sentTemplate, branch: sent, description: One example templated request was sent., default: true, output: {id: fa5c8a0b0f492d768749333ad6fcc214c111e967, title: Example agreement, isComplete: false, isDeclined: false, hasError: false}}
+    - name: cancelIncompleteSignatureRequest
+      goName: CancelIncompleteSignatureRequest
+      inputType: GetSignatureRequestInput
+      outputType: CancellationQueued
+      kind: mutation
+      description: Queue cancellation of an incomplete signature request; the provider event confirms completion later.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: queued, goName: Queued, description: Dropbox Sign queued cancellation.}
+        - {id: notFound, goName: NotFound, description: The request is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign rejected cancellation., optional: true}
+        - {id: defect, goName: Defect, description: Request ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: cancellationQueued, branch: queued, description: Cancellation was queued., default: true, output: {signatureRequestId: fa5c8a0b0f492d768749333ad6fcc214c111e967, queued: true}}
+    - name: remindSignatureRequest
+      goName: RemindSignatureRequest
+      inputType: RemindSignatureRequestInput
+      outputType: SignatureRequestStatus
+      kind: mutation
+      description: Email one signer a request reminder with a bounded send count.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: reminded, goName: Reminded, description: Dropbox Sign returned the request after sending the reminder.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign conclusively rejected the reminder., optional: true}
+        - {id: defect, goName: Defect, description: Request ID and signer email or credentials are invalid., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The bounded send count ended without reminder confirmation., optional: true}
+      mocks:
+        - {name: reminderSent, branch: reminded, description: One signer reminder was sent., default: true, output: {id: fa5c8a0b0f492d768749333ad6fcc214c111e967, title: Example agreement, isComplete: false, isDeclined: false, hasError: false}}
+    - name: updateSignerName
+      goName: UpdateSignerName
+      inputType: UpdateSignerNameInput
+      outputType: UpdatedSignerName
+      kind: mutation
+      description: Replace one in-flight request signer's display name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Dropbox Sign accepted the signer name update.}
+        - {id: notFound, goName: NotFound, description: Dropbox Sign did not expose the signature request., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example signer name is updated.
+          output: {signatureRequestId: fa5c8a0b0f492d768749333ad6fcc214c111e967, updated: true}
+    - name: listTemplates
+      goName: ListTemplates
+      inputType: ListTemplatesInput
+      outputType: TemplatesPage
+      kind: query
+      description: List one bounded page of accessible template IDs, titles, and signer roles.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Dropbox Sign returned a template page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign rejected template listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned invalid template data., optional: true}
+        - {id: defect, goName: Defect, description: Template page options or credentials are invalid., optional: true}
+      mocks:
+        - {name: templatePage, branch: listed, description: One template with a Client signer role is listed., default: true, output: {templates: [{id: template-1, title: Example agreement, signerRoles: [Client]}], page: 1, totalPages: 1}}
+    - name: getTemplate
+      goName: GetTemplate
+      inputType: TemplateIdentityInput
+      outputType: TemplateMetadata
+      kind: query
+      description: Read one template's ID, title, and signer roles.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Dropbox Sign returned the selected template.}
+        - {id: notFound, goName: NotFound, description: The template is unavailable., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign rejected template retrieval., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned invalid template data., optional: true}
+        - {id: defect, goName: Defect, description: Template ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: sampleTemplate, branch: found, description: One template with a Client signer role is returned., default: true, output: {id: template-1, title: Example agreement, signerRoles: [Client]}}
+    - name: deleteTemplate
+      goName: DeleteTemplate
+      inputType: TemplateIdentityInput
+      outputType: DeletedTemplate
+      kind: mutation
+      description: Permanently delete a template by ID; a missing template is already absent.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: The template is absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign rejected template deletion., optional: true}
+        - {id: defect, goName: Defect, description: Template ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: sampleDeleted, branch: deleted, description: One template was deleted., default: true, output: {templateId: template-1, deleted: true}}

@@ -2,6 +2,1382 @@
   "connector": "deel",
   "scenarios": [
     {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts",
+          "query": {
+            "after_cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contracts": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterCursor": "next",
+        "limit": 10
+      },
+      "name": "listContracts-rejected",
+      "operation": "listContracts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"bad\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts",
+          "query": {
+            "after_cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contracts": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterCursor": "next",
+        "limit": 10
+      },
+      "name": "listContracts-invalidResponse",
+      "operation": "listContracts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contracts": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 101
+      },
+      "name": "listContracts-defect",
+      "operation": "listContracts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts",
+          "query": {
+            "after_cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterCursor": "next",
+        "limit": 10
+      },
+      "name": "listContracts-rateLimit",
+      "operation": "listContracts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts",
+          "query": {
+            "after_cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterCursor": "next",
+        "limit": 10
+      },
+      "name": "listContracts-serverError",
+      "operation": "listContracts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts",
+          "query": {
+            "after_cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterCursor": "next",
+        "limit": 10
+      },
+      "name": "listContracts-serverUnavailable",
+      "operation": "listContracts"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts",
+          "query": {
+            "after_cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterCursor": "next",
+        "limit": 10
+      },
+      "name": "listContracts-transportFailure",
+      "operation": "listContracts"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/tasks",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "listContractTasks-notFound",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/tasks",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "listContractTasks-rejected",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"task-123\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/tasks",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "listContractTasks-invalidResponse",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": ""
+      },
+      "name": "listContractTasks-defect",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/tasks",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "listContractTasks-rateLimit",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/tasks",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "listContractTasks-serverError",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/tasks",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "listContractTasks-serverUnavailable",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/tasks",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "listContractTasks-transportFailure",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/amendments",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amendments": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000",
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listContractAmendments-notFound",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/amendments",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amendments": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000",
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listContractAmendments-rejected",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"amendment-123\"}],\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/amendments",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amendments": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000",
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listContractAmendments-invalidResponse",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amendments": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": ""
+      },
+      "name": "listContractAmendments-defect",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/amendments",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000",
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listContractAmendments-rateLimit",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/amendments",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000",
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listContractAmendments-serverError",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/amendments",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000",
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listContractAmendments-serverUnavailable",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/amendments",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000",
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listContractAmendments-transportFailure",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/termination-reasons",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "reasons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listTerminationReasons-rejected",
+      "operation": "listTerminationReasons"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"reason-123\"}],\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/termination-reasons",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "reasons": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listTerminationReasons-invalidResponse",
+      "operation": "listTerminationReasons"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "reasons": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 101
+      },
+      "name": "listTerminationReasons-defect",
+      "operation": "listTerminationReasons"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/termination-reasons",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listTerminationReasons-rateLimit",
+      "operation": "listTerminationReasons"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/termination-reasons",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listTerminationReasons-serverError",
+      "operation": "listTerminationReasons"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/termination-reasons",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listTerminationReasons-serverUnavailable",
+      "operation": "listTerminationReasons"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/termination-reasons",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listTerminationReasons-transportFailure",
+      "operation": "listTerminationReasons"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123e4567-e89b-12d3-a456-426614174000\",\"type\":\"ongoing_time_based\",\"status\":\"in_progress\"}],\"page\":{\"cursor\":\"after\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts",
+          "query": {
+            "after_cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contracts": [
+            {
+              "id": "123e4567-e89b-12d3-a456-426614174000",
+              "status": "in_progress",
+              "type": "ongoing_time_based"
+            }
+          ],
+          "nextCursor": "after"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterCursor": "next",
+        "limit": 10
+      },
+      "name": "listContracts-listed",
+      "operation": "listContracts"
+    },
+    {
+      "callId": "22222222-2222-4222-8222-222222222222",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"task-123\",\"status\":\"approved\",\"amount\":\"secret\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/tasks",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "tasks": [
+            {
+              "id": "task-123",
+              "status": "approved"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "name": "listContractTasks-listed",
+      "operation": "listContractTasks"
+    },
+    {
+      "callId": "33333333-3333-4333-8333-333333333333",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"amendment-123\",\"status\":\"ACTIVE\",\"sign_status\":\"APPROVED\",\"rate\":5000}],\"cursor\":\"after\",\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/123e4567-e89b-12d3-a456-426614174000/amendments",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "amendments": [
+            {
+              "id": "amendment-123",
+              "signStatus": "APPROVED",
+              "status": "ACTIVE"
+            }
+          ],
+          "nextCursor": "after"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contractId": "123e4567-e89b-12d3-a456-426614174000",
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listContractAmendments-listed",
+      "operation": "listContractAmendments"
+    },
+    {
+      "callId": "44444444-4444-4444-8444-444444444444",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"reason-123\",\"name\":\"Project has ended\",\"frequency\":\"MOST_COMMON\"}],\"has_more\":true,\"next_cursor\":\"after\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contracts/termination-reasons",
+          "query": {
+            "cursor": [
+              "next"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-deel-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "after",
+          "reasons": [
+            {
+              "frequency": "MOST_COMMON",
+              "id": "reason-123",
+              "name": "Project has ended"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next",
+        "limit": 10
+      },
+      "name": "listTerminationReasons-listed",
+      "operation": "listTerminationReasons"
+    },
+    {
       "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
       "exchanges": [
         {

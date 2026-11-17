@@ -21,12 +21,15 @@ var testConnection = sdkgo.ConnectionRef{Provider: "constantcontact", Name: "con
 
 type queryContext struct{ dex.Context }
 
-func (queryContext) FlowID() string              { return "constantcontact-provider-test" }
-func (queryContext) StepExecutionID() string     { return "get-contact" }
-func (queryContext) Deadline() (time.Time, bool) { return time.Time{}, false }
-func (queryContext) Done() <-chan struct{}       { return nil }
-func (queryContext) Err() error                  { return nil }
-func (queryContext) Value(key any) any           { return context.Background().Value(key) }
+func (queryContext) FlowID() string                          { return "constantcontact-provider-test" }
+func (queryContext) StepExecutionID() string                 { return "get-contact" }
+func (queryContext) Deadline() (time.Time, bool)             { return time.Time{}, false }
+func (queryContext) Done() <-chan struct{}                   { return nil }
+func (queryContext) Err() error                              { return nil }
+func (queryContext) Value(key any) any                       { return context.Background().Value(key) }
+func (queryContext) Attempt() int32                          { return 1 }
+func (queryContext) RecordHeartbeat(any) error               { return nil }
+func (queryContext) GetLastHeartbeatValue(any) (bool, error) { return false, nil }
 
 func testCredentials() Credentials {
 	return Credentials{OAuthClientID: "app-id", OAuthClientSecret: sdkgo.NewSecretString("app-secret"), AccessToken: sdkgo.NewSecretString("sample-access-token"), RefreshToken: sdkgo.NewSecretString("sample-refresh-token")}

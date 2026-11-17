@@ -68,6 +68,11 @@ type providerResponse struct {
 }
 
 func (client *Client) get(call sdkgo.Call, email string) providerResponse {
+	parameters := url.Values{"email": {email}}
+	return client.getPath(call, "/v1/customers?"+parameters.Encode())
+}
+
+func (client *Client) getPath(call sdkgo.Call, path string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -76,8 +81,7 @@ func (client *Client) get(call sdkgo.Call, email string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(privateKey) {
 		return providerResponse{err: errCredential}
 	}
-	parameters := url.Values{"email": {email}}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+"/v1/customers?"+parameters.Encode(), nil)
+	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

@@ -8,7 +8,9 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { DiscordClient } from '../src/client.js';
 import { AddReactionInputSchema, CreateMessageInputSchema, GetChannelInputSchema, ListChannelMessagesInputSchema } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/discord/scenarios.json', import.meta.url));
+const supportedOperations = new Set(['getChannel', 'listChannelMessages', 'createMessage', 'addReaction']);
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/discord/scenarios.json', import.meta.url))
+  .filter(scenario => supportedOperations.has(scenario.operation));
 const connection = { provider: 'discord', name: 'discord' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeDiscord));

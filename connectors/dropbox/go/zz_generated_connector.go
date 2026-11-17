@@ -51,6 +51,11 @@ type Operations interface {
 	ContinueFolder() sdkgo.Query[ContinueFolderInput, FolderPage]
 	DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile]
 	UploadFile() sdkgo.Mutation[UploadFileInput, UploadedFile]
+	SearchFiles() sdkgo.Query[SearchFilesInput, SearchFilesPage]
+	EnsureFolder() sdkgo.Mutation[EnsureFolderInput, EnsuredFolder]
+	DeletePath() sdkgo.Mutation[DeletePathInput, DeletedPath]
+	CopyPath() sdkgo.Mutation[TransferPathInput, EntryMetadata]
+	MovePath() sdkgo.Mutation[TransferPathInput, EntryMetadata]
 }
 
 type clientOperations struct{ client *Client }
@@ -69,6 +74,21 @@ func (operations clientOperations) DownloadFile() sdkgo.Query[DownloadFileInput,
 }
 func (operations clientOperations) UploadFile() sdkgo.Mutation[UploadFileInput, UploadedFile] {
 	return operations.client.UploadFile()
+}
+func (operations clientOperations) SearchFiles() sdkgo.Query[SearchFilesInput, SearchFilesPage] {
+	return operations.client.SearchFiles()
+}
+func (operations clientOperations) EnsureFolder() sdkgo.Mutation[EnsureFolderInput, EnsuredFolder] {
+	return operations.client.EnsureFolder()
+}
+func (operations clientOperations) DeletePath() sdkgo.Mutation[DeletePathInput, DeletedPath] {
+	return operations.client.DeletePath()
+}
+func (operations clientOperations) CopyPath() sdkgo.Mutation[TransferPathInput, EntryMetadata] {
+	return operations.client.CopyPath()
+}
+func (operations clientOperations) MovePath() sdkgo.Mutation[TransferPathInput, EntryMetadata] {
+	return operations.client.MovePath()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -627,6 +647,8 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
 }
 
 type UploadFileResult = sdkgo.MutationResult[UploadedFile]
@@ -646,6 +668,8 @@ type UploadFileStepConfig[IN any] struct {
 	Defect                            sdkgo.Target[UploadFileResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UploadedFile]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
 }
 
 func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationStep[IN, UploadFileInput, UploadedFile] {
@@ -677,5 +701,373 @@ func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationSt
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const SearchFilesBranchFound sdkgo.BranchID = "found"
+const SearchFilesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SearchFilesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SearchFilesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SearchFilesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "searchFiles"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SearchFilesBranchFound, Description: "Dropbox returned a search page."},
+		{ID: SearchFilesBranchProviderRejected, Description: "Dropbox conclusively rejected the search.", Optional: true},
+		{ID: SearchFilesBranchInvalidResponse, Description: "Dropbox returned malformed or oversized search results.", Optional: true},
+		{ID: SearchFilesBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type SearchFilesResult = sdkgo.QueryResult[SearchFilesPage]
+
+type SearchFilesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                           `connector:"connectorId=dropbox"`
+	operationID                    struct{}                                           `connector:"operationId=searchFiles"`
+	StepType                       string                                             `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                     Connection                                         `connector:"connection"`
+	ConnectionName                 string                                             `connector:"connectionName"`
+	MapToOperationInput            func(IN) SearchFilesInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[SearchFilesResult]                    `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[SearchFilesResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[SearchFilesResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[SearchFilesResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[SearchFilesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewSearchFilesStep[IN any](config SearchFilesStepConfig[IN]) sdkgo.QueryStep[IN, SearchFilesInput, SearchFilesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, SearchFilesInput, SearchFilesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SearchFiles(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SearchFilesResult] {
+			branches := make([]sdkgo.BranchTarget[SearchFilesResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(SearchFilesBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SearchFilesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SearchFilesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SearchFilesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const EnsureFolderBranchEnsured sdkgo.BranchID = "ensured"
+const EnsureFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const EnsureFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const EnsureFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var EnsureFolderDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "ensureFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: EnsureFolderBranchEnsured, Description: "Dropbox created the folder or confirmed it already exists."},
+		{ID: EnsureFolderBranchProviderRejected, Description: "Dropbox conclusively rejected the folder request.", Optional: true},
+		{ID: EnsureFolderBranchInvalidResponse, Description: "Dropbox returned malformed or oversized folder metadata.", Optional: true},
+		{ID: EnsureFolderBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type EnsureFolderResult = sdkgo.MutationResult[EnsuredFolder]
+
+type EnsureFolderStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=dropbox"`
+	operationID                       struct{}                                            `connector:"operationId=ensureFolder"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) EnsureFolderInput                          `connector:"mapToOperationInput"`
+	Ensured                           sdkgo.Target[EnsureFolderResult]                    `connector:"branch=ensured"`
+	ProviderRejected                  sdkgo.Target[EnsureFolderResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[EnsureFolderResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[EnsureFolderResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EnsuredFolder]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewEnsureFolderStep[IN any](config EnsureFolderStepConfig[IN]) sdkgo.MutationStep[IN, EnsureFolderInput, EnsuredFolder] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, EnsureFolderInput, EnsuredFolder]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.EnsureFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[EnsureFolderResult] {
+			branches := make([]sdkgo.BranchTarget[EnsureFolderResult], 0, 4)
+			if config.Ensured.HasStep() {
+				branches = append(branches, config.Ensured.BranchTarget(EnsureFolderBranchEnsured))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(EnsureFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(EnsureFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(EnsureFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePathBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePathBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePathBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeletePathBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePathDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePath"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePathBranchDeleted, Description: "Dropbox deleted the path or confirmed it was already absent."},
+		{ID: DeletePathBranchProviderRejected, Description: "Dropbox conclusively rejected the deletion.", Optional: true},
+		{ID: DeletePathBranchInvalidResponse, Description: "Dropbox returned malformed or oversized deletion metadata.", Optional: true},
+		{ID: DeletePathBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeletePathResult = sdkgo.MutationResult[DeletedPath]
+
+type DeletePathStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=dropbox"`
+	operationID                       struct{}                                          `connector:"operationId=deletePath"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeletePathInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePathResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeletePathResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeletePathResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeletePathResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedPath]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePathStep[IN any](config DeletePathStepConfig[IN]) sdkgo.MutationStep[IN, DeletePathInput, DeletedPath] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeletePathInput, DeletedPath]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePath(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePathResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePathResult], 0, 4)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePathBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePathBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeletePathBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePathBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CopyPathBranchCopied sdkgo.BranchID = "copied"
+const CopyPathBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CopyPathBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CopyPathBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CopyPathDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "copyPath"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CopyPathBranchCopied, Description: "Dropbox confirmed the destination entry."},
+		{ID: CopyPathBranchProviderRejected, Description: "Dropbox conclusively rejected the copy.", Optional: true},
+		{ID: CopyPathBranchUncertain, Description: "A copy may have completed but its destination cannot be attributed to this call.", Optional: true},
+		{ID: CopyPathBranchDefect, Description: "Local paths, credentials, or dispatch checkpoint are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CopyPathResult = sdkgo.MutationResult[EntryMetadata]
+
+type CopyPathStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=dropbox"`
+	operationID                       struct{}                                            `connector:"operationId=copyPath"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) TransferPathInput                          `connector:"mapToOperationInput"`
+	Copied                            sdkgo.Target[CopyPathResult]                        `connector:"branch=copied"`
+	ProviderRejected                  sdkgo.Target[CopyPathResult]                        `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CopyPathResult]                        `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CopyPathResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EntryMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCopyPathStep[IN any](config CopyPathStepConfig[IN]) sdkgo.MutationStep[IN, TransferPathInput, EntryMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TransferPathInput, EntryMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CopyPath(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CopyPathResult] {
+			branches := make([]sdkgo.BranchTarget[CopyPathResult], 0, 4)
+			if config.Copied.HasStep() {
+				branches = append(branches, config.Copied.BranchTarget(CopyPathBranchCopied))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CopyPathBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CopyPathBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CopyPathBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const MovePathBranchMoved sdkgo.BranchID = "moved"
+const MovePathBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const MovePathBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const MovePathBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var MovePathDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "movePath"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: MovePathBranchMoved, Description: "Dropbox confirmed the destination entry."},
+		{ID: MovePathBranchProviderRejected, Description: "Dropbox conclusively rejected the move.", Optional: true},
+		{ID: MovePathBranchUncertain, Description: "A move may have completed but its destination cannot be attributed to this call.", Optional: true},
+		{ID: MovePathBranchDefect, Description: "Local paths, credentials, or dispatch checkpoint are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type MovePathResult = sdkgo.MutationResult[EntryMetadata]
+
+type MovePathStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=dropbox"`
+	operationID                       struct{}                                            `connector:"operationId=movePath"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) TransferPathInput                          `connector:"mapToOperationInput"`
+	Moved                             sdkgo.Target[MovePathResult]                        `connector:"branch=moved"`
+	ProviderRejected                  sdkgo.Target[MovePathResult]                        `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[MovePathResult]                        `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[MovePathResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EntryMetadata]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewMovePathStep[IN any](config MovePathStepConfig[IN]) sdkgo.MutationStep[IN, TransferPathInput, EntryMetadata] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, TransferPathInput, EntryMetadata]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.MovePath(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[MovePathResult] {
+			branches := make([]sdkgo.BranchTarget[MovePathResult], 0, 4)
+			if config.Moved.HasStep() {
+				branches = append(branches, config.Moved.BranchTarget(MovePathBranchMoved))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(MovePathBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(MovePathBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(MovePathBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

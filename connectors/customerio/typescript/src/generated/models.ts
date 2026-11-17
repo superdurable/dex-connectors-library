@@ -10,9 +10,9 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Customer.io App API HTTPS root. Blank uses the displayed US-region default; override with https://api-eu.customer.io for an EU workspace. Do not include path, query, or credentials. */
   baseUrl?: string;
-  /** Maximum duration of one customer lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
+  /** Maximum duration of one App API request as a positive Go duration. Blank uses the displayed default; increase only for slow responses. Runtime value in milliseconds. */
   timeoutMs?: number;
-  /** Maximum complete customer-lookup JSON response in bytes as a positive integer. Blank uses the displayed default; increase if an email has many matching profiles. */
+  /** Maximum complete App API JSON response in bytes as a positive integer. Blank uses the displayed default; increase for large customer or campaign responses. */
   maxResponseBytes?: number;
 }
 
@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key, not its label; blank prevents calls. Dex sends it only as a Bearer credential. */
+  /** Secret App API private key from Customer.io > Settings > API Credentials > App API > Create API Key. Copy the complete sk_ key or existing App API key with profile and campaign read access, not its label; blank prevents calls. Dex sends it only as a Bearer credential. */
   privateKey: SecretString;
 }
 

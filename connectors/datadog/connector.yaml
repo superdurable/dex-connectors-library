@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: datadog
   displayName: Datadog
-  description: "Use the Datadog REST API through typed Dex connector Steps."
+  description: "Query Datadog metrics and create, list, read, update, and delete monitors through typed Dex Steps."
   company: Datadog
   categories: [developer-tools]
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: datadog
   languages:
@@ -51,15 +51,35 @@ spec:
       - name: application_key
         goName: ApplicationKey
         type: secretString
-        description: "Secret Datadog application key from Organization Settings > Application Keys at https://app.datadoghq.com/organization-settings/application-keys. Select New Key with timeseries_query and monitors_read permissions; copy the key at creation; blank prevents requests."
+        description: "Secret Datadog application key from Organization Settings > Application Keys at https://app.datadoghq.com/organization-settings/application-keys. Select New Key with timeseries_query, monitors_read, and monitors_write permissions; copy the key at creation; blank prevents requests."
         required: true
     guide:
       startURL: https://app.datadoghq.com/organization-settings/api-keys
       steps:
         - "Open https://app.datadoghq.com/organization-settings/api-keys and create or select an API key in Organization Settings > API Keys."
-        - "Open https://app.datadoghq.com/organization-settings/application-keys, select New Key in Organization Settings > Application Keys, and grant timeseries_query and monitors_read permissions."
+        - "Open https://app.datadoghq.com/organization-settings/application-keys, select New Key in Organization Settings > Application Keys, and grant timeseries_query, monitors_read, and monitors_write permissions."
         - "Copy both secret values into api_key and application_key; leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
   operations:
+    - name: createMonitor
+      goName: CreateMonitor
+      inputType: CreateMonitorInput
+      outputType: Monitor
+      kind: mutation
+      description: Create a Datadog metric alert monitor.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Datadog created the monitor and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Datadog definitively rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A monitor may have been created without a confirmed ID after bounded sends., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 2}
+      mocks:
+        - name: latencyMonitorCreated
+          branch: created
+          description: Create a metric alert monitor for the example.
+          default: true
+          output: {id: 12345, name: "Dex latency alert", type: "metric alert", overall_state: "OK"}
     - name: queryMetrics
       goName: QueryMetrics
       inputType: QueryMetricsInput
@@ -76,6 +96,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        repeatOnUnknown: safe
       mocks:
         - name: queriedDefault
           branch: queried
@@ -98,9 +119,73 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        repeatOnUnknown: safe
       mocks:
         - name: listedDefault
           branch: listed
           description: "A Meridian example returns a representative MonitorsPage."
           default: true
           output: {"monitors":[{"id":12345,"name":"Meridian API latency","type":"metric alert","overall_state":"OK"}]}
+    - name: getMonitor
+      goName: GetMonitor
+      inputType: GetMonitorInput
+      outputType: Monitor
+      kind: query
+      description: Read one Datadog monitor summary by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Datadog returned the monitor.}
+        - {id: notFound, goName: NotFound, description: Datadog did not expose the monitor., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Datadog rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Datadog returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example monitor is returned.
+          output: {id: 12345, name: Meridian API latency, type: metric alert, overall_state: OK}
+    - name: updateMonitor
+      goName: UpdateMonitor
+      inputType: UpdateMonitorInput
+      outputType: Monitor
+      kind: mutation
+      description: Replace a monitor's name and message with absolute values.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Datadog returned the updated monitor.}
+        - {id: notFound, goName: NotFound, description: Datadog did not expose the monitor., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Datadog rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Datadog returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One example monitor is updated.
+          output: {id: 12345, name: Meridian API latency, type: metric alert, overall_state: OK}
+    - name: deleteMonitor
+      goName: DeleteMonitor
+      inputType: DeleteMonitorInput
+      outputType: DeletedMonitor
+      kind: mutation
+      description: Delete a monitor by ID without forcing deletion of dependent resources.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Datadog confirmed monitor deletion.}
+        - {id: notFound, goName: NotFound, description: Datadog did not expose the monitor., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Datadog rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Datadog returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One example monitor is deleted.
+          output: {monitorId: 12345}

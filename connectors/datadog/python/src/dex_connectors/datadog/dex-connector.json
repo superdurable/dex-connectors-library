@@ -1,6 +1,6 @@
 {
   "connectorId": "datadog",
-  "releaseTag": "connectors/datadog/go/v0.3.0",
+  "releaseTag": "connectors/datadog/go/v0.4.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-datadog",

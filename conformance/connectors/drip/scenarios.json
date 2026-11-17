@@ -561,6 +561,4165 @@
       },
       "name": "getSubscriber-transportFailure",
       "operation": "getSubscriber"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000101",
+      "exchanges": [
+        {
+          "body": "{\"meta\":{\"page\":2,\"count\":1,\"total_pages\":2,\"total_count\":3},\"subscribers\":[{\"id\":\"subscriber-1\",\"email\":\"ada@example.com\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "status": [
+              "all"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 2,
+          "subscribers": [
+            {
+              "email": "ada@example.com",
+              "firstName": "Ada",
+              "id": "subscriber-1",
+              "lastName": "Lovelace",
+              "status": "active"
+            }
+          ],
+          "totalCount": 3,
+          "totalPages": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "page": 2,
+        "perPage": 2,
+        "status": "all"
+      },
+      "name": "listSubscribers-success",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":[{\"id\":\"subscriber-1\",\"email\":\"ada@example.com\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com",
+                "first_name": "Ada",
+                "last_name": "Lovelace"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "Ada",
+          "id": "subscriber-1",
+          "lastName": "Lovelace",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "input": {
+        "accountId": "9999999",
+        "email": "ada@example.com",
+        "firstName": "Ada",
+        "lastName": "Lovelace"
+      },
+      "name": "upsertSubscriber-success",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/9999999/subscribers/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "ada@example.com"
+      },
+      "name": "deleteSubscriber-success",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000102",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "subscribers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listSubscribers-providerRejected",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000103",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "subscribers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listSubscribers-invalidResponse",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000104",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "subscribers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "0"
+      },
+      "name": "listSubscribers-defect",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000105",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listSubscribers-rateLimit",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000106",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listSubscribers-serverUnavailable",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listSubscribers-transportFailure",
+      "operation": "listSubscribers"
+    },
+    {
+      "callId": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "input": {
+        "accountId": "9999999",
+        "email": "ada@example.com"
+      },
+      "name": "upsertSubscriber-providerRejected",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "input": {
+        "accountId": "9999999",
+        "email": "ada@example.com"
+      },
+      "name": "upsertSubscriber-invalidResponse",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "input": {
+        "accountId": "0",
+        "email": "ada@example.com"
+      },
+      "name": "upsertSubscriber-defect",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "input": {
+        "accountId": "9999999",
+        "email": "ada@example.com"
+      },
+      "name": "upsertSubscriber-rateLimit",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "input": {
+        "accountId": "9999999",
+        "email": "ada@example.com"
+      },
+      "name": "upsertSubscriber-serverUnavailable",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42317e60-e79a-5d7e-862e-7fa4b6e9dd2c",
+      "input": {
+        "accountId": "9999999",
+        "email": "ada@example.com"
+      },
+      "name": "upsertSubscriber-transportFailure",
+      "operation": "upsertSubscriber"
+    },
+    {
+      "callId": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/9999999/subscribers/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "ada@example.com"
+      },
+      "name": "deleteSubscriber-providerRejected",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/9999999/subscribers/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "ada@example.com"
+      },
+      "name": "deleteSubscriber-invalidResponse",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "input": {
+        "accountId": "0",
+        "subscriberIdOrEmail": "ada@example.com"
+      },
+      "name": "deleteSubscriber-defect",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/9999999/subscribers/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "ada@example.com"
+      },
+      "name": "deleteSubscriber-rateLimit",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/9999999/subscribers/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "ada@example.com"
+      },
+      "name": "deleteSubscriber-serverUnavailable",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/9999999/subscribers/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "59c44ead-fc77-5aad-8f4e-5cb71f22858d",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "ada@example.com"
+      },
+      "name": "deleteSubscriber-transportFailure",
+      "operation": "deleteSubscriber"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{\"meta\":{\"page\":2,\"total_pages\":2,\"total_count\":2},\"campaigns\":[{\"id\":\"123456\",\"name\":\"Welcome Series\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "2"
+            ],
+            "sort": [
+              "name"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": [
+            {
+              "id": "123456",
+              "name": "Welcome Series",
+              "status": "active"
+            }
+          ],
+          "page": 2,
+          "totalCount": 2,
+          "totalPages": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "direction": "desc",
+        "page": 2,
+        "sort": "name",
+        "status": "active"
+      },
+      "name": "listCampaigns-listed",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaigns": [],
+          "page": 0,
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listCampaigns-rejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaigns": [],
+          "page": 0,
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listCampaigns-invalid-response",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaigns": [],
+          "page": 0,
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "bad"
+      },
+      "name": "listCampaigns-defect",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listCampaigns-429",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listCampaigns-503",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listCampaigns-500",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999"
+      },
+      "name": "listCampaigns-transport",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{\"campaigns\":[{\"id\":\"123456\",\"name\":\"Welcome Series\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "123456",
+          "name": "Welcome Series",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "getCampaign-found",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "getCampaign-not-found",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "getCampaign-rejected",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "getCampaign-invalid-response",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "bad"
+      },
+      "name": "getCampaign-defect",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "getCampaign-429",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "getCampaign-503",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "getCampaign-500",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "e11c9274-69d9-50fb-9f33-640f5eb6dc79",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "getCampaign-transport",
+      "operation": "getCampaign"
+    },
+    {
+      "callId": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "active",
+        "failureKind": "",
+        "output": {
+          "id": "123456",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "activateCampaign-active",
+      "operation": "activateCampaign"
+    },
+    {
+      "callId": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 422
+        },
+        {
+          "body": "{\"campaigns\":[{\"id\":\"123456\",\"name\":\"Welcome Series\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "active",
+        "failureKind": "",
+        "output": {
+          "id": "123456",
+          "status": "active"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "activateCampaign-already-active",
+      "operation": "activateCampaign"
+    },
+    {
+      "callId": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "activateCampaign-rejected",
+      "operation": "activateCampaign"
+    },
+    {
+      "callId": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "bad"
+      },
+      "name": "activateCampaign-defect",
+      "operation": "activateCampaign"
+    },
+    {
+      "callId": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "activateCampaign-429",
+      "operation": "activateCampaign"
+    },
+    {
+      "callId": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "activateCampaign-503",
+      "operation": "activateCampaign"
+    },
+    {
+      "callId": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "activateCampaign-500",
+      "operation": "activateCampaign"
+    },
+    {
+      "callId": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/activate",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fe0feca-43ef-59bc-b1ab-1057f8b89b36",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "activateCampaign-transport",
+      "operation": "activateCampaign"
+    },
+    {
+      "callId": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/pause",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "paused",
+        "failureKind": "",
+        "output": {
+          "id": "123456",
+          "status": "paused"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "pauseCampaign-paused",
+      "operation": "pauseCampaign"
+    },
+    {
+      "callId": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/pause",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 422
+        },
+        {
+          "body": "{\"campaigns\":[{\"id\":\"123456\",\"name\":\"Welcome Series\",\"status\":\"paused\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "paused",
+        "failureKind": "",
+        "output": {
+          "id": "123456",
+          "status": "paused"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "pauseCampaign-already-paused",
+      "operation": "pauseCampaign"
+    },
+    {
+      "callId": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/pause",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "pauseCampaign-rejected",
+      "operation": "pauseCampaign"
+    },
+    {
+      "callId": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "bad"
+      },
+      "name": "pauseCampaign-defect",
+      "operation": "pauseCampaign"
+    },
+    {
+      "callId": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/pause",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "pauseCampaign-429",
+      "operation": "pauseCampaign"
+    },
+    {
+      "callId": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/pause",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "pauseCampaign-503",
+      "operation": "pauseCampaign"
+    },
+    {
+      "callId": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/pause",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "pauseCampaign-500",
+      "operation": "pauseCampaign"
+    },
+    {
+      "callId": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/pause",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc6dc7f9-8951-5a28-9eba-abc09e91b999",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "pauseCampaign-transport",
+      "operation": "pauseCampaign"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{\"meta\":{\"page\":1,\"total_pages\":1,\"total_count\":1},\"subscribers\":[{\"id\":\"sub-1\",\"email\":\"ada@example.com\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "query": {
+            "direction": [
+              "asc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "subscribers": [
+            {
+              "email": "ada@example.com",
+              "firstName": "",
+              "id": "sub-1",
+              "lastName": "",
+              "status": "active"
+            }
+          ],
+          "totalCount": 1,
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "direction": "asc",
+        "page": 1,
+        "perPage": 100,
+        "status": "active"
+      },
+      "name": "listCampaignSubscribers-success",
+      "operation": "listCampaignSubscribers"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "subscribers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "listCampaignSubscribers-rejected",
+      "operation": "listCampaignSubscribers"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "subscribers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "listCampaignSubscribers-invalidResponse",
+      "operation": "listCampaignSubscribers"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "subscribers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "bad",
+        "campaignId": "123456"
+      },
+      "name": "listCampaignSubscribers-defect",
+      "operation": "listCampaignSubscribers"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "listCampaignSubscribers-429",
+      "operation": "listCampaignSubscribers"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "listCampaignSubscribers-503",
+      "operation": "listCampaignSubscribers"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "listCampaignSubscribers-500",
+      "operation": "listCampaignSubscribers"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456"
+      },
+      "name": "listCampaignSubscribers-transport",
+      "operation": "listCampaignSubscribers"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{\"meta\":{\"page\":1,\"total_pages\":1,\"total_count\":1},\"campaign_subscriptions\":[{\"id\":\"membership-1\",\"campaign_id\":\"123456\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/sub-1/campaign_subscriptions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "subscriptions": [
+            {
+              "campaignId": "123456",
+              "id": "membership-1",
+              "status": "active"
+            }
+          ],
+          "totalCount": 1,
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "listSubscriberCampaignSubscriptions-success",
+      "operation": "listSubscriberCampaignSubscriptions"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/sub-1/campaign_subscriptions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "subscriptions": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "listSubscriberCampaignSubscriptions-rejected",
+      "operation": "listSubscriberCampaignSubscriptions"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/sub-1/campaign_subscriptions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "subscriptions": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "listSubscriberCampaignSubscriptions-invalidResponse",
+      "operation": "listSubscriberCampaignSubscriptions"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "subscriptions": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "bad",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "listSubscriberCampaignSubscriptions-defect",
+      "operation": "listSubscriberCampaignSubscriptions"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/sub-1/campaign_subscriptions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "listSubscriberCampaignSubscriptions-429",
+      "operation": "listSubscriberCampaignSubscriptions"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/sub-1/campaign_subscriptions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "listSubscriberCampaignSubscriptions-503",
+      "operation": "listSubscriberCampaignSubscriptions"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/sub-1/campaign_subscriptions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "listSubscriberCampaignSubscriptions-500",
+      "operation": "listSubscriberCampaignSubscriptions"
+    },
+    {
+      "callId": "11111111-2222-5333-8444-555555555555",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/sub-1/campaign_subscriptions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "listSubscriberCampaignSubscriptions-transport",
+      "operation": "listSubscriberCampaignSubscriptions"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":[{\"id\":\"sub-1\",\"email\":\"ada@example.com\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "",
+          "id": "sub-1",
+          "lastName": "",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-success",
+      "operation": "subscribeToCampaign"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-rejected",
+      "operation": "subscribeToCampaign"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-invalidResponse",
+      "operation": "subscribeToCampaign"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "bad",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-defect",
+      "operation": "subscribeToCampaign"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-429",
+      "operation": "subscribeToCampaign"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-503",
+      "operation": "subscribeToCampaign"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-500",
+      "operation": "subscribeToCampaign"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/campaigns/123456/subscribers",
+          "requestBody": {
+            "subscribers": [
+              {
+                "email": "ada@example.com"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-transport",
+      "operation": "subscribeToCampaign"
+    },
+    {
+      "callId": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":[{\"id\":\"sub-1\",\"email\":\"ada@example.com\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/remove",
+          "query": {
+            "campaign_id": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "",
+          "id": "sub-1",
+          "lastName": "",
+          "status": "active"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "removeSubscriberFromCampaign-success",
+      "operation": "removeSubscriberFromCampaign"
+    },
+    {
+      "callId": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/remove",
+          "query": {
+            "campaign_id": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "removeSubscriberFromCampaign-rejected",
+      "operation": "removeSubscriberFromCampaign"
+    },
+    {
+      "callId": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/remove",
+          "query": {
+            "campaign_id": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "removeSubscriberFromCampaign-invalidResponse",
+      "operation": "removeSubscriberFromCampaign"
+    },
+    {
+      "callId": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "input": {
+        "accountId": "bad",
+        "campaignId": "123456",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "removeSubscriberFromCampaign-defect",
+      "operation": "removeSubscriberFromCampaign"
+    },
+    {
+      "callId": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/remove",
+          "query": {
+            "campaign_id": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "removeSubscriberFromCampaign-429",
+      "operation": "removeSubscriberFromCampaign"
+    },
+    {
+      "callId": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/remove",
+          "query": {
+            "campaign_id": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "removeSubscriberFromCampaign-503",
+      "operation": "removeSubscriberFromCampaign"
+    },
+    {
+      "callId": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/remove",
+          "query": {
+            "campaign_id": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "removeSubscriberFromCampaign-500",
+      "operation": "removeSubscriberFromCampaign"
+    },
+    {
+      "callId": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/remove",
+          "query": {
+            "campaign_id": [
+              "123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0af5117f-1ae0-5980-86c1-d7cc4c4035db",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "removeSubscriberFromCampaign-transport",
+      "operation": "removeSubscriberFromCampaign"
+    },
+    {
+      "callId": "e63a565a-728d-52b3-9319-31853fd22319",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":[{\"id\":\"sub-1\",\"email\":\"ada@example.com\",\"status\":\"unsubscribed\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/unsubscribe_all",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsubscribed",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "",
+          "id": "sub-1",
+          "lastName": "",
+          "status": "unsubscribed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e63a565a-728d-52b3-9319-31853fd22319",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "unsubscribeSubscriberFromAll-success",
+      "operation": "unsubscribeSubscriberFromAll"
+    },
+    {
+      "callId": "e63a565a-728d-52b3-9319-31853fd22319",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/unsubscribe_all",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e63a565a-728d-52b3-9319-31853fd22319",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "unsubscribeSubscriberFromAll-rejected",
+      "operation": "unsubscribeSubscriberFromAll"
+    },
+    {
+      "callId": "e63a565a-728d-52b3-9319-31853fd22319",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/unsubscribe_all",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e63a565a-728d-52b3-9319-31853fd22319",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "unsubscribeSubscriberFromAll-invalidResponse",
+      "operation": "unsubscribeSubscriberFromAll"
+    },
+    {
+      "callId": "e63a565a-728d-52b3-9319-31853fd22319",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e63a565a-728d-52b3-9319-31853fd22319",
+      "input": {
+        "accountId": "bad",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "unsubscribeSubscriberFromAll-defect",
+      "operation": "unsubscribeSubscriberFromAll"
+    },
+    {
+      "callId": "e63a565a-728d-52b3-9319-31853fd22319",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/unsubscribe_all",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e63a565a-728d-52b3-9319-31853fd22319",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "unsubscribeSubscriberFromAll-429",
+      "operation": "unsubscribeSubscriberFromAll"
+    },
+    {
+      "callId": "e63a565a-728d-52b3-9319-31853fd22319",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/unsubscribe_all",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e63a565a-728d-52b3-9319-31853fd22319",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "unsubscribeSubscriberFromAll-503",
+      "operation": "unsubscribeSubscriberFromAll"
+    },
+    {
+      "callId": "e63a565a-728d-52b3-9319-31853fd22319",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/unsubscribe_all",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e63a565a-728d-52b3-9319-31853fd22319",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "unsubscribeSubscriberFromAll-500",
+      "operation": "unsubscribeSubscriberFromAll"
+    },
+    {
+      "callId": "e63a565a-728d-52b3-9319-31853fd22319",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/9999999/subscribers/sub-1/unsubscribe_all",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e63a565a-728d-52b3-9319-31853fd22319",
+      "input": {
+        "accountId": "9999999",
+        "subscriberIdOrEmail": "sub-1"
+      },
+      "name": "unsubscribeSubscriberFromAll-transport",
+      "operation": "unsubscribeSubscriberFromAll"
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "email": "",
+          "firstName": "",
+          "id": "",
+          "lastName": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-uncertain-cap",
+      "operation": "subscribeToCampaign",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "exchanges": [
+        {
+          "body": "{\"subscribers\":[{\"id\":\"sub-1\",\"email\":\"ada@example.com\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"meta\":{\"page\":1,\"total_pages\":1,\"total_count\":1},\"campaign_subscriptions\":[{\"id\":\"membership-1\",\"campaign_id\":\"123456\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/9999999/subscribers/sub-1/campaign_subscriptions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "firstName": "",
+          "id": "sub-1",
+          "lastName": "",
+          "status": "active"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+      "input": {
+        "accountId": "9999999",
+        "campaignId": "123456",
+        "email": "ada@example.com"
+      },
+      "name": "subscribeToCampaign-read-back",
+      "operation": "subscribeToCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "c53d00f7-bc90-55e5-9f0d-64d8aecc5954",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

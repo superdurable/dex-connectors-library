@@ -14,7 +14,8 @@ import {
   loadScenarios, replay, scenarioCall, type Scenario,
 } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/dropbox/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/dropbox/scenarios.json', import.meta.url))
+  .filter(scenario => ['listFolder', 'getMetadata', 'continueFolder', 'downloadFile', 'uploadFile'].includes(scenario.operation));
 const connection = { provider: 'dropbox', name: 'dropbox' };
 
 function productionMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input, key: string) {

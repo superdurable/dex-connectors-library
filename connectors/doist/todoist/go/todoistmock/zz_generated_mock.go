@@ -18,6 +18,8 @@ import (
 // Mock is a scripted todoist connection. Script each operation through its accessor.
 type Mock struct {
 	connection todoist.Connection
+	closeTask  *connectormock.Mutation[todoist.CloseTaskInput, todoist.ClosedTask]
+	reopenTask *connectormock.Mutation[todoist.ReopenTaskInput, todoist.ReopenedTask]
 	getTask    *connectormock.Query[todoist.GetTaskInput, todoist.Task]
 	updateTask *connectormock.Mutation[todoist.UpdateTaskInput, todoist.Task]
 	listTasks  *connectormock.Query[todoist.ListTasksInput, todoist.TaskPage]
@@ -30,12 +32,16 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		closeTask:  connectormock.NewMutation[todoist.CloseTaskInput, todoist.ClosedTask](t, todoist.CloseTaskDefinition),
+		reopenTask: connectormock.NewMutation[todoist.ReopenTaskInput, todoist.ReopenedTask](t, todoist.ReopenTaskDefinition),
 		getTask:    connectormock.NewQuery[todoist.GetTaskInput, todoist.Task](t, todoist.GetTaskDefinition),
 		updateTask: connectormock.NewMutation[todoist.UpdateTaskInput, todoist.Task](t, todoist.UpdateTaskDefinition),
 		listTasks:  connectormock.NewQuery[todoist.ListTasksInput, todoist.TaskPage](t, todoist.ListTasksDefinition),
 		createTask: connectormock.NewMutation[todoist.CreateTaskInput, todoist.Task](t, todoist.CreateTaskDefinition),
 		deleteTask: connectormock.NewMutation[todoist.DeleteTaskInput, todoist.DeleteTaskOutcome](t, todoist.DeleteTaskDefinition),
 	}
+	mock.closeTask.Default(CloseTaskDefault())
+	mock.reopenTask.Default(ReopenTaskDefault())
 	mock.getTask.Default(GetTaskDefault())
 	mock.updateTask.Default(UpdateTaskDefault())
 	mock.listTasks.Default(ListTasksDefault())
@@ -51,6 +57,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() todoist.Connection { return mock.connection }
+
+// CloseTask returns the closeTask script.
+func (mock *Mock) CloseTask() *connectormock.Mutation[todoist.CloseTaskInput, todoist.ClosedTask] {
+	return mock.closeTask
+}
+
+// ReopenTask returns the reopenTask script.
+func (mock *Mock) ReopenTask() *connectormock.Mutation[todoist.ReopenTaskInput, todoist.ReopenedTask] {
+	return mock.reopenTask
+}
 
 // GetTask returns the getTask script.
 func (mock *Mock) GetTask() *connectormock.Query[todoist.GetTaskInput, todoist.Task] {
@@ -79,6 +95,12 @@ func (mock *Mock) DeleteTask() *connectormock.Mutation[todoist.DeleteTaskInput, 
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CloseTask() sdkgo.Mutation[todoist.CloseTaskInput, todoist.ClosedTask] {
+	return operations.mock.closeTask
+}
+func (operations mockOperations) ReopenTask() sdkgo.Mutation[todoist.ReopenTaskInput, todoist.ReopenedTask] {
+	return operations.mock.reopenTask
+}
 func (operations mockOperations) GetTask() sdkgo.Query[todoist.GetTaskInput, todoist.Task] {
 	return operations.mock.getTask
 }
@@ -93,6 +115,82 @@ func (operations mockOperations) CreateTask() sdkgo.Mutation[todoist.CreateTaskI
 }
 func (operations mockOperations) DeleteTask() sdkgo.Mutation[todoist.DeleteTaskInput, todoist.DeleteTaskOutcome] {
 	return operations.mock.deleteTask
+}
+
+// CloseTaskClosed selects the closed branch: Todoist confirmed the close command.
+func CloseTaskClosed(value todoist.ClosedTask, failure *sdkgo.Failure) connectormock.Case[todoist.ClosedTask] {
+	return connectormock.Branch(todoist.CloseTaskBranchClosed, value, failure)
+}
+
+// CloseTaskNotFound selects the notFound branch: Todoist found no task with that ID.
+func CloseTaskNotFound(value todoist.ClosedTask, failure *sdkgo.Failure) connectormock.Case[todoist.ClosedTask] {
+	return connectormock.Branch(todoist.CloseTaskBranchNotFound, value, failure)
+}
+
+// CloseTaskProviderRejected selects the providerRejected branch: Todoist definitively rejected closing the task.
+func CloseTaskProviderRejected(value todoist.ClosedTask, failure *sdkgo.Failure) connectormock.Case[todoist.ClosedTask] {
+	return connectormock.Branch(todoist.CloseTaskBranchProviderRejected, value, failure)
+}
+
+// CloseTaskDefect selects the defect branch: Local input or credentials are invalid.
+func CloseTaskDefect(value todoist.ClosedTask, failure *sdkgo.Failure) connectormock.Case[todoist.ClosedTask] {
+	return connectormock.Branch(todoist.CloseTaskBranchDefect, value, failure)
+}
+
+// CloseTaskRetry asks Dex to retry the closeTask Step, after the delay when it is positive.
+func CloseTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[todoist.ClosedTask] {
+	return connectormock.Retry[todoist.ClosedTask](failure, after)
+}
+
+// CloseTaskActiveTaskClosed is the manifest mock activeTaskClosed: Close the example task once.
+func CloseTaskActiveTaskClosed() connectormock.Case[todoist.ClosedTask] {
+	value := connectormock.MustDecodeOutput[todoist.ClosedTask](`{"taskId":"created-task"}`)
+	return connectormock.Branch(todoist.CloseTaskBranchClosed, value, nil)
+}
+
+// CloseTaskDefault is the manifest default, activeTaskClosed, which New installs.
+func CloseTaskDefault() connectormock.Case[todoist.ClosedTask] { return CloseTaskActiveTaskClosed() }
+
+// ReopenTaskReopened selects the reopened branch: Todoist acknowledged reopening or a read-back found the task active.
+func ReopenTaskReopened(value todoist.ReopenedTask, failure *sdkgo.Failure) connectormock.Case[todoist.ReopenedTask] {
+	return connectormock.Branch(todoist.ReopenTaskBranchReopened, value, failure)
+}
+
+// ReopenTaskNotFound selects the notFound branch: Todoist found no task with that ID.
+func ReopenTaskNotFound(value todoist.ReopenedTask, failure *sdkgo.Failure) connectormock.Case[todoist.ReopenedTask] {
+	return connectormock.Branch(todoist.ReopenTaskBranchNotFound, value, failure)
+}
+
+// ReopenTaskProviderRejected selects the providerRejected branch: Todoist definitively denied reopening.
+func ReopenTaskProviderRejected(value todoist.ReopenedTask, failure *sdkgo.Failure) connectormock.Case[todoist.ReopenedTask] {
+	return connectormock.Branch(todoist.ReopenTaskBranchProviderRejected, value, failure)
+}
+
+// ReopenTaskDefect selects the defect branch: Local input or credentials are invalid.
+func ReopenTaskDefect(value todoist.ReopenedTask, failure *sdkgo.Failure) connectormock.Case[todoist.ReopenedTask] {
+	return connectormock.Branch(todoist.ReopenTaskBranchDefect, value, failure)
+}
+
+// ReopenTaskRetry asks Dex to retry the reopenTask Step, after the delay when it is positive.
+func ReopenTaskRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[todoist.ReopenedTask] {
+	return connectormock.Retry[todoist.ReopenedTask](failure, after)
+}
+
+// ReopenTaskCompletedTaskReopened is the manifest mock completedTaskReopened: Restore completed-task to active status.
+func ReopenTaskCompletedTaskReopened() connectormock.Case[todoist.ReopenedTask] {
+	value := connectormock.MustDecodeOutput[todoist.ReopenedTask](`{"taskId":"completed-task"}`)
+	return connectormock.Branch(todoist.ReopenTaskBranchReopened, value, nil)
+}
+
+// ReopenTaskMissingTask is the manifest mock missingTask: Todoist found no task to reopen.
+func ReopenTaskMissingTask() connectormock.Case[todoist.ReopenedTask] {
+	var value todoist.ReopenedTask
+	return connectormock.Branch(todoist.ReopenTaskBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Todoist found no task with that ID."})
+}
+
+// ReopenTaskDefault is the manifest default, completedTaskReopened, which New installs.
+func ReopenTaskDefault() connectormock.Case[todoist.ReopenedTask] {
+	return ReopenTaskCompletedTaskReopened()
 }
 
 // GetTaskFound selects the found branch: Todoist returned the active task.

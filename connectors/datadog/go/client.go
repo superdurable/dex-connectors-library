@@ -6,6 +6,7 @@ package datadog
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -228,6 +229,10 @@ func executeQuery[T any](client *Client, call sdkgo.Call, operation string, spec
 }
 
 func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) (*http.Response, *sdkgo.Failure, error) {
+	return client.sendWithContext(call.Context, call, operation, spec)
+}
+
+func (client *Client) sendWithContext(requestContext context.Context, call sdkgo.Call, operation string, spec requestSpec) (*http.Response, *sdkgo.Failure, error) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, failure(sdkgo.FailureAuthentication, operation, "connection credentials are unavailable"), nil
@@ -239,7 +244,7 @@ func (client *Client) send(call sdkgo.Call, operation string, spec requestSpec) 
 	if len(spec.query) != 0 {
 		endpoint += "?" + spec.query.Encode()
 	}
-	request, err := http.NewRequestWithContext(call.Context, spec.method, endpoint, bytes.NewReader(spec.body))
+	request, err := http.NewRequestWithContext(requestContext, spec.method, endpoint, bytes.NewReader(spec.body))
 	if err != nil {
 		return nil, failure(sdkgo.FailureLocalDefect, operation, "request could not be built"), nil
 	}

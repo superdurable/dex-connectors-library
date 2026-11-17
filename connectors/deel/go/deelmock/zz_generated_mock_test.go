@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listContracts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[deel.ContractPage](`{"contracts":[{"id":"123e4567-e89b-12d3-a456-426614174000","type":"ongoing_time_based","status":"in_progress"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "listContractTasks/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[deel.ContractTaskList](`{"tasks":[{"id":"task-123","status":"approved"}]}`)
+			return err
+		}},
+		{name: "listContractAmendments/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[deel.ContractAmendmentPage](`{"amendments":[{"id":"amendment-123","status":"ACTIVE","signStatus":"APPROVED"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "listTerminationReasons/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[deel.TerminationReasonPage](`{"reasons":[{"id":"reason-123","name":"Project has ended","frequency":"MOST_COMMON"}],"nextCursor":""}`)
+			return err
+		}},
 		{name: "getContract/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[deel.ContractStatus](`{"id":"123e4567-e89b-12d3-a456-426614174000","type":"ongoing_time_based","status":"in_progress"}`)
 			return err
@@ -30,6 +46,18 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListContracts().Definition().Operation.OperationID != "listContracts" {
+		t.Errorf("listContracts mock has another definition")
+	}
+	if mock.ListContractTasks().Definition().Operation.OperationID != "listContractTasks" {
+		t.Errorf("listContractTasks mock has another definition")
+	}
+	if mock.ListContractAmendments().Definition().Operation.OperationID != "listContractAmendments" {
+		t.Errorf("listContractAmendments mock has another definition")
+	}
+	if mock.ListTerminationReasons().Definition().Operation.OperationID != "listTerminationReasons" {
+		t.Errorf("listTerminationReasons mock has another definition")
+	}
 	if mock.GetContract().Definition().Operation.OperationID != "getContract" {
 		t.Errorf("getContract mock has another definition")
 	}

@@ -42,6 +42,12 @@ type Connection struct {
 type Operations interface {
 	GetEntry() sdkgo.Query[GetEntryInput, GetEntryOutput]
 	ListEntries() sdkgo.Query[ListEntriesInput, ListEntriesOutput]
+	GetAsset() sdkgo.Query[GetAssetInput, ContentfulReadOutput]
+	ListAssets() sdkgo.Query[ContentfulPageInput, ContentfulReadOutput]
+	GetContentType() sdkgo.Query[GetContentTypeInput, ContentfulReadOutput]
+	ListContentTypes() sdkgo.Query[ContentfulPageInput, ContentfulReadOutput]
+	GetSpace() sdkgo.Query[GetSpaceInput, ContentfulReadOutput]
+	ListLocales() sdkgo.Query[ContentfulPageInput, ContentfulReadOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +57,24 @@ func (operations clientOperations) GetEntry() sdkgo.Query[GetEntryInput, GetEntr
 }
 func (operations clientOperations) ListEntries() sdkgo.Query[ListEntriesInput, ListEntriesOutput] {
 	return operations.client.ListEntries()
+}
+func (operations clientOperations) GetAsset() sdkgo.Query[GetAssetInput, ContentfulReadOutput] {
+	return operations.client.GetAsset()
+}
+func (operations clientOperations) ListAssets() sdkgo.Query[ContentfulPageInput, ContentfulReadOutput] {
+	return operations.client.ListAssets()
+}
+func (operations clientOperations) GetContentType() sdkgo.Query[GetContentTypeInput, ContentfulReadOutput] {
+	return operations.client.GetContentType()
+}
+func (operations clientOperations) ListContentTypes() sdkgo.Query[ContentfulPageInput, ContentfulReadOutput] {
+	return operations.client.ListContentTypes()
+}
+func (operations clientOperations) GetSpace() sdkgo.Query[GetSpaceInput, ContentfulReadOutput] {
+	return operations.client.GetSpace()
+}
+func (operations clientOperations) ListLocales() sdkgo.Query[ContentfulPageInput, ContentfulReadOutput] {
+	return operations.client.ListLocales()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +354,450 @@ func NewListEntriesStep[IN any](config ListEntriesStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListEntriesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAssetBranchFound sdkgo.BranchID = "found"
+const GetAssetBranchNotFound sdkgo.BranchID = "notFound"
+const GetAssetBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAssetBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAssetBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAssetDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAsset"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAssetBranchFound, Description: "Contentful returned one published asset."},
+		{ID: GetAssetBranchNotFound, Description: "The resource does not exist or is not published.", Optional: true},
+		{ID: GetAssetBranchProviderRejected, Description: "Contentful rejected the request.", Optional: true},
+		{ID: GetAssetBranchInvalidResponse, Description: "Contentful returned malformed or oversized JSON.", Optional: true},
+		{ID: GetAssetBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAssetResult = sdkgo.QueryResult[ContentfulReadOutput]
+
+type GetAssetStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=contentful"`
+	operationID                    struct{}                                                `connector:"operationId=getAsset"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAssetInput                                  `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAssetResult]                            `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAssetResult]                            `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAssetResult]                            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAssetResult]                            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAssetResult]                            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContentfulReadOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetAssetStep[IN any](config GetAssetStepConfig[IN]) sdkgo.QueryStep[IN, GetAssetInput, ContentfulReadOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("contentful connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAssetInput, ContentfulReadOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAsset(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAssetResult] {
+			branches := make([]sdkgo.BranchTarget[GetAssetResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAssetBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAssetBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAssetBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAssetBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAssetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListAssetsBranchListed sdkgo.BranchID = "listed"
+const ListAssetsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListAssetsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListAssetsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListAssetsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listAssets"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListAssetsBranchListed, Description: "Contentful returned a page of published assets."},
+		{ID: ListAssetsBranchProviderRejected, Description: "Contentful rejected the request.", Optional: true},
+		{ID: ListAssetsBranchInvalidResponse, Description: "Contentful returned malformed or oversized JSON.", Optional: true},
+		{ID: ListAssetsBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListAssetsResult = sdkgo.QueryResult[ContentfulReadOutput]
+
+type ListAssetsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=contentful"`
+	operationID                    struct{}                                                `connector:"operationId=listAssets"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ContentfulPageInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListAssetsResult]                          `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListAssetsResult]                          `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListAssetsResult]                          `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListAssetsResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContentfulReadOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListAssetsStep[IN any](config ListAssetsStepConfig[IN]) sdkgo.QueryStep[IN, ContentfulPageInput, ContentfulReadOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("contentful connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ContentfulPageInput, ContentfulReadOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListAssets(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListAssetsResult] {
+			branches := make([]sdkgo.BranchTarget[ListAssetsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListAssetsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListAssetsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListAssetsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListAssetsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetContentTypeBranchFound sdkgo.BranchID = "found"
+const GetContentTypeBranchNotFound sdkgo.BranchID = "notFound"
+const GetContentTypeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetContentTypeBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetContentTypeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetContentTypeDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getContentType"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetContentTypeBranchFound, Description: "Contentful returned one published content type."},
+		{ID: GetContentTypeBranchNotFound, Description: "The resource does not exist or is not published.", Optional: true},
+		{ID: GetContentTypeBranchProviderRejected, Description: "Contentful rejected the request.", Optional: true},
+		{ID: GetContentTypeBranchInvalidResponse, Description: "Contentful returned malformed or oversized JSON.", Optional: true},
+		{ID: GetContentTypeBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetContentTypeResult = sdkgo.QueryResult[ContentfulReadOutput]
+
+type GetContentTypeStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=contentful"`
+	operationID                    struct{}                                                `connector:"operationId=getContentType"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetContentTypeInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetContentTypeResult]                      `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetContentTypeResult]                      `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetContentTypeResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetContentTypeResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetContentTypeResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContentfulReadOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetContentTypeStep[IN any](config GetContentTypeStepConfig[IN]) sdkgo.QueryStep[IN, GetContentTypeInput, ContentfulReadOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("contentful connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetContentTypeInput, ContentfulReadOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetContentType(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetContentTypeResult] {
+			branches := make([]sdkgo.BranchTarget[GetContentTypeResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetContentTypeBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetContentTypeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetContentTypeBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetContentTypeBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetContentTypeBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListContentTypesBranchListed sdkgo.BranchID = "listed"
+const ListContentTypesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListContentTypesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListContentTypesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListContentTypesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listContentTypes"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListContentTypesBranchListed, Description: "Contentful returned a page of published content types."},
+		{ID: ListContentTypesBranchProviderRejected, Description: "Contentful rejected the request.", Optional: true},
+		{ID: ListContentTypesBranchInvalidResponse, Description: "Contentful returned malformed or oversized JSON.", Optional: true},
+		{ID: ListContentTypesBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListContentTypesResult = sdkgo.QueryResult[ContentfulReadOutput]
+
+type ListContentTypesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=contentful"`
+	operationID                    struct{}                                                `connector:"operationId=listContentTypes"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ContentfulPageInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListContentTypesResult]                    `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListContentTypesResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListContentTypesResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListContentTypesResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContentfulReadOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListContentTypesStep[IN any](config ListContentTypesStepConfig[IN]) sdkgo.QueryStep[IN, ContentfulPageInput, ContentfulReadOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("contentful connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ContentfulPageInput, ContentfulReadOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListContentTypes(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListContentTypesResult] {
+			branches := make([]sdkgo.BranchTarget[ListContentTypesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListContentTypesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListContentTypesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListContentTypesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListContentTypesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetSpaceBranchFound sdkgo.BranchID = "found"
+const GetSpaceBranchNotFound sdkgo.BranchID = "notFound"
+const GetSpaceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetSpaceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetSpaceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetSpaceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getSpace"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetSpaceBranchFound, Description: "Contentful returned one space and its locales."},
+		{ID: GetSpaceBranchNotFound, Description: "The resource does not exist or is not published.", Optional: true},
+		{ID: GetSpaceBranchProviderRejected, Description: "Contentful rejected the request.", Optional: true},
+		{ID: GetSpaceBranchInvalidResponse, Description: "Contentful returned malformed or oversized JSON.", Optional: true},
+		{ID: GetSpaceBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetSpaceResult = sdkgo.QueryResult[ContentfulReadOutput]
+
+type GetSpaceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=contentful"`
+	operationID                    struct{}                                                `connector:"operationId=getSpace"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetSpaceInput                                  `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetSpaceResult]                            `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetSpaceResult]                            `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetSpaceResult]                            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetSpaceResult]                            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetSpaceResult]                            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContentfulReadOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewGetSpaceStep[IN any](config GetSpaceStepConfig[IN]) sdkgo.QueryStep[IN, GetSpaceInput, ContentfulReadOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("contentful connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetSpaceInput, ContentfulReadOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetSpace(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetSpaceResult] {
+			branches := make([]sdkgo.BranchTarget[GetSpaceResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetSpaceBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetSpaceBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetSpaceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetSpaceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetSpaceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListLocalesBranchListed sdkgo.BranchID = "listed"
+const ListLocalesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListLocalesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListLocalesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListLocalesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listLocales"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListLocalesBranchListed, Description: "Contentful returned the locales of one environment."},
+		{ID: ListLocalesBranchProviderRejected, Description: "Contentful rejected the request.", Optional: true},
+		{ID: ListLocalesBranchInvalidResponse, Description: "Contentful returned malformed or oversized JSON.", Optional: true},
+		{ID: ListLocalesBranchDefect, Description: "Local input, configuration, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListLocalesResult = sdkgo.QueryResult[ContentfulReadOutput]
+
+type ListLocalesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                `connector:"connectorId=contentful"`
+	operationID                    struct{}                                                `connector:"operationId=listLocales"`
+	StepType                       string                                                  `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                     Connection                                              `connector:"connection"`
+	ConnectionName                 string                                                  `connector:"connectionName"`
+	MapToOperationInput            func(IN) ContentfulPageInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListLocalesResult]                         `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListLocalesResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListLocalesResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListLocalesResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ContentfulReadOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewListLocalesStep[IN any](config ListLocalesStepConfig[IN]) sdkgo.QueryStep[IN, ContentfulPageInput, ContentfulReadOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("contentful connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ContentfulPageInput, ContentfulReadOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListLocales(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListLocalesResult] {
+			branches := make([]sdkgo.BranchTarget[ListLocalesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListLocalesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListLocalesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListLocalesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListLocalesBranchDefect))
 			}
 			return branches
 		}(),

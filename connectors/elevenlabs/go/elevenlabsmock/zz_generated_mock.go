@@ -17,9 +17,17 @@ import (
 
 // Mock is a scripted elevenlabs connection. Script each operation through its accessor.
 type Mock struct {
-	connection   elevenlabs.Connection
-	listVoices   *connectormock.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput]
-	createSpeech *connectormock.Query[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput]
+	connection          elevenlabs.Connection
+	listModels          *connectormock.Query[elevenlabs.ListModelsInput, elevenlabs.ModelsList]
+	listHistoryItems    *connectormock.Query[elevenlabs.ListHistoryItemsInput, elevenlabs.HistoryItemsPage]
+	getHistoryItem      *connectormock.Query[elevenlabs.HistoryItemIdentityInput, elevenlabs.HistoryItemMetadata]
+	deleteHistoryItem   *connectormock.Mutation[elevenlabs.HistoryItemIdentityInput, elevenlabs.DeletedHistoryItem]
+	getVoice            *connectormock.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice]
+	editVoiceMetadata   *connectormock.Mutation[elevenlabs.EditVoiceMetadataInput, elevenlabs.EditedVoiceMetadata]
+	deleteVoice         *connectormock.Mutation[elevenlabs.GetVoiceInput, elevenlabs.DeletedVoice]
+	updateVoiceSettings *connectormock.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings]
+	listVoices          *connectormock.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput]
+	createSpeech        *connectormock.Query[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,9 +35,25 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listVoices:   connectormock.NewQuery[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput](t, elevenlabs.ListVoicesDefinition),
-		createSpeech: connectormock.NewQuery[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput](t, elevenlabs.CreateSpeechDefinition),
+		listModels:          connectormock.NewQuery[elevenlabs.ListModelsInput, elevenlabs.ModelsList](t, elevenlabs.ListModelsDefinition),
+		listHistoryItems:    connectormock.NewQuery[elevenlabs.ListHistoryItemsInput, elevenlabs.HistoryItemsPage](t, elevenlabs.ListHistoryItemsDefinition),
+		getHistoryItem:      connectormock.NewQuery[elevenlabs.HistoryItemIdentityInput, elevenlabs.HistoryItemMetadata](t, elevenlabs.GetHistoryItemDefinition),
+		deleteHistoryItem:   connectormock.NewMutation[elevenlabs.HistoryItemIdentityInput, elevenlabs.DeletedHistoryItem](t, elevenlabs.DeleteHistoryItemDefinition),
+		getVoice:            connectormock.NewQuery[elevenlabs.GetVoiceInput, elevenlabs.Voice](t, elevenlabs.GetVoiceDefinition),
+		editVoiceMetadata:   connectormock.NewMutation[elevenlabs.EditVoiceMetadataInput, elevenlabs.EditedVoiceMetadata](t, elevenlabs.EditVoiceMetadataDefinition),
+		deleteVoice:         connectormock.NewMutation[elevenlabs.GetVoiceInput, elevenlabs.DeletedVoice](t, elevenlabs.DeleteVoiceDefinition),
+		updateVoiceSettings: connectormock.NewMutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings](t, elevenlabs.UpdateVoiceSettingsDefinition),
+		listVoices:          connectormock.NewQuery[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput](t, elevenlabs.ListVoicesDefinition),
+		createSpeech:        connectormock.NewQuery[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput](t, elevenlabs.CreateSpeechDefinition),
 	}
+	mock.listModels.Default(ListModelsDefault())
+	mock.listHistoryItems.Default(ListHistoryItemsDefault())
+	mock.getHistoryItem.Default(GetHistoryItemDefault())
+	mock.deleteHistoryItem.Default(DeleteHistoryItemDefault())
+	mock.getVoice.Default(GetVoiceDefault())
+	mock.editVoiceMetadata.Default(EditVoiceMetadataDefault())
+	mock.deleteVoice.Default(DeleteVoiceDefault())
+	mock.updateVoiceSettings.Default(UpdateVoiceSettingsDefault())
 	mock.listVoices.Default(ListVoicesDefault())
 	mock.createSpeech.Default(CreateSpeechDefault())
 	connection, err := elevenlabs.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "elevenlabs", Name: connectionName})
@@ -43,6 +67,46 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() elevenlabs.Connection { return mock.connection }
 
+// ListModels returns the listModels script.
+func (mock *Mock) ListModels() *connectormock.Query[elevenlabs.ListModelsInput, elevenlabs.ModelsList] {
+	return mock.listModels
+}
+
+// ListHistoryItems returns the listHistoryItems script.
+func (mock *Mock) ListHistoryItems() *connectormock.Query[elevenlabs.ListHistoryItemsInput, elevenlabs.HistoryItemsPage] {
+	return mock.listHistoryItems
+}
+
+// GetHistoryItem returns the getHistoryItem script.
+func (mock *Mock) GetHistoryItem() *connectormock.Query[elevenlabs.HistoryItemIdentityInput, elevenlabs.HistoryItemMetadata] {
+	return mock.getHistoryItem
+}
+
+// DeleteHistoryItem returns the deleteHistoryItem script.
+func (mock *Mock) DeleteHistoryItem() *connectormock.Mutation[elevenlabs.HistoryItemIdentityInput, elevenlabs.DeletedHistoryItem] {
+	return mock.deleteHistoryItem
+}
+
+// GetVoice returns the getVoice script.
+func (mock *Mock) GetVoice() *connectormock.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice] {
+	return mock.getVoice
+}
+
+// EditVoiceMetadata returns the editVoiceMetadata script.
+func (mock *Mock) EditVoiceMetadata() *connectormock.Mutation[elevenlabs.EditVoiceMetadataInput, elevenlabs.EditedVoiceMetadata] {
+	return mock.editVoiceMetadata
+}
+
+// DeleteVoice returns the deleteVoice script.
+func (mock *Mock) DeleteVoice() *connectormock.Mutation[elevenlabs.GetVoiceInput, elevenlabs.DeletedVoice] {
+	return mock.deleteVoice
+}
+
+// UpdateVoiceSettings returns the updateVoiceSettings script.
+func (mock *Mock) UpdateVoiceSettings() *connectormock.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings] {
+	return mock.updateVoiceSettings
+}
+
 // ListVoices returns the listVoices script.
 func (mock *Mock) ListVoices() *connectormock.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput] {
 	return mock.listVoices
@@ -55,11 +119,334 @@ func (mock *Mock) CreateSpeech() *connectormock.Query[elevenlabs.CreateSpeechInp
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListModels() sdkgo.Query[elevenlabs.ListModelsInput, elevenlabs.ModelsList] {
+	return operations.mock.listModels
+}
+func (operations mockOperations) ListHistoryItems() sdkgo.Query[elevenlabs.ListHistoryItemsInput, elevenlabs.HistoryItemsPage] {
+	return operations.mock.listHistoryItems
+}
+func (operations mockOperations) GetHistoryItem() sdkgo.Query[elevenlabs.HistoryItemIdentityInput, elevenlabs.HistoryItemMetadata] {
+	return operations.mock.getHistoryItem
+}
+func (operations mockOperations) DeleteHistoryItem() sdkgo.Mutation[elevenlabs.HistoryItemIdentityInput, elevenlabs.DeletedHistoryItem] {
+	return operations.mock.deleteHistoryItem
+}
+func (operations mockOperations) GetVoice() sdkgo.Query[elevenlabs.GetVoiceInput, elevenlabs.Voice] {
+	return operations.mock.getVoice
+}
+func (operations mockOperations) EditVoiceMetadata() sdkgo.Mutation[elevenlabs.EditVoiceMetadataInput, elevenlabs.EditedVoiceMetadata] {
+	return operations.mock.editVoiceMetadata
+}
+func (operations mockOperations) DeleteVoice() sdkgo.Mutation[elevenlabs.GetVoiceInput, elevenlabs.DeletedVoice] {
+	return operations.mock.deleteVoice
+}
+func (operations mockOperations) UpdateVoiceSettings() sdkgo.Mutation[elevenlabs.UpdateVoiceSettingsInput, elevenlabs.UpdatedVoiceSettings] {
+	return operations.mock.updateVoiceSettings
+}
 func (operations mockOperations) ListVoices() sdkgo.Query[elevenlabs.ListVoicesInput, elevenlabs.ListVoicesOutput] {
 	return operations.mock.listVoices
 }
 func (operations mockOperations) CreateSpeech() sdkgo.Query[elevenlabs.CreateSpeechInput, elevenlabs.CreateSpeechOutput] {
 	return operations.mock.createSpeech
+}
+
+// ListModelsListed selects the listed branch: ElevenLabs returned available models.
+func ListModelsListed(value elevenlabs.ModelsList, failure *sdkgo.Failure) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Branch(elevenlabs.ListModelsBranchListed, value, failure)
+}
+
+// ListModelsProviderRejected selects the providerRejected branch: ElevenLabs rejected model listing.
+func ListModelsProviderRejected(value elevenlabs.ModelsList, failure *sdkgo.Failure) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Branch(elevenlabs.ListModelsBranchProviderRejected, value, failure)
+}
+
+// ListModelsInvalidResponse selects the invalidResponse branch: ElevenLabs returned invalid model data.
+func ListModelsInvalidResponse(value elevenlabs.ModelsList, failure *sdkgo.Failure) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Branch(elevenlabs.ListModelsBranchInvalidResponse, value, failure)
+}
+
+// ListModelsDefect selects the defect branch: Credentials are unavailable or invalid.
+func ListModelsDefect(value elevenlabs.ModelsList, failure *sdkgo.Failure) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Branch(elevenlabs.ListModelsBranchDefect, value, failure)
+}
+
+// ListModelsRetry asks Dex to retry the listModels Step, after the delay when it is positive.
+func ListModelsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.ModelsList] {
+	return connectormock.Retry[elevenlabs.ModelsList](failure, after)
+}
+
+// ListModelsSampleModels is the manifest mock sampleModels: One text-to-speech model is listed.
+func ListModelsSampleModels() connectormock.Case[elevenlabs.ModelsList] {
+	value := connectormock.MustDecodeOutput[elevenlabs.ModelsList](`{"models":[{"modelId":"eleven_multilingual_v2","name":"Multilingual v2","canDoTextToSpeech":true,"maximumTextLengthPerRequest":5000}]}`)
+	return connectormock.Branch(elevenlabs.ListModelsBranchListed, value, nil)
+}
+
+// ListModelsDefault is the manifest default, sampleModels, which New installs.
+func ListModelsDefault() connectormock.Case[elevenlabs.ModelsList] { return ListModelsSampleModels() }
+
+// ListHistoryItemsListed selects the listed branch: ElevenLabs returned a history page.
+func ListHistoryItemsListed(value elevenlabs.HistoryItemsPage, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemsPage] {
+	return connectormock.Branch(elevenlabs.ListHistoryItemsBranchListed, value, failure)
+}
+
+// ListHistoryItemsProviderRejected selects the providerRejected branch: ElevenLabs rejected history listing.
+func ListHistoryItemsProviderRejected(value elevenlabs.HistoryItemsPage, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemsPage] {
+	return connectormock.Branch(elevenlabs.ListHistoryItemsBranchProviderRejected, value, failure)
+}
+
+// ListHistoryItemsInvalidResponse selects the invalidResponse branch: ElevenLabs returned invalid history data.
+func ListHistoryItemsInvalidResponse(value elevenlabs.HistoryItemsPage, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemsPage] {
+	return connectormock.Branch(elevenlabs.ListHistoryItemsBranchInvalidResponse, value, failure)
+}
+
+// ListHistoryItemsDefect selects the defect branch: History filters or credentials are invalid.
+func ListHistoryItemsDefect(value elevenlabs.HistoryItemsPage, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemsPage] {
+	return connectormock.Branch(elevenlabs.ListHistoryItemsBranchDefect, value, failure)
+}
+
+// ListHistoryItemsRetry asks Dex to retry the listHistoryItems Step, after the delay when it is positive.
+func ListHistoryItemsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.HistoryItemsPage] {
+	return connectormock.Retry[elevenlabs.HistoryItemsPage](failure, after)
+}
+
+// ListHistoryItemsHistoryPage is the manifest mock historyPage: One generated item is listed without text or audio.
+func ListHistoryItemsHistoryPage() connectormock.Case[elevenlabs.HistoryItemsPage] {
+	value := connectormock.MustDecodeOutput[elevenlabs.HistoryItemsPage](`{"items":[{"historyItemId":"history_meridian","dateUnix":1714650306,"voiceId":"voice_meridian","modelId":"eleven_multilingual_v2","contentType":"audio/mpeg","source":"TTS"}],"hasMore":false}`)
+	return connectormock.Branch(elevenlabs.ListHistoryItemsBranchListed, value, nil)
+}
+
+// ListHistoryItemsDefault is the manifest default, historyPage, which New installs.
+func ListHistoryItemsDefault() connectormock.Case[elevenlabs.HistoryItemsPage] {
+	return ListHistoryItemsHistoryPage()
+}
+
+// GetHistoryItemFound selects the found branch: ElevenLabs returned the generated item.
+func GetHistoryItemFound(value elevenlabs.HistoryItemMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemMetadata] {
+	return connectormock.Branch(elevenlabs.GetHistoryItemBranchFound, value, failure)
+}
+
+// GetHistoryItemNotFound selects the notFound branch: The generated item is unavailable.
+func GetHistoryItemNotFound(value elevenlabs.HistoryItemMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemMetadata] {
+	return connectormock.Branch(elevenlabs.GetHistoryItemBranchNotFound, value, failure)
+}
+
+// GetHistoryItemProviderRejected selects the providerRejected branch: ElevenLabs rejected item retrieval.
+func GetHistoryItemProviderRejected(value elevenlabs.HistoryItemMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemMetadata] {
+	return connectormock.Branch(elevenlabs.GetHistoryItemBranchProviderRejected, value, failure)
+}
+
+// GetHistoryItemInvalidResponse selects the invalidResponse branch: ElevenLabs returned invalid item data.
+func GetHistoryItemInvalidResponse(value elevenlabs.HistoryItemMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemMetadata] {
+	return connectormock.Branch(elevenlabs.GetHistoryItemBranchInvalidResponse, value, failure)
+}
+
+// GetHistoryItemDefect selects the defect branch: History item ID or credentials are invalid.
+func GetHistoryItemDefect(value elevenlabs.HistoryItemMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.HistoryItemMetadata] {
+	return connectormock.Branch(elevenlabs.GetHistoryItemBranchDefect, value, failure)
+}
+
+// GetHistoryItemRetry asks Dex to retry the getHistoryItem Step, after the delay when it is positive.
+func GetHistoryItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.HistoryItemMetadata] {
+	return connectormock.Retry[elevenlabs.HistoryItemMetadata](failure, after)
+}
+
+// GetHistoryItemHistoryItem is the manifest mock historyItem: One generated item's metadata is returned.
+func GetHistoryItemHistoryItem() connectormock.Case[elevenlabs.HistoryItemMetadata] {
+	value := connectormock.MustDecodeOutput[elevenlabs.HistoryItemMetadata](`{"historyItemId":"history_meridian","dateUnix":1714650306,"voiceId":"voice_meridian","modelId":"eleven_multilingual_v2","contentType":"audio/mpeg","source":"TTS"}`)
+	return connectormock.Branch(elevenlabs.GetHistoryItemBranchFound, value, nil)
+}
+
+// GetHistoryItemDefault is the manifest default, historyItem, which New installs.
+func GetHistoryItemDefault() connectormock.Case[elevenlabs.HistoryItemMetadata] {
+	return GetHistoryItemHistoryItem()
+}
+
+// DeleteHistoryItemDeleted selects the deleted branch: The generated item is absent.
+func DeleteHistoryItemDeleted(value elevenlabs.DeletedHistoryItem, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedHistoryItem] {
+	return connectormock.Branch(elevenlabs.DeleteHistoryItemBranchDeleted, value, failure)
+}
+
+// DeleteHistoryItemProviderRejected selects the providerRejected branch: ElevenLabs rejected deletion.
+func DeleteHistoryItemProviderRejected(value elevenlabs.DeletedHistoryItem, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedHistoryItem] {
+	return connectormock.Branch(elevenlabs.DeleteHistoryItemBranchProviderRejected, value, failure)
+}
+
+// DeleteHistoryItemInvalidResponse selects the invalidResponse branch: ElevenLabs returned an invalid deletion confirmation.
+func DeleteHistoryItemInvalidResponse(value elevenlabs.DeletedHistoryItem, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedHistoryItem] {
+	return connectormock.Branch(elevenlabs.DeleteHistoryItemBranchInvalidResponse, value, failure)
+}
+
+// DeleteHistoryItemDefect selects the defect branch: History item ID or credentials are invalid.
+func DeleteHistoryItemDefect(value elevenlabs.DeletedHistoryItem, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedHistoryItem] {
+	return connectormock.Branch(elevenlabs.DeleteHistoryItemBranchDefect, value, failure)
+}
+
+// DeleteHistoryItemRetry asks Dex to retry the deleteHistoryItem Step, after the delay when it is positive.
+func DeleteHistoryItemRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.DeletedHistoryItem] {
+	return connectormock.Retry[elevenlabs.DeletedHistoryItem](failure, after)
+}
+
+// DeleteHistoryItemHistoryDeleted is the manifest mock historyDeleted: The generated item was deleted.
+func DeleteHistoryItemHistoryDeleted() connectormock.Case[elevenlabs.DeletedHistoryItem] {
+	value := connectormock.MustDecodeOutput[elevenlabs.DeletedHistoryItem](`{"historyItemId":"history_meridian","deleted":true}`)
+	return connectormock.Branch(elevenlabs.DeleteHistoryItemBranchDeleted, value, nil)
+}
+
+// DeleteHistoryItemDefault is the manifest default, historyDeleted, which New installs.
+func DeleteHistoryItemDefault() connectormock.Case[elevenlabs.DeletedHistoryItem] {
+	return DeleteHistoryItemHistoryDeleted()
+}
+
+// GetVoiceFound selects the found branch: ElevenLabs returned the requested voice.
+func GetVoiceFound(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchFound, value, failure)
+}
+
+// GetVoiceNotFound selects the notFound branch: The voice does not exist.
+func GetVoiceNotFound(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchNotFound, value, failure)
+}
+
+// GetVoiceProviderRejected selects the providerRejected branch: ElevenLabs conclusively rejected the read.
+func GetVoiceProviderRejected(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchProviderRejected, value, failure)
+}
+
+// GetVoiceInvalidResponse selects the invalidResponse branch: ElevenLabs returned malformed or oversized voice data.
+func GetVoiceInvalidResponse(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchInvalidResponse, value, failure)
+}
+
+// GetVoiceDefect selects the defect branch: Local voice ID or credentials are invalid.
+func GetVoiceDefect(value elevenlabs.Voice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Branch(elevenlabs.GetVoiceBranchDefect, value, failure)
+}
+
+// GetVoiceRetry asks Dex to retry the getVoice Step, after the delay when it is positive.
+func GetVoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.Voice] {
+	return connectormock.Retry[elevenlabs.Voice](failure, after)
+}
+
+// GetVoiceFoundDefault is the manifest mock foundDefault: A representative voice was found by ID.
+func GetVoiceFoundDefault() connectormock.Case[elevenlabs.Voice] {
+	value := connectormock.MustDecodeOutput[elevenlabs.Voice](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
+	return connectormock.Branch(elevenlabs.GetVoiceBranchFound, value, nil)
+}
+
+// GetVoiceDefault is the manifest default, foundDefault, which New installs.
+func GetVoiceDefault() connectormock.Case[elevenlabs.Voice] { return GetVoiceFoundDefault() }
+
+// EditVoiceMetadataEdited selects the edited branch: ElevenLabs accepted the voice metadata edit.
+func EditVoiceMetadataEdited(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchEdited, value, failure)
+}
+
+// EditVoiceMetadataNotFound selects the notFound branch: The voice is unavailable.
+func EditVoiceMetadataNotFound(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchNotFound, value, failure)
+}
+
+// EditVoiceMetadataProviderRejected selects the providerRejected branch: ElevenLabs rejected the metadata edit.
+func EditVoiceMetadataProviderRejected(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchProviderRejected, value, failure)
+}
+
+// EditVoiceMetadataInvalidResponse selects the invalidResponse branch: ElevenLabs returned an invalid edit confirmation.
+func EditVoiceMetadataInvalidResponse(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchInvalidResponse, value, failure)
+}
+
+// EditVoiceMetadataDefect selects the defect branch: Voice ID and metadata or credentials are invalid.
+func EditVoiceMetadataDefect(value elevenlabs.EditedVoiceMetadata, failure *sdkgo.Failure) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchDefect, value, failure)
+}
+
+// EditVoiceMetadataRetry asks Dex to retry the editVoiceMetadata Step, after the delay when it is positive.
+func EditVoiceMetadataRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return connectormock.Retry[elevenlabs.EditedVoiceMetadata](failure, after)
+}
+
+// EditVoiceMetadataMetadataEdited is the manifest mock metadataEdited: One voice's display metadata was edited.
+func EditVoiceMetadataMetadataEdited() connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	value := connectormock.MustDecodeOutput[elevenlabs.EditedVoiceMetadata](`{"voiceId":"voice_meridian","name":"Meridian Narrator"}`)
+	return connectormock.Branch(elevenlabs.EditVoiceMetadataBranchEdited, value, nil)
+}
+
+// EditVoiceMetadataDefault is the manifest default, metadataEdited, which New installs.
+func EditVoiceMetadataDefault() connectormock.Case[elevenlabs.EditedVoiceMetadata] {
+	return EditVoiceMetadataMetadataEdited()
+}
+
+// DeleteVoiceDeleted selects the deleted branch: The voice is absent.
+func DeleteVoiceDeleted(value elevenlabs.DeletedVoice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchDeleted, value, failure)
+}
+
+// DeleteVoiceProviderRejected selects the providerRejected branch: ElevenLabs rejected voice deletion.
+func DeleteVoiceProviderRejected(value elevenlabs.DeletedVoice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchProviderRejected, value, failure)
+}
+
+// DeleteVoiceInvalidResponse selects the invalidResponse branch: ElevenLabs returned an invalid deletion confirmation.
+func DeleteVoiceInvalidResponse(value elevenlabs.DeletedVoice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchInvalidResponse, value, failure)
+}
+
+// DeleteVoiceDefect selects the defect branch: Voice ID or credentials are invalid.
+func DeleteVoiceDefect(value elevenlabs.DeletedVoice, failure *sdkgo.Failure) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchDefect, value, failure)
+}
+
+// DeleteVoiceRetry asks Dex to retry the deleteVoice Step, after the delay when it is positive.
+func DeleteVoiceRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.DeletedVoice] {
+	return connectormock.Retry[elevenlabs.DeletedVoice](failure, after)
+}
+
+// DeleteVoiceVoiceDeleted is the manifest mock voiceDeleted: One voice was deleted.
+func DeleteVoiceVoiceDeleted() connectormock.Case[elevenlabs.DeletedVoice] {
+	value := connectormock.MustDecodeOutput[elevenlabs.DeletedVoice](`{"voiceId":"voice_meridian","deleted":true}`)
+	return connectormock.Branch(elevenlabs.DeleteVoiceBranchDeleted, value, nil)
+}
+
+// DeleteVoiceDefault is the manifest default, voiceDeleted, which New installs.
+func DeleteVoiceDefault() connectormock.Case[elevenlabs.DeletedVoice] {
+	return DeleteVoiceVoiceDeleted()
+}
+
+// UpdateVoiceSettingsUpdated selects the updated branch: ElevenLabs confirmed the voice settings replacement.
+func UpdateVoiceSettingsUpdated(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchUpdated, value, failure)
+}
+
+// UpdateVoiceSettingsNotFound selects the notFound branch: The voice does not exist.
+func UpdateVoiceSettingsNotFound(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchNotFound, value, failure)
+}
+
+// UpdateVoiceSettingsProviderRejected selects the providerRejected branch: ElevenLabs conclusively rejected the settings.
+func UpdateVoiceSettingsProviderRejected(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchProviderRejected, value, failure)
+}
+
+// UpdateVoiceSettingsDefect selects the defect branch: Local settings or credentials are invalid.
+func UpdateVoiceSettingsDefect(value elevenlabs.UpdatedVoiceSettings, failure *sdkgo.Failure) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchDefect, value, failure)
+}
+
+// UpdateVoiceSettingsRetry asks Dex to retry the updateVoiceSettings Step, after the delay when it is positive.
+func UpdateVoiceSettingsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return connectormock.Retry[elevenlabs.UpdatedVoiceSettings](failure, after)
+}
+
+// UpdateVoiceSettingsUpdatedDefault is the manifest mock updatedDefault: Representative voice settings were replaced.
+func UpdateVoiceSettingsUpdatedDefault() connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	value := connectormock.MustDecodeOutput[elevenlabs.UpdatedVoiceSettings](`{"voiceId":"voice_meridian"}`)
+	return connectormock.Branch(elevenlabs.UpdateVoiceSettingsBranchUpdated, value, nil)
+}
+
+// UpdateVoiceSettingsDefault is the manifest default, updatedDefault, which New installs.
+func UpdateVoiceSettingsDefault() connectormock.Case[elevenlabs.UpdatedVoiceSettings] {
+	return UpdateVoiceSettingsUpdatedDefault()
 }
 
 // ListVoicesListed selects the listed branch: ElevenLabs returned the requested result.

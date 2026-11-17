@@ -23,3 +23,16 @@ func TestFolderDiscoveryFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
+
+func TestFileSearchFlowIdentityAndMapping(t *testing.T) {
+	input := dropbox.SearchFilesInput{Query: "example", MaxResults: 20}
+	require.Equal(t, input, mapSearchInput(input))
+	require.Equal(t, SearchFlowType, dex.GetFinalFlowType(NewSearchFlow(dropbox.Connection{})))
+	require.Equal(t, "StartFileSearch", dex.GetFinalStepType[dropbox.SearchFilesInput](startSearch{}))
+	wait, err := startSearch{}.WaitFor(nil, input)
+	require.NoError(t, err)
+	require.Equal(t, dex.SkipWaitImmediately(), wait)
+	mock := dropboxmock.New(t, ConnectionName)
+	_, err = dex.NewRegistry([]dex.Flow{NewSearchFlow(mock.Connection())})
+	require.NoError(t, err)
+}

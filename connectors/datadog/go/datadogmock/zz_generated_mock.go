@@ -17,9 +17,13 @@ import (
 
 // Mock is a scripted datadog connection. Script each operation through its accessor.
 type Mock struct {
-	connection   datadog.Connection
-	queryMetrics *connectormock.Query[datadog.QueryMetricsInput, datadog.MetricsQuery]
-	listMonitors *connectormock.Query[datadog.ListMonitorsInput, datadog.MonitorsPage]
+	connection    datadog.Connection
+	createMonitor *connectormock.Mutation[datadog.CreateMonitorInput, datadog.Monitor]
+	queryMetrics  *connectormock.Query[datadog.QueryMetricsInput, datadog.MetricsQuery]
+	listMonitors  *connectormock.Query[datadog.ListMonitorsInput, datadog.MonitorsPage]
+	getMonitor    *connectormock.Query[datadog.GetMonitorInput, datadog.Monitor]
+	updateMonitor *connectormock.Mutation[datadog.UpdateMonitorInput, datadog.Monitor]
+	deleteMonitor *connectormock.Mutation[datadog.DeleteMonitorInput, datadog.DeletedMonitor]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +31,19 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		queryMetrics: connectormock.NewQuery[datadog.QueryMetricsInput, datadog.MetricsQuery](t, datadog.QueryMetricsDefinition),
-		listMonitors: connectormock.NewQuery[datadog.ListMonitorsInput, datadog.MonitorsPage](t, datadog.ListMonitorsDefinition),
+		createMonitor: connectormock.NewMutation[datadog.CreateMonitorInput, datadog.Monitor](t, datadog.CreateMonitorDefinition),
+		queryMetrics:  connectormock.NewQuery[datadog.QueryMetricsInput, datadog.MetricsQuery](t, datadog.QueryMetricsDefinition),
+		listMonitors:  connectormock.NewQuery[datadog.ListMonitorsInput, datadog.MonitorsPage](t, datadog.ListMonitorsDefinition),
+		getMonitor:    connectormock.NewQuery[datadog.GetMonitorInput, datadog.Monitor](t, datadog.GetMonitorDefinition),
+		updateMonitor: connectormock.NewMutation[datadog.UpdateMonitorInput, datadog.Monitor](t, datadog.UpdateMonitorDefinition),
+		deleteMonitor: connectormock.NewMutation[datadog.DeleteMonitorInput, datadog.DeletedMonitor](t, datadog.DeleteMonitorDefinition),
 	}
+	mock.createMonitor.Default(CreateMonitorDefault())
 	mock.queryMetrics.Default(QueryMetricsDefault())
 	mock.listMonitors.Default(ListMonitorsDefault())
+	mock.getMonitor.Default(GetMonitorDefault())
+	mock.updateMonitor.Default(UpdateMonitorDefault())
+	mock.deleteMonitor.Default(DeleteMonitorDefault())
 	connection, err := datadog.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "datadog", Name: connectionName})
 	if err != nil {
 		t.Fatalf("datadog mock connection: %v", err)
@@ -43,6 +55,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() datadog.Connection { return mock.connection }
 
+// CreateMonitor returns the createMonitor script.
+func (mock *Mock) CreateMonitor() *connectormock.Mutation[datadog.CreateMonitorInput, datadog.Monitor] {
+	return mock.createMonitor
+}
+
 // QueryMetrics returns the queryMetrics script.
 func (mock *Mock) QueryMetrics() *connectormock.Query[datadog.QueryMetricsInput, datadog.MetricsQuery] {
 	return mock.queryMetrics
@@ -53,13 +70,76 @@ func (mock *Mock) ListMonitors() *connectormock.Query[datadog.ListMonitorsInput,
 	return mock.listMonitors
 }
 
+// GetMonitor returns the getMonitor script.
+func (mock *Mock) GetMonitor() *connectormock.Query[datadog.GetMonitorInput, datadog.Monitor] {
+	return mock.getMonitor
+}
+
+// UpdateMonitor returns the updateMonitor script.
+func (mock *Mock) UpdateMonitor() *connectormock.Mutation[datadog.UpdateMonitorInput, datadog.Monitor] {
+	return mock.updateMonitor
+}
+
+// DeleteMonitor returns the deleteMonitor script.
+func (mock *Mock) DeleteMonitor() *connectormock.Mutation[datadog.DeleteMonitorInput, datadog.DeletedMonitor] {
+	return mock.deleteMonitor
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateMonitor() sdkgo.Mutation[datadog.CreateMonitorInput, datadog.Monitor] {
+	return operations.mock.createMonitor
+}
 func (operations mockOperations) QueryMetrics() sdkgo.Query[datadog.QueryMetricsInput, datadog.MetricsQuery] {
 	return operations.mock.queryMetrics
 }
 func (operations mockOperations) ListMonitors() sdkgo.Query[datadog.ListMonitorsInput, datadog.MonitorsPage] {
 	return operations.mock.listMonitors
+}
+func (operations mockOperations) GetMonitor() sdkgo.Query[datadog.GetMonitorInput, datadog.Monitor] {
+	return operations.mock.getMonitor
+}
+func (operations mockOperations) UpdateMonitor() sdkgo.Mutation[datadog.UpdateMonitorInput, datadog.Monitor] {
+	return operations.mock.updateMonitor
+}
+func (operations mockOperations) DeleteMonitor() sdkgo.Mutation[datadog.DeleteMonitorInput, datadog.DeletedMonitor] {
+	return operations.mock.deleteMonitor
+}
+
+// CreateMonitorCreated selects the created branch: Datadog created the monitor and returned its ID.
+func CreateMonitorCreated(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.CreateMonitorBranchCreated, value, failure)
+}
+
+// CreateMonitorProviderRejected selects the providerRejected branch: Datadog definitively rejected creation.
+func CreateMonitorProviderRejected(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.CreateMonitorBranchProviderRejected, value, failure)
+}
+
+// CreateMonitorUncertain returns an uncertain createMonitor outcome.
+func CreateMonitorUncertain(value datadog.Monitor, failure sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateMonitorDefect selects the defect branch: Local input or credentials are invalid.
+func CreateMonitorDefect(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.CreateMonitorBranchDefect, value, failure)
+}
+
+// CreateMonitorRetry asks Dex to retry the createMonitor Step, after the delay when it is positive.
+func CreateMonitorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[datadog.Monitor] {
+	return connectormock.Retry[datadog.Monitor](failure, after)
+}
+
+// CreateMonitorLatencyMonitorCreated is the manifest mock latencyMonitorCreated: Create a metric alert monitor for the example.
+func CreateMonitorLatencyMonitorCreated() connectormock.Case[datadog.Monitor] {
+	value := connectormock.MustDecodeOutput[datadog.Monitor](`{"id":12345,"name":"Dex latency alert","type":"metric alert","overall_state":"OK"}`)
+	return connectormock.Branch(datadog.CreateMonitorBranchCreated, value, nil)
+}
+
+// CreateMonitorDefault is the manifest default, latencyMonitorCreated, which New installs.
+func CreateMonitorDefault() connectormock.Case[datadog.Monitor] {
+	return CreateMonitorLatencyMonitorCreated()
 }
 
 // QueryMetricsQueried selects the queried branch: Query Datadog timeseries points over an explicit Unix-second interval.
@@ -132,4 +212,123 @@ func ListMonitorsListedDefault() connectormock.Case[datadog.MonitorsPage] {
 // ListMonitorsDefault is the manifest default, listedDefault, which New installs.
 func ListMonitorsDefault() connectormock.Case[datadog.MonitorsPage] {
 	return ListMonitorsListedDefault()
+}
+
+// GetMonitorFound selects the found branch: Datadog returned the monitor.
+func GetMonitorFound(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.GetMonitorBranchFound, value, failure)
+}
+
+// GetMonitorNotFound selects the notFound branch: Datadog did not expose the monitor.
+func GetMonitorNotFound(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.GetMonitorBranchNotFound, value, failure)
+}
+
+// GetMonitorProviderRejected selects the providerRejected branch: Datadog rejected the lookup.
+func GetMonitorProviderRejected(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.GetMonitorBranchProviderRejected, value, failure)
+}
+
+// GetMonitorInvalidResponse selects the invalidResponse branch: Datadog returned malformed or oversized JSON.
+func GetMonitorInvalidResponse(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.GetMonitorBranchInvalidResponse, value, failure)
+}
+
+// GetMonitorDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetMonitorDefect(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.GetMonitorBranchDefect, value, failure)
+}
+
+// GetMonitorRetry asks Dex to retry the getMonitor Step, after the delay when it is positive.
+func GetMonitorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[datadog.Monitor] {
+	return connectormock.Retry[datadog.Monitor](failure, after)
+}
+
+// GetMonitorFoundDefault is the manifest mock foundDefault: One example monitor is returned.
+func GetMonitorFoundDefault() connectormock.Case[datadog.Monitor] {
+	value := connectormock.MustDecodeOutput[datadog.Monitor](`{"id":12345,"name":"Meridian API latency","type":"metric alert","overall_state":"OK"}`)
+	return connectormock.Branch(datadog.GetMonitorBranchFound, value, nil)
+}
+
+// GetMonitorDefault is the manifest default, foundDefault, which New installs.
+func GetMonitorDefault() connectormock.Case[datadog.Monitor] { return GetMonitorFoundDefault() }
+
+// UpdateMonitorUpdated selects the updated branch: Datadog returned the updated monitor.
+func UpdateMonitorUpdated(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.UpdateMonitorBranchUpdated, value, failure)
+}
+
+// UpdateMonitorNotFound selects the notFound branch: Datadog did not expose the monitor.
+func UpdateMonitorNotFound(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.UpdateMonitorBranchNotFound, value, failure)
+}
+
+// UpdateMonitorProviderRejected selects the providerRejected branch: Datadog rejected the update.
+func UpdateMonitorProviderRejected(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.UpdateMonitorBranchProviderRejected, value, failure)
+}
+
+// UpdateMonitorInvalidResponse selects the invalidResponse branch: Datadog returned malformed or oversized JSON.
+func UpdateMonitorInvalidResponse(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.UpdateMonitorBranchInvalidResponse, value, failure)
+}
+
+// UpdateMonitorDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateMonitorDefect(value datadog.Monitor, failure *sdkgo.Failure) connectormock.Case[datadog.Monitor] {
+	return connectormock.Branch(datadog.UpdateMonitorBranchDefect, value, failure)
+}
+
+// UpdateMonitorRetry asks Dex to retry the updateMonitor Step, after the delay when it is positive.
+func UpdateMonitorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[datadog.Monitor] {
+	return connectormock.Retry[datadog.Monitor](failure, after)
+}
+
+// UpdateMonitorUpdatedDefault is the manifest mock updatedDefault: One example monitor is updated.
+func UpdateMonitorUpdatedDefault() connectormock.Case[datadog.Monitor] {
+	value := connectormock.MustDecodeOutput[datadog.Monitor](`{"id":12345,"name":"Meridian API latency","type":"metric alert","overall_state":"OK"}`)
+	return connectormock.Branch(datadog.UpdateMonitorBranchUpdated, value, nil)
+}
+
+// UpdateMonitorDefault is the manifest default, updatedDefault, which New installs.
+func UpdateMonitorDefault() connectormock.Case[datadog.Monitor] { return UpdateMonitorUpdatedDefault() }
+
+// DeleteMonitorDeleted selects the deleted branch: Datadog confirmed monitor deletion.
+func DeleteMonitorDeleted(value datadog.DeletedMonitor, failure *sdkgo.Failure) connectormock.Case[datadog.DeletedMonitor] {
+	return connectormock.Branch(datadog.DeleteMonitorBranchDeleted, value, failure)
+}
+
+// DeleteMonitorNotFound selects the notFound branch: Datadog did not expose the monitor.
+func DeleteMonitorNotFound(value datadog.DeletedMonitor, failure *sdkgo.Failure) connectormock.Case[datadog.DeletedMonitor] {
+	return connectormock.Branch(datadog.DeleteMonitorBranchNotFound, value, failure)
+}
+
+// DeleteMonitorProviderRejected selects the providerRejected branch: Datadog rejected the deletion.
+func DeleteMonitorProviderRejected(value datadog.DeletedMonitor, failure *sdkgo.Failure) connectormock.Case[datadog.DeletedMonitor] {
+	return connectormock.Branch(datadog.DeleteMonitorBranchProviderRejected, value, failure)
+}
+
+// DeleteMonitorInvalidResponse selects the invalidResponse branch: Datadog returned malformed or oversized JSON.
+func DeleteMonitorInvalidResponse(value datadog.DeletedMonitor, failure *sdkgo.Failure) connectormock.Case[datadog.DeletedMonitor] {
+	return connectormock.Branch(datadog.DeleteMonitorBranchInvalidResponse, value, failure)
+}
+
+// DeleteMonitorDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteMonitorDefect(value datadog.DeletedMonitor, failure *sdkgo.Failure) connectormock.Case[datadog.DeletedMonitor] {
+	return connectormock.Branch(datadog.DeleteMonitorBranchDefect, value, failure)
+}
+
+// DeleteMonitorRetry asks Dex to retry the deleteMonitor Step, after the delay when it is positive.
+func DeleteMonitorRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[datadog.DeletedMonitor] {
+	return connectormock.Retry[datadog.DeletedMonitor](failure, after)
+}
+
+// DeleteMonitorDeletedDefault is the manifest mock deletedDefault: One example monitor is deleted.
+func DeleteMonitorDeletedDefault() connectormock.Case[datadog.DeletedMonitor] {
+	value := connectormock.MustDecodeOutput[datadog.DeletedMonitor](`{"monitorId":12345}`)
+	return connectormock.Branch(datadog.DeleteMonitorBranchDeleted, value, nil)
+}
+
+// DeleteMonitorDefault is the manifest default, deletedDefault, which New installs.
+func DeleteMonitorDefault() connectormock.Case[datadog.DeletedMonitor] {
+	return DeleteMonitorDeletedDefault()
 }
