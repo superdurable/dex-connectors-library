@@ -57,3 +57,26 @@ func TestCreateMonitorStopsAfterTwoUnknownSends(t *testing.T) {
 	}
 	require.Equal(t, int32(2), requests.Load())
 }
+
+func TestCreateMonitorReadsBackKnownIDWithoutResending(t *testing.T) {
+	var posts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.Method {
+		case http.MethodPost:
+			posts.Add(1)
+			_, err := writer.Write([]byte(`{"id":12345}`))
+			require.NoError(t, err)
+		case http.MethodGet:
+			require.Equal(t, "/api/v1/monitor/12345", request.URL.Path)
+			_, err := writer.Write([]byte(`{"id":12345,"name":"Dex latency alert","type":"metric alert","overall_state":"OK"}`))
+			require.NoError(t, err)
+		default:
+			t.Fatalf("unexpected method %s", request.Method)
+		}
+	}))
+	defer server.Close()
+	result, err := sdkgo.RunMutation(singledispatchtest.NewContext("datadog", "create-monitor-known-id"), testClient(t, server.URL).CreateMonitor(), testConnection, testCreateMonitorInput)
+	require.NoError(t, err)
+	require.Equal(t, CreateMonitorBranchCreated, result.Branch)
+	require.Equal(t, int32(1), posts.Load())
+}

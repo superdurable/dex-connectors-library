@@ -109,11 +109,19 @@ func (operation CreateMonitorOperation) Invoke(call sdkgo.Call, input CreateMoni
 		return operation.retryOrUncertain(call, decision, 0, "Datadog accepted monitor creation without a usable response")
 	}
 	var monitor Monitor
-	if json.Unmarshal(responseBody, &monitor) != nil || monitor.ID <= 0 || monitor.Name != input.Name || monitor.Type != "metric alert" {
+	if json.Unmarshal(responseBody, &monitor) != nil {
+		return operation.retryOrUncertain(call, decision, 0, "Datadog accepted monitor creation without a confirmed monitor ID")
+	}
+	if monitor.ID > 0 {
+		_ = fence.RecordProviderID(strconv.FormatInt(monitor.ID, 10))
+	}
+	if monitor.ID <= 0 {
 		return operation.retryOrUncertain(call, decision, 0, "Datadog accepted monitor creation without a confirmed monitor ID")
 	}
 	monitorID := strconv.FormatInt(monitor.ID, 10)
-	_ = fence.RecordProviderID(monitorID)
+	if monitor.Name != input.Name || monitor.Type != "metric alert" {
+		return operation.readCreatedMonitor(call, input, monitorID)
+	}
 	return sdkgo.NewMutationBranch(CreateMonitorBranchCreated, monitor, nil, monitorCreateReceipt(call, monitorID))
 }
 
