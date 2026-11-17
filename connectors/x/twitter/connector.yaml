@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: x-twitter
   displayName: X
-  description: Retrieve a public X Post by its numeric ID.
+  description: Retrieve and search public X Posts and user profiles.
   company: X
   categories: [social-media]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: x-twitter
   languages:
@@ -55,6 +55,39 @@ spec:
         - Open the app's Keys and tokens page, generate or reveal its Bearer Token, and copy the complete secret to Dex Web access_token. Regenerate it on the same page to rotate. Do not enter the API Key or API Key Secret in this field.
         - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Copy the numeric Post ID from an x.com post URL after /status/ and pass it as postId. Blank is invalid.
   operations:
+    - name: searchRecentPosts
+      goName: SearchRecentPosts
+      inputType: SearchRecentPostsInput
+      outputType: PostPage
+      kind: query
+      description: Search public Posts from the last seven days.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: X returned a search page.}
+        - {id: providerRejected, goName: ProviderRejected, description: X conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: X returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Search input or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One sample public Post is returned., output: {data: [{id: '1845123456789012345', text: Example public Post}], nextToken: ''}}
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: UserMetadata
+      kind: query
+      description: Read a public user profile by username.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: X returned the user profile.}
+        - {id: notFound, goName: NotFound, description: X did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: X conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: X returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Username or credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One sample user is returned., output: {id: '123456789', name: Ada Lovelace, username: ada}}
     - name: getPost
       goName: GetPost
       inputType: GetPostInput
