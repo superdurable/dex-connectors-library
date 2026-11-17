@@ -24,7 +24,8 @@ import (
 func TestDocumentDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := lucidmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	detailsFlow := NewDocumentDetailsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, detailsFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -56,4 +57,14 @@ func TestDocumentDiscoveryUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Equal(t, "110808fd-4553-4316-bccf-4f25ff59a532", output.Documents[0].ID)
 	require.Len(t, mock.ListDocuments().Calls(), 1)
+	detailsFlowID := "lucid-documentdetails-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, detailsFlow, detailsFlowID, lucid.GetDocumentInput{ID: output.Documents[0].ID}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	detailsResult, err := client.WaitForFlow(ctx, detailsFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, detailsResult.Status, detailsResult.ErrorMessage)
+	var detailsOutput lucid.DocumentDetails
+	require.NoError(t, detailsResult.DecodeSingleOutput(&detailsOutput))
+	require.Equal(t, output.Documents[0].ID, detailsOutput.ID)
+	require.Len(t, mock.GetDocument().Calls(), 1)
 }

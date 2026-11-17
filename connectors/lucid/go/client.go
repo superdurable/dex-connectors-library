@@ -7,6 +7,7 @@ package lucid
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -69,6 +70,14 @@ type providerResponse struct {
 }
 
 func (client *Client) search(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodPost, path)
+}
+
+func (client *Client) get(call sdkgo.Call, path string) providerResponse {
+	return client.request(call, http.MethodGet, path)
+}
+
+func (client *Client) request(call sdkgo.Call, method, path string) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -77,12 +86,18 @@ func (client *Client) search(call sdkgo.Call, path string) providerResponse {
 	if !providerhttp.IsHeaderSafeCredential(apiKey) {
 		return providerResponse{err: errCredential}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, strings.NewReader(`{"excludeTrashed":true}`))
+	var requestBody io.Reader
+	if method == http.MethodPost {
+		requestBody = strings.NewReader(`{"excludeTrashed":true}`)
+	}
+	request, err := http.NewRequestWithContext(call.Context, method, client.baseURL+path, requestBody)
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Content-Type", "application/json")
+	if method == http.MethodPost {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 	request.Header.Set("Lucid-Api-Version", "1")
 	response, err := client.httpClient.Do(request)

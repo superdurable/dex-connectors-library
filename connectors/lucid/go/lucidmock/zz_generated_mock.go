@@ -19,6 +19,7 @@ import (
 type Mock struct {
 	connection    lucid.Connection
 	listDocuments *connectormock.Query[lucid.ListDocumentsInput, lucid.DocumentsPage]
+	getDocument   *connectormock.Query[lucid.GetDocumentInput, lucid.DocumentDetails]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,8 +28,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
 		listDocuments: connectormock.NewQuery[lucid.ListDocumentsInput, lucid.DocumentsPage](t, lucid.ListDocumentsDefinition),
+		getDocument:   connectormock.NewQuery[lucid.GetDocumentInput, lucid.DocumentDetails](t, lucid.GetDocumentDefinition),
 	}
 	mock.listDocuments.Default(ListDocumentsDefault())
+	mock.getDocument.Default(GetDocumentDefault())
 	connection, err := lucid.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "lucid", Name: connectionName})
 	if err != nil {
 		t.Fatalf("lucid mock connection: %v", err)
@@ -45,10 +48,18 @@ func (mock *Mock) ListDocuments() *connectormock.Query[lucid.ListDocumentsInput,
 	return mock.listDocuments
 }
 
+// GetDocument returns the getDocument script.
+func (mock *Mock) GetDocument() *connectormock.Query[lucid.GetDocumentInput, lucid.DocumentDetails] {
+	return mock.getDocument
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListDocuments() sdkgo.Query[lucid.ListDocumentsInput, lucid.DocumentsPage] {
 	return operations.mock.listDocuments
+}
+func (operations mockOperations) GetDocument() sdkgo.Query[lucid.GetDocumentInput, lucid.DocumentDetails] {
+	return operations.mock.getDocument
 }
 
 // ListDocumentsListed selects the listed branch: Lucid returned one document page.
@@ -86,3 +97,42 @@ func ListDocumentsListedDefault() connectormock.Case[lucid.DocumentsPage] {
 func ListDocumentsDefault() connectormock.Case[lucid.DocumentsPage] {
 	return ListDocumentsListedDefault()
 }
+
+// GetDocumentFound selects the found branch: Lucid returned the selected document.
+func GetDocumentFound(value lucid.DocumentDetails, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentDetails] {
+	return connectormock.Branch(lucid.GetDocumentBranchFound, value, failure)
+}
+
+// GetDocumentNotFound selects the notFound branch: Lucid reported the document missing.
+func GetDocumentNotFound(value lucid.DocumentDetails, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentDetails] {
+	return connectormock.Branch(lucid.GetDocumentBranchNotFound, value, failure)
+}
+
+// GetDocumentProviderRejected selects the providerRejected branch: Lucid conclusively rejected the read.
+func GetDocumentProviderRejected(value lucid.DocumentDetails, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentDetails] {
+	return connectormock.Branch(lucid.GetDocumentBranchProviderRejected, value, failure)
+}
+
+// GetDocumentInvalidResponse selects the invalidResponse branch: Lucid returned malformed or oversized document JSON.
+func GetDocumentInvalidResponse(value lucid.DocumentDetails, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentDetails] {
+	return connectormock.Branch(lucid.GetDocumentBranchInvalidResponse, value, failure)
+}
+
+// GetDocumentDefect selects the defect branch: Document ID or credentials are invalid.
+func GetDocumentDefect(value lucid.DocumentDetails, failure *sdkgo.Failure) connectormock.Case[lucid.DocumentDetails] {
+	return connectormock.Branch(lucid.GetDocumentBranchDefect, value, failure)
+}
+
+// GetDocumentRetry asks Dex to retry the getDocument Step, after the delay when it is positive.
+func GetDocumentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lucid.DocumentDetails] {
+	return connectormock.Retry[lucid.DocumentDetails](failure, after)
+}
+
+// GetDocumentFoundDefault is the manifest mock foundDefault: One example document is returned.
+func GetDocumentFoundDefault() connectormock.Case[lucid.DocumentDetails] {
+	value := connectormock.MustDecodeOutput[lucid.DocumentDetails](`{"id":"110808fd-4553-4316-bccf-4f25ff59a532","title":"Example document","product":"lucidchart","version":2,"pageCount":1,"canEdit":false}`)
+	return connectormock.Branch(lucid.GetDocumentBranchFound, value, nil)
+}
+
+// GetDocumentDefault is the manifest default, foundDefault, which New installs.
+func GetDocumentDefault() connectormock.Case[lucid.DocumentDetails] { return GetDocumentFoundDefault() }
