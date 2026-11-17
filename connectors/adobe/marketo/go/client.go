@@ -6,6 +6,7 @@ package marketo
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -91,6 +92,10 @@ var errLeadTransport = errors.New("Marketo request failed")
 var errLeadCredentials = errors.New("Marketo credential refresh failed")
 
 func (client *Client) requestLeadAPI(call sdkgo.Call, method, path string, body []byte) leadResponse {
+	return client.requestLeadAPIWithContext(call.Context, call, method, path, body)
+}
+
+func (client *Client) requestLeadAPIWithContext(requestContext context.Context, call sdkgo.Call, method, path string, body []byte) leadResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
 	if err != nil {
 		if sdkgo.IsReauthorizationRequired(err) {
@@ -102,7 +107,7 @@ func (client *Client) requestLeadAPI(call sdkgo.Call, method, path string, body 
 	if !providerhttp.IsHeaderSafeCredential(token) {
 		return leadResponse{err: errLeadReauthorization}
 	}
-	request, err := http.NewRequestWithContext(call.Context, method, client.restEndpoint+path, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(requestContext, method, client.restEndpoint+path, bytes.NewReader(body))
 	if err != nil {
 		return leadResponse{err: errLeadTransport}
 	}

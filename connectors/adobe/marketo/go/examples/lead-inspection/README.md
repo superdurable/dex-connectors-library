@@ -1,6 +1,6 @@
 # Marketo lead inspection Flow
 
-This runnable Worker registers `MarketoLeadInspection` for `getLead` and `MarketoFindLeadsByEmail` for the paged search through the static `adobe-marketo` connection. Both persist provider results in Attributes and expose them through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
+This runnable Worker registers `MarketoLeadInspection`, `MarketoFindLeadsByEmail`, `MarketoCreateLead`, and `MarketoUpsertLeadByEmail` through the static `adobe-marketo` connection. Each Flow stores its result in an Attribute and exposes it through read-only Dex Web RPCs. Optional branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -9,6 +9,8 @@ From `connectors/adobe/marketo/go`, run:
 ```bash
 dexcli visualize ./examples/lead-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/marketo-lead-inspection-fdg
 dexcli visualize ./examples/lead-inspection/flow/find_leads_workflow.go --schema-version 2.0 --json --out /tmp/marketo-find-leads-fdg
+dexcli visualize ./examples/lead-inspection/flow/create_lead_workflow.go --schema-version 2.0 --json --out /tmp/marketo-create-lead-fdg
+dexcli visualize ./examples/lead-inspection/flow/upsert_lead_by_email_workflow.go --schema-version 2.0 --json --out /tmp/marketo-upsert-lead-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.
@@ -23,6 +25,6 @@ With the project's `DEX_PROJECT_*` environment set, run from `connectors/adobe/m
 GOWORK=off go run ./examples/lead-inspection
 ```
 
-Start `MarketoLeadInspection` with a unique Flow ID and input `{"leadId":318581}`. Replace the sample ID with a lead ID you can access. Alternatively, start `MarketoFindLeadsByEmail` with `{"email":"sample@example.com"}`, replacing the sample address with an email you may search. Pass `nextPageToken` from the prior result to read another page. The Worker connects to Dex Server without an inbound listener.
+Start `MarketoLeadInspection` with a unique Flow ID and input `{"leadId":318581}`. Replace the sample ID with a lead ID you can access. Alternatively, start `MarketoFindLeadsByEmail` with `{"email":"sample@example.com"}`, replacing the sample address with an email you may search. Pass `nextPageToken` from the prior result to read another page. The checked-in mock-backed test starts `MarketoCreateLead` and `MarketoUpsertLeadByEmail` with `sample@example.com` and `Sample` as the first name; use an email you control for live writes. Both write Flows require the API role's Read-Write Lead permission. The Worker connects to Dex Server without an inbound listener.
 
-CI runs the mock-backed real-Dex integration test. Real Marketo authorization and retrieval remain unverified.
+CI runs the mock-backed real-Dex integration tests. Real Marketo authorization, retrieval, and writes remain unverified.

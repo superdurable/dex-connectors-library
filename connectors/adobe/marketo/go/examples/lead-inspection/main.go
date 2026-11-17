@@ -39,7 +39,10 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	registry, err := dex.NewRegistry([]dex.Flow{leadinspection.NewFlow(connection), leadinspection.NewFindLeadsFlow(connection)})
+	registry, err := dex.NewRegistry([]dex.Flow{
+		leadinspection.NewFlow(connection), leadinspection.NewFindLeadsFlow(connection),
+		leadinspection.NewCreateLeadFlow(connection), leadinspection.NewUpsertLeadByEmailFlow(connection),
+	})
 	if err != nil {
 		return fmt.Errorf("register Marketo lead inspection Flow: %w", err)
 	}

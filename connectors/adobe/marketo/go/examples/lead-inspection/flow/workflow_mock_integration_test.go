@@ -61,37 +61,90 @@ func TestLeadInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 }
 
 func TestFindLeadsByEmailUsesDefaultMockWithRealDex(t *testing.T) {
- mock := marketomock.New(t, ConnectionName)
- flow := NewFindLeadsFlow(mock.Connection())
- registry, err := dex.NewRegistry([]dex.Flow{flow})
- require.NoError(t, err)
- cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
- require.NoError(t, err)
- serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
- if serverAddress == "" { serverAddress = "127.0.0.1:8801" }
- worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
- require.NoError(t, err)
- client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
- require.NoError(t, err)
- workerResult := make(chan error, 1)
- go func() { workerResult <- worker.Start() }()
- t.Cleanup(func() {
-  stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-  defer cancel()
-  require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
- })
- ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
- defer cancel()
- require.NoError(t, worker.WaitPullRegistered(ctx))
- flowID := "marketo-find-leads-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
- _, err = client.StartFlow(ctx, flow, flowID, marketo.FindLeadsByEmailInput{Email: "sample@example.com"}, dex.StartFlowOptions{})
- require.NoError(t, err)
- result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
- require.NoError(t, err)
- require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
- var output marketo.LeadProfilesPage
- require.NoError(t, result.DecodeSingleOutput(&output))
- require.Len(t, output.Leads, 1)
- require.Equal(t, int64(318581), output.Leads[0].ID)
- require.Len(t, mock.FindLeadsByEmail().Calls(), 1)
+	mock := marketomock.New(t, ConnectionName)
+	flow := NewFindLeadsFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:8801"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	flowID := "marketo-find-leads-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, flow, flowID, marketo.FindLeadsByEmailInput{Email: "sample@example.com"}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output marketo.LeadProfilesPage
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Len(t, output.Leads, 1)
+	require.Equal(t, int64(318581), output.Leads[0].ID)
+	require.Len(t, mock.FindLeadsByEmail().Calls(), 1)
+}
+
+func TestLeadWritesUseMocksWithRealDex(t *testing.T) {
+	mock := marketomock.New(t, ConnectionName)
+	createFlow := NewCreateLeadFlow(mock.Connection())
+	upsertFlow := NewUpsertLeadByEmailFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{createFlow, upsertFlow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "127.0.0.1:9260"
+	}
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+	firstName := "Sample"
+	for _, testCase := range []struct {
+		flow   dex.Flow
+		input  any
+		wantID int64
+	}{
+		{flow: createFlow, input: marketo.CreateLeadInput{Email: "sample@example.com", FirstName: &firstName}, wantID: 318582},
+		{flow: upsertFlow, input: marketo.UpsertLeadByEmailInput{Email: "sample@example.com", FirstName: &firstName}, wantID: 318581},
+	} {
+		flowID := "marketo-lead-write-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		_, err := client.StartFlow(ctx, testCase.flow, flowID, testCase.input, dex.StartFlowOptions{})
+		require.NoError(t, err)
+		result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+		require.NoError(t, err)
+		require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+		var output struct {
+			ID int64 `json:"id"`
+		}
+		require.NoError(t, result.DecodeSingleOutput(&output))
+		require.Equal(t, testCase.wantID, output.ID)
+	}
+	require.Len(t, mock.CreateLead().Calls(), 1)
+	require.Len(t, mock.UpsertLeadByEmail().Calls(), 1)
 }

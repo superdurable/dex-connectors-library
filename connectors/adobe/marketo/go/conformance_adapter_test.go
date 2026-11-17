@@ -32,5 +32,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"getLead": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetLead(), reference),
 		"findLeadsByEmail": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.FindLeadsByEmail(), reference),
 		"updateLead": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateLead(), reference, scenario.CallID),
+		"createLead": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CreateLead(), reference, scenario.CallID),
+		"upsertLeadByEmail": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpsertLeadByEmail(), reference, scenario.CallID),
 	}}
 }

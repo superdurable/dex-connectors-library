@@ -17,10 +17,12 @@ import (
 
 // Mock is a scripted adobe-marketo connection. Script each operation through its accessor.
 type Mock struct {
-	connection       marketo.Connection
-	getLead          *connectormock.Query[marketo.GetLeadInput, marketo.LeadProfile]
-	findLeadsByEmail *connectormock.Query[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage]
-	updateLead       *connectormock.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead]
+	connection        marketo.Connection
+	createLead        *connectormock.Mutation[marketo.CreateLeadInput, marketo.CreatedLead]
+	upsertLeadByEmail *connectormock.Mutation[marketo.UpsertLeadByEmailInput, marketo.SyncedLead]
+	getLead           *connectormock.Query[marketo.GetLeadInput, marketo.LeadProfile]
+	findLeadsByEmail  *connectormock.Query[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage]
+	updateLead        *connectormock.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -28,10 +30,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getLead:          connectormock.NewQuery[marketo.GetLeadInput, marketo.LeadProfile](t, marketo.GetLeadDefinition),
-		findLeadsByEmail: connectormock.NewQuery[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage](t, marketo.FindLeadsByEmailDefinition),
-		updateLead:       connectormock.NewMutation[marketo.UpdateLeadInput, marketo.UpdatedLead](t, marketo.UpdateLeadDefinition),
+		createLead:        connectormock.NewMutation[marketo.CreateLeadInput, marketo.CreatedLead](t, marketo.CreateLeadDefinition),
+		upsertLeadByEmail: connectormock.NewMutation[marketo.UpsertLeadByEmailInput, marketo.SyncedLead](t, marketo.UpsertLeadByEmailDefinition),
+		getLead:           connectormock.NewQuery[marketo.GetLeadInput, marketo.LeadProfile](t, marketo.GetLeadDefinition),
+		findLeadsByEmail:  connectormock.NewQuery[marketo.FindLeadsByEmailInput, marketo.LeadProfilesPage](t, marketo.FindLeadsByEmailDefinition),
+		updateLead:        connectormock.NewMutation[marketo.UpdateLeadInput, marketo.UpdatedLead](t, marketo.UpdateLeadDefinition),
 	}
+	mock.createLead.Default(CreateLeadDefault())
+	mock.upsertLeadByEmail.Default(UpsertLeadByEmailDefault())
 	mock.getLead.Default(GetLeadDefault())
 	mock.findLeadsByEmail.Default(FindLeadsByEmailDefault())
 	mock.updateLead.Default(UpdateLeadDefault())
@@ -45,6 +51,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() marketo.Connection { return mock.connection }
+
+// CreateLead returns the createLead script.
+func (mock *Mock) CreateLead() *connectormock.Mutation[marketo.CreateLeadInput, marketo.CreatedLead] {
+	return mock.createLead
+}
+
+// UpsertLeadByEmail returns the upsertLeadByEmail script.
+func (mock *Mock) UpsertLeadByEmail() *connectormock.Mutation[marketo.UpsertLeadByEmailInput, marketo.SyncedLead] {
+	return mock.upsertLeadByEmail
+}
 
 // GetLead returns the getLead script.
 func (mock *Mock) GetLead() *connectormock.Query[marketo.GetLeadInput, marketo.LeadProfile] {
@@ -63,6 +79,12 @@ func (mock *Mock) UpdateLead() *connectormock.Mutation[marketo.UpdateLeadInput, 
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateLead() sdkgo.Mutation[marketo.CreateLeadInput, marketo.CreatedLead] {
+	return operations.mock.createLead
+}
+func (operations mockOperations) UpsertLeadByEmail() sdkgo.Mutation[marketo.UpsertLeadByEmailInput, marketo.SyncedLead] {
+	return operations.mock.upsertLeadByEmail
+}
 func (operations mockOperations) GetLead() sdkgo.Query[marketo.GetLeadInput, marketo.LeadProfile] {
 	return operations.mock.getLead
 }
@@ -71,6 +93,81 @@ func (operations mockOperations) FindLeadsByEmail() sdkgo.Query[marketo.FindLead
 }
 func (operations mockOperations) UpdateLead() sdkgo.Mutation[marketo.UpdateLeadInput, marketo.UpdatedLead] {
 	return operations.mock.updateLead
+}
+
+// CreateLeadCreated selects the created branch: Marketo created the lead.
+func CreateLeadCreated(value marketo.CreatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.CreatedLead] {
+	return connectormock.Branch(marketo.CreateLeadBranchCreated, value, failure)
+}
+
+// CreateLeadAlreadyExists selects the alreadyExists branch: Marketo found an existing lead for this email.
+func CreateLeadAlreadyExists(value marketo.CreatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.CreatedLead] {
+	return connectormock.Branch(marketo.CreateLeadBranchAlreadyExists, value, failure)
+}
+
+// CreateLeadProviderRejected selects the providerRejected branch: Marketo conclusively rejected the create request.
+func CreateLeadProviderRejected(value marketo.CreatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.CreatedLead] {
+	return connectormock.Branch(marketo.CreateLeadBranchProviderRejected, value, failure)
+}
+
+// CreateLeadUncertain returns an uncertain createLead outcome.
+func CreateLeadUncertain(value marketo.CreatedLead, failure sdkgo.Failure) connectormock.Case[marketo.CreatedLead] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateLeadDefect selects the defect branch: Local email or name fields are invalid.
+func CreateLeadDefect(value marketo.CreatedLead, failure *sdkgo.Failure) connectormock.Case[marketo.CreatedLead] {
+	return connectormock.Branch(marketo.CreateLeadBranchDefect, value, failure)
+}
+
+// CreateLeadRetry asks Dex to retry the createLead Step, after the delay when it is positive.
+func CreateLeadRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.CreatedLead] {
+	return connectormock.Retry[marketo.CreatedLead](failure, after)
+}
+
+// CreateLeadCreatedDefault is the manifest mock createdDefault: Marketo created a sample lead.
+func CreateLeadCreatedDefault() connectormock.Case[marketo.CreatedLead] {
+	value := connectormock.MustDecodeOutput[marketo.CreatedLead](`{"id":318582,"status":"created"}`)
+	return connectormock.Branch(marketo.CreateLeadBranchCreated, value, nil)
+}
+
+// CreateLeadDefault is the manifest default, createdDefault, which New installs.
+func CreateLeadDefault() connectormock.Case[marketo.CreatedLead] { return CreateLeadCreatedDefault() }
+
+// UpsertLeadByEmailSynced selects the synced branch: Marketo created or updated the lead.
+func UpsertLeadByEmailSynced(value marketo.SyncedLead, failure *sdkgo.Failure) connectormock.Case[marketo.SyncedLead] {
+	return connectormock.Branch(marketo.UpsertLeadByEmailBranchSynced, value, failure)
+}
+
+// UpsertLeadByEmailProviderRejected selects the providerRejected branch: Marketo conclusively rejected the upsert or found multiple matches.
+func UpsertLeadByEmailProviderRejected(value marketo.SyncedLead, failure *sdkgo.Failure) connectormock.Case[marketo.SyncedLead] {
+	return connectormock.Branch(marketo.UpsertLeadByEmailBranchProviderRejected, value, failure)
+}
+
+// UpsertLeadByEmailInvalidResponse selects the invalidResponse branch: Marketo returned malformed or oversized JSON.
+func UpsertLeadByEmailInvalidResponse(value marketo.SyncedLead, failure *sdkgo.Failure) connectormock.Case[marketo.SyncedLead] {
+	return connectormock.Branch(marketo.UpsertLeadByEmailBranchInvalidResponse, value, failure)
+}
+
+// UpsertLeadByEmailDefect selects the defect branch: Local email or name fields are invalid.
+func UpsertLeadByEmailDefect(value marketo.SyncedLead, failure *sdkgo.Failure) connectormock.Case[marketo.SyncedLead] {
+	return connectormock.Branch(marketo.UpsertLeadByEmailBranchDefect, value, failure)
+}
+
+// UpsertLeadByEmailRetry asks Dex to retry the upsertLeadByEmail Step, after the delay when it is positive.
+func UpsertLeadByEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[marketo.SyncedLead] {
+	return connectormock.Retry[marketo.SyncedLead](failure, after)
+}
+
+// UpsertLeadByEmailSyncedDefault is the manifest mock syncedDefault: Marketo updated a sample lead.
+func UpsertLeadByEmailSyncedDefault() connectormock.Case[marketo.SyncedLead] {
+	value := connectormock.MustDecodeOutput[marketo.SyncedLead](`{"id":318581,"status":"updated"}`)
+	return connectormock.Branch(marketo.UpsertLeadByEmailBranchSynced, value, nil)
+}
+
+// UpsertLeadByEmailDefault is the manifest default, syncedDefault, which New installs.
+func UpsertLeadByEmailDefault() connectormock.Case[marketo.SyncedLead] {
+	return UpsertLeadByEmailSyncedDefault()
 }
 
 // GetLeadFound selects the found branch: Marketo returned the selected lead.

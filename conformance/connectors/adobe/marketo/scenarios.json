@@ -1281,6 +1281,847 @@
       },
       "name": "updateLead-transportFailure",
       "operation": "updateLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318582,\"status\":\"created\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample",
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "providerId": "318582",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 318582,
+          "status": "created"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample",
+        "lastName": "Lead"
+      },
+      "name": "createLead-success",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1005\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-already-exists",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-provider-rejected",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-uncertain-response",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "invalid"
+      },
+      "name": "createLead-defect",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-retry-429",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-retry-503",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-retry-500",
+      "operation": "createLead"
+    },
+    {
+      "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOnly",
+            "input": [
+              {
+                "email": "sample@example.com"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "434fdf21-638a-56f3-970f-abb74c5bec95",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "434fdf21-638a-56f3-970f-abb74c5bec95",
+      "input": {
+        "email": "sample@example.com"
+      },
+      "name": "createLead-transport-before-send",
+      "operation": "createLead"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318581,\"status\":\"updated\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample",
+                "lastName": "Lead"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "synced",
+        "failureKind": "",
+        "output": {
+          "id": 318581,
+          "status": "updated"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample",
+        "lastName": "Lead"
+      },
+      "name": "upsertLeadByEmail-success",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"status\":\"skipped\",\"reasons\":[{\"code\":\"1007\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-provider-rejected",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-invalid-response",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "invalid",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-defect",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-retry-429",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-retry-503",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-retry-500",
+      "operation": "upsertLeadByEmail"
+    },
+    {
+      "callId": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/leads.json",
+          "requestBody": {
+            "action": "createOrUpdate",
+            "input": [
+              {
+                "email": "sample@example.com",
+                "firstName": "Sample"
+              }
+            ],
+            "lookupField": "email"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0533186b-7b94-58bb-8921-cbda353ba0d5",
+      "input": {
+        "email": "sample@example.com",
+        "firstName": "Sample"
+      },
+      "name": "upsertLeadByEmail-transport-before-send",
+      "operation": "upsertLeadByEmail"
     }
   ],
   "schemaVersion": 1

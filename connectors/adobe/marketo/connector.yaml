@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: adobe-marketo
   displayName: Adobe Marketo Engage
-  description: Read, find, and update selected lead profile fields in a Marketo Engage subscription.
+  description: Read, find, create, upsert, and update selected lead profile fields in a Marketo Engage subscription.
   company: Adobe
   categories: [marketing]
   version: v0.2.0
@@ -38,12 +38,12 @@ spec:
       - name: timeout
         goName: Timeout
         type: duration
-        description: Maximum duration of one lead read as a positive Go duration. Leave blank for the displayed default; increase only for slow Marketo responses.
+        description: Maximum duration of one Marketo API request as a positive Go duration. Leave blank for the displayed default; increase only for slow provider responses.
         default: 15s
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Maximum bytes in one complete lead response as a positive integer. Leave blank for the displayed default; increase only for unusually large responses.
+        description: Maximum bytes in one complete Marketo response as a positive integer. Leave blank for the displayed default; increase only for unusually large responses.
         default: 1048576
   auth:
     refreshable: true
@@ -67,7 +67,7 @@ spec:
     guide:
       startURL: https://app.marketo.com/
       steps:
-        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead only if using updateLead. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
+        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Grant Read-Write Lead for createLead, upsertLeadByEmail, or updateLead. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
         - Open Admin > Integration > LaunchPoint > New Service, choose Custom, select the API-Only user, and create the service. Open View Details to copy its Client ID and Client Secret; keep the secret in Dex Web only.
         - Open Admin > Integration > Web Services. Copy REST API > Endpoint into restEndpoint. Copy REST API > Identity and append /oauth/token into tokenEndpoint. Both HTTPS URLs must use the same subscription host ending in .mktorest.com.
         - Save the connection; Dex mints and refreshes the access token. Leave access_token, timeout, and maxResponseBytes blank. Revoke the Custom service in LaunchPoint to stop this connection.
@@ -83,6 +83,47 @@ spec:
         - {credential: access_token, source: access_token}
       terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
   operations:
+    - name: createLead
+      goName: CreateLead
+      inputType: CreateLeadInput
+      outputType: CreatedLead
+      kind: mutation
+      description: Create one lead by email with createOnly, refusing an existing lead and reading back after an unknown send.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Marketo created the lead.}
+        - {id: alreadyExists, goName: AlreadyExists, description: Marketo found an existing lead for this email., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo conclusively rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A previous create may have succeeded but read-back cannot confirm it., optional: true}
+        - {id: defect, goName: Defect, description: Local email or name fields are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Marketo created a sample lead.
+          output: {id: 318582, status: created}
+    - name: upsertLeadByEmail
+      goName: UpsertLeadByEmail
+      inputType: UpsertLeadByEmailInput
+      outputType: SyncedLead
+      kind: mutation
+      description: Create or replace selected names on the lead matching one email.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: synced, goName: Synced, description: Marketo created or updated the lead.}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo conclusively rejected the upsert or found multiple matches., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local email or name fields are invalid., optional: true}
+      mocks:
+        - name: syncedDefault
+          branch: synced
+          default: true
+          description: Marketo updated a sample lead.
+          output: {id: 318581, status: updated}
     - name: getLead
       goName: GetLead
       inputType: GetLeadInput

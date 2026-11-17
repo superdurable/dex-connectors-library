@@ -16,6 +16,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createLead/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.CreatedLead](`{"id":318582,"status":"created"}`)
+			return err
+		}},
+		{name: "upsertLeadByEmail/syncedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[marketo.SyncedLead](`{"id":318581,"status":"updated"}`)
+			return err
+		}},
 		{name: "getLead/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[marketo.LeadProfile](`{"id":318581,"firstName":"Sample","lastName":"Lead"}`)
 			return err
@@ -38,6 +46,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateLead().Definition().Operation.OperationID != "createLead" {
+		t.Errorf("createLead mock has another definition")
+	}
+	if mock.UpsertLeadByEmail().Definition().Operation.OperationID != "upsertLeadByEmail" {
+		t.Errorf("upsertLeadByEmail mock has another definition")
+	}
 	if mock.GetLead().Definition().Operation.OperationID != "getLead" {
 		t.Errorf("getLead mock has another definition")
 	}
