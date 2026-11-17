@@ -14,7 +14,11 @@ ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = [scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/creatio/scenarios.json") if scenario["operation"] == "getContact"]
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/creatio/scenarios.json")
+    if scenario["operation"] == "getContact"
+]
 CONNECTION = sdk.ConnectionRef("creatio", "creatio")
 TEST_CREDENTIALS = creatio.Credentials(
     "sample-client-id", sdk.SecretString("sample-client-secret"), sdk.SecretString("sample-access-token")
@@ -24,7 +28,9 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     creatio,
     lambda http_client, _recorder: creatio.Client(
-        creatio.Config(base_url="http://127.0.0.1:8848", token_endpoint="http://127.0.0.1:8848/connect/token"),
+        creatio.Config(
+            base_url="http://127.0.0.1:8848", token_endpoint="http://127.0.0.1:8848/connect/token"
+        ),
         conformance.static_credentials(CONNECTION, TEST_CREDENTIALS),
         http_client,
     ),

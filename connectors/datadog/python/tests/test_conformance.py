@@ -21,7 +21,9 @@ SCENARIOS = [
 ]
 CONNECTION = sdk.ConnectionRef("datadog", "datadog")
 ADAPTER = conformance.PythonOperationAdapter(
-    "datadog", CONNECTION, datadog,
+    "datadog",
+    CONNECTION,
+    datadog,
     lambda http_client, _: datadog.Client(
         datadog.Config(base_url="http://localhost"),
         conformance.static_credentials(

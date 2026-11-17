@@ -15,16 +15,18 @@ sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # noqa: E402
 
 SCENARIOS = [
-    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/contentful/scenarios.json")
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/contentful/scenarios.json")
     if scenario["operation"] in {"getEntry", "listEntries"}
 ]
 CONNECTION = sdk.ConnectionRef("contentful", "contentful")
 ADAPTER = conformance.PythonOperationAdapter(
-    "contentful", CONNECTION, contentful,
+    "contentful",
+    CONNECTION,
+    contentful,
     lambda client, _: contentful.Client(
         contentful.Config(base_url="http://127.0.0.1:8848"),
-        conformance.static_credentials(
-            CONNECTION, contentful.Credentials(sdk.SecretString("test-token"))),
+        conformance.static_credentials(CONNECTION, contentful.Credentials(sdk.SecretString("test-token"))),
         client,
     ),
 )

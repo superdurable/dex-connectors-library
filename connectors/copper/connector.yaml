@@ -88,7 +88,7 @@ spec:
       description: Read a Copper company by numeric ID.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Copper returned the company.}
         - {id: notFound, goName: NotFound, description: No company matches the ID., optional: true}
@@ -189,7 +189,7 @@ spec:
       description: Read a Copper person by numeric ID.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: found, goName: Found, description: Copper returned the person.}
         - {id: notFound, goName: NotFound, description: No person matches the ID., optional: true}
@@ -270,7 +270,7 @@ spec:
       description: List stable IDs and names of Copper customer sources.
       idempotency: none
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       branches:
         - {id: listed, goName: Listed, description: Copper returned customer sources.}
         - {id: providerRejected, goName: ProviderRejected, description: Copper conclusively rejected the request., optional: true}

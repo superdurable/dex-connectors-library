@@ -16,7 +16,8 @@ import connector_scenarios as conformance  # noqa: E402
 
 SUPPORTED_OPERATIONS = {"getTask", "updateTaskContent", "listTasks", "createTask", "deleteTask"}
 SCENARIOS = [
-    scenario for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/doist/todoist/scenarios.json")
+    scenario
+    for scenario in conformance.load_scenarios(ROOT / "conformance/connectors/doist/todoist/scenarios.json")
     if scenario["operation"] in SUPPORTED_OPERATIONS
 ]
 CONNECTION = sdk.ConnectionRef("todoist", "todoist")

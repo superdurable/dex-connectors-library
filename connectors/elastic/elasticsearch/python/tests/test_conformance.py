@@ -14,15 +14,21 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = [scenario for scenario in load_scenarios(ROOT / "conformance/connectors/elastic/elasticsearch/scenarios.json") if scenario["operation"] in {"indexDocument", "deleteDocument", "searchDocuments"}]
+SCENARIOS = [
+    scenario
+    for scenario in load_scenarios(ROOT / "conformance/connectors/elastic/elasticsearch/scenarios.json")
+    if scenario["operation"] in {"indexDocument", "deleteDocument", "searchDocuments"}
+]
 CONNECTION = sdk.ConnectionRef("elasticsearch", "elasticsearch")
 ADAPTER = PythonOperationAdapter(
-    "elasticsearch", CONNECTION, elasticsearch,
+    "elasticsearch",
+    CONNECTION,
+    elasticsearch,
     lambda http_client, _: elasticsearch.Client(
         elasticsearch.Config(cluster_url="http://127.0.0.1:12345"),
-        sdk.StaticCredentialProvider({
-            CONNECTION: elasticsearch.Credentials("dex_reader", sdk.SecretString("fake-password"))
-        }),
+        sdk.StaticCredentialProvider(
+            {CONNECTION: elasticsearch.Credentials("dex_reader", sdk.SecretString("fake-password"))}
+        ),
         http_client,
     ),
 )
