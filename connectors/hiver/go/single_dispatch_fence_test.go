@@ -5,6 +5,7 @@ package hiver_test
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -41,11 +42,11 @@ func TestSharedFenceRetries503OnceThenNeverResendsAcceptedNote(t *testing.T) {
 	ctx.AdvanceAttempt()
 	result, err = sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
+	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch, "a saved provider ID is never resent")
 	require.Equal(t, 2, provider.requestCount())
 }
 
-func TestSharedFenceRejectsStaleCanResendAfterLostClaim(t *testing.T) {
+func TestSharedFenceCountsALostClaimTowardTheSendCap(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		if index == 0 {
 			writeJSON(t, response, http.StatusServiceUnavailable, `{"Message":"busy"}`)
@@ -58,17 +59,67 @@ func TestSharedFenceRejectsStaleCanResendAfterLostClaim(t *testing.T) {
 	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
 
 	_, err := sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
-	require.Error(t, err)
+	require.Error(t, err, "the 503 was not processed and is retried")
 	ctx.AdvanceAttempt()
 	ctx.LoseNextHeartbeat()
+	_, err = sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
+	require.Error(t, err, "the first possible send is resent")
+	ctx.AdvanceAttempt()
+	_, err = sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
+	require.Error(t, err, "the stale canResend marker counts the lost claim, so one send remains")
+	ctx.AdvanceAttempt()
 	result, err := sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
-	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch, "the third possible send reaches the cap")
+	require.Equal(t, 4, provider.requestCount())
 	ctx.AdvanceAttempt()
 	result, err = sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
+	require.Equal(t, 4, provider.requestCount(), "the fence refuses a send beyond the cap")
+}
+
+func TestSharedFenceUnreadableCheckpointRetriesWithoutSending(t *testing.T) {
+	provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
+	ctx := singledispatchtest.NewContext("hiver-fence-fail-closed", "add-note")
+	ctx.AdvanceAttempt()
+	ctx.SetReadError(errors.New("checkpoint unavailable"))
+	_, err := sdkgo.RunMutation(ctx, newHiverClient(t, provider.URL).AddNote(), hiverConnection,
+		hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."})
+	require.Error(t, err, "FailClosed returns Retry instead of a terminal branch")
+	require.Zero(t, provider.requestCount())
+}
+
+func TestSharedFenceRecordsCanResendBeforeADefiniteRefusal(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusUnprocessableEntity, `{"Message":"invalid"}`)
+	})
+	ctx := singledispatchtest.NewContext("hiver-fence-refusal", "add-note")
+	result, err := sdkgo.RunMutation(ctx, newHiverClient(t, provider.URL).AddNote(), hiverConnection,
+		hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."})
+	require.NoError(t, err)
+	require.Equal(t, hiver.AddNoteBranchProviderRejected, result.Branch)
+	require.Equal(t, singledispatch.StateCanResend, latestFenceMarker(t, ctx).State)
+	require.Equal(t, 1, provider.requestCount(), "a definite refusal is never resent")
+}
+
+func TestSharedFenceRefusalAfterAPossibleSendIsUncertain(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusBadGateway, `{"Message":"busy"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusBadRequest, `{"Message":"duplicate"}`)
+	})
+	client := newHiverClient(t, provider.URL)
+	ctx := singledispatchtest.NewContext("hiver-fence-refusal-after-send", "add-note")
+	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
+	_, err := sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
+	require.Error(t, err)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.AddNote(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch, "the first send may have added the note")
 	require.Equal(t, 2, provider.requestCount())
 }
 

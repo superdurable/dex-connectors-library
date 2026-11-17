@@ -6,17 +6,17 @@ metadata:
   description: "List Hiver shared inboxes and their conversations, read one conversation, set its status, assignee, and tags, add internal notes, create shared reply drafts, and start Flows when a conversation arrives in a shared inbox, keeping Hiver's own open, pending, and closed statuses."
   company: Hiver
   categories: [customer-support, communication]
-  version: v0.24.0
+  version: v0.24.1
 spec:
   provider: hiver
   languages:
     python:
       package: dex-connector-hiver
-      version: v0.2.0
+      version: v0.2.1
       operations: [listInboxes, listConversations, getConversation, updateConversation, addNote, createSharedDraft]
       triggers: [conversationReceived]
     typescript:
-      version: v0.2.0
+      version: v0.2.1
       package: "@superdurable/connector-hiver"
       operations: [listInboxes, listConversations, getConversation, updateConversation, addNote, createSharedDraft]
       triggers: [conversationReceived]
@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Largest Hiver API response body, in bytes, that one request reads; a larger response selects invalidResponse, or uncertain for addNote and createSharedDraft. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example for conversation pages that list unusually many messages."
+        description: "Largest Hiver API response body, in bytes, that one request reads; a larger read response selects invalidResponse, and a larger write answer repeats the write within its send cap. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example for conversation pages that list unusually many messages."
         required: false
         default: 4194304
       - name: requestIntervalMilliseconds
@@ -214,7 +214,7 @@ spec:
         - {id: updated, goName: Updated, description: "The conversation, read back after the change, holds the requested status, assignee, and tags."}
         - {id: notFound, goName: NotFound, description: "The conversation or shared inbox does not exist or is not visible to the API key.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: "Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 60s
@@ -237,26 +237,26 @@ spec:
           failure: {kind: VALIDATION, message: "assigneeEmail matches 0 users of the shared inbox instead of one; the change was not sent"}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "For conversationId 573741352, Hiver returned malformed conversation JSON during read-back after accepting the change."
-          failure: {kind: PROTOCOL, message: "Hiver returned malformed conversation JSON during read-back after accepting the change."}
+          description: "For assignee phoebe@acme.example.com, Hiver returned a malformed user search page before the change was sent."
+          failure: {kind: PROTOCOL, message: "Hiver returned an invalid user search page: response has no data object"}
     - name: addNote
       goName: AddNote
       inputType: AddNoteInput
       outputType: AddNoteOutput
       kind: mutation
-      description: "Add one internal note, visible only to Hiver users, to a conversation. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or note read-back, so ambiguous sends remain uncertain."
+      description: "Add one internal note, visible only to Hiver users, to a conversation. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or note read-back, so an unknown outcome resends the note while the send cap allows and selects uncertain at the cap."
       idempotency: required
       branches:
         - {id: added, goName: Added, description: "Hiver added the note and returned it."}
         - {id: notFound, goName: NotFound, description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the note; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The note may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the note ID with an invalid note. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Hiver has no provider key or note read-back by Call ID, and a lost checkpoint cannot prove that a repeat is safe."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Hiver has no provider key or note read-back by Call ID, so every resend below the send cap may add another note."}}
       mocks:
         - name: addedDefaultAnswer
           branch: added
@@ -276,19 +276,19 @@ spec:
       inputType: CreateSharedDraftInput
       outputType: SharedDraft
       kind: mutation
-      description: "Create one shared reply draft for a Hiver user to review and send. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or draft read-back, so ambiguous sends remain uncertain."
+      description: "Create one shared reply draft for a Hiver user to review and send. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or draft read-back, so an unknown outcome resends the draft while the send cap allows and selects uncertain at the cap."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "Hiver created the shared draft and returned its ID."}
         - {id: notFound, goName: NotFound, description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Hiver conclusively rejected the draft; no draft was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The draft may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the draft ID with an invalid draft. The Step does not send it again.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Hiver has no provider key or draft read-back by Call ID, and a lost checkpoint cannot prove that a repeat is safe."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Hiver has no provider key or draft read-back by Call ID, so every resend below the send cap may create another draft."}}
       mocks:
         - name: createdDefaultAnswer
           branch: created

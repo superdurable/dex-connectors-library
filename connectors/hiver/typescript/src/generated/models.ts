@@ -42,7 +42,7 @@ const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time J
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
-  /** Largest Hiver API response body, in bytes, that one request reads; a larger response selects invalidResponse, or uncertain for addNote and createSharedDraft. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example for conversation pages that list unusually many messages. */
+  /** Largest Hiver API response body, in bytes, that one request reads; a larger read response selects invalidResponse, and a larger write answer repeats the write within its send cap. Leave blank to keep the displayed safety limit; enter a positive integer only to change it, for example for conversation pages that list unusually many messages. */
   maxResponseBytes?: number;
   /** Shortest time, in milliseconds, between two Hiver API requests from this connection in one Worker. Hiver limits every account to one request per second and answers 429 above it, as https://developer.hiverhq.com/hiver-api describes. Leave blank to keep the displayed spacing. Enter an integer from 1 to 60000: a larger value leaves room for other integrations on the same account, and a smaller one only makes sense after Hiver support has raised your account's rate limit. */
   requestIntervalMilliseconds?: number;

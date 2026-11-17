@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-hiver",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "description": "Hiver shared-inbox operations for Dex TypeScript applications",
   "repository": {

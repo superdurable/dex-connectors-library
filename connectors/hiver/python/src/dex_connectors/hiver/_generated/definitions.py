@@ -89,7 +89,7 @@ UPDATE_CONVERSATION_DEFINITION = MutationDefinition(
         BranchDefinition(UPDATED, "The conversation, read back after the change, holds the requested status, assignee, and tags.", False),
         BranchDefinition(NOT_FOUND, "The conversation or shared inbox does not exist or is not visible to the API key.", True),
         BranchDefinition(PROVIDER_REJECTED, "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", True),
-        BranchDefinition(INVALID_RESPONSE, "Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied.", True),
+        BranchDefinition(INVALID_RESPONSE, "A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -106,7 +106,7 @@ ADD_NOTE_DEFINITION = MutationDefinition(
         BranchDefinition(ADDED, "Hiver added the note and returned it.", False),
         BranchDefinition(NOT_FOUND, "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", True),
         BranchDefinition(PROVIDER_REJECTED, "Hiver conclusively rejected the note; nothing was added.", True),
-        BranchDefinition(UNCERTAIN, "The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The note may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the note ID with an invalid note. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(
@@ -124,7 +124,7 @@ CREATE_SHARED_DRAFT_DEFINITION = MutationDefinition(
         BranchDefinition(CREATED, "Hiver created the shared draft and returned its ID.", False),
         BranchDefinition(NOT_FOUND, "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", True),
         BranchDefinition(PROVIDER_REJECTED, "Hiver conclusively rejected the draft; no draft was created.", True),
-        BranchDefinition(UNCERTAIN, "The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", True),
+        BranchDefinition(UNCERTAIN, "The draft may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the draft ID with an invalid draft. The Step does not send it again.", True),
         BranchDefinition(DEFECT, "Local input, connection configuration, or connector definition is invalid.", True),
     ),
     StepDefaults(

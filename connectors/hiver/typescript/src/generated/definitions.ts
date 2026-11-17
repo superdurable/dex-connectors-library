@@ -118,7 +118,7 @@ export const UpdateConversationBranchUpdated = UpdateConversationBranch.Updated;
 export const UpdateConversationBranchNotFound = UpdateConversationBranch.NotFound;
 /** Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change. */
 export const UpdateConversationBranchProviderRejected = UpdateConversationBranch.ProviderRejected;
-/** Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied. */
+/** A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead. */
 export const UpdateConversationBranchInvalidResponse = UpdateConversationBranch.InvalidResponse;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const UpdateConversationBranchDefect = UpdateConversationBranch.Defect;
@@ -129,7 +129,7 @@ export const UpdateConversationDefinition: MutationDefinition = {
     { id: "updated", description: "The conversation, read back after the change, holds the requested status, assignee, and tags." },
     { id: "notFound", description: "The conversation or shared inbox does not exist or is not visible to the API key.", optional: true },
     { id: "providerRejected", description: "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", optional: true },
-    { id: "invalidResponse", description: "Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied.", optional: true },
+    { id: "invalidResponse", description: "A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 60000, executeDurability: "async" },
@@ -152,7 +152,7 @@ export const AddNoteBranchAdded = AddNoteBranch.Added;
 export const AddNoteBranchNotFound = AddNoteBranch.NotFound;
 /** Hiver conclusively rejected the note; nothing was added. */
 export const AddNoteBranchProviderRejected = AddNoteBranch.ProviderRejected;
-/** The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again. */
+/** The note may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the note ID with an invalid note. The Step does not send it again. */
 export const AddNoteBranchUncertain = AddNoteBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const AddNoteBranchDefect = AddNoteBranch.Defect;
@@ -163,7 +163,7 @@ export const AddNoteDefinition: MutationDefinition = {
     { id: "added", description: "Hiver added the note and returned it." },
     { id: "notFound", description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", optional: true },
     { id: "providerRejected", description: "Hiver conclusively rejected the note; nothing was added.", optional: true },
-    { id: "uncertain", description: "The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", optional: true },
+    { id: "uncertain", description: "The note may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the note ID with an invalid note. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },
@@ -187,7 +187,7 @@ export const CreateSharedDraftBranchCreated = CreateSharedDraftBranch.Created;
 export const CreateSharedDraftBranchNotFound = CreateSharedDraftBranch.NotFound;
 /** Hiver conclusively rejected the draft; no draft was created. */
 export const CreateSharedDraftBranchProviderRejected = CreateSharedDraftBranch.ProviderRejected;
-/** The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again. */
+/** The draft may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the draft ID with an invalid draft. The Step does not send it again. */
 export const CreateSharedDraftBranchUncertain = CreateSharedDraftBranch.Uncertain;
 /** Local input, connection configuration, or connector definition is invalid. */
 export const CreateSharedDraftBranchDefect = CreateSharedDraftBranch.Defect;
@@ -198,7 +198,7 @@ export const CreateSharedDraftDefinition: MutationDefinition = {
     { id: "created", description: "Hiver created the shared draft and returned its ID." },
     { id: "notFound", description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", optional: true },
     { id: "providerRejected", description: "Hiver conclusively rejected the draft; no draft was created.", optional: true },
-    { id: "uncertain", description: "The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", optional: true },
+    { id: "uncertain", description: "The draft may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the draft ID with an invalid draft. The Step does not send it again.", optional: true },
     { id: "defect", description: "Local input, connection configuration, or connector definition is invalid.", optional: true },
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 60000, maximumAttempts: 5, totalDurationMs: 300000 } },

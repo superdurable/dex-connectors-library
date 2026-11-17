@@ -72,19 +72,20 @@ func (CreateSharedDraftOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateSh
 
 // Invoke sends POST /v1/inboxes/{inbox_id}/conversations/shared-drafts as multipart/form-data
 // through the shared fence. Hiver never sends the draft to the customer; a Hiver
-// user does. A prior possibly sent attempt selects uncertain because Hiver has no
-// draft read-back. Definite 429, 503, and proven unsent outcomes permit one retry.
+// user does. Hiver has no draft read-back, so an unknown outcome resends while the
+// send cap allows and selects uncertain at the cap. Definite 429, 503, and proven
+// unsent outcomes retry after a stored checkpoint.
 func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input CreateSharedDraftInput) sdkgo.MutationAttempt[SharedDraft] {
-	fence, pacerDeadline, priorAttempt := beginSingleDispatch[SharedDraft](call, operation.client, createSharedDraftOperation, CreateSharedDraftBranchDefect)
-	if priorAttempt != nil {
-		return *priorAttempt
-	}
 	if err := validateCreateSharedDraftInput(input); err != nil {
 		return sdkgo.NewMutationBranch(CreateSharedDraftBranchDefect, SharedDraft{}, hiverFailurePointer(sdkgo.FailureValidation, createSharedDraftOperation, err.Error()), sdkgo.Receipt{})
 	}
+	permit, priorAttempt := beginSingleDispatch[SharedDraft](call, operation.client, createSharedDraftOperation, CreateSharedDraftBranchDefect)
+	if priorAttempt != nil {
+		return *priorAttempt
+	}
 	credentials, failure := operation.client.resolveCredentials(call, createSharedDraftOperation)
 	if failure != nil {
-		return retryBeforeSingleDispatch[SharedDraft](fence, *failure)
+		return retryBeforeSingleDispatch[SharedDraft](permit, *failure)
 	}
 	fields := []hiverFormField{{name: "body", value: input.Body}}
 	if input.HiverMessageID != "" {
@@ -94,17 +95,18 @@ func (operation CreateSharedDraftOperation) Invoke(call sdkgo.Call, input Create
 	}
 	result, attempt := sendOnce[SharedDraft](call, operation.client, credentials, createSharedDraftOperation, hiverRequest{
 		method: http.MethodPost, path: inboxPath(input.InboxID) + "/conversations/shared-drafts", formFields: fields,
-	}, singleDispatchBranches{notFound: CreateSharedDraftBranchNotFound, providerRejected: CreateSharedDraftBranchProviderRejected, defect: CreateSharedDraftBranchDefect}, fence, pacerDeadline)
+	}, singleDispatchBranches{notFound: CreateSharedDraftBranchNotFound, providerRejected: CreateSharedDraftBranchProviderRejected, defect: CreateSharedDraftBranchDefect}, permit)
 	if attempt != nil {
 		return *attempt
 	}
 	draft, err := decodeSharedDraft(result.response.body)
 	if err != nil {
-		return sdkgo.NewMutationUncertain(SharedDraft{}, hiverFailure(sdkgo.FailureProtocol, createSharedDraftOperation,
-			"Hiver accepted the draft but returned an invalid shared draft: "+err.Error()), operation.client.receipt(call, result.response, ""))
+		providerID := acceptedProviderID(result.response.body, "shared_draft_id")
+		return acceptedWriteAttempt[SharedDraft](permit, providerID, hiverFailure(sdkgo.FailureProtocol, createSharedDraftOperation,
+			"Hiver accepted the draft but returned an invalid shared draft: "+err.Error()), operation.client.receipt(call, result.response, providerID))
 	}
 	// The accepted result is known even if the extra identity checkpoint is lost.
-	_ = fence.RecordProviderID(draft.ID)
+	_ = permit.fence.RecordProviderID(draft.ID)
 	return sdkgo.NewMutationBranch(CreateSharedDraftBranchCreated, draft, nil, operation.client.receipt(call, result.response, draft.ID))
 }
 

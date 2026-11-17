@@ -72,15 +72,17 @@ func TestSingleDispatchOutcomes(t *testing.T) {
 		reply      func(t *testing.T, response http.ResponseWriter)
 		wantBranch sdkgo.BranchID
 		isRetry    bool
+		// isUnknownResend is a Retry that keeps the claim, so the next attempt counts the send.
+		isUnknownResend bool
 	}{
-		"lost response is uncertain": {
-			reply: func(t *testing.T, response http.ResponseWriter) { dropConnection(t, response) }, wantBranch: hiver.AddNoteBranchUncertain,
+		"lost response is resent below the cap": {
+			reply: func(t *testing.T, response http.ResponseWriter) { dropConnection(t, response) }, isUnknownResend: true,
 		},
-		"server error is uncertain": {
+		"server error is resent below the cap": {
 			reply: func(t *testing.T, response http.ResponseWriter) {
 				writeJSON(t, response, http.StatusBadGateway, `SENTINEL`)
 			},
-			wantBranch: hiver.AddNoteBranchUncertain,
+			isUnknownResend: true,
 		},
 		"service unavailable is retried": {
 			reply: func(t *testing.T, response http.ResponseWriter) {
@@ -88,19 +90,31 @@ func TestSingleDispatchOutcomes(t *testing.T) {
 			},
 			isRetry: true,
 		},
-		"conflict without read back is uncertain": {
+		"conflict without read back is resent below the cap": {
 			reply: func(t *testing.T, response http.ResponseWriter) {
 				writeJSON(t, response, http.StatusConflict, `{"Message":"SENTINEL"}`)
 			},
-			wantBranch: hiver.AddNoteBranchUncertain,
+			isUnknownResend: true,
 		},
-		"interrupted accepted body is uncertain": {
-			reply:      func(t *testing.T, response http.ResponseWriter) { cutOffBody(t, response, http.StatusCreated) },
-			wantBranch: hiver.AddNoteBranchUncertain,
+		"unlisted client error is resent below the cap": {
+			reply: func(t *testing.T, response http.ResponseWriter) {
+				writeJSON(t, response, http.StatusGone, `{"Message":"SENTINEL"}`)
+			},
+			isUnknownResend: true,
 		},
-		"unreadable success is uncertain": {
+		"interrupted accepted body is resent below the cap": {
+			reply:           func(t *testing.T, response http.ResponseWriter) { cutOffBody(t, response, http.StatusCreated) },
+			isUnknownResend: true,
+		},
+		"unreadable success without an ID is resent below the cap": {
 			reply: func(t *testing.T, response http.ResponseWriter) {
 				writeJSON(t, response, http.StatusCreated, `{"data":{"note":"SENTINEL"}}`)
+			},
+			isUnknownResend: true,
+		},
+		"accepted note with an ID and an invalid field is uncertain": {
+			reply: func(t *testing.T, response http.ResponseWriter) {
+				writeJSON(t, response, http.StatusCreated, `{"data":{"id":"35042650","created_at":"SENTINEL"}}`)
 			},
 			wantBranch: hiver.AddNoteBranchUncertain,
 		},
@@ -142,6 +156,12 @@ func TestSingleDispatchOutcomes(t *testing.T) {
 			require.Contains(t, string(ctx.recordedHeartbeat), `"state":"canResend"`, name)
 			continue
 		}
+		if test.isUnknownResend {
+			require.Error(t, err, name)
+			require.Contains(t, string(ctx.recordedHeartbeat), `"state":"claimed"`, name)
+			require.NotContains(t, err.Error(), "SENTINEL", name)
+			continue
+		}
 		require.NoError(t, err, name)
 		require.Equal(t, test.wantBranch, result.Branch, name)
 		if test.wantBranch == hiver.AddNoteBranchUncertain {
@@ -153,35 +173,62 @@ func TestSingleDispatchOutcomes(t *testing.T) {
 	}
 }
 
-func TestAttemptAfterAnUnconfirmedSendSelectsUncertainWithoutSending(t *testing.T) {
+func TestUnknownOutcomeResendsBelowTheCapAndSelectsUncertainAtTheCap(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
 	client := newHiverClient(t, provider.URL)
-	first := newHiverDexContext("draft")
+	attempt := newHiverDexContext("draft")
 	input := hiver.CreateSharedDraftInput{InboxID: "105902", HiverMessageID: "834466048", Body: "Thanks."}
-	result, err := sdkgo.RunMutation(first, client.CreateSharedDraft(), hiverConnection, input)
+	for sendCount := 1; sendCount < 3; sendCount++ {
+		_, err := sdkgo.RunMutation(attempt, client.CreateSharedDraft(), hiverConnection, input)
+		require.Error(t, err, "send %d leaves room under the cap of 3", sendCount)
+		attempt = attempt.nextAttempt()
+	}
+	result, err := sdkgo.RunMutation(attempt, client.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
+	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch, "the third send reaches the cap")
+	require.Equal(t, 3, provider.requestCount())
 
-	result, err = sdkgo.RunMutation(first.nextAttempt(), client.CreateSharedDraft(), hiverConnection, input)
+	result, err = sdkgo.RunMutation(attempt.nextAttempt(), client.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
-	require.Equal(t, "an earlier attempt may have sent the request, so it is not sent again", result.Failure.Message)
-	require.Equal(t, 1, provider.requestCount(), "the next attempt found the marker and sent nothing")
+	require.Equal(t, "earlier attempts may have sent the request and the send cap is reached, so it is not sent again", result.Failure.Message)
+	require.Equal(t, 3, provider.requestCount(), "the fence refuses a fourth send")
 }
 
 func TestPriorDispatchPrecedesCredentialResolution(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
-	first := newHiverDexContext("note")
+	attempt := newHiverDexContext("note")
 	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
-	result, err := sdkgo.RunMutation(first, newHiverClient(t, provider.URL).AddNote(), hiverConnection, input)
+	for range 2 {
+		_, err := sdkgo.RunMutation(attempt, newHiverClient(t, provider.URL).AddNote(), hiverConnection, input)
+		require.Error(t, err)
+		attempt = attempt.nextAttempt()
+	}
+	result, err := sdkgo.RunMutation(attempt, newHiverClient(t, provider.URL).AddNote(), hiverConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
 	clientWithoutCredentials, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1},
 		sdkgo.StaticCredentialProvider[hiver.Credentials]{}, hiver.WithAPIBaseURL(provider.URL+"/v1"))
 	require.NoError(t, err)
-	result, err = sdkgo.RunMutation(first.nextAttempt(), clientWithoutCredentials.AddNote(), hiverConnection, input)
+	result, err = sdkgo.RunMutation(attempt.nextAttempt(), clientWithoutCredentials.AddNote(), hiverConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
+	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch, "the capped fence decides before credentials are read")
+	require.Equal(t, 3, provider.requestCount())
+}
+
+func TestCredentialFailureAfterAPossibleSendRecordsNothing(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
+	first := newHiverDexContext("note")
+	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
+	_, err := sdkgo.RunMutation(first, newHiverClient(t, provider.URL).AddNote(), hiverConnection, input)
+	require.Error(t, err)
+	clientWithoutCredentials, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1},
+		sdkgo.StaticCredentialProvider[hiver.Credentials]{}, hiver.WithAPIBaseURL(provider.URL+"/v1"))
+	require.NoError(t, err)
+	second := first.nextAttempt()
+	_, err = sdkgo.RunMutation(second, clientWithoutCredentials.AddNote(), hiverConnection, input)
+	require.Error(t, err)
+	require.Nil(t, second.recordedHeartbeat, "notSent would hide the earlier possible send")
 	require.Equal(t, 1, provider.requestCount())
 }
 
@@ -220,9 +267,28 @@ func TestDraftServiceUnavailableRetriesWithSameCallID(t *testing.T) {
 	require.Equal(t, provider.request(0).header.Get("X-Dex-Call-ID"), provider.request(1).header.Get("X-Dex-Call-ID"))
 }
 
-func TestAcceptedDraftWithoutIDIsNeverResent(t *testing.T) {
+func TestAcceptedDraftWithoutIDIsResentBelowTheCap(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, index int) {
+		if index == 0 {
+			writeJSON(t, response, http.StatusOK, `{"data":{"id":573741352}}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, `{"data":{"id":573741352,"shared_draft_id":901}}`)
+	})
+	client := newHiverClient(t, provider.URL)
+	input := hiver.CreateSharedDraftInput{InboxID: "105902", HiverMessageID: "834466048", Body: "Thanks."}
+	first := newHiverDexContext("draft")
+	_, err := sdkgo.RunMutation(first, client.CreateSharedDraft(), hiverConnection, input)
+	require.Error(t, err, "an answer without a draft ID cannot prove acceptance")
+	result, err := sdkgo.RunMutation(first.nextAttempt(), client.CreateSharedDraft(), hiverConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, hiver.CreateSharedDraftBranchCreated, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestAcceptedDraftWithIDAndInvalidFieldIsNeverResent(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
-		writeJSON(t, response, http.StatusOK, `{"data":{"id":573741352}}`)
+		writeJSON(t, response, http.StatusOK, `{"data":{"id":"a b","shared_draft_id":901}}`)
 	})
 	client := newHiverClient(t, provider.URL)
 	input := hiver.CreateSharedDraftInput{InboxID: "105902", HiverMessageID: "834466048", Body: "Thanks."}
@@ -230,13 +296,14 @@ func TestAcceptedDraftWithoutIDIsNeverResent(t *testing.T) {
 	result, err := sdkgo.RunMutation(first, client.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
+	require.Contains(t, string(first.recordedHeartbeat), `"providerId":"901"`)
 	result, err = sdkgo.RunMutation(first.nextAttempt(), client.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
 	require.Equal(t, 1, provider.requestCount())
 }
 
-func TestAcceptedNoteBodyCutAtAttemptDeadlineIsNeverResent(t *testing.T) {
+func TestAcceptedNoteBodyCutAtAttemptDeadlineCountsTowardTheCap(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		response.Header().Set("Content-Length", "100")
 		response.WriteHeader(http.StatusCreated)
@@ -249,13 +316,9 @@ func TestAcceptedNoteBodyCutAtAttemptDeadlineIsNeverResent(t *testing.T) {
 	stepContext.Context = deadlineContext
 	client := newHiverClient(t, provider.URL)
 	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
-	result, err := sdkgo.RunMutation(stepContext, client.AddNote(), hiverConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
-	result, err = sdkgo.RunMutation(stepContext.nextAttempt(), client.AddNote(), hiverConnection, input)
-	require.NoError(t, err)
-	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
+	_, err := sdkgo.RunMutation(stepContext, client.AddNote(), hiverConnection, input)
+	require.Error(t, err)
+	require.Contains(t, string(stepContext.recordedHeartbeat), `"state":"claimed"`, "the cut-off send counts toward the cap")
 	require.Equal(t, 1, provider.requestCount())
 }
 
@@ -276,59 +339,70 @@ func (roundTrip failingRoundTrip) RoundTrip(request *http.Request) (*http.Respon
 	return roundTrip(request)
 }
 
-func TestUntracedDialErrorFailsClosed(t *testing.T) {
+func TestUntracedDialErrorCountsAsAPossibleSend(t *testing.T) {
 	provider := newRecordingHiver(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request expected") })
 	client, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, testCredentialProvider(),
 		hiver.WithAPIBaseURL(provider.URL+"/v1"), hiver.WithHTTPClient(&http.Client{Transport: failingRoundTrip(func(*http.Request) (*http.Response, error) {
 			return nil, &net.OpError{Op: "dial", Err: errors.New("synthetic failure without connection trace")}
 		})}))
 	require.NoError(t, err)
-	result, err := sdkgo.RunMutation(newHiverDexContext("note"), client.AddNote(), hiverConnection,
+	stepContext := newHiverDexContext("note")
+	_, err = sdkgo.RunMutation(stepContext, client.AddNote(), hiverConnection,
 		hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."})
-	require.NoError(t, err)
-	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
+	require.Error(t, err)
+	require.Contains(t, string(stepContext.recordedHeartbeat), `"state":"claimed"`, "an unproven failure keeps the claim")
 	require.Zero(t, provider.requestCount())
 }
 
-func TestAttemptThatFindsTheMarkerDoesNotWaitForARequestSlot(t *testing.T) {
+func TestAttemptAtTheCapDoesNotWaitForARequestSlot(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) { dropConnection(t, response) })
-	client, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 60000}, testCredentialProvider(), hiver.WithAPIBaseURL(provider.URL+"/v1"))
+	client := newHiverClient(t, provider.URL)
+	slowClient, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 60000}, testCredentialProvider(), hiver.WithAPIBaseURL(provider.URL+"/v1"))
 	require.NoError(t, err)
-	first := newHiverDexContext("draft")
+	attempt := newHiverDexContext("draft")
 	input := hiver.CreateSharedDraftInput{InboxID: "105902", HiverMessageID: "834466048", Body: "Thanks."}
-	result, err := sdkgo.RunMutation(first, client.CreateSharedDraft(), hiverConnection, input)
+	for range 2 {
+		_, err = sdkgo.RunMutation(attempt, client.CreateSharedDraft(), hiverConnection, input)
+		require.Error(t, err)
+		attempt = attempt.nextAttempt()
+	}
+	result, err := sdkgo.RunMutation(attempt, client.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
+	_, err = sdkgo.RunQuery(newHiverDexContext("inboxes"), slowClient.ListInboxes(), hiverConnection, hiver.ListInboxesInput{})
+	require.Error(t, err, "the dropped read takes the slow client's only request slot")
 
 	backlogged, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
-	second := first.nextAttempt()
-	second.Context = backlogged
-	result, err = sdkgo.RunMutation(second, client.CreateSharedDraft(), hiverConnection, input)
+	atCap := attempt.nextAttempt()
+	atCap.Context = backlogged
+	result, err = sdkgo.RunMutation(atCap, slowClient.CreateSharedDraft(), hiverConnection, input)
 	require.NoError(t, err, "the next request slot is a minute away, but the marker decides without a request")
 	require.Equal(t, hiver.CreateSharedDraftBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, 4, provider.requestCount())
 }
 
-func TestDispatchCheckpointThatDexNeverStoredFailsClosed(t *testing.T) {
+func TestDispatchCheckpointThatDexNeverStoredCountsTowardTheCap(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, index int) {
 		if index == 0 {
 			dropConnection(t, response)
 			return
 		}
-		t.Fatal("a later attempt must not resend without a canResend or notSent checkpoint")
+		writeJSON(t, response, http.StatusCreated, noteCreatedBody)
 	})
 	client := newHiverClient(t, provider.URL)
 	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}
 	lostWorker := newHiverDexContext("note")
 	lostWorker.losesRecordedHeartbeat = true
 	_, err := sdkgo.RunMutation(lostWorker, client.AddNote(), hiverConnection, input)
-	require.NoError(t, err, "Dex never receives this attempt's result, only the retry runs on")
+	require.Error(t, err, "Dex never receives this attempt's result, only the retry runs on")
 
-	result, err := sdkgo.RunMutation(lostWorker.nextAttempt(), client.AddNote(), hiverConnection, input)
+	second := lostWorker.nextAttempt()
+	result, err := sdkgo.RunMutation(second, client.AddNote(), hiverConnection, input)
 	require.NoError(t, err)
-	require.Equal(t, hiver.AddNoteBranchUncertain, result.Branch)
-	require.Equal(t, 1, provider.requestCount(), "a missing checkpoint fails closed")
+	require.Equal(t, hiver.AddNoteBranchAdded, result.Branch, "a missing checkpoint counts one earlier send and resends")
+	require.Contains(t, string(second.recordedHeartbeat), `"sendCount":2`)
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestUnrecordedDispatchMarkerSendsNothing(t *testing.T) {

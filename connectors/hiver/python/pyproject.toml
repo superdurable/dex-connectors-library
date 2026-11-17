@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-hiver"
-version = "0.2.0"
+version = "0.2.1"
 description = "Dex-native Hiver shared inbox connector"
 readme = "README.md"
 requires-python = ">=3.11"

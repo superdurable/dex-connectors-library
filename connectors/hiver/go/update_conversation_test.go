@@ -174,7 +174,7 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 			reply:   func(t *testing.T, response http.ResponseWriter, _ *http.Request) { dropConnection(t, response) },
 			isRetry: true,
 		},
-		"invalid read-back": {
+		"invalid read-back repeats the absolute change": {
 			reply: func(t *testing.T, response http.ResponseWriter, request *http.Request) {
 				if request.Method == http.MethodPatch {
 					response.WriteHeader(http.StatusNoContent)
@@ -182,7 +182,19 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 				}
 				writeJSON(t, response, http.StatusOK, `{"data":"SENTINEL"}`)
 			},
-			wantBranch: hiver.UpdateConversationBranchInvalidResponse,
+			isRetry: true,
+		},
+		"conflict repeats the absolute change": {
+			reply: func(t *testing.T, response http.ResponseWriter, _ *http.Request) {
+				writeJSON(t, response, http.StatusConflict, `{"Message":"x"}`)
+			},
+			isRetry: true,
+		},
+		"oversized write answer repeats the absolute change": {
+			reply: func(t *testing.T, response http.ResponseWriter, _ *http.Request) {
+				writeJSON(t, response, http.StatusOK, `{"data":"`+strings.Repeat("x", 2<<20)+`"}`)
+			},
+			isRetry: true,
 		},
 	} {
 		provider := newRecordingHiver(t, func(response http.ResponseWriter, request *http.Request, _ int) { test.reply(t, response, request) })
@@ -198,7 +210,7 @@ func TestUpdateConversationOutcomes(t *testing.T) {
 	}
 }
 
-func TestRejectedReadBackKeepsTheStatusKind(t *testing.T) {
+func TestRejectedReadBackRepeatsTheAbsoluteChange(t *testing.T) {
 	provider := newRecordingHiver(t, func(response http.ResponseWriter, request *http.Request, _ int) {
 		if request.Method == http.MethodPatch {
 			response.WriteHeader(http.StatusNoContent)
@@ -206,13 +218,24 @@ func TestRejectedReadBackKeepsTheStatusKind(t *testing.T) {
 		}
 		writeJSON(t, response, http.StatusUnauthorized, `{"Message":"SENTINEL"}`)
 	})
-	result, err := sdkgo.RunMutation(newHiverDexContext("update"), newHiverClient(t, provider.URL).UpdateConversation(), hiverConnection,
+	_, err := sdkgo.RunMutation(newHiverDexContext("update"), newHiverClient(t, provider.URL).UpdateConversation(), hiverConnection,
 		hiver.UpdateConversationInput{InboxID: "105902", ConversationID: "573741352", Status: hiver.ConversationStatusOpen})
-	require.NoError(t, err)
-	require.Equal(t, hiver.UpdateConversationBranchInvalidResponse, result.Branch, "the change was applied, so it is not providerRejected")
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
-	require.Equal(t, "Hiver accepted the change but rejected the read-back: Hiver rejected the request (HTTP 401)", result.Failure.Message)
+	require.Error(t, err, "the change was applied, so a refused read-back is not a provider refusal")
+	require.Contains(t, err.Error(), "Hiver accepted the change but the read-back failed: Hiver rejected the request (HTTP 401)")
+	require.NotContains(t, err.Error(), "SENTINEL")
 	require.Equal(t, 2, provider.requestCount())
+}
+
+func TestMalformedPreWriteReadSelectsInvalidResponseWithoutWriting(t *testing.T) {
+	provider := newRecordingHiver(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusOK, `{"data":"SENTINEL"}`)
+	})
+	result, err := sdkgo.RunMutation(newHiverDexContext("update"), newHiverClient(t, provider.URL).UpdateConversation(), hiverConnection,
+		hiver.UpdateConversationInput{InboxID: "105902", ConversationID: "573741352", AssigneeEmail: "phoebe@acme.example.com"})
+	require.NoError(t, err)
+	require.Equal(t, hiver.UpdateConversationBranchInvalidResponse, result.Branch)
+	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, http.MethodGet, provider.request(0).method, "nothing was written")
 }
 
 func TestTagLookupBeyondTheLastPageReadSaysSo(t *testing.T) {

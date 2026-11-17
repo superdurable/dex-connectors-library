@@ -297,7 +297,7 @@ func UpdateConversationProviderRejected(value hiver.UpdateConversationOutput, fa
 	return connectormock.Branch(hiver.UpdateConversationBranchProviderRejected, value, failure)
 }
 
-// UpdateConversationInvalidResponse selects the invalidResponse branch: Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied.
+// UpdateConversationInvalidResponse selects the invalidResponse branch: A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.
 func UpdateConversationInvalidResponse(value hiver.UpdateConversationOutput, failure *sdkgo.Failure) connectormock.Case[hiver.UpdateConversationOutput] {
 	return connectormock.Branch(hiver.UpdateConversationBranchInvalidResponse, value, failure)
 }
@@ -330,10 +330,10 @@ func UpdateConversationProviderRejectedFailure() connectormock.Case[hiver.Update
 	return connectormock.Branch(hiver.UpdateConversationBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "assigneeEmail matches 0 users of the shared inbox instead of one; the change was not sent"})
 }
 
-// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: For conversationId 573741352, Hiver returned malformed conversation JSON during read-back after accepting the change.
+// UpdateConversationInvalidResponseFailure is the manifest mock invalidResponseFailure: For assignee phoebe@acme.example.com, Hiver returned a malformed user search page before the change was sent.
 func UpdateConversationInvalidResponseFailure() connectormock.Case[hiver.UpdateConversationOutput] {
 	var value hiver.UpdateConversationOutput
-	return connectormock.Branch(hiver.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned malformed conversation JSON during read-back after accepting the change."})
+	return connectormock.Branch(hiver.UpdateConversationBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "Hiver returned an invalid user search page: response has no data object"})
 }
 
 // UpdateConversationDefault is the manifest default, updatedDefaultAnswer, which New installs.

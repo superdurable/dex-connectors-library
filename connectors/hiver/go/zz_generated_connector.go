@@ -504,7 +504,7 @@ var UpdateConversationDefinition = sdkgo.MutationDefinition{
 		{ID: UpdateConversationBranchUpdated, Description: "The conversation, read back after the change, holds the requested status, assignee, and tags."},
 		{ID: UpdateConversationBranchNotFound, Description: "The conversation or shared inbox does not exist or is not visible to the API key.", Optional: true},
 		{ID: UpdateConversationBranchProviderRejected, Description: "Hiver conclusively rejected the change, or the assignee email or a tag name was not found in the shared inbox; this attempt changed nothing, though an earlier attempt that ended unconfirmed may have applied the change.", Optional: true},
-		{ID: UpdateConversationBranchInvalidResponse, Description: "Hiver returned a malformed or oversized user, tag, or conversation response, or rejected the read-back after accepting the change, so part or all of the change may have been applied.", Optional: true},
+		{ID: UpdateConversationBranchInvalidResponse, Description: "A user search or tag page read before the change was malformed or oversized, so this attempt sent no change. A malformed answer after the change is sent repeats the absolute change instead.", Optional: true},
 		{ID: UpdateConversationBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -584,7 +584,7 @@ var AddNoteDefinition = sdkgo.MutationDefinition{
 		{ID: AddNoteBranchAdded, Description: "Hiver added the note and returned it."},
 		{ID: AddNoteBranchNotFound, Description: "The conversation or shared inbox does not exist or is not visible to the API key; nothing was added.", Optional: true},
 		{ID: AddNoteBranchProviderRejected, Description: "Hiver conclusively rejected the note; nothing was added.", Optional: true},
-		{ID: AddNoteBranchUncertain, Description: "The note may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", Optional: true},
+		{ID: AddNoteBranchUncertain, Description: "The note may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the note ID with an invalid note. The Step does not send it again.", Optional: true},
 		{ID: AddNoteBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -668,7 +668,7 @@ var CreateSharedDraftDefinition = sdkgo.MutationDefinition{
 		{ID: CreateSharedDraftBranchCreated, Description: "Hiver created the shared draft and returned its ID."},
 		{ID: CreateSharedDraftBranchNotFound, Description: "The message or shared inbox does not exist or is not visible to the API key; no draft was created.", Optional: true},
 		{ID: CreateSharedDraftBranchProviderRejected, Description: "Hiver conclusively rejected the draft; no draft was created.", Optional: true},
-		{ID: CreateSharedDraftBranchUncertain, Description: "The draft may exist: Hiver's answer was lost, unreadable, 408, 409, another server error besides 503, or an earlier attempt may have sent it. The Step does not send it again.", Optional: true},
+		{ID: CreateSharedDraftBranchUncertain, Description: "The draft may exist: the send cap is reached after answers that were lost, unreadable, 408, 409, an unlisted status, or another server error besides 503, or Hiver returned the draft ID with an invalid draft. The Step does not send it again.", Optional: true},
 		{ID: CreateSharedDraftBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
