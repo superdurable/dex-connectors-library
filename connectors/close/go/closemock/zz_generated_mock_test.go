@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listEmails/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailPage](`{"emails":[{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getEmail/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}`)
+			return err
+		}},
+		{name: "createEmail/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}`)
+			return err
+		}},
+		{name: "updateEmailDraft/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Updated"}`)
+			return err
+		}},
+		{name: "deleteEmail/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[close.DeletedEmail](`{"emailId":"acti_email_meridian1"}`)
+			return err
+		}},
 		{name: "listCalls/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[close.CallPage](`{"calls":[{"id":"acti_call_meridian1","leadId":"lead_meridian1","direction":"outbound","status":"completed","durationSeconds":120}],"hasMore":false}`)
 			return err
@@ -146,6 +166,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListEmails().Definition().Operation.OperationID != "listEmails" {
+		t.Errorf("listEmails mock has another definition")
+	}
+	if mock.GetEmail().Definition().Operation.OperationID != "getEmail" {
+		t.Errorf("getEmail mock has another definition")
+	}
+	if mock.CreateEmail().Definition().Operation.OperationID != "createEmail" {
+		t.Errorf("createEmail mock has another definition")
+	}
+	if mock.UpdateEmailDraft().Definition().Operation.OperationID != "updateEmailDraft" {
+		t.Errorf("updateEmailDraft mock has another definition")
+	}
+	if mock.DeleteEmail().Definition().Operation.OperationID != "deleteEmail" {
+		t.Errorf("deleteEmail mock has another definition")
+	}
 	if mock.ListCalls().Definition().Operation.OperationID != "listCalls" {
 		t.Errorf("listCalls mock has another definition")
 	}

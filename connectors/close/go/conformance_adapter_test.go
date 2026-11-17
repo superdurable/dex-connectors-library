@@ -24,6 +24,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	createContext := &closeCreateConformanceContext{attempt: 1}
 	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) { createContext.heartbeat = value })
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { createContext.attempt = prior + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
+		"listEmails":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEmails(), connection),
+		"getEmail":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEmail(), connection),
+		"createEmail":       newConformanceMutationInvocation(t, scenario.Input, createContext, client.CreateEmail(), connection, scenario.CallID),
+		"updateEmailDraft":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateEmailDraft(), connection, scenario.CallID),
+		"deleteEmail":       newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEmail(), connection, scenario.CallID),
 		"listCalls":         newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCalls(), connection),
 		"getCall":           newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCall(), connection),
 		"logCall":           newConformanceMutationInvocation(t, scenario.Input, createContext, client.LogCall(), connection, scenario.CallID),

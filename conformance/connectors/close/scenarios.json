@@ -10247,6 +10247,1883 @@
       },
       "name": "deleteCall-transportFailure",
       "operation": "deleteCall"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"acti_email_meridian1\",\"lead_id\":\"lead_meridian1\",\"status\":\"draft\",\"subject\":\"Follow-up\",\"body_text\":\"Hello\",\"sender\":\"ada@example.com\",\"to\":[\"bob@example.com\"]}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "emails": [
+            {
+              "bodyText": "Hello",
+              "id": "acti_email_meridian1",
+              "leadId": "lead_meridian1",
+              "sender": "ada@example.com",
+              "status": "draft",
+              "subject": "Follow-up",
+              "to": [
+                "bob@example.com"
+              ]
+            }
+          ],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listEmails-listed",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emails": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listEmails-providerRejected",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emails": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listEmails-invalidResponse",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emails": [],
+          "hasMore": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "bad"
+      },
+      "name": "listEmails-defect",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listEmails-rateLimit",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listEmails-serverUnavailable",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/",
+          "query": {
+            "_limit": [
+              "10"
+            ],
+            "_skip": [
+              "2"
+            ],
+            "lead_id": [
+              "lead_meridian1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1",
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listEmails-transportFailure",
+      "operation": "listEmails"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_email_meridian1\",\"lead_id\":\"lead_meridian1\",\"status\":\"draft\",\"subject\":\"Follow-up\",\"body_text\":\"Hello\",\"sender\":\"ada@example.com\",\"to\":[\"bob@example.com\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "bodyText": "Hello",
+          "id": "acti_email_meridian1",
+          "leadId": "lead_meridian1",
+          "sender": "ada@example.com",
+          "status": "draft",
+          "subject": "Follow-up",
+          "to": [
+            "bob@example.com"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "getEmail-found",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "getEmail-notFound",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "getEmail-providerRejected",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "getEmail-invalidResponse",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "bad"
+      },
+      "name": "getEmail-defect",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "getEmail-rateLimit",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "getEmail-serverUnavailable",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "d5599e39-bbd1-54bc-93ad-206bf444480b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "getEmail-transportFailure",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_email_meridian1\",\"lead_id\":\"lead_meridian1\",\"status\":\"draft\",\"subject\":\"Follow-up\",\"body_text\":\"Hello\",\"sender\":\"ada@example.com\",\"to\":[\"bob@example.com\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+          "providerId": "acti_email_meridian1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "bodyText": "Hello",
+          "id": "acti_email_meridian1",
+          "leadId": "lead_meridian1",
+          "sender": "ada@example.com",
+          "status": "draft",
+          "subject": "Follow-up",
+          "to": [
+            "bob@example.com"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "lead_meridian1",
+        "sender": "ada@example.com",
+        "status": "draft",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "name": "createEmail-created",
+      "operation": "createEmail"
+    },
+    {
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_email_meridian1\",\"lead_id\":\"lead_meridian1\",\"status\":\"outbox\",\"subject\":\"Follow-up\",\"body_text\":\"Hello\",\"sender\":\"ada@example.com\",\"to\":[\"bob@example.com\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "outbox",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+          "providerId": "acti_email_meridian1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "bodyText": "Hello",
+          "id": "acti_email_meridian1",
+          "leadId": "lead_meridian1",
+          "sender": "ada@example.com",
+          "status": "outbox",
+          "subject": "Follow-up",
+          "to": [
+            "bob@example.com"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "lead_meridian1",
+        "sender": "ada@example.com",
+        "status": "outbox",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "name": "createEmail-outbox",
+      "operation": "createEmail"
+    },
+    {
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "lead_meridian1",
+        "sender": "ada@example.com",
+        "status": "draft",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "name": "createEmail-providerRejected",
+      "operation": "createEmail"
+    },
+    {
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "bad",
+        "status": "draft",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "name": "createEmail-defect",
+      "operation": "createEmail"
+    },
+    {
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "lead_meridian1",
+        "sender": "ada@example.com",
+        "status": "draft",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "name": "createEmail-rateLimit",
+      "operation": "createEmail"
+    },
+    {
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "lead_meridian1",
+        "sender": "ada@example.com",
+        "status": "draft",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "name": "createEmail-serverUnavailable",
+      "operation": "createEmail"
+    },
+    {
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "lead_meridian1",
+        "sender": "ada@example.com",
+        "status": "draft",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "name": "createEmail-transportFailure",
+      "operation": "createEmail"
+    },
+    {
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "lead_meridian1",
+        "sender": "ada@example.com",
+        "status": "draft",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "name": "createEmail-serverError",
+      "operation": "createEmail"
+    },
+    {
+      "attempts": 3,
+      "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v1/activity/email/",
+          "requestBody": {
+            "body_text": "Hello",
+            "lead_id": "lead_meridian1",
+            "sender": "ada@example.com",
+            "status": "draft",
+            "subject": "Follow-up",
+            "to": [
+              "bob@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+      "input": {
+        "bodyText": "Hello",
+        "leadId": "lead_meridian1",
+        "sender": "ada@example.com",
+        "status": "draft",
+        "subject": "Follow-up",
+        "to": [
+          "bob@example.com"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "7ced5415-db9a-586f-aa00-4ebac8c35782",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEmail-uncertain",
+      "operation": "createEmail"
+    },
+    {
+      "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"acti_email_meridian1\",\"lead_id\":\"lead_meridian1\",\"status\":\"draft\",\"subject\":\"Updated\",\"body_text\":\"Updated body\",\"sender\":\"ada@example.com\",\"to\":[\"bob@example.com\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestBody": {
+            "body_text": "Updated body",
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "bodyText": "Updated body",
+          "id": "acti_email_meridian1",
+          "leadId": "lead_meridian1",
+          "sender": "ada@example.com",
+          "status": "draft",
+          "subject": "Updated",
+          "to": [
+            "bob@example.com"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "input": {
+        "bodyText": "Updated body",
+        "emailId": "acti_email_meridian1",
+        "subject": "Updated"
+      },
+      "name": "updateEmailDraft-updated",
+      "operation": "updateEmailDraft"
+    },
+    {
+      "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestBody": {
+            "body_text": "Updated body",
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "input": {
+        "bodyText": "Updated body",
+        "emailId": "acti_email_meridian1",
+        "subject": "Updated"
+      },
+      "name": "updateEmailDraft-notFound",
+      "operation": "updateEmailDraft"
+    },
+    {
+      "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestBody": {
+            "body_text": "Updated body",
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "input": {
+        "bodyText": "Updated body",
+        "emailId": "acti_email_meridian1",
+        "subject": "Updated"
+      },
+      "name": "updateEmailDraft-providerRejected",
+      "operation": "updateEmailDraft"
+    },
+    {
+      "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "exchanges": [
+        {
+          "body": "broken-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestBody": {
+            "body_text": "Updated body",
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "input": {
+        "bodyText": "Updated body",
+        "emailId": "acti_email_meridian1",
+        "subject": "Updated"
+      },
+      "name": "updateEmailDraft-invalidResponse",
+      "operation": "updateEmailDraft"
+    },
+    {
+      "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bodyText": "",
+          "id": "",
+          "leadId": "",
+          "sender": "",
+          "status": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "input": {
+        "emailId": "bad",
+        "subject": "Updated"
+      },
+      "name": "updateEmailDraft-defect",
+      "operation": "updateEmailDraft"
+    },
+    {
+      "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestBody": {
+            "body_text": "Updated body",
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "input": {
+        "bodyText": "Updated body",
+        "emailId": "acti_email_meridian1",
+        "subject": "Updated"
+      },
+      "name": "updateEmailDraft-rateLimit",
+      "operation": "updateEmailDraft"
+    },
+    {
+      "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestBody": {
+            "body_text": "Updated body",
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "input": {
+        "bodyText": "Updated body",
+        "emailId": "acti_email_meridian1",
+        "subject": "Updated"
+      },
+      "name": "updateEmailDraft-serverUnavailable",
+      "operation": "updateEmailDraft"
+    },
+    {
+      "callId": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestBody": {
+            "body_text": "Updated body",
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9cf7a044-8621-5ae0-9505-899627d2d80b",
+      "input": {
+        "bodyText": "Updated body",
+        "emailId": "acti_email_meridian1",
+        "subject": "Updated"
+      },
+      "name": "updateEmailDraft-transportFailure",
+      "operation": "updateEmailDraft"
+    },
+    {
+      "callId": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "emailId": "acti_email_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "deleteEmail-deleted",
+      "operation": "deleteEmail"
+    },
+    {
+      "callId": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "emailId": "acti_email_meridian1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "deleteEmail-alreadyDeleted",
+      "operation": "deleteEmail"
+    },
+    {
+      "callId": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emailId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "deleteEmail-providerRejected",
+      "operation": "deleteEmail"
+    },
+    {
+      "callId": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "input": {
+        "emailId": "bad"
+      },
+      "name": "deleteEmail-defect",
+      "operation": "deleteEmail"
+    },
+    {
+      "callId": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "exchanges": [
+        {
+          "body": "rate limit",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "deleteEmail-rateLimit",
+      "operation": "deleteEmail"
+    },
+    {
+      "callId": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "deleteEmail-serverUnavailable",
+      "operation": "deleteEmail"
+    },
+    {
+      "callId": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/api/v1/activity/email/acti_email_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98a9a017-1efe-57cd-a1dc-194d2f888e1e",
+      "input": {
+        "emailId": "acti_email_meridian1"
+      },
+      "name": "deleteEmail-transportFailure",
+      "operation": "deleteEmail"
     }
   ],
   "schemaVersion": 1

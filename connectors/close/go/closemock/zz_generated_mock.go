@@ -18,6 +18,11 @@ import (
 // Mock is a scripted close connection. Script each operation through its accessor.
 type Mock struct {
 	connection        close.Connection
+	listEmails        *connectormock.Query[close.ListEmailsInput, close.EmailPage]
+	getEmail          *connectormock.Query[close.GetEmailInput, close.EmailActivity]
+	createEmail       *connectormock.Mutation[close.CreateEmailInput, close.EmailActivity]
+	updateEmailDraft  *connectormock.Mutation[close.UpdateEmailDraftInput, close.EmailActivity]
+	deleteEmail       *connectormock.Mutation[close.DeleteEmailInput, close.DeletedEmail]
 	listCalls         *connectormock.Query[close.ListCallsInput, close.CallPage]
 	getCall           *connectormock.Query[close.GetCallInput, close.CallActivity]
 	logCall           *connectormock.Mutation[close.LogCallInput, close.CallActivity]
@@ -55,6 +60,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listEmails:        connectormock.NewQuery[close.ListEmailsInput, close.EmailPage](t, close.ListEmailsDefinition),
+		getEmail:          connectormock.NewQuery[close.GetEmailInput, close.EmailActivity](t, close.GetEmailDefinition),
+		createEmail:       connectormock.NewMutation[close.CreateEmailInput, close.EmailActivity](t, close.CreateEmailDefinition),
+		updateEmailDraft:  connectormock.NewMutation[close.UpdateEmailDraftInput, close.EmailActivity](t, close.UpdateEmailDraftDefinition),
+		deleteEmail:       connectormock.NewMutation[close.DeleteEmailInput, close.DeletedEmail](t, close.DeleteEmailDefinition),
 		listCalls:         connectormock.NewQuery[close.ListCallsInput, close.CallPage](t, close.ListCallsDefinition),
 		getCall:           connectormock.NewQuery[close.GetCallInput, close.CallActivity](t, close.GetCallDefinition),
 		logCall:           connectormock.NewMutation[close.LogCallInput, close.CallActivity](t, close.LogCallDefinition),
@@ -86,6 +96,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteContact:     connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
 		getLead:           connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
 	}
+	mock.listEmails.Default(ListEmailsDefault())
+	mock.getEmail.Default(GetEmailDefault())
+	mock.createEmail.Default(CreateEmailDefault())
+	mock.updateEmailDraft.Default(UpdateEmailDraftDefault())
+	mock.deleteEmail.Default(DeleteEmailDefault())
 	mock.listCalls.Default(ListCallsDefault())
 	mock.getCall.Default(GetCallDefault())
 	mock.logCall.Default(LogCallDefault())
@@ -126,6 +141,31 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() close.Connection { return mock.connection }
+
+// ListEmails returns the listEmails script.
+func (mock *Mock) ListEmails() *connectormock.Query[close.ListEmailsInput, close.EmailPage] {
+	return mock.listEmails
+}
+
+// GetEmail returns the getEmail script.
+func (mock *Mock) GetEmail() *connectormock.Query[close.GetEmailInput, close.EmailActivity] {
+	return mock.getEmail
+}
+
+// CreateEmail returns the createEmail script.
+func (mock *Mock) CreateEmail() *connectormock.Mutation[close.CreateEmailInput, close.EmailActivity] {
+	return mock.createEmail
+}
+
+// UpdateEmailDraft returns the updateEmailDraft script.
+func (mock *Mock) UpdateEmailDraft() *connectormock.Mutation[close.UpdateEmailDraftInput, close.EmailActivity] {
+	return mock.updateEmailDraft
+}
+
+// DeleteEmail returns the deleteEmail script.
+func (mock *Mock) DeleteEmail() *connectormock.Mutation[close.DeleteEmailInput, close.DeletedEmail] {
+	return mock.deleteEmail
+}
 
 // ListCalls returns the listCalls script.
 func (mock *Mock) ListCalls() *connectormock.Query[close.ListCallsInput, close.CallPage] {
@@ -273,6 +313,21 @@ func (mock *Mock) GetLead() *connectormock.Query[close.GetLeadInput, close.Lead]
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListEmails() sdkgo.Query[close.ListEmailsInput, close.EmailPage] {
+	return operations.mock.listEmails
+}
+func (operations mockOperations) GetEmail() sdkgo.Query[close.GetEmailInput, close.EmailActivity] {
+	return operations.mock.getEmail
+}
+func (operations mockOperations) CreateEmail() sdkgo.Mutation[close.CreateEmailInput, close.EmailActivity] {
+	return operations.mock.createEmail
+}
+func (operations mockOperations) UpdateEmailDraft() sdkgo.Mutation[close.UpdateEmailDraftInput, close.EmailActivity] {
+	return operations.mock.updateEmailDraft
+}
+func (operations mockOperations) DeleteEmail() sdkgo.Mutation[close.DeleteEmailInput, close.DeletedEmail] {
+	return operations.mock.deleteEmail
+}
 func (operations mockOperations) ListCalls() sdkgo.Query[close.ListCallsInput, close.CallPage] {
 	return operations.mock.listCalls
 }
@@ -363,6 +418,188 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[close.DeleteCont
 func (operations mockOperations) GetLead() sdkgo.Query[close.GetLeadInput, close.Lead] {
 	return operations.mock.getLead
 }
+
+// ListEmailsListed selects the listed branch: Close returned the listEmails result.
+func ListEmailsListed(value close.EmailPage, failure *sdkgo.Failure) connectormock.Case[close.EmailPage] {
+	return connectormock.Branch(close.ListEmailsBranchListed, value, failure)
+}
+
+// ListEmailsProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func ListEmailsProviderRejected(value close.EmailPage, failure *sdkgo.Failure) connectormock.Case[close.EmailPage] {
+	return connectormock.Branch(close.ListEmailsBranchProviderRejected, value, failure)
+}
+
+// ListEmailsInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func ListEmailsInvalidResponse(value close.EmailPage, failure *sdkgo.Failure) connectormock.Case[close.EmailPage] {
+	return connectormock.Branch(close.ListEmailsBranchInvalidResponse, value, failure)
+}
+
+// ListEmailsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListEmailsDefect(value close.EmailPage, failure *sdkgo.Failure) connectormock.Case[close.EmailPage] {
+	return connectormock.Branch(close.ListEmailsBranchDefect, value, failure)
+}
+
+// ListEmailsRetry asks Dex to retry the listEmails Step, after the delay when it is positive.
+func ListEmailsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.EmailPage] {
+	return connectormock.Retry[close.EmailPage](failure, after)
+}
+
+// ListEmailsListedDefault is the manifest mock listedDefault: A Meridian Labs email activity is available.
+func ListEmailsListedDefault() connectormock.Case[close.EmailPage] {
+	value := connectormock.MustDecodeOutput[close.EmailPage](`{"emails":[{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}],"hasMore":false}`)
+	return connectormock.Branch(close.ListEmailsBranchListed, value, nil)
+}
+
+// ListEmailsDefault is the manifest default, listedDefault, which New installs.
+func ListEmailsDefault() connectormock.Case[close.EmailPage] { return ListEmailsListedDefault() }
+
+// GetEmailFound selects the found branch: Close returned the getEmail result.
+func GetEmailFound(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.GetEmailBranchFound, value, failure)
+}
+
+// GetEmailNotFound selects the notFound branch: The email activity does not exist.
+func GetEmailNotFound(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.GetEmailBranchNotFound, value, failure)
+}
+
+// GetEmailProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func GetEmailProviderRejected(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.GetEmailBranchProviderRejected, value, failure)
+}
+
+// GetEmailInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func GetEmailInvalidResponse(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.GetEmailBranchInvalidResponse, value, failure)
+}
+
+// GetEmailDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetEmailDefect(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.GetEmailBranchDefect, value, failure)
+}
+
+// GetEmailRetry asks Dex to retry the getEmail Step, after the delay when it is positive.
+func GetEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.EmailActivity] {
+	return connectormock.Retry[close.EmailActivity](failure, after)
+}
+
+// GetEmailFoundDefault is the manifest mock foundDefault: A Meridian Labs email activity is available.
+func GetEmailFoundDefault() connectormock.Case[close.EmailActivity] {
+	value := connectormock.MustDecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}`)
+	return connectormock.Branch(close.GetEmailBranchFound, value, nil)
+}
+
+// GetEmailDefault is the manifest default, foundDefault, which New installs.
+func GetEmailDefault() connectormock.Case[close.EmailActivity] { return GetEmailFoundDefault() }
+
+// CreateEmailCreated selects the created branch: Close returned the createEmail result.
+func CreateEmailCreated(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.CreateEmailBranchCreated, value, failure)
+}
+
+// CreateEmailProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func CreateEmailProviderRejected(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.CreateEmailBranchProviderRejected, value, failure)
+}
+
+// CreateEmailUncertain returns an uncertain createEmail outcome.
+func CreateEmailUncertain(value close.EmailActivity, failure sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateEmailDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateEmailDefect(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.CreateEmailBranchDefect, value, failure)
+}
+
+// CreateEmailRetry asks Dex to retry the createEmail Step, after the delay when it is positive.
+func CreateEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.EmailActivity] {
+	return connectormock.Retry[close.EmailActivity](failure, after)
+}
+
+// CreateEmailCreatedDefault is the manifest mock createdDefault: A Meridian Labs email activity is available.
+func CreateEmailCreatedDefault() connectormock.Case[close.EmailActivity] {
+	value := connectormock.MustDecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Follow-up"}`)
+	return connectormock.Branch(close.CreateEmailBranchCreated, value, nil)
+}
+
+// CreateEmailDefault is the manifest default, createdDefault, which New installs.
+func CreateEmailDefault() connectormock.Case[close.EmailActivity] { return CreateEmailCreatedDefault() }
+
+// UpdateEmailDraftUpdated selects the updated branch: Close returned the updateEmailDraft result.
+func UpdateEmailDraftUpdated(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.UpdateEmailDraftBranchUpdated, value, failure)
+}
+
+// UpdateEmailDraftNotFound selects the notFound branch: The email activity does not exist.
+func UpdateEmailDraftNotFound(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.UpdateEmailDraftBranchNotFound, value, failure)
+}
+
+// UpdateEmailDraftProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func UpdateEmailDraftProviderRejected(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.UpdateEmailDraftBranchProviderRejected, value, failure)
+}
+
+// UpdateEmailDraftInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func UpdateEmailDraftInvalidResponse(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.UpdateEmailDraftBranchInvalidResponse, value, failure)
+}
+
+// UpdateEmailDraftDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateEmailDraftDefect(value close.EmailActivity, failure *sdkgo.Failure) connectormock.Case[close.EmailActivity] {
+	return connectormock.Branch(close.UpdateEmailDraftBranchDefect, value, failure)
+}
+
+// UpdateEmailDraftRetry asks Dex to retry the updateEmailDraft Step, after the delay when it is positive.
+func UpdateEmailDraftRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.EmailActivity] {
+	return connectormock.Retry[close.EmailActivity](failure, after)
+}
+
+// UpdateEmailDraftUpdatedDefault is the manifest mock updatedDefault: A Meridian Labs email activity is available.
+func UpdateEmailDraftUpdatedDefault() connectormock.Case[close.EmailActivity] {
+	value := connectormock.MustDecodeOutput[close.EmailActivity](`{"id":"acti_email_meridian1","leadId":"lead_meridian1","status":"draft","subject":"Updated"}`)
+	return connectormock.Branch(close.UpdateEmailDraftBranchUpdated, value, nil)
+}
+
+// UpdateEmailDraftDefault is the manifest default, updatedDefault, which New installs.
+func UpdateEmailDraftDefault() connectormock.Case[close.EmailActivity] {
+	return UpdateEmailDraftUpdatedDefault()
+}
+
+// DeleteEmailDeleted selects the deleted branch: Close returned the deleteEmail result.
+func DeleteEmailDeleted(value close.DeletedEmail, failure *sdkgo.Failure) connectormock.Case[close.DeletedEmail] {
+	return connectormock.Branch(close.DeleteEmailBranchDeleted, value, failure)
+}
+
+// DeleteEmailProviderRejected selects the providerRejected branch: Close conclusively rejected the request.
+func DeleteEmailProviderRejected(value close.DeletedEmail, failure *sdkgo.Failure) connectormock.Case[close.DeletedEmail] {
+	return connectormock.Branch(close.DeleteEmailBranchProviderRejected, value, failure)
+}
+
+// DeleteEmailInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func DeleteEmailInvalidResponse(value close.DeletedEmail, failure *sdkgo.Failure) connectormock.Case[close.DeletedEmail] {
+	return connectormock.Branch(close.DeleteEmailBranchInvalidResponse, value, failure)
+}
+
+// DeleteEmailDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteEmailDefect(value close.DeletedEmail, failure *sdkgo.Failure) connectormock.Case[close.DeletedEmail] {
+	return connectormock.Branch(close.DeleteEmailBranchDefect, value, failure)
+}
+
+// DeleteEmailRetry asks Dex to retry the deleteEmail Step, after the delay when it is positive.
+func DeleteEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.DeletedEmail] {
+	return connectormock.Retry[close.DeletedEmail](failure, after)
+}
+
+// DeleteEmailDeletedDefault is the manifest mock deletedDefault: A Meridian Labs email activity is available.
+func DeleteEmailDeletedDefault() connectormock.Case[close.DeletedEmail] {
+	value := connectormock.MustDecodeOutput[close.DeletedEmail](`{"emailId":"acti_email_meridian1"}`)
+	return connectormock.Branch(close.DeleteEmailBranchDeleted, value, nil)
+}
+
+// DeleteEmailDefault is the manifest default, deletedDefault, which New installs.
+func DeleteEmailDefault() connectormock.Case[close.DeletedEmail] { return DeleteEmailDeletedDefault() }
 
 // ListCallsListed selects the listed branch: Close returned the call page.
 func ListCallsListed(value close.CallPage, failure *sdkgo.Failure) connectormock.Case[close.CallPage] {

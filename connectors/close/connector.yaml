@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: close
   displayName: Close
-  description: Create, read, and maintain Close leads, contacts, opportunities, tasks, notes, and call logs with a connection-owned API key.
+  description: Create, read, and maintain Close leads, contacts, opportunities, tasks, notes, calls, and emails with a connection-owned API key.
   company: Close
   categories: [crm-sales]
   version: v0.3.0
@@ -56,6 +56,108 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "To revoke access, delete the token on the same provider page."
   operations:
+    - name: listEmails
+      goName: ListEmails
+      inputType: ListEmailsInput
+      outputType: EmailPage
+      kind: query
+      description: List a bounded page of email activities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the listEmails result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {emails: [{id: acti_email_meridian1, leadId: lead_meridian1, status: draft, subject: Follow-up}], hasMore: false}
+    - name: getEmail
+      goName: GetEmail
+      inputType: GetEmailInput
+      outputType: EmailActivity
+      kind: query
+      description: Read one email activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the getEmail result.}
+        - {id: notFound, goName: NotFound, description: The email activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {id: acti_email_meridian1, leadId: lead_meridian1, status: draft, subject: Follow-up}
+    - name: createEmail
+      goName: CreateEmail
+      inputType: CreateEmailInput
+      outputType: EmailActivity
+      kind: mutation
+      description: Create a draft or send an email through Close.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the createEmail result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The email may have been created or sent but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {id: acti_email_meridian1, leadId: lead_meridian1, status: draft, subject: Follow-up}
+    - name: updateEmailDraft
+      goName: UpdateEmailDraft
+      inputType: UpdateEmailDraftInput
+      outputType: EmailActivity
+      kind: mutation
+      description: Replace draft email content without sending it.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updateEmailDraft result.}
+        - {id: notFound, goName: NotFound, description: The email activity does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {id: acti_email_meridian1, leadId: lead_meridian1, status: draft, subject: Updated}
+    - name: deleteEmail
+      goName: DeleteEmail
+      inputType: DeleteEmailInput
+      outputType: DeletedEmail
+      kind: mutation
+      description: Delete an email activity.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close returned the deleteEmail result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs email activity is available.
+          output: {emailId: acti_email_meridian1}
     - name: listCalls
       goName: ListCalls
       inputType: ListCallsInput
