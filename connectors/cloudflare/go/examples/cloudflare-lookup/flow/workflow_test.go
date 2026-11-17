@@ -23,7 +23,7 @@ func TestFlowUsesStaticConnectionAndStepIdentities(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "CloudflareLookup", dex.GetFinalFlowType(flow))
 	require.Equal(t, "StartCloudflareLookup", dex.GetFinalStepType[LookupRequest](startLookup{}))
-	require.Equal(t, "CompleteCloudflareLookup", dex.GetFinalStepType[cloudflare.ListZonesResult](completeLookup{}))
+	require.Equal(t, "CompleteCloudflareLookup", dex.GetFinalStepType[cloudflare.ListDNSRecordsResult](completeLookup{}))
 	wait, err := startLookup{}.WaitFor(nil, cloudflare.ListZonesInput{})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

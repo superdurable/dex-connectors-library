@@ -42,6 +42,11 @@ type Connection struct {
 type Operations interface {
 	ListZones() sdkgo.Query[ListZonesInput, ZonesPage]
 	PurgeCacheByURLs() sdkgo.Mutation[PurgeCacheByURLsInput, CachePurge]
+	PurgeEntireCache() sdkgo.Mutation[PurgeEntireCacheInput, CachePurge]
+	ListDNSRecords() sdkgo.Query[ListDNSRecordsInput, DNSRecordsPage]
+	GetDNSRecord() sdkgo.Query[GetDNSRecordInput, DNSRecord]
+	UpdateDNSRecord() sdkgo.Mutation[UpdateDNSRecordInput, DNSRecord]
+	DeleteDNSRecord() sdkgo.Mutation[DeleteDNSRecordInput, DeletedDNSRecord]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +56,21 @@ func (operations clientOperations) ListZones() sdkgo.Query[ListZonesInput, Zones
 }
 func (operations clientOperations) PurgeCacheByURLs() sdkgo.Mutation[PurgeCacheByURLsInput, CachePurge] {
 	return operations.client.PurgeCacheByURLs()
+}
+func (operations clientOperations) PurgeEntireCache() sdkgo.Mutation[PurgeEntireCacheInput, CachePurge] {
+	return operations.client.PurgeEntireCache()
+}
+func (operations clientOperations) ListDNSRecords() sdkgo.Query[ListDNSRecordsInput, DNSRecordsPage] {
+	return operations.client.ListDNSRecords()
+}
+func (operations clientOperations) GetDNSRecord() sdkgo.Query[GetDNSRecordInput, DNSRecord] {
+	return operations.client.GetDNSRecord()
+}
+func (operations clientOperations) UpdateDNSRecord() sdkgo.Mutation[UpdateDNSRecordInput, DNSRecord] {
+	return operations.client.UpdateDNSRecord()
+}
+func (operations clientOperations) DeleteDNSRecord() sdkgo.Mutation[DeleteDNSRecordInput, DeletedDNSRecord] {
+	return operations.client.DeleteDNSRecord()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -330,6 +350,391 @@ func NewPurgeCacheByURLsStep[IN any](config PurgeCacheByURLsStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(PurgeCacheByURLsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PurgeEntireCacheBranchPurged sdkgo.BranchID = "purged"
+const PurgeEntireCacheBranchNotFound sdkgo.BranchID = "notFound"
+const PurgeEntireCacheBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PurgeEntireCacheBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const PurgeEntireCacheBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PurgeEntireCacheDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "purgeEntireCache"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PurgeEntireCacheBranchPurged, Description: "Cloudflare accepted the zone-wide purge."},
+		{ID: PurgeEntireCacheBranchNotFound, Description: "The zone does not exist or is inaccessible.", Optional: true},
+		{ID: PurgeEntireCacheBranchProviderRejected, Description: "Cloudflare conclusively rejected the purge.", Optional: true},
+		{ID: PurgeEntireCacheBranchInvalidResponse, Description: "Cloudflare returned malformed or oversized JSON.", Optional: true},
+		{ID: PurgeEntireCacheBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type PurgeEntireCacheResult = sdkgo.MutationResult[CachePurge]
+
+type PurgeEntireCacheStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                         `connector:"connectorId=cloudflare"`
+	operationID                       struct{}                                         `connector:"operationId=purgeEntireCache"`
+	StepType                          string                                           `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                        Connection                                       `connector:"connection"`
+	ConnectionName                    string                                           `connector:"connectionName"`
+	MapToOperationInput               func(IN) PurgeEntireCacheInput                   `connector:"mapToOperationInput"`
+	Purged                            sdkgo.Target[PurgeEntireCacheResult]             `connector:"branch=purged"`
+	NotFound                          sdkgo.Target[PurgeEntireCacheResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[PurgeEntireCacheResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[PurgeEntireCacheResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[PurgeEntireCacheResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CachePurge]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewPurgeEntireCacheStep[IN any](config PurgeEntireCacheStepConfig[IN]) sdkgo.MutationStep[IN, PurgeEntireCacheInput, CachePurge] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("cloudflare connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PurgeEntireCacheInput, CachePurge]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PurgeEntireCache(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PurgeEntireCacheResult] {
+			branches := make([]sdkgo.BranchTarget[PurgeEntireCacheResult], 0, 5)
+			if config.Purged.HasStep() {
+				branches = append(branches, config.Purged.BranchTarget(PurgeEntireCacheBranchPurged))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(PurgeEntireCacheBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PurgeEntireCacheBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(PurgeEntireCacheBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PurgeEntireCacheBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListDNSRecordsBranchListed sdkgo.BranchID = "listed"
+const ListDNSRecordsBranchNotFound sdkgo.BranchID = "notFound"
+const ListDNSRecordsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListDNSRecordsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListDNSRecordsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListDNSRecordsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listDNSRecords"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListDNSRecordsBranchListed, Description: "Cloudflare returned the DNS record page."},
+		{ID: ListDNSRecordsBranchNotFound, Description: "The zone does not exist or is inaccessible.", Optional: true},
+		{ID: ListDNSRecordsBranchProviderRejected, Description: "Cloudflare conclusively rejected the read.", Optional: true},
+		{ID: ListDNSRecordsBranchInvalidResponse, Description: "Cloudflare returned malformed or oversized JSON.", Optional: true},
+		{ID: ListDNSRecordsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListDNSRecordsResult = sdkgo.QueryResult[DNSRecordsPage]
+
+type ListDNSRecordsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=cloudflare"`
+	operationID                    struct{}                                          `connector:"operationId=listDNSRecords"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListDNSRecordsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListDNSRecordsResult]                `connector:"branch=listed"`
+	NotFound                       sdkgo.Target[ListDNSRecordsResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[ListDNSRecordsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListDNSRecordsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListDNSRecordsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DNSRecordsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewListDNSRecordsStep[IN any](config ListDNSRecordsStepConfig[IN]) sdkgo.QueryStep[IN, ListDNSRecordsInput, DNSRecordsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("cloudflare connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListDNSRecordsInput, DNSRecordsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListDNSRecords(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListDNSRecordsResult] {
+			branches := make([]sdkgo.BranchTarget[ListDNSRecordsResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListDNSRecordsBranchListed))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ListDNSRecordsBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListDNSRecordsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListDNSRecordsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListDNSRecordsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetDNSRecordBranchFound sdkgo.BranchID = "found"
+const GetDNSRecordBranchNotFound sdkgo.BranchID = "notFound"
+const GetDNSRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetDNSRecordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetDNSRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetDNSRecordDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getDNSRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetDNSRecordBranchFound, Description: "Cloudflare returned the DNS record."},
+		{ID: GetDNSRecordBranchNotFound, Description: "The DNS record does not exist.", Optional: true},
+		{ID: GetDNSRecordBranchProviderRejected, Description: "Cloudflare conclusively rejected the read.", Optional: true},
+		{ID: GetDNSRecordBranchInvalidResponse, Description: "Cloudflare returned malformed or oversized JSON.", Optional: true},
+		{ID: GetDNSRecordBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetDNSRecordResult = sdkgo.QueryResult[DNSRecord]
+
+type GetDNSRecordStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=cloudflare"`
+	operationID                    struct{}                                     `connector:"operationId=getDNSRecord"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetDNSRecordInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetDNSRecordResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetDNSRecordResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetDNSRecordResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetDNSRecordResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetDNSRecordResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DNSRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetDNSRecordStep[IN any](config GetDNSRecordStepConfig[IN]) sdkgo.QueryStep[IN, GetDNSRecordInput, DNSRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("cloudflare connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetDNSRecordInput, DNSRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetDNSRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetDNSRecordResult] {
+			branches := make([]sdkgo.BranchTarget[GetDNSRecordResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetDNSRecordBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetDNSRecordBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetDNSRecordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetDNSRecordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetDNSRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateDNSRecordBranchUpdated sdkgo.BranchID = "updated"
+const UpdateDNSRecordBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateDNSRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateDNSRecordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateDNSRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateDNSRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateDNSRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateDNSRecordBranchUpdated, Description: "Cloudflare returned the updated DNS record."},
+		{ID: UpdateDNSRecordBranchNotFound, Description: "The DNS record does not exist.", Optional: true},
+		{ID: UpdateDNSRecordBranchProviderRejected, Description: "Cloudflare conclusively rejected the update.", Optional: true},
+		{ID: UpdateDNSRecordBranchInvalidResponse, Description: "Cloudflare returned malformed or oversized JSON.", Optional: true},
+		{ID: UpdateDNSRecordBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UpdateDNSRecordResult = sdkgo.MutationResult[DNSRecord]
+
+type UpdateDNSRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=cloudflare"`
+	operationID                       struct{}                                        `connector:"operationId=updateDNSRecord"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateDNSRecordInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateDNSRecordResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateDNSRecordResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateDNSRecordResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateDNSRecordResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateDNSRecordResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DNSRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateDNSRecordStep[IN any](config UpdateDNSRecordStepConfig[IN]) sdkgo.MutationStep[IN, UpdateDNSRecordInput, DNSRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("cloudflare connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateDNSRecordInput, DNSRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateDNSRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateDNSRecordResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateDNSRecordResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateDNSRecordBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateDNSRecordBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateDNSRecordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateDNSRecordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateDNSRecordBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteDNSRecordBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteDNSRecordBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteDNSRecordBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDNSRecordBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteDNSRecordBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDNSRecordDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDNSRecord"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDNSRecordBranchDeleted, Description: "Cloudflare confirmed the DNS record is absent."},
+		{ID: DeleteDNSRecordBranchNotFound, Description: "The DNS record was already absent.", Optional: true},
+		{ID: DeleteDNSRecordBranchProviderRejected, Description: "Cloudflare conclusively rejected the deletion.", Optional: true},
+		{ID: DeleteDNSRecordBranchInvalidResponse, Description: "Cloudflare returned malformed or oversized JSON.", Optional: true},
+		{ID: DeleteDNSRecordBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteDNSRecordResult = sdkgo.MutationResult[DeletedDNSRecord]
+
+type DeleteDNSRecordStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=cloudflare"`
+	operationID                       struct{}                                               `connector:"operationId=deleteDNSRecord"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteDNSRecordInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteDNSRecordResult]                    `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteDNSRecordResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteDNSRecordResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteDNSRecordResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteDNSRecordResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedDNSRecord]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDNSRecordStep[IN any](config DeleteDNSRecordStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDNSRecordInput, DeletedDNSRecord] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("cloudflare connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteDNSRecordInput, DeletedDNSRecord]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDNSRecord(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDNSRecordResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDNSRecordResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteDNSRecordBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteDNSRecordBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDNSRecordBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteDNSRecordBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDNSRecordBranchDefect))
 			}
 			return branches
 		}(),

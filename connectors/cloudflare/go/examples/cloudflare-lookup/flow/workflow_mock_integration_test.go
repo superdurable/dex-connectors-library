@@ -59,8 +59,10 @@ func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	result, err := client.WaitForFlow(contextWithDeadline, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var output cloudflare.ZonesPage
+	var output LookupOutput
 	require.NoError(t, result.DecodeSingleOutput(&output))
+	require.Len(t, output.DNSRecords.Records, 1)
+	require.Len(t, mock.ListDNSRecords().Calls(), 1)
 	calls := mock.ListZones().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, request, calls[0].Input)

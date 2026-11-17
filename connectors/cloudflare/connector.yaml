@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: cloudflare
   displayName: Cloudflare
-  description: "Use the Cloudflare REST API through typed Dex connector Steps."
+  description: "Inspect zones and DNS records, maintain DNS records, and purge cache through typed Dex Steps."
   company: Cloudflare
   categories: [developer-tools]
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: cloudflare
   languages:
@@ -45,13 +45,13 @@ spec:
       - name: api_token
         goName: APIToken
         type: secretString
-        description: "Secret Cloudflare API token from My Profile > API Tokens at https://dash.cloudflare.com/profile/api-tokens. Create a custom token with Zone > Zone > Read and Zone > Cache Purge permissions for the intended zones, then copy it. Blank prevents requests."
+        description: "Secret Cloudflare API token from My Profile > API Tokens at https://dash.cloudflare.com/profile/api-tokens. Create a custom token with Zone > Zone > Read, Zone > Cache Purge, and Zone > DNS > Read/Edit permissions for intended zones, then copy it. Blank prevents requests."
         required: true
     guide:
       startURL: https://dash.cloudflare.com/profile/api-tokens
       steps:
         - "Open https://dash.cloudflare.com/profile/api-tokens and select My Profile > API Tokens > Create Token."
-        - "Create a custom token with Zone > Zone > Read and Zone > Cache Purge for the zones you will use, then copy it into secret api_token. Leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
+        - "Create a custom token with Zone > Zone > Read, Zone > Cache Purge, and Zone > DNS > Read/Edit for the zones you will use, then copy it into secret api_token. Leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
   operations:
     - name: listZones
       goName: ListZones
@@ -69,6 +69,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        repeatOnUnknown: safe
       mocks:
         - name: listedDefault
           branch: listed
@@ -92,9 +93,95 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        repeatOnUnknown: safe
       mocks:
         - name: purgedDefault
           branch: purged
           description: "A Meridian example returns a representative CachePurge."
           default: true
           output: {"success":true,"result":{"id":"purge-meridian"}}
+    - name: purgeEntireCache
+      goName: PurgeEntireCache
+      inputType: PurgeEntireCacheInput
+      outputType: CachePurge
+      kind: mutation
+      description: Purge all cached assets in one zone.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: purged, goName: Purged, description: Cloudflare accepted the zone-wide purge.}
+        - {id: notFound, goName: NotFound, description: The zone does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Cloudflare conclusively rejected the purge., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Cloudflare returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: purgedDefault, branch: purged, default: true, description: Meridian zone cache was purged., output: {success: true, result: {id: purge-meridian}}}
+    - name: listDNSRecords
+      goName: ListDNSRecords
+      inputType: ListDNSRecordsInput
+      outputType: DNSRecordsPage
+      kind: query
+      description: List a bounded page of DNS records in one zone.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Cloudflare returned the DNS record page.}
+        - {id: notFound, goName: NotFound, description: The zone does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Cloudflare conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Cloudflare returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: Meridian has one A record., output: {records: [{id: dns-meridian, type: A, name: meridian.example, content: 192.0.2.10, ttl: 3600, proxied: false}], page: 1, totalPages: 1}}
+    - name: getDNSRecord
+      goName: GetDNSRecord
+      inputType: GetDNSRecordInput
+      outputType: DNSRecord
+      kind: query
+      description: Fetch one DNS record in a zone.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Cloudflare returned the DNS record.}
+        - {id: notFound, goName: NotFound, description: The DNS record does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Cloudflare conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Cloudflare returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: Meridian A record is returned., output: {id: dns-meridian, type: A, name: meridian.example, content: 192.0.2.10, ttl: 3600, proxied: false}}
+    - name: updateDNSRecord
+      goName: UpdateDNSRecord
+      inputType: UpdateDNSRecordInput
+      outputType: DNSRecord
+      kind: mutation
+      description: Overwrite an A, AAAA, CNAME, or TXT DNS record.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Cloudflare returned the updated DNS record.}
+        - {id: notFound, goName: NotFound, description: The DNS record does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Cloudflare conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Cloudflare returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: Meridian A record was overwritten., output: {id: dns-meridian, type: A, name: meridian.example, content: 192.0.2.20, ttl: 3600, proxied: false}}
+    - name: deleteDNSRecord
+      goName: DeleteDNSRecord
+      inputType: DeleteDNSRecordInput
+      outputType: DeletedDNSRecord
+      kind: mutation
+      description: Delete one DNS record in a zone.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Cloudflare confirmed the DNS record is absent.}
+        - {id: notFound, goName: NotFound, description: The DNS record was already absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Cloudflare conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Cloudflare returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: Meridian A record was deleted., output: {id: dns-meridian}}

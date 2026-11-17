@@ -28,5 +28,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listZones":        newConformanceQueryInvocation(t, scenario.Input, context, client.ListZones(), testConnection),
 		"purgeCacheByURLs": newConformanceMutationInvocation(t, scenario.Input, context, client.PurgeCacheByURLs(), testConnection, scenario.CallID),
+		"purgeEntireCache": newConformanceMutationInvocation(t, scenario.Input, context, client.PurgeEntireCache(), testConnection, scenario.CallID),
+		"listDNSRecords":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListDNSRecords(), testConnection),
+		"getDNSRecord":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetDNSRecord(), testConnection),
+		"updateDNSRecord":  newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateDNSRecord(), testConnection, scenario.CallID),
+		"deleteDNSRecord":  newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteDNSRecord(), testConnection, scenario.CallID),
 	}}
 }
