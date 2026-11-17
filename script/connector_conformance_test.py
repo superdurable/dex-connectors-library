@@ -7,7 +7,9 @@ import io
 import json
 import os
 import subprocess
+import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -401,7 +403,7 @@ class ReplaySelectionTest(unittest.TestCase):
                 patch.object(connector_conformance, "changed_paths", return_value=changed), \
                 patch("sys.argv", ["connector_conformance.py", *arguments]), contextlib.redirect_stdout(io.StringIO()):
             connector_conformance.main()
-        return replayed
+        return sorted(replayed)
 
     def test_plan_selected_connectors_replay_even_when_no_path_selects_them(self) -> None:
         replayed = self.run_main(["sdkgo/step.go"], "--base", "base-sha", "--head", "HEAD",
@@ -484,6 +486,139 @@ class PackagesWithoutScenariosTest(unittest.TestCase):
                 missing.append(str(manifest.relative_to(root)))
         self.assertEqual([], sorted(missing))
 
+
+class ConcurrentConformanceTest(unittest.TestCase):
+    """Run connectors concurrently while keeping each log whole and every failure fatal."""
+
+    def test_worker_count_prefers_flag_then_environment_then_cpu_count(self) -> None:
+        with patch.dict(os.environ, {"CONFORMANCE_WORKERS": "3"}), \
+                patch.object(connector_conformance.os, "cpu_count", return_value=8):
+            self.assertEqual(2, connector_conformance.conformance_worker_count(2, 10))
+            self.assertEqual(3, connector_conformance.conformance_worker_count(None, 10))
+        with patch.dict(os.environ, {"CONFORMANCE_WORKERS": ""}), \
+                patch.object(connector_conformance.os, "cpu_count", return_value=8):
+            self.assertEqual(8, connector_conformance.conformance_worker_count(None, 10))
+            self.assertEqual(5, connector_conformance.conformance_worker_count(None, 5))
+
+    def test_worker_count_rejects_zero(self) -> None:
+        with self.assertRaises(ValueError):
+            connector_conformance.conformance_worker_count(0, 4)
+
+    def run_self_test(self, names: list[str], connector_test, workers: int) -> tuple[str, list[str]]:
+        root = connector_conformance.ROOT
+        started: list[str] = []
+
+        def record_and_test(connector: Path, connectorctl: Path, log) -> None:
+            started.append(connector.name)
+            connector_test(connector, connectorctl, log)
+
+        stdout = io.StringIO()
+        with patch.object(connector_conformance.subprocess, "run") as run, \
+                patch.object(connector_conformance, "mutation_self_test_connector", side_effect=record_and_test), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                connector_conformance.mutation_self_test([root / "connectors" / name for name in names], workers)
+            finally:
+                self.assertEqual(["go", "build"], run.call_args_list[0].args[0][:2])
+                self.assertEqual(1, run.call_count)
+        return stdout.getvalue(), started
+
+    def test_connectors_run_concurrently_with_whole_logs(self) -> None:
+        barrier = threading.Barrier(2, timeout=10)
+
+        def connector_test(connector: Path, connectorctl: Path, log) -> None:
+            self.assertEqual("connectorctl", connectorctl.name)
+            print(f"{connector.name} first", file=log)
+            barrier.wait()
+            print(f"{connector.name} second", file=log)
+
+        output, started = self.run_self_test(["alpha", "beta"], connector_test, 2)
+        self.assertEqual({"alpha", "beta"}, set(started))
+        for name in ("alpha", "beta"):
+            self.assertIn(f"{name} first\n{name} second\n", output)
+            self.assertIn(f"Mutation self-test: connectors/{name} passed", output)
+
+    def test_failure_names_connector_and_is_raised(self) -> None:
+        def connector_test(connector: Path, connectorctl: Path, log) -> None:
+            if connector.name == "beta":
+                raise AssertionError(f"{connector.name} python runner accepted exchange mutation")
+
+        with self.assertRaisesRegex(AssertionError, "beta python runner accepted exchange mutation"):
+            self.run_self_test(["alpha", "beta", "gamma"], connector_test, 1)
+
+    def test_build_failure_output_reaches_the_log(self) -> None:
+        def connector_test(connector: Path, connectorctl: Path, log) -> None:
+            connector_conformance.run_logged_command(
+                [sys.executable, "-c", "print('npm ci broke'); raise SystemExit(3)"], connector, log)
+
+        stdout = io.StringIO()
+        real_run = subprocess.run
+
+        def skip_connectorctl_build(command: list[str], **kwargs) -> subprocess.CompletedProcess:
+            if command[:2] == ["go", "build"]:
+                return subprocess.CompletedProcess(command, 0)
+            return real_run(command, **kwargs)
+
+        with patch.object(connector_conformance.subprocess, "run", side_effect=skip_connectorctl_build), \
+                patch.object(connector_conformance, "mutation_self_test_connector", side_effect=connector_test), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(subprocess.CalledProcessError):
+                connector_conformance.mutation_self_test([connector_conformance.ROOT / "script"], 1)
+        self.assertIn("npm ci broke", stdout.getvalue())
+        self.assertIn("Mutation self-test: script FAILED", stdout.getvalue())
+
+
+    def test_replay_buffers_each_connectors_output(self) -> None:
+        replayed = []
+
+        def replay(connector: Path, paths: list[str], exemptions: dict[str, str], log) -> None:
+            replayed.append(connector.name)
+            print(f"replayed {connector.name}", file=log)
+
+        stdout = io.StringIO()
+        with patch.object(connector_conformance, "run_connector", side_effect=replay), \
+                patch("sys.argv", ["connector_conformance.py", "--include-connector", "connectors/stripe",
+                                   "--include-connector", "connectors/newsapi", "--workers", "2"]), \
+                contextlib.redirect_stdout(stdout):
+            connector_conformance.main()
+        self.assertEqual(["newsapi", "stripe"], sorted(replayed))
+        self.assertIn("Conformance: connectors/stripe\nreplayed stripe\nConformance: connectors/stripe passed", stdout.getvalue())
+
+    def test_shards_partition_connectors(self) -> None:
+        connectors = [Path(f"/repository/connectors/{name}") for name in "edcba"]
+        shards = [connector_conformance.select_conformance_shard(connectors, index, 3) for index in range(3)]
+        self.assertEqual(sorted(connectors), sorted(connector for shard in shards for connector in shard))
+        self.assertEqual([Path("/repository/connectors/a"), Path("/repository/connectors/d")], shards[0])
+        for index, count in ((3, 3), (-1, 3), (0, 0)):
+            with self.subTest(index=index, count=count), self.assertRaises(ValueError):
+                connector_conformance.select_conformance_shard(connectors, index, count)
+
+    def test_mutation_self_test_checks_only_its_shard(self) -> None:
+        tested = []
+        with patch.object(connector_conformance, "mutation_self_test",
+                          side_effect=lambda connectors, workers: tested.extend(connectors)), \
+                patch.dict(os.environ, {"CONFORMANCE_SHARD_INDEX": "1", "CONFORMANCE_SHARD_COUNT": "2"}), \
+                patch("sys.argv", ["connector_conformance.py", "--mutation-self-test", "--connector", "connectors/a",
+                                   "--connector", "connectors/b", "--connector", "connectors/c"]):
+            connector_conformance.main()
+        self.assertEqual([connector_conformance.ROOT / "connectors/b"], tested)
+
+    def test_ci_matrix_shards_full_runs_and_keeps_small_runs_in_one_job(self) -> None:
+        def shard_count(paths: list[str], has_base: bool, planned: int) -> int:
+            matrix = connector_conformance.conformance_ci_matrix(paths, has_base, planned)
+            self.assertEqual(list(range(len(matrix))), [shard["shard_index"] for shard in matrix])
+            self.assertEqual({len(matrix)}, {shard["shard_count"] for shard in matrix})
+            return len(matrix)
+
+        maximum = connector_conformance.CONFORMANCE_MAX_SHARD_COUNT
+        self.assertEqual(1, shard_count(["connectors/stripe/go/client.go"], True, 1))
+        self.assertEqual(1, shard_count(["connectors/stripe/go/client.go"], True, 20))
+        self.assertEqual(2, shard_count(["sdkgo/step.go"], True, 21))
+        self.assertEqual(maximum, shard_count(["sdkgo/step.go"], True, 500))
+        self.assertEqual(maximum, shard_count([], False, 1))
+        self.assertEqual(maximum, shard_count(["conformance/runners/python/connector_scenarios.py"], True, 1))
+        self.assertEqual(maximum, shard_count(["script/connector_conformance.py"], True, 0))
+        self.assertEqual(maximum, shard_count(["cmd/connectorctl/conformance_operations.go"], True, 0))
 
 if __name__ == "__main__":
     unittest.main()
