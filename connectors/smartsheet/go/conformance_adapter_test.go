@@ -67,5 +67,10 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"createSheetInFolder":    newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSheetInFolder(), conformanceConnection, scenario.CallID),
 		"updateSheet":            newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateSheet(), conformanceConnection, scenario.CallID),
 		"deleteSheet":            newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteSheet(), conformanceConnection, scenario.CallID),
+		"listColumns":            newConformanceQueryInvocation(t, scenario.Input, context, client.ListColumns(), conformanceConnection),
+		"getColumn":              newConformanceQueryInvocation(t, scenario.Input, context, client.GetColumn(), conformanceConnection),
+		"addColumn":              newConformanceMutationInvocation(t, scenario.Input, context, client.AddColumn(), conformanceConnection, scenario.CallID),
+		"updateColumn":           newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateColumn(), conformanceConnection, scenario.CallID),
+		"deleteColumn":           newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteColumn(), conformanceConnection, scenario.CallID),
 	}}
 }

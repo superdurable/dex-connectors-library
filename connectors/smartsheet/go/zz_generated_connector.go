@@ -50,6 +50,11 @@ type Operations interface {
 	CreateSheetInFolder() sdkgo.Mutation[CreateSheetInFolderInput, SheetSummary]
 	UpdateSheet() sdkgo.Mutation[UpdateSheetInput, SheetSummary]
 	DeleteSheet() sdkgo.Mutation[DeleteSheetInput, DeleteSheetOutput]
+	ListColumns() sdkgo.Query[ListColumnsInput, ColumnPage]
+	GetColumn() sdkgo.Query[GetColumnInput, ColumnSummary]
+	AddColumn() sdkgo.Mutation[AddColumnInput, ColumnSummary]
+	UpdateColumn() sdkgo.Mutation[UpdateColumnInput, ColumnSummary]
+	DeleteColumn() sdkgo.Mutation[DeleteColumnInput, DeleteColumnOutput]
 }
 
 type clientOperations struct{ client *Client }
@@ -83,6 +88,21 @@ func (operations clientOperations) UpdateSheet() sdkgo.Mutation[UpdateSheetInput
 }
 func (operations clientOperations) DeleteSheet() sdkgo.Mutation[DeleteSheetInput, DeleteSheetOutput] {
 	return operations.client.DeleteSheet()
+}
+func (operations clientOperations) ListColumns() sdkgo.Query[ListColumnsInput, ColumnPage] {
+	return operations.client.ListColumns()
+}
+func (operations clientOperations) GetColumn() sdkgo.Query[GetColumnInput, ColumnSummary] {
+	return operations.client.GetColumn()
+}
+func (operations clientOperations) AddColumn() sdkgo.Mutation[AddColumnInput, ColumnSummary] {
+	return operations.client.AddColumn()
+}
+func (operations clientOperations) UpdateColumn() sdkgo.Mutation[UpdateColumnInput, ColumnSummary] {
+	return operations.client.UpdateColumn()
+}
+func (operations clientOperations) DeleteColumn() sdkgo.Mutation[DeleteColumnInput, DeleteColumnOutput] {
+	return operations.client.DeleteColumn()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -979,6 +999,386 @@ func NewDeleteSheetStep[IN any](config DeleteSheetStepConfig[IN]) sdkgo.Mutation
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteSheetBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListColumnsBranchListed sdkgo.BranchID = "listed"
+const ListColumnsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListColumnsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListColumnsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListColumnsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listColumns"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListColumnsBranchListed, Description: "Smartsheet returned the column page."},
+		{ID: ListColumnsBranchProviderRejected, Description: "Smartsheet rejected the read.", Optional: true},
+		{ID: ListColumnsBranchInvalidResponse, Description: "Smartsheet returned invalid column JSON.", Optional: true},
+		{ID: ListColumnsBranchDefect, Description: "Sheet ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListColumnsResult = sdkgo.QueryResult[ColumnPage]
+
+type ListColumnsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=smartsheet"`
+	operationID                    struct{}                                      `connector:"operationId=listColumns"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListColumnsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListColumnsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListColumnsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListColumnsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListColumnsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ColumnPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewListColumnsStep[IN any](config ListColumnsStepConfig[IN]) sdkgo.QueryStep[IN, ListColumnsInput, ColumnPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListColumnsInput, ColumnPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListColumns(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListColumnsResult] {
+			branches := make([]sdkgo.BranchTarget[ListColumnsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListColumnsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListColumnsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListColumnsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListColumnsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetColumnBranchFound sdkgo.BranchID = "found"
+const GetColumnBranchNotFound sdkgo.BranchID = "notFound"
+const GetColumnBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetColumnBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetColumnBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetColumnDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getColumn"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetColumnBranchFound, Description: "Smartsheet returned the column."},
+		{ID: GetColumnBranchNotFound, Description: "Smartsheet did not find the column.", Optional: true},
+		{ID: GetColumnBranchProviderRejected, Description: "Smartsheet rejected the read.", Optional: true},
+		{ID: GetColumnBranchInvalidResponse, Description: "Smartsheet returned invalid column JSON.", Optional: true},
+		{ID: GetColumnBranchDefect, Description: "Sheet or column ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetColumnResult = sdkgo.QueryResult[ColumnSummary]
+
+type GetColumnStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=smartsheet"`
+	operationID                    struct{}                                         `connector:"operationId=getColumn"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetColumnInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetColumnResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetColumnResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetColumnResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetColumnResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetColumnResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ColumnSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetColumnStep[IN any](config GetColumnStepConfig[IN]) sdkgo.QueryStep[IN, GetColumnInput, ColumnSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetColumnInput, ColumnSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetColumn(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetColumnResult] {
+			branches := make([]sdkgo.BranchTarget[GetColumnResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetColumnBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetColumnBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetColumnBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetColumnBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetColumnBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const AddColumnBranchAdded sdkgo.BranchID = "added"
+const AddColumnBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const AddColumnBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const AddColumnBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var AddColumnDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "addColumn"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: AddColumnBranchAdded, Description: "Smartsheet added the column."},
+		{ID: AddColumnBranchProviderRejected, Description: "Smartsheet rejected the column.", Optional: true},
+		{ID: AddColumnBranchUncertain, Description: "Column creation cannot be confirmed.", Optional: true},
+		{ID: AddColumnBranchDefect, Description: "Column input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type AddColumnResult = sdkgo.MutationResult[ColumnSummary]
+
+type AddColumnStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                            `connector:"operationId=addColumn"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) AddColumnInput                             `connector:"mapToOperationInput"`
+	Added                             sdkgo.Target[AddColumnResult]                       `connector:"branch=added"`
+	ProviderRejected                  sdkgo.Target[AddColumnResult]                       `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[AddColumnResult]                       `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[AddColumnResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ColumnSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewAddColumnStep[IN any](config AddColumnStepConfig[IN]) sdkgo.MutationStep[IN, AddColumnInput, ColumnSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, AddColumnInput, ColumnSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.AddColumn(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[AddColumnResult] {
+			branches := make([]sdkgo.BranchTarget[AddColumnResult], 0, 4)
+			if config.Added.HasStep() {
+				branches = append(branches, config.Added.BranchTarget(AddColumnBranchAdded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(AddColumnBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(AddColumnBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(AddColumnBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const UpdateColumnBranchUpdated sdkgo.BranchID = "updated"
+const UpdateColumnBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateColumnBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateColumnBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateColumnBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateColumnDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateColumn"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateColumnBranchUpdated, Description: "Smartsheet renamed the column."},
+		{ID: UpdateColumnBranchNotFound, Description: "Smartsheet did not find the column.", Optional: true},
+		{ID: UpdateColumnBranchProviderRejected, Description: "Smartsheet rejected the rename.", Optional: true},
+		{ID: UpdateColumnBranchInvalidResponse, Description: "Smartsheet returned invalid column JSON.", Optional: true},
+		{ID: UpdateColumnBranchDefect, Description: "Column input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateColumnResult = sdkgo.MutationResult[ColumnSummary]
+
+type UpdateColumnStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                            `connector:"operationId=updateColumn"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateColumnInput                          `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateColumnResult]                    `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateColumnResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateColumnResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateColumnResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateColumnResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ColumnSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateColumnStep[IN any](config UpdateColumnStepConfig[IN]) sdkgo.MutationStep[IN, UpdateColumnInput, ColumnSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateColumnInput, ColumnSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateColumn(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateColumnResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateColumnResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateColumnBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateColumnBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateColumnBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateColumnBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateColumnBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteColumnBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteColumnBranchNotFound sdkgo.BranchID = "notFound"
+const DeleteColumnBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteColumnBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteColumnBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteColumnDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteColumn"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteColumnBranchDeleted, Description: "Smartsheet deleted the column."},
+		{ID: DeleteColumnBranchNotFound, Description: "Smartsheet did not find the column.", Optional: true},
+		{ID: DeleteColumnBranchProviderRejected, Description: "Smartsheet rejected the delete.", Optional: true},
+		{ID: DeleteColumnBranchInvalidResponse, Description: "Smartsheet returned invalid delete confirmation.", Optional: true},
+		{ID: DeleteColumnBranchDefect, Description: "Column ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(45000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteColumnResult = sdkgo.MutationResult[DeleteColumnOutput]
+
+type DeleteColumnStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=smartsheet"`
+	operationID                       struct{}                                                 `connector:"operationId=deleteColumn"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteColumnInput                               `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteColumnResult]                         `connector:"branch=deleted"`
+	NotFound                          sdkgo.Target[DeleteColumnResult]                         `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteColumnResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteColumnResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteColumnResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeleteColumnOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteColumnStep[IN any](config DeleteColumnStepConfig[IN]) sdkgo.MutationStep[IN, DeleteColumnInput, DeleteColumnOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("smartsheet connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteColumnInput, DeleteColumnOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteColumn(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteColumnResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteColumnResult], 0, 5)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteColumnBranchDeleted))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DeleteColumnBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteColumnBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteColumnBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteColumnBranchDefect))
 			}
 			return branches
 		}(),

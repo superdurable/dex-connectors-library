@@ -3106,6 +3106,1529 @@
         "callId": "034d5b03-de1d-55f7-9805-5d180c33f3de",
         "state": "claimed"
       }
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"pageNumber\":1,\"totalCount\":1,\"data\":[{\"id\":2001,\"title\":\"Task\",\"type\":\"TEXT_NUMBER\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "id": 2001,
+              "title": "Task",
+              "type": "TEXT_NUMBER"
+            }
+          ],
+          "pageNumber": 1,
+          "totalCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "sheetId": 1001
+      },
+      "name": "listColumns-listed",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "columns": [],
+          "pageNumber": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "sheetId": 1001
+      },
+      "name": "listColumns-providerRejected",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "columns": [],
+          "pageNumber": 0,
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "sheetId": 1001
+      },
+      "name": "listColumns-invalidResponse",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "columns": [],
+          "pageNumber": 0,
+          "totalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "sheetId": 0
+      },
+      "name": "listColumns-defect",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "sheetId": 1001
+      },
+      "name": "listColumns-rateLimited",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "sheetId": 1001
+      },
+      "name": "listColumns-serverUnavailable",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 1,
+        "sheetId": 1001
+      },
+      "name": "listColumns-transport",
+      "operation": "listColumns"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":2001,\"title\":\"Task\",\"type\":\"TEXT_NUMBER\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 2001,
+          "title": "Task",
+          "type": "TEXT_NUMBER"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "getColumn-found",
+      "operation": "getColumn"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "getColumn-notFound",
+      "operation": "getColumn"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "getColumn-providerRejected",
+      "operation": "getColumn"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "getColumn-invalidResponse",
+      "operation": "getColumn"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnId": 2001,
+        "sheetId": 0
+      },
+      "name": "getColumn-defect",
+      "operation": "getColumn"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "getColumn-rateLimited",
+      "operation": "getColumn"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "getColumn-serverUnavailable",
+      "operation": "getColumn"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "getColumn-transport",
+      "operation": "getColumn"
+    },
+    {
+      "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0,\"result\":[{\"id\":2001,\"title\":\"Task\",\"type\":\"TEXT_NUMBER\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/columns",
+          "requestBody": [
+            {
+              "index": 1,
+              "title": "Task",
+              "type": "TEXT_NUMBER"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+          "providerId": "2001",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 2001,
+          "title": "Task",
+          "type": "TEXT_NUMBER"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "input": {
+        "index": 1,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "addColumn-added",
+      "operation": "addColumn"
+    },
+    {
+      "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/columns",
+          "requestBody": [
+            {
+              "index": 1,
+              "title": "Task",
+              "type": "TEXT_NUMBER"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "input": {
+        "index": 1,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "addColumn-providerRejected",
+      "operation": "addColumn"
+    },
+    {
+      "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "input": {
+        "index": 1,
+        "sheetId": 0,
+        "title": "Task"
+      },
+      "name": "addColumn-defect",
+      "operation": "addColumn"
+    },
+    {
+      "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/columns",
+          "requestBody": [
+            {
+              "index": 1,
+              "title": "Task",
+              "type": "TEXT_NUMBER"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "input": {
+        "index": 1,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "addColumn-rateLimited",
+      "operation": "addColumn"
+    },
+    {
+      "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/columns",
+          "requestBody": [
+            {
+              "index": 1,
+              "title": "Task",
+              "type": "TEXT_NUMBER"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "input": {
+        "index": 1,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "addColumn-serverUnavailable",
+      "operation": "addColumn"
+    },
+    {
+      "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/sheets/1001/columns",
+          "requestBody": [
+            {
+              "index": 1,
+              "title": "Task",
+              "type": "TEXT_NUMBER"
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "input": {
+        "index": 1,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "addColumn-transport",
+      "operation": "addColumn"
+    },
+    {
+      "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+      "input": {
+        "index": 1,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "addColumn-uncertain",
+      "operation": "addColumn",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "3d8c88cb-80c7-558e-850b-c5919e4f8fb5",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0,\"result\":{\"id\":2001,\"title\":\"Task\",\"type\":\"TEXT_NUMBER\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": 2001,
+          "title": "Task",
+          "type": "TEXT_NUMBER"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-updated",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-notFound",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-providerRejected",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-invalidResponse",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "title": "",
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 0,
+        "title": "Task"
+      },
+      "name": "updateColumn-defect",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-rateLimited",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-serverUnavailable",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestBody": {
+            "title": "Task"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3fff8935-7131-52f7-86db-610070ba0e3f",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001,
+        "title": "Task"
+      },
+      "name": "updateColumn-transport",
+      "operation": "updateColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SUCCESS\",\"resultCode\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "columnId": 2001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-deleted",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "columnId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-notFound",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "columnId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-providerRejected",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "columnId": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-invalidResponse",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "columnId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 0
+      },
+      "name": "deleteColumn-defect",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-rateLimited",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-serverUnavailable",
+      "operation": "deleteColumn"
+    },
+    {
+      "callId": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/2.0/sheets/1001/columns/2001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "55c29ddc-e827-57da-9fb7-55a674e7c742",
+      "input": {
+        "columnId": 2001,
+        "sheetId": 1001
+      },
+      "name": "deleteColumn-transport",
+      "operation": "deleteColumn"
     }
   ],
   "schemaVersion": 1

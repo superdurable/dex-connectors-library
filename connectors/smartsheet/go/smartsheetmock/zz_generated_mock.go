@@ -28,6 +28,11 @@ type Mock struct {
 	createSheetInFolder    *connectormock.Mutation[smartsheet.CreateSheetInFolderInput, smartsheet.SheetSummary]
 	updateSheet            *connectormock.Mutation[smartsheet.UpdateSheetInput, smartsheet.SheetSummary]
 	deleteSheet            *connectormock.Mutation[smartsheet.DeleteSheetInput, smartsheet.DeleteSheetOutput]
+	listColumns            *connectormock.Query[smartsheet.ListColumnsInput, smartsheet.ColumnPage]
+	getColumn              *connectormock.Query[smartsheet.GetColumnInput, smartsheet.ColumnSummary]
+	addColumn              *connectormock.Mutation[smartsheet.AddColumnInput, smartsheet.ColumnSummary]
+	updateColumn           *connectormock.Mutation[smartsheet.UpdateColumnInput, smartsheet.ColumnSummary]
+	deleteColumn           *connectormock.Mutation[smartsheet.DeleteColumnInput, smartsheet.DeleteColumnOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -45,6 +50,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		createSheetInFolder:    connectormock.NewMutation[smartsheet.CreateSheetInFolderInput, smartsheet.SheetSummary](t, smartsheet.CreateSheetInFolderDefinition),
 		updateSheet:            connectormock.NewMutation[smartsheet.UpdateSheetInput, smartsheet.SheetSummary](t, smartsheet.UpdateSheetDefinition),
 		deleteSheet:            connectormock.NewMutation[smartsheet.DeleteSheetInput, smartsheet.DeleteSheetOutput](t, smartsheet.DeleteSheetDefinition),
+		listColumns:            connectormock.NewQuery[smartsheet.ListColumnsInput, smartsheet.ColumnPage](t, smartsheet.ListColumnsDefinition),
+		getColumn:              connectormock.NewQuery[smartsheet.GetColumnInput, smartsheet.ColumnSummary](t, smartsheet.GetColumnDefinition),
+		addColumn:              connectormock.NewMutation[smartsheet.AddColumnInput, smartsheet.ColumnSummary](t, smartsheet.AddColumnDefinition),
+		updateColumn:           connectormock.NewMutation[smartsheet.UpdateColumnInput, smartsheet.ColumnSummary](t, smartsheet.UpdateColumnDefinition),
+		deleteColumn:           connectormock.NewMutation[smartsheet.DeleteColumnInput, smartsheet.DeleteColumnOutput](t, smartsheet.DeleteColumnDefinition),
 	}
 	mock.listSheets.Default(ListSheetsDefault())
 	mock.getSheet.Default(GetSheetDefault())
@@ -56,6 +66,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.createSheetInFolder.Default(CreateSheetInFolderDefault())
 	mock.updateSheet.Default(UpdateSheetDefault())
 	mock.deleteSheet.Default(DeleteSheetDefault())
+	mock.listColumns.Default(ListColumnsDefault())
+	mock.getColumn.Default(GetColumnDefault())
+	mock.addColumn.Default(AddColumnDefault())
+	mock.updateColumn.Default(UpdateColumnDefault())
+	mock.deleteColumn.Default(DeleteColumnDefault())
 	connection, err := smartsheet.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "smartsheet", Name: connectionName})
 	if err != nil {
 		t.Fatalf("smartsheet mock connection: %v", err)
@@ -117,6 +132,31 @@ func (mock *Mock) DeleteSheet() *connectormock.Mutation[smartsheet.DeleteSheetIn
 	return mock.deleteSheet
 }
 
+// ListColumns returns the listColumns script.
+func (mock *Mock) ListColumns() *connectormock.Query[smartsheet.ListColumnsInput, smartsheet.ColumnPage] {
+	return mock.listColumns
+}
+
+// GetColumn returns the getColumn script.
+func (mock *Mock) GetColumn() *connectormock.Query[smartsheet.GetColumnInput, smartsheet.ColumnSummary] {
+	return mock.getColumn
+}
+
+// AddColumn returns the addColumn script.
+func (mock *Mock) AddColumn() *connectormock.Mutation[smartsheet.AddColumnInput, smartsheet.ColumnSummary] {
+	return mock.addColumn
+}
+
+// UpdateColumn returns the updateColumn script.
+func (mock *Mock) UpdateColumn() *connectormock.Mutation[smartsheet.UpdateColumnInput, smartsheet.ColumnSummary] {
+	return mock.updateColumn
+}
+
+// DeleteColumn returns the deleteColumn script.
+func (mock *Mock) DeleteColumn() *connectormock.Mutation[smartsheet.DeleteColumnInput, smartsheet.DeleteColumnOutput] {
+	return mock.deleteColumn
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSheets() sdkgo.Query[smartsheet.ListSheetsInput, smartsheet.SheetPage] {
@@ -148,6 +188,21 @@ func (operations mockOperations) UpdateSheet() sdkgo.Mutation[smartsheet.UpdateS
 }
 func (operations mockOperations) DeleteSheet() sdkgo.Mutation[smartsheet.DeleteSheetInput, smartsheet.DeleteSheetOutput] {
 	return operations.mock.deleteSheet
+}
+func (operations mockOperations) ListColumns() sdkgo.Query[smartsheet.ListColumnsInput, smartsheet.ColumnPage] {
+	return operations.mock.listColumns
+}
+func (operations mockOperations) GetColumn() sdkgo.Query[smartsheet.GetColumnInput, smartsheet.ColumnSummary] {
+	return operations.mock.getColumn
+}
+func (operations mockOperations) AddColumn() sdkgo.Mutation[smartsheet.AddColumnInput, smartsheet.ColumnSummary] {
+	return operations.mock.addColumn
+}
+func (operations mockOperations) UpdateColumn() sdkgo.Mutation[smartsheet.UpdateColumnInput, smartsheet.ColumnSummary] {
+	return operations.mock.updateColumn
+}
+func (operations mockOperations) DeleteColumn() sdkgo.Mutation[smartsheet.DeleteColumnInput, smartsheet.DeleteColumnOutput] {
+	return operations.mock.deleteColumn
 }
 
 // ListSheetsListed selects the listed branch: Smartsheet returned the requested data.
@@ -540,4 +595,195 @@ func DeleteSheetDeletedDefault() connectormock.Case[smartsheet.DeleteSheetOutput
 // DeleteSheetDefault is the manifest default, deletedDefault, which New installs.
 func DeleteSheetDefault() connectormock.Case[smartsheet.DeleteSheetOutput] {
 	return DeleteSheetDeletedDefault()
+}
+
+// ListColumnsListed selects the listed branch: Smartsheet returned the column page.
+func ListColumnsListed(value smartsheet.ColumnPage, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnPage] {
+	return connectormock.Branch(smartsheet.ListColumnsBranchListed, value, failure)
+}
+
+// ListColumnsProviderRejected selects the providerRejected branch: Smartsheet rejected the read.
+func ListColumnsProviderRejected(value smartsheet.ColumnPage, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnPage] {
+	return connectormock.Branch(smartsheet.ListColumnsBranchProviderRejected, value, failure)
+}
+
+// ListColumnsInvalidResponse selects the invalidResponse branch: Smartsheet returned invalid column JSON.
+func ListColumnsInvalidResponse(value smartsheet.ColumnPage, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnPage] {
+	return connectormock.Branch(smartsheet.ListColumnsBranchInvalidResponse, value, failure)
+}
+
+// ListColumnsDefect selects the defect branch: Sheet ID or credentials are invalid.
+func ListColumnsDefect(value smartsheet.ColumnPage, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnPage] {
+	return connectormock.Branch(smartsheet.ListColumnsBranchDefect, value, failure)
+}
+
+// ListColumnsRetry asks Dex to retry the listColumns Step, after the delay when it is positive.
+func ListColumnsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.ColumnPage] {
+	return connectormock.Retry[smartsheet.ColumnPage](failure, after)
+}
+
+// ListColumnsListedDefault is the manifest mock listedDefault: One sample column is returned.
+func ListColumnsListedDefault() connectormock.Case[smartsheet.ColumnPage] {
+	value := connectormock.MustDecodeOutput[smartsheet.ColumnPage](`{"columns":[{"id":2001,"title":"Task","type":"TEXT_NUMBER"}],"pageNumber":1,"totalCount":1}`)
+	return connectormock.Branch(smartsheet.ListColumnsBranchListed, value, nil)
+}
+
+// ListColumnsDefault is the manifest default, listedDefault, which New installs.
+func ListColumnsDefault() connectormock.Case[smartsheet.ColumnPage] {
+	return ListColumnsListedDefault()
+}
+
+// GetColumnFound selects the found branch: Smartsheet returned the column.
+func GetColumnFound(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.GetColumnBranchFound, value, failure)
+}
+
+// GetColumnNotFound selects the notFound branch: Smartsheet did not find the column.
+func GetColumnNotFound(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.GetColumnBranchNotFound, value, failure)
+}
+
+// GetColumnProviderRejected selects the providerRejected branch: Smartsheet rejected the read.
+func GetColumnProviderRejected(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.GetColumnBranchProviderRejected, value, failure)
+}
+
+// GetColumnInvalidResponse selects the invalidResponse branch: Smartsheet returned invalid column JSON.
+func GetColumnInvalidResponse(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.GetColumnBranchInvalidResponse, value, failure)
+}
+
+// GetColumnDefect selects the defect branch: Sheet or column ID is invalid.
+func GetColumnDefect(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.GetColumnBranchDefect, value, failure)
+}
+
+// GetColumnRetry asks Dex to retry the getColumn Step, after the delay when it is positive.
+func GetColumnRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Retry[smartsheet.ColumnSummary](failure, after)
+}
+
+// GetColumnFoundDefault is the manifest mock foundDefault: One sample column is returned.
+func GetColumnFoundDefault() connectormock.Case[smartsheet.ColumnSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+	return connectormock.Branch(smartsheet.GetColumnBranchFound, value, nil)
+}
+
+// GetColumnDefault is the manifest default, foundDefault, which New installs.
+func GetColumnDefault() connectormock.Case[smartsheet.ColumnSummary] { return GetColumnFoundDefault() }
+
+// AddColumnAdded selects the added branch: Smartsheet added the column.
+func AddColumnAdded(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.AddColumnBranchAdded, value, failure)
+}
+
+// AddColumnProviderRejected selects the providerRejected branch: Smartsheet rejected the column.
+func AddColumnProviderRejected(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.AddColumnBranchProviderRejected, value, failure)
+}
+
+// AddColumnUncertain returns an uncertain addColumn outcome.
+func AddColumnUncertain(value smartsheet.ColumnSummary, failure sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// AddColumnDefect selects the defect branch: Column input or credentials are invalid.
+func AddColumnDefect(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.AddColumnBranchDefect, value, failure)
+}
+
+// AddColumnRetry asks Dex to retry the addColumn Step, after the delay when it is positive.
+func AddColumnRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Retry[smartsheet.ColumnSummary](failure, after)
+}
+
+// AddColumnAddedDefault is the manifest mock addedDefault: One sample column is added.
+func AddColumnAddedDefault() connectormock.Case[smartsheet.ColumnSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+	return connectormock.Branch(smartsheet.AddColumnBranchAdded, value, nil)
+}
+
+// AddColumnDefault is the manifest default, addedDefault, which New installs.
+func AddColumnDefault() connectormock.Case[smartsheet.ColumnSummary] { return AddColumnAddedDefault() }
+
+// UpdateColumnUpdated selects the updated branch: Smartsheet renamed the column.
+func UpdateColumnUpdated(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.UpdateColumnBranchUpdated, value, failure)
+}
+
+// UpdateColumnNotFound selects the notFound branch: Smartsheet did not find the column.
+func UpdateColumnNotFound(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.UpdateColumnBranchNotFound, value, failure)
+}
+
+// UpdateColumnProviderRejected selects the providerRejected branch: Smartsheet rejected the rename.
+func UpdateColumnProviderRejected(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.UpdateColumnBranchProviderRejected, value, failure)
+}
+
+// UpdateColumnInvalidResponse selects the invalidResponse branch: Smartsheet returned invalid column JSON.
+func UpdateColumnInvalidResponse(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.UpdateColumnBranchInvalidResponse, value, failure)
+}
+
+// UpdateColumnDefect selects the defect branch: Column input or credentials are invalid.
+func UpdateColumnDefect(value smartsheet.ColumnSummary, failure *sdkgo.Failure) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Branch(smartsheet.UpdateColumnBranchDefect, value, failure)
+}
+
+// UpdateColumnRetry asks Dex to retry the updateColumn Step, after the delay when it is positive.
+func UpdateColumnRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.ColumnSummary] {
+	return connectormock.Retry[smartsheet.ColumnSummary](failure, after)
+}
+
+// UpdateColumnUpdatedDefault is the manifest mock updatedDefault: One sample column is renamed.
+func UpdateColumnUpdatedDefault() connectormock.Case[smartsheet.ColumnSummary] {
+	value := connectormock.MustDecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+	return connectormock.Branch(smartsheet.UpdateColumnBranchUpdated, value, nil)
+}
+
+// UpdateColumnDefault is the manifest default, updatedDefault, which New installs.
+func UpdateColumnDefault() connectormock.Case[smartsheet.ColumnSummary] {
+	return UpdateColumnUpdatedDefault()
+}
+
+// DeleteColumnDeleted selects the deleted branch: Smartsheet deleted the column.
+func DeleteColumnDeleted(value smartsheet.DeleteColumnOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteColumnOutput] {
+	return connectormock.Branch(smartsheet.DeleteColumnBranchDeleted, value, failure)
+}
+
+// DeleteColumnNotFound selects the notFound branch: Smartsheet did not find the column.
+func DeleteColumnNotFound(value smartsheet.DeleteColumnOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteColumnOutput] {
+	return connectormock.Branch(smartsheet.DeleteColumnBranchNotFound, value, failure)
+}
+
+// DeleteColumnProviderRejected selects the providerRejected branch: Smartsheet rejected the delete.
+func DeleteColumnProviderRejected(value smartsheet.DeleteColumnOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteColumnOutput] {
+	return connectormock.Branch(smartsheet.DeleteColumnBranchProviderRejected, value, failure)
+}
+
+// DeleteColumnInvalidResponse selects the invalidResponse branch: Smartsheet returned invalid delete confirmation.
+func DeleteColumnInvalidResponse(value smartsheet.DeleteColumnOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteColumnOutput] {
+	return connectormock.Branch(smartsheet.DeleteColumnBranchInvalidResponse, value, failure)
+}
+
+// DeleteColumnDefect selects the defect branch: Column ID or credentials are invalid.
+func DeleteColumnDefect(value smartsheet.DeleteColumnOutput, failure *sdkgo.Failure) connectormock.Case[smartsheet.DeleteColumnOutput] {
+	return connectormock.Branch(smartsheet.DeleteColumnBranchDefect, value, failure)
+}
+
+// DeleteColumnRetry asks Dex to retry the deleteColumn Step, after the delay when it is positive.
+func DeleteColumnRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[smartsheet.DeleteColumnOutput] {
+	return connectormock.Retry[smartsheet.DeleteColumnOutput](failure, after)
+}
+
+// DeleteColumnDeletedDefault is the manifest mock deletedDefault: One sample column is deleted.
+func DeleteColumnDeletedDefault() connectormock.Case[smartsheet.DeleteColumnOutput] {
+	value := connectormock.MustDecodeOutput[smartsheet.DeleteColumnOutput](`{"columnId":2001}`)
+	return connectormock.Branch(smartsheet.DeleteColumnBranchDeleted, value, nil)
+}
+
+// DeleteColumnDefault is the manifest default, deletedDefault, which New installs.
+func DeleteColumnDefault() connectormock.Case[smartsheet.DeleteColumnOutput] {
+	return DeleteColumnDeletedDefault()
 }

@@ -27,10 +27,16 @@ The Python package is [`dex-connector-smartsheet`](python/README.md), imported a
 | `createSheetInFolder` | [Create sheet in folder](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/create-sheet-in-folder) |
 | `updateSheet` | [Update sheet](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/update-sheet) |
 | `deleteSheet` | [Delete sheet](https://developers.smartsheet.com/api/smartsheet/openapi/sheets/delete-sheet) |
+| `listColumns` | [List columns](https://developers.smartsheet.com/api/smartsheet/openapi/columns/columns-listonsheet) |
+| `getColumn` | [Get column](https://developers.smartsheet.com/api/smartsheet/openapi/columns/column-get) |
+| `addColumn` | [Add columns](https://developers.smartsheet.com/api/smartsheet/openapi/columns/columns-addtosheet) |
+| `updateColumn` | [Update column](https://developers.smartsheet.com/api/smartsheet/openapi/columns/column-updatecolumn) |
+| `deleteColumn` | [Delete column](https://developers.smartsheet.com/api/smartsheet/openapi/columns/column-delete) |
 
 Each operation returns a bounded, typed response. `addRow` accepts text cells and limits possibly effective sends to three; a fully exhausted cap selects `uncertain`. Absolute `updateRow` and `deleteRow` can safely retry. A 404 on a single-resource read selects `notFound`; other definitive 4xx select `providerRejected`; 408, 409, 429, 5xx, and interrupted reads Retry under the default one-hour budget. Malformed and oversized JSON selects `invalidResponse` for reads and safe writes. Invalid local input or missing credentials selects `defect` before a request. Provider error bodies are not copied into failures.
 
 Sheet creation requires a parent workspace or folder and a primary text column. Both create operations allow at most three possibly effective sends; an unconfirmed result after the cap selects `uncertain`. Renaming and deletion are safe to retry. The connection token must have the provider's required permissions.
+Column creation adds one `TEXT_NUMBER` column at a zero-based index and uses the same three-send cap; read, absolute rename, and delete are safe to retry. More specialized column types and conversions remain outside this typed operation.
 
 ## Mocks
 

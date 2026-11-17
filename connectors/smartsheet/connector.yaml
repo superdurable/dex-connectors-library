@@ -258,3 +258,86 @@ spec:
           default: true
           description: One sample sheet is deleted.
           output: {"sheetId":1001}
+    - name: listColumns
+      goName: ListColumns
+      inputType: ListColumnsInput
+      outputType: ColumnPage
+      kind: query
+      description: List a sheet's columns one page at a time.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Smartsheet returned the column page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet returned invalid column JSON., optional: true}
+        - {id: defect, goName: Defect, description: Sheet ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One sample column is returned., output: {columns: [{id: 2001, title: Task, type: TEXT_NUMBER}], pageNumber: 1, totalCount: 1}}
+    - name: getColumn
+      goName: GetColumn
+      inputType: GetColumnInput
+      outputType: ColumnSummary
+      kind: query
+      description: Get one column definition from a sheet.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Smartsheet returned the column.}
+        - {id: notFound, goName: NotFound, description: Smartsheet did not find the column., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet returned invalid column JSON., optional: true}
+        - {id: defect, goName: Defect, description: Sheet or column ID is invalid., optional: true}
+      mocks:
+        - {name: foundDefault, branch: found, default: true, description: One sample column is returned., output: {id: 2001, title: Task, type: TEXT_NUMBER}}
+    - name: addColumn
+      goName: AddColumn
+      inputType: AddColumnInput
+      outputType: ColumnSummary
+      kind: mutation
+      description: Add one text/number column to a sheet.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: added, goName: Added, description: Smartsheet added the column.}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the column., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Column creation cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Column input or credentials are invalid., optional: true}
+      mocks:
+        - {name: addedDefault, branch: added, default: true, description: One sample column is added., output: {id: 2001, title: Task, type: TEXT_NUMBER}}
+    - name: updateColumn
+      goName: UpdateColumn
+      inputType: UpdateColumnInput
+      outputType: ColumnSummary
+      kind: mutation
+      description: Rename one column without changing its type.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Smartsheet renamed the column.}
+        - {id: notFound, goName: NotFound, description: Smartsheet did not find the column., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the rename., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet returned invalid column JSON., optional: true}
+        - {id: defect, goName: Defect, description: Column input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One sample column is renamed., output: {id: 2001, title: Task, type: TEXT_NUMBER}}
+    - name: deleteColumn
+      goName: DeleteColumn
+      inputType: DeleteColumnInput
+      outputType: DeleteColumnOutput
+      kind: mutation
+      description: Delete one column from a sheet.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Smartsheet deleted the column.}
+        - {id: notFound, goName: NotFound, description: Smartsheet did not find the column., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Smartsheet rejected the delete., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Smartsheet returned invalid delete confirmation., optional: true}
+        - {id: defect, goName: Defect, description: Column ID or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One sample column is deleted., output: {columnId: 2001}}

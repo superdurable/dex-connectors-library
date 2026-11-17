@@ -56,6 +56,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[smartsheet.DeleteSheetOutput](`{"sheetId":1001}`)
 			return err
 		}},
+		{name: "listColumns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.ColumnPage](`{"columns":[{"id":2001,"title":"Task","type":"TEXT_NUMBER"}],"pageNumber":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "getColumn/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+			return err
+		}},
+		{name: "addColumn/addedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+			return err
+		}},
+		{name: "updateColumn/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.ColumnSummary](`{"id":2001,"title":"Task","type":"TEXT_NUMBER"}`)
+			return err
+		}},
+		{name: "deleteColumn/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[smartsheet.DeleteColumnOutput](`{"columnId":2001}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -95,5 +115,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteSheet().Definition().Operation.OperationID != "deleteSheet" {
 		t.Errorf("deleteSheet mock has another definition")
+	}
+	if mock.ListColumns().Definition().Operation.OperationID != "listColumns" {
+		t.Errorf("listColumns mock has another definition")
+	}
+	if mock.GetColumn().Definition().Operation.OperationID != "getColumn" {
+		t.Errorf("getColumn mock has another definition")
+	}
+	if mock.AddColumn().Definition().Operation.OperationID != "addColumn" {
+		t.Errorf("addColumn mock has another definition")
+	}
+	if mock.UpdateColumn().Definition().Operation.OperationID != "updateColumn" {
+		t.Errorf("updateColumn mock has another definition")
+	}
+	if mock.DeleteColumn().Definition().Operation.OperationID != "deleteColumn" {
+		t.Errorf("deleteColumn mock has another definition")
 	}
 }
