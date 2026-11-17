@@ -16,6 +16,26 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listPlans/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.PlanPage](`{"plans":[{"id":"e28zov4fw0v2","code":"standard","name":"Standard"}],"hasMore":false}`)
+			return err
+		}},
+		{name: "getPlan/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard","name":"Standard"}`)
+			return err
+		}},
+		{name: "createPlan/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard_0123456789abcdef0123456789abcdef","name":"Standard"}`)
+			return err
+		}},
+		{name: "renamePlan/renamedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.PlanSummary](`{"id":"e28zov4fw0v2","code":"standard","name":"Standard Plus"}`)
+			return err
+		}},
+		{name: "deletePlan/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[recurly.DeletedPlan](`{"id":"e28zov4fw0v2"}`)
+			return err
+		}},
 		{name: "listSubscriptions/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[recurly.SubscriptionPage](`{"subscriptions":[{"id":"e28zov4fw0v2","state":"active"}],"hasMore":false}`)
 			return err
@@ -54,6 +74,21 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListPlans().Definition().Operation.OperationID != "listPlans" {
+		t.Errorf("listPlans mock has another definition")
+	}
+	if mock.GetPlan().Definition().Operation.OperationID != "getPlan" {
+		t.Errorf("getPlan mock has another definition")
+	}
+	if mock.CreatePlan().Definition().Operation.OperationID != "createPlan" {
+		t.Errorf("createPlan mock has another definition")
+	}
+	if mock.RenamePlan().Definition().Operation.OperationID != "renamePlan" {
+		t.Errorf("renamePlan mock has another definition")
+	}
+	if mock.DeletePlan().Definition().Operation.OperationID != "deletePlan" {
+		t.Errorf("deletePlan mock has another definition")
+	}
 	if mock.ListSubscriptions().Definition().Operation.OperationID != "listSubscriptions" {
 		t.Errorf("listSubscriptions mock has another definition")
 	}

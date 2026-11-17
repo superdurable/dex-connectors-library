@@ -40,6 +40,11 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListPlans() sdkgo.Query[ListPlansInput, PlanPage]
+	GetPlan() sdkgo.Query[GetPlanInput, PlanSummary]
+	CreatePlan() sdkgo.Mutation[CreatePlanInput, PlanSummary]
+	RenamePlan() sdkgo.Mutation[RenamePlanInput, PlanSummary]
+	DeletePlan() sdkgo.Mutation[DeletePlanInput, DeletedPlan]
 	ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage]
 	GetSubscription() sdkgo.Query[GetSubscriptionInput, SubscriptionSummary]
 	CancelSubscription() sdkgo.Mutation[CancelSubscriptionInput, SubscriptionSummary]
@@ -51,6 +56,21 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListPlans() sdkgo.Query[ListPlansInput, PlanPage] {
+	return operations.client.ListPlans()
+}
+func (operations clientOperations) GetPlan() sdkgo.Query[GetPlanInput, PlanSummary] {
+	return operations.client.GetPlan()
+}
+func (operations clientOperations) CreatePlan() sdkgo.Mutation[CreatePlanInput, PlanSummary] {
+	return operations.client.CreatePlan()
+}
+func (operations clientOperations) RenamePlan() sdkgo.Mutation[RenamePlanInput, PlanSummary] {
+	return operations.client.RenamePlan()
+}
+func (operations clientOperations) DeletePlan() sdkgo.Mutation[DeletePlanInput, DeletedPlan] {
+	return operations.client.DeletePlan()
+}
 func (operations clientOperations) ListSubscriptions() sdkgo.Query[ListSubscriptionsInput, SubscriptionPage] {
 	return operations.client.ListSubscriptions()
 }
@@ -208,6 +228,349 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListPlansBranchListed sdkgo.BranchID = "listed"
+const ListPlansBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListPlansBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListPlansBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListPlansDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listPlans"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListPlansBranchListed, Description: "Recurly returned a page of plans."},
+		{ID: ListPlansBranchProviderRejected, Description: "Recurly rejected plan listing.", Optional: true},
+		{ID: ListPlansBranchInvalidResponse, Description: "Recurly returned unusable plan list data.", Optional: true},
+		{ID: ListPlansBranchDefect, Description: "Invalid page size or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListPlansResult = sdkgo.QueryResult[PlanPage]
+
+type ListPlansStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=recurly"`
+	operationID                    struct{}                                    `connector:"operationId=listPlans"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListPlansInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListPlansResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListPlansResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListPlansResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListPlansResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PlanPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewListPlansStep[IN any](config ListPlansStepConfig[IN]) sdkgo.QueryStep[IN, ListPlansInput, PlanPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListPlansInput, PlanPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListPlans(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListPlansResult] {
+			branches := make([]sdkgo.BranchTarget[ListPlansResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListPlansBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListPlansBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListPlansBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListPlansBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetPlanBranchFound sdkgo.BranchID = "found"
+const GetPlanBranchNotFound sdkgo.BranchID = "notFound"
+const GetPlanBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetPlanBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetPlanBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetPlanDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getPlan"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetPlanBranchFound, Description: "Recurly returned the plan."},
+		{ID: GetPlanBranchNotFound, Description: "The plan was not found.", Optional: true},
+		{ID: GetPlanBranchProviderRejected, Description: "Recurly rejected plan lookup.", Optional: true},
+		{ID: GetPlanBranchInvalidResponse, Description: "Recurly returned unusable plan data.", Optional: true},
+		{ID: GetPlanBranchDefect, Description: "Invalid ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetPlanResult = sdkgo.QueryResult[PlanSummary]
+
+type GetPlanStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                       `connector:"connectorId=recurly"`
+	operationID                    struct{}                                       `connector:"operationId=getPlan"`
+	StepType                       string                                         `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                          `connector:"annotations"`
+	Connection                     Connection                                     `connector:"connection"`
+	ConnectionName                 string                                         `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetPlanInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetPlanResult]                    `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetPlanResult]                    `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetPlanResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetPlanResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetPlanResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[PlanSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                               `connector:"stepOptionsOverride"`
+}
+
+func NewGetPlanStep[IN any](config GetPlanStepConfig[IN]) sdkgo.QueryStep[IN, GetPlanInput, PlanSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetPlanInput, PlanSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetPlan(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetPlanResult] {
+			branches := make([]sdkgo.BranchTarget[GetPlanResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetPlanBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetPlanBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetPlanBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetPlanBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetPlanBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreatePlanBranchCreated sdkgo.BranchID = "created"
+const CreatePlanBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePlanBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePlanDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPlan"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePlanBranchCreated, Description: "Recurly created or confirmed the plan."},
+		{ID: CreatePlanBranchProviderRejected, Description: "Recurly rejected plan creation.", Optional: true},
+		{ID: CreatePlanBranchDefect, Description: "Invalid plan input or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type CreatePlanResult = sdkgo.MutationResult[PlanSummary]
+
+type CreatePlanStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=recurly"`
+	operationID                       struct{}                                          `connector:"operationId=createPlan"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePlanInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePlanResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreatePlanResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[CreatePlanResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PlanSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewCreatePlanStep[IN any](config CreatePlanStepConfig[IN]) sdkgo.MutationStep[IN, CreatePlanInput, PlanSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePlanInput, PlanSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePlan(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePlanResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePlanResult], 0, 3)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePlanBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePlanBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePlanBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const RenamePlanBranchRenamed sdkgo.BranchID = "renamed"
+const RenamePlanBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const RenamePlanBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var RenamePlanDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "renamePlan"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: RenamePlanBranchRenamed, Description: "Recurly renamed the plan."},
+		{ID: RenamePlanBranchProviderRejected, Description: "Recurly rejected plan rename.", Optional: true},
+		{ID: RenamePlanBranchDefect, Description: "Invalid plan ID or name or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type RenamePlanResult = sdkgo.MutationResult[PlanSummary]
+
+type RenamePlanStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=recurly"`
+	operationID                       struct{}                                          `connector:"operationId=renamePlan"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) RenamePlanInput                          `connector:"mapToOperationInput"`
+	Renamed                           sdkgo.Target[RenamePlanResult]                    `connector:"branch=renamed"`
+	ProviderRejected                  sdkgo.Target[RenamePlanResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[RenamePlanResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PlanSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewRenamePlanStep[IN any](config RenamePlanStepConfig[IN]) sdkgo.MutationStep[IN, RenamePlanInput, PlanSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, RenamePlanInput, PlanSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.RenamePlan(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[RenamePlanResult] {
+			branches := make([]sdkgo.BranchTarget[RenamePlanResult], 0, 3)
+			if config.Renamed.HasStep() {
+				branches = append(branches, config.Renamed.BranchTarget(RenamePlanBranchRenamed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(RenamePlanBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(RenamePlanBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeletePlanBranchDeleted sdkgo.BranchID = "deleted"
+const DeletePlanBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeletePlanBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeletePlanDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deletePlan"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeletePlanBranchDeleted, Description: "Recurly removed or confirmed the plan."},
+		{ID: DeletePlanBranchProviderRejected, Description: "Recurly rejected plan deletion.", Optional: true},
+		{ID: DeletePlanBranchDefect, Description: "Invalid plan ID or credentials.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeletePlanResult = sdkgo.MutationResult[DeletedPlan]
+
+type DeletePlanStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=recurly"`
+	operationID                       struct{}                                          `connector:"operationId=deletePlan"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeletePlanInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeletePlanResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeletePlanResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeletePlanResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedPlan]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDeletePlanStep[IN any](config DeletePlanStepConfig[IN]) sdkgo.MutationStep[IN, DeletePlanInput, DeletedPlan] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("recurly connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeletePlanInput, DeletedPlan]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeletePlan(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeletePlanResult] {
+			branches := make([]sdkgo.BranchTarget[DeletePlanResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeletePlanBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeletePlanBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeletePlanBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListSubscriptionsBranchListed sdkgo.BranchID = "listed"

@@ -2196,6 +2196,1634 @@
       },
       "name": "reactivateSubscription-defect",
       "operation": "reactivateSubscription"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"has_more\":false,\"data\":[{\"id\":\"e28zov4fw0v2\",\"code\":\"standard\",\"name\":\"Standard\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "plans": [
+            {
+              "code": "standard",
+              "id": "e28zov4fw0v2",
+              "name": "Standard"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listPlans-success",
+      "operation": "listPlans"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "plans": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listPlans-providerRejected",
+      "operation": "listPlans"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listPlans-rateLimit",
+      "operation": "listPlans"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listPlans-unavailable",
+      "operation": "listPlans"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listPlans-serverError",
+      "operation": "listPlans"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listPlans-transportFailure",
+      "operation": "listPlans"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "plans": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2
+      },
+      "name": "listPlans-invalidResponse",
+      "operation": "listPlans"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "plans": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 0
+      },
+      "name": "listPlans-defect",
+      "operation": "listPlans"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"code\":\"standard\",\"name\":\"Standard\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "code": "standard",
+          "id": "e28zov4fw0v2",
+          "name": "Standard"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "getPlan-success",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "code": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "getPlan-providerRejected",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "getPlan-rateLimit",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "getPlan-unavailable",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "getPlan-serverError",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "getPlan-transportFailure",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "code": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "getPlan-invalidResponse",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "code": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "getPlan-notFound",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "2e079968-e36a-5deb-9d87-5a574b85cc80",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "code": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "planId": "bad id"
+      },
+      "name": "getPlan-defect",
+      "operation": "getPlan"
+    },
+    {
+      "callId": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"code\":\"standard_94173311cdf05b9f9791b08c9f852ef7\",\"name\":\"Standard\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/plans",
+          "requestBody": {
+            "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+            "currencies": [
+              {
+                "currency": "USD",
+                "unit_amount": 10.5
+              }
+            ],
+            "interval_length": 1,
+            "interval_unit": "months",
+            "name": "Standard",
+            "pricing_model": "fixed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+          "id": "e28zov4fw0v2",
+          "name": "Standard"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "input": {
+        "codePrefix": "standard",
+        "currencyCode": "USD",
+        "intervalLength": 1,
+        "intervalUnit": "months",
+        "name": "Standard",
+        "unitAmount": 10.5
+      },
+      "name": "createPlan-success",
+      "operation": "createPlan"
+    },
+    {
+      "callId": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/plans",
+          "requestBody": {
+            "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+            "currencies": [
+              {
+                "currency": "USD",
+                "unit_amount": 10.5
+              }
+            ],
+            "interval_length": 1,
+            "interval_unit": "months",
+            "name": "Standard",
+            "pricing_model": "fixed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "code": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "input": {
+        "codePrefix": "standard",
+        "currencyCode": "USD",
+        "intervalLength": 1,
+        "intervalUnit": "months",
+        "name": "Standard",
+        "unitAmount": 10.5
+      },
+      "name": "createPlan-providerRejected",
+      "operation": "createPlan"
+    },
+    {
+      "callId": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/plans",
+          "requestBody": {
+            "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+            "currencies": [
+              {
+                "currency": "USD",
+                "unit_amount": 10.5
+              }
+            ],
+            "interval_length": 1,
+            "interval_unit": "months",
+            "name": "Standard",
+            "pricing_model": "fixed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "input": {
+        "codePrefix": "standard",
+        "currencyCode": "USD",
+        "intervalLength": 1,
+        "intervalUnit": "months",
+        "name": "Standard",
+        "unitAmount": 10.5
+      },
+      "name": "createPlan-rateLimit",
+      "operation": "createPlan"
+    },
+    {
+      "callId": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/plans",
+          "requestBody": {
+            "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+            "currencies": [
+              {
+                "currency": "USD",
+                "unit_amount": 10.5
+              }
+            ],
+            "interval_length": 1,
+            "interval_unit": "months",
+            "name": "Standard",
+            "pricing_model": "fixed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "input": {
+        "codePrefix": "standard",
+        "currencyCode": "USD",
+        "intervalLength": 1,
+        "intervalUnit": "months",
+        "name": "Standard",
+        "unitAmount": 10.5
+      },
+      "name": "createPlan-unavailable",
+      "operation": "createPlan"
+    },
+    {
+      "callId": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/plans",
+          "requestBody": {
+            "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+            "currencies": [
+              {
+                "currency": "USD",
+                "unit_amount": 10.5
+              }
+            ],
+            "interval_length": 1,
+            "interval_unit": "months",
+            "name": "Standard",
+            "pricing_model": "fixed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "input": {
+        "codePrefix": "standard",
+        "currencyCode": "USD",
+        "intervalLength": 1,
+        "intervalUnit": "months",
+        "name": "Standard",
+        "unitAmount": 10.5
+      },
+      "name": "createPlan-serverError",
+      "operation": "createPlan"
+    },
+    {
+      "callId": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/plans",
+          "requestBody": {
+            "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+            "currencies": [
+              {
+                "currency": "USD",
+                "unit_amount": 10.5
+              }
+            ],
+            "interval_length": 1,
+            "interval_unit": "months",
+            "name": "Standard",
+            "pricing_model": "fixed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "input": {
+        "codePrefix": "standard",
+        "currencyCode": "USD",
+        "intervalLength": 1,
+        "intervalUnit": "months",
+        "name": "Standard",
+        "unitAmount": 10.5
+      },
+      "name": "createPlan-transportFailure",
+      "operation": "createPlan"
+    },
+    {
+      "callId": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/plans",
+          "requestBody": {
+            "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+            "currencies": [
+              {
+                "currency": "USD",
+                "unit_amount": 10.5
+              }
+            ],
+            "interval_length": 1,
+            "interval_unit": "months",
+            "name": "Standard",
+            "pricing_model": "fixed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        },
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"code\":\"standard_94173311cdf05b9f9791b08c9f852ef7\",\"name\":\"Standard\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/plans/code-standard_94173311cdf05b9f9791b08c9f852ef7",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "code": "standard_94173311cdf05b9f9791b08c9f852ef7",
+          "id": "e28zov4fw0v2",
+          "name": "Standard"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "input": {
+        "codePrefix": "standard",
+        "currencyCode": "USD",
+        "intervalLength": 1,
+        "intervalUnit": "months",
+        "name": "Standard",
+        "unitAmount": 10.5
+      },
+      "name": "createPlan-duplicateCode",
+      "operation": "createPlan"
+    },
+    {
+      "callId": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "code": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "94173311-cdf0-5b9f-9791-b08c9f852ef7",
+      "input": {
+        "codePrefix": "BAD SPACE",
+        "currencyCode": "USD",
+        "intervalLength": 1,
+        "intervalUnit": "months",
+        "name": "Standard",
+        "unitAmount": 10.5
+      },
+      "name": "createPlan-defect",
+      "operation": "createPlan"
+    },
+    {
+      "callId": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"e28zov4fw0v2\",\"code\":\"standard\",\"name\":\"Standard Plus\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/plans/e28zov4fw0v2",
+          "requestBody": {
+            "name": "Standard Plus"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "renamed",
+        "failureKind": "",
+        "output": {
+          "code": "standard",
+          "id": "e28zov4fw0v2",
+          "name": "Standard Plus"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "input": {
+        "name": "Standard Plus",
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "renamePlan-success",
+      "operation": "renamePlan"
+    },
+    {
+      "callId": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/plans/e28zov4fw0v2",
+          "requestBody": {
+            "name": "Standard Plus"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "code": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "input": {
+        "name": "Standard Plus",
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "renamePlan-providerRejected",
+      "operation": "renamePlan"
+    },
+    {
+      "callId": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/plans/e28zov4fw0v2",
+          "requestBody": {
+            "name": "Standard Plus"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "input": {
+        "name": "Standard Plus",
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "renamePlan-rateLimit",
+      "operation": "renamePlan"
+    },
+    {
+      "callId": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/plans/e28zov4fw0v2",
+          "requestBody": {
+            "name": "Standard Plus"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "input": {
+        "name": "Standard Plus",
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "renamePlan-unavailable",
+      "operation": "renamePlan"
+    },
+    {
+      "callId": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/plans/e28zov4fw0v2",
+          "requestBody": {
+            "name": "Standard Plus"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "input": {
+        "name": "Standard Plus",
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "renamePlan-serverError",
+      "operation": "renamePlan"
+    },
+    {
+      "callId": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/plans/e28zov4fw0v2",
+          "requestBody": {
+            "name": "Standard Plus"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "input": {
+        "name": "Standard Plus",
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "renamePlan-transportFailure",
+      "operation": "renamePlan"
+    },
+    {
+      "callId": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "code": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c26985f0-11bf-5e44-8460-b77a3c42b8c0",
+      "input": {
+        "name": "Standard Plus",
+        "planId": "bad id"
+      },
+      "name": "renamePlan-defect",
+      "operation": "renamePlan"
+    },
+    {
+      "callId": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "e28zov4fw0v2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "deletePlan-success",
+      "operation": "deletePlan"
+    },
+    {
+      "callId": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "deletePlan-providerRejected",
+      "operation": "deletePlan"
+    },
+    {
+      "callId": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "deletePlan-rateLimit",
+      "operation": "deletePlan"
+    },
+    {
+      "callId": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "deletePlan-unavailable",
+      "operation": "deletePlan"
+    },
+    {
+      "callId": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "deletePlan-serverError",
+      "operation": "deletePlan"
+    },
+    {
+      "callId": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "deletePlan-transportFailure",
+      "operation": "deletePlan"
+    },
+    {
+      "callId": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/plans/e28zov4fw0v2",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.recurly.v2021-02-25+json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXJlY3VybHktYXBpLWtleTo="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "e28zov4fw0v2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "input": {
+        "planId": "e28zov4fw0v2"
+      },
+      "name": "deletePlan-alreadyDeleted",
+      "operation": "deletePlan"
+    },
+    {
+      "callId": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "48a1e225-262f-50fc-803b-30303efcd5ed",
+      "input": {
+        "planId": "bad id"
+      },
+      "name": "deletePlan-defect",
+      "operation": "deletePlan"
     }
   ],
   "schemaVersion": 1

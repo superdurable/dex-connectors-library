@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: recurly
   displayName: Recurly
-  description: Read and manage Recurly accounts and subscriptions through the Subscriptions API.
+  description: Read and manage Recurly accounts, subscriptions, and plans through the Subscriptions API.
   company: Recurly
   categories: [finance-payments]
   version: v0.2.0
@@ -55,6 +55,104 @@ spec:
         - Sign in to the Recurly site with Integration permission. Open Integrations > API Credentials, scroll to Add Private API Key, name the integration and click Save Changes. Copy the complete unencoded secret key into Dex Web secret api_key; blank is invalid. Regenerate or revoke it later under Developers > API Keys. Do not paste the Base64 example shown under Need help using the API Key.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret account ID in Recurly account details or the API account response and enter it as accountId; blank is invalid. Account codes require a code- prefix, for example code-acme. IDs and codes each have at most 50 characters.
   operations:
+    - name: listPlans
+      goName: ListPlans
+      inputType: ListPlansInput
+      outputType: PlanPage
+      kind: query
+      description: List one bounded page of plan identities.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Recurly returned a page of plans.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected plan listing., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Recurly returned unusable plan list data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid page size or credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample plan page is returned.
+          output: {plans: [{id: e28zov4fw0v2, code: standard, name: Standard}], hasMore: false}
+    - name: getPlan
+      goName: GetPlan
+      inputType: GetPlanInput
+      outputType: PlanSummary
+      kind: query
+      description: Read one plan identity by ID or code.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Recurly returned the plan.}
+        - {id: notFound, goName: NotFound, description: The plan was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected plan lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Recurly returned unusable plan data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid ID or credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample plan is returned.
+          output: {id: e28zov4fw0v2, code: standard, name: Standard}
+    - name: createPlan
+      goName: CreatePlan
+      inputType: CreatePlanInput
+      outputType: PlanSummary
+      kind: mutation
+      description: Create a fixed-price plan with a call-derived unique code.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: created, goName: Created, description: Recurly created or confirmed the plan.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected plan creation., optional: true}
+        - {id: defect, goName: Defect, description: Invalid plan input or credentials., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample fixed-price plan is created.
+          output: {id: e28zov4fw0v2, code: standard_0123456789abcdef0123456789abcdef, name: Standard}
+    - name: renamePlan
+      goName: RenamePlan
+      inputType: RenamePlanInput
+      outputType: PlanSummary
+      kind: mutation
+      description: Replace a plan's displayed name.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: renamed, goName: Renamed, description: Recurly renamed the plan.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected plan rename., optional: true}
+        - {id: defect, goName: Defect, description: Invalid plan ID or name or credentials., optional: true}
+      mocks:
+        - name: renamedDefault
+          branch: renamed
+          default: true
+          description: A sample plan was renamed.
+          output: {id: e28zov4fw0v2, code: standard, name: Standard Plus}
+    - name: deletePlan
+      goName: DeletePlan
+      inputType: DeletePlanInput
+      outputType: DeletedPlan
+      kind: mutation
+      description: Remove a plan from future use.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Recurly removed or confirmed the plan.}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly rejected plan deletion., optional: true}
+        - {id: defect, goName: Defect, description: Invalid plan ID or credentials., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A sample plan was removed.
+          output: {id: e28zov4fw0v2}
     - name: listSubscriptions
       goName: ListSubscriptions
       inputType: ListSubscriptionsInput
