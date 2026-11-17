@@ -287,8 +287,8 @@ var CreateCardCheckoutSessionDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateCardCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
 		{ID: CreateCardCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
-		{ID: CreateCardCheckoutSessionBranchUncertain, Description: "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.", Optional: true},
-		{ID: CreateCardCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid or oversized Checkout Session response.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", Optional: true},
+		{ID: CreateCardCheckoutSessionBranchInvalidResponse, Description: "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", Optional: true},
 		{ID: CreateCardCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -364,8 +364,8 @@ var CreateACHCheckoutSessionDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateACHCheckoutSessionBranchCreated, Description: "Stripe created the Checkout Session."},
 		{ID: CreateACHCheckoutSessionBranchProviderRejected, Description: "Stripe conclusively rejected the Checkout Session request.", Optional: true},
-		{ID: CreateACHCheckoutSessionBranchUncertain, Description: "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.", Optional: true},
-		{ID: CreateACHCheckoutSessionBranchInvalidResponse, Description: "Stripe returned an invalid or oversized Checkout Session response.", Optional: true},
+		{ID: CreateACHCheckoutSessionBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key, so no resend can confirm the Checkout Session; every other unknown outcome is resent under the same key.", Optional: true},
+		{ID: CreateACHCheckoutSessionBranchInvalidResponse, Description: "Stripe accepted the request but returned an invalid or oversized Checkout Session, which a resend under the same key would only replay.", Optional: true},
 		{ID: CreateACHCheckoutSessionBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -595,8 +595,8 @@ var CreateRefundDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateRefundBranchRefunded, Description: "Stripe accepted the refund; read its status to tell succeeded from pending."},
 		{ID: CreateRefundBranchProviderRejected, Description: "Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large.", Optional: true},
-		{ID: CreateRefundBranchUncertain, Description: "A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back.", Optional: true},
-		{ID: CreateRefundBranchInvalidResponse, Description: "Stripe returned an invalid or oversized refund response.", Optional: true},
+		{ID: CreateRefundBranchUncertain, Description: "Stripe replayed a cached server error for this idempotency key and bounded read-back found no refund with this call ID; every other unknown outcome is resent under the same key.", Optional: true},
+		{ID: CreateRefundBranchInvalidResponse, Description: "Stripe accepted the refund request but returned an invalid or oversized refund, which a resend under the same key would only replay.", Optional: true},
 		{ID: CreateRefundBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{

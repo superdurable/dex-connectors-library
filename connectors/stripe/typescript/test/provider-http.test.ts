@@ -45,9 +45,10 @@ it('sends one keyed write through providerhttp without following a redirect', as
     response.end('redirect');
   });
   const result = await stripe.createRefund().invoke(call, { paymentIntentId: 'pi_123', amount: 1 });
-  expect(result).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
-  expect(requests).toHaveLength(1);
+  expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
+  expect(requests).toHaveLength(2);
   expect(requests[0]).toContain('POST /v1/refunds 11111111-1111-5111-8111-111111111111 Basic ');
+  expect(requests[1]).toContain('GET /v1/refunds?');
 });
 
 it('classifies an oversized error from status and headers without retaining its body', async () => {
@@ -84,7 +85,7 @@ it('does not forward ACH Checkout credentials across a temporary redirect', asyn
     response.end();
   });
   const result = await stripe.createACHCheckoutSession().invoke({ ...call, operation: { connectorId: 'stripe', operationId: 'createACHCheckoutSession' } }, checkoutInput);
-  expect(result).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
+  expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'PROTOCOL' } });
   expect(sourceRequests).toBe(1);
   expect(destinationRequests).toBe(0);
 });
