@@ -3,6 +3,7 @@
 """Replay the Go-recorded Azure Blob Storage provider scenarios."""
 
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,10 +20,17 @@ import connector_scenarios as conformance  # type: ignore[import-not-found]  # n
 SCENARIOS = [
     scenario
     for scenario in json.loads(
-        (ROOT / "conformance/connectors/microsoft/azure-blob/scenarios.json").read_text()
+        Path(
+            os.environ.get(
+                "CONNECTOR_CONFORMANCE_FIXTURE",
+                ROOT / "conformance/connectors/microsoft/azure-blob/scenarios.json",
+            )
+        ).read_text()
     )["scenarios"]
     if scenario["operation"] == "getBlob"
 ]
+if any("pending" in scenario for scenario in SCENARIOS):
+    raise ValueError("pending getBlob conformance scenario")
 CONNECTION = sdk.ConnectionRef("microsoft-azure-blob", "microsoft-azure-blob")
 TEST_CREDENTIALS = microsoft_azure_blob.Credentials(sdk.SecretString("c2VjcmV0LXRlc3Qta2V5"))
 ADAPTER = conformance.PythonOperationAdapter(

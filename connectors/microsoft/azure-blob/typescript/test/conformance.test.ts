@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { MicrosoftAzureBlobClient } from '../src/client.js';
@@ -10,8 +10,9 @@ import { GetBlobInputSchema } from '../src/generated/models.js';
 import { answerRecordedRequest, replay, type ExchangeRecorder, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 
 const fixtureURL = new URL('../../../../../conformance/connectors/microsoft/azure-blob/scenarios.json', import.meta.url);
-const scenarios = (JSON.parse(readFileSync(fixtureURL, 'utf8')).scenarios as Scenario[])
+const scenarios = (JSON.parse(readFileSync(process.env.CONNECTOR_CONFORMANCE_FIXTURE ?? fixtureURL, 'utf8')).scenarios as Scenario[])
   .filter(scenario => scenario.operation === 'getBlob');
+if (scenarios.some(scenario => 'pending' in scenario)) throw new Error('pending getBlob conformance scenario');
 const connection = { provider: 'microsoft-azure-blob', name: 'microsoft-azure-blob' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeMicrosoftAzureBlob, ''));
 

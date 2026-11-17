@@ -3,6 +3,7 @@
 """Replay the Go-recorded MicrosoftAdvertising provider scenarios."""
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -18,10 +19,17 @@ import connector_scenarios as conformance  # noqa: E402
 SCENARIOS = [
     scenario
     for scenario in json.loads(
-        (ROOT / "conformance/connectors/microsoft/advertising/scenarios.json").read_text()
+        Path(
+            os.environ.get(
+                "CONNECTOR_CONFORMANCE_FIXTURE",
+                ROOT / "conformance/connectors/microsoft/advertising/scenarios.json",
+            )
+        ).read_text()
     )["scenarios"]
     if scenario["operation"] == "listCampaigns"
 ]
+if any("pending" in scenario for scenario in SCENARIOS):
+    raise ValueError("pending listCampaigns conformance scenario")
 CONNECTION = sdk.ConnectionRef("microsoft-advertising", "microsoft-advertising")
 ADAPTER = conformance.PythonOperationAdapter(
     "microsoft-advertising",
