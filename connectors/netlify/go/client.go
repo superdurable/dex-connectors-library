@@ -107,6 +107,186 @@ type DeploysPage struct {
 	Deploys []Deploy `json:"deploys"`
 }
 
+// GetSiteInput identifies one Netlify site by Project ID or accepted domain.
+type GetSiteInput struct {
+	// SiteID is the Project ID or accepted site domain.
+	SiteID string `json:"siteId"`
+}
+
+// GetDeployInput identifies one deploy within a Netlify site.
+type GetDeployInput struct {
+	// SiteID is the Project ID or accepted site domain.
+	SiteID string `json:"siteId"`
+	// DeployID is the deploy identifier from a deploy listing.
+	DeployID string `json:"deployId"`
+}
+
+// GetSiteOperation reads one site.
+type GetSiteOperation struct{ client *Client }
+
+// GetSite binds a site read to this client.
+func (client *Client) GetSite() GetSiteOperation { return GetSiteOperation{client} }
+
+// Definition returns the generated getSite contract.
+func (GetSiteOperation) Definition() sdkgo.QueryDefinition { return GetSiteDefinition }
+
+// Invoke reads the requested site and classifies the response.
+func (operation GetSiteOperation) Invoke(call sdkgo.Call, input GetSiteInput) sdkgo.QueryAttempt[Site] {
+	if strings.TrimSpace(input.SiteID) == "" {
+		return sdkgo.NewQueryBranch(GetSiteBranchDefect, Site{}, failure(sdkgo.FailureValidation, "getSite", "siteId is required"), sdkgo.Receipt{})
+	}
+	spec := requestSpec{method: http.MethodGet, path: "/sites/" + url.PathEscape(input.SiteID)}
+	return executeQuery(operation.client, call, "getSite", spec, GetSiteBranchFound, GetSiteBranchNotFound, GetSiteBranchProviderRejected, GetSiteBranchInvalidResponse, GetSiteBranchDefect, decodeSite)
+}
+
+func decodeSite(body []byte) (Site, error) {
+	var site Site
+	if err := json.Unmarshal(body, &site); err != nil {
+		return Site{}, err
+	}
+	if site.ID == "" {
+		return Site{}, fmt.Errorf("missing site ID")
+	}
+	return site, nil
+}
+
+// GetDeployOperation reads one deploy.
+type GetDeployOperation struct{ client *Client }
+
+// GetDeploy binds a deploy read to this client.
+func (client *Client) GetDeploy() GetDeployOperation { return GetDeployOperation{client} }
+
+// Definition returns the generated getDeploy contract.
+func (GetDeployOperation) Definition() sdkgo.QueryDefinition { return GetDeployDefinition }
+
+// Invoke reads the requested deploy and classifies the response.
+func (operation GetDeployOperation) Invoke(call sdkgo.Call, input GetDeployInput) sdkgo.QueryAttempt[Deploy] {
+	if strings.TrimSpace(input.SiteID) == "" || strings.TrimSpace(input.DeployID) == "" {
+		return sdkgo.NewQueryBranch(GetDeployBranchDefect, Deploy{}, failure(sdkgo.FailureValidation, "getDeploy", "siteId and deployId are required"), sdkgo.Receipt{})
+	}
+	spec := requestSpec{method: http.MethodGet, path: "/sites/" + url.PathEscape(input.SiteID) + "/deploys/" + url.PathEscape(input.DeployID)}
+	return executeQuery(operation.client, call, "getDeploy", spec, GetDeployBranchFound, GetDeployBranchNotFound, GetDeployBranchProviderRejected, GetDeployBranchInvalidResponse, GetDeployBranchDefect, decodeDeploy)
+}
+
+func decodeDeploy(body []byte) (Deploy, error) {
+	var deploy Deploy
+	if err := json.Unmarshal(body, &deploy); err != nil {
+		return Deploy{}, err
+	}
+	if deploy.ID == "" {
+		return Deploy{}, fmt.Errorf("missing deploy ID")
+	}
+	return deploy, nil
+}
+
+// DeleteSiteInput identifies the site to delete.
+type DeleteSiteInput struct {
+	// SiteID is the Netlify Project ID.
+	SiteID string `json:"siteId"`
+}
+
+// DeletedSite identifies the site removed by Netlify.
+type DeletedSite struct {
+	// SiteID is the Netlify Project ID.
+	SiteID string `json:"siteId"`
+}
+
+// DeleteSiteOperation deletes one site.
+type DeleteSiteOperation struct{ client *Client }
+
+// DeleteSite binds a site deletion to this client.
+func (client *Client) DeleteSite() DeleteSiteOperation { return DeleteSiteOperation{client} }
+
+// Definition returns the generated deleteSite contract.
+func (DeleteSiteOperation) Definition() sdkgo.MutationDefinition { return DeleteSiteDefinition }
+
+// IdempotencyKey derives a stable identity for the repeated deletion.
+func (DeleteSiteOperation) IdempotencyKey(callID sdkgo.CallID, _ DeleteSiteInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
+}
+
+// Invoke deletes the site and classifies the response.
+func (operation DeleteSiteOperation) Invoke(call sdkgo.Call, input DeleteSiteInput) sdkgo.MutationAttempt[DeletedSite] {
+	if strings.TrimSpace(input.SiteID) == "" {
+		return sdkgo.NewMutationBranch(DeleteSiteBranchDefect, DeletedSite{}, failure(sdkgo.FailureValidation, "deleteSite", "siteId is required"), sdkgo.Receipt{})
+	}
+	response, localFailure, err := operation.client.send(call, "deleteSite", requestSpec{method: http.MethodDelete, path: "/sites/" + url.PathEscape(input.SiteID)})
+	if localFailure != nil {
+		return sdkgo.NewMutationBranch(DeleteSiteBranchDefect, DeletedSite{}, localFailure, sdkgo.Receipt{})
+	}
+	if err != nil {
+		return sdkgo.NewMutationRetry[DeletedSite](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "netlify", Operation: "deleteSite", Message: "Netlify request failed"}, 0)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if shouldRetry(response) {
+		retry, after := retryFailure(response, "deleteSite")
+		return sdkgo.NewMutationRetry[DeletedSite](retry, after)
+	}
+	if response.StatusCode == http.StatusNoContent {
+		return sdkgo.NewMutationBranch(DeleteSiteBranchDeleted, DeletedSite{SiteID: input.SiteID}, nil, sdkgo.Receipt{})
+	}
+	providerFailure := statusFailure(response, "deleteSite")
+	if response.StatusCode == http.StatusNotFound {
+		return sdkgo.NewMutationBranch(DeleteSiteBranchNotFound, DeletedSite{}, &providerFailure, sdkgo.Receipt{})
+	}
+	return sdkgo.NewMutationBranch(DeleteSiteBranchProviderRejected, DeletedSite{}, &providerFailure, sdkgo.Receipt{})
+}
+
+// CancelDeployInput identifies the deploy to cancel.
+type CancelDeployInput struct {
+	// DeployID is the deploy identifier from a deploy listing.
+	DeployID string `json:"deployId"`
+}
+
+// CancelDeployOperation cancels one deploy.
+type CancelDeployOperation struct{ client *Client }
+
+// CancelDeploy binds a deploy cancellation to this client.
+func (client *Client) CancelDeploy() CancelDeployOperation { return CancelDeployOperation{client} }
+
+// Definition returns the generated cancelDeploy contract.
+func (CancelDeployOperation) Definition() sdkgo.MutationDefinition { return CancelDeployDefinition }
+
+// IdempotencyKey derives a stable identity for the repeated cancellation.
+func (CancelDeployOperation) IdempotencyKey(callID sdkgo.CallID, _ CancelDeployInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(callID)
+}
+
+// Invoke cancels the deploy and classifies the response.
+func (operation CancelDeployOperation) Invoke(call sdkgo.Call, input CancelDeployInput) sdkgo.MutationAttempt[Deploy] {
+	if strings.TrimSpace(input.DeployID) == "" {
+		return sdkgo.NewMutationBranch(CancelDeployBranchDefect, Deploy{}, failure(sdkgo.FailureValidation, "cancelDeploy", "deployId is required"), sdkgo.Receipt{})
+	}
+	response, localFailure, err := operation.client.send(call, "cancelDeploy", requestSpec{method: http.MethodPost, path: "/deploys/" + url.PathEscape(input.DeployID) + "/cancel"})
+	if localFailure != nil {
+		return sdkgo.NewMutationBranch(CancelDeployBranchDefect, Deploy{}, localFailure, sdkgo.Receipt{})
+	}
+	if err != nil {
+		return sdkgo.NewMutationRetry[Deploy](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Provider: "netlify", Operation: "cancelDeploy", Message: "Netlify request failed"}, 0)
+	}
+	defer func() { _ = response.Body.Close() }()
+	if shouldRetry(response) {
+		retry, after := retryFailure(response, "cancelDeploy")
+		return sdkgo.NewMutationRetry[Deploy](retry, after)
+	}
+	if response.StatusCode != http.StatusCreated {
+		providerFailure := statusFailure(response, "cancelDeploy")
+		if response.StatusCode == http.StatusNotFound {
+			return sdkgo.NewMutationBranch(CancelDeployBranchNotFound, Deploy{}, &providerFailure, sdkgo.Receipt{})
+		}
+		return sdkgo.NewMutationBranch(CancelDeployBranchProviderRejected, Deploy{}, &providerFailure, sdkgo.Receipt{})
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
+	if err != nil {
+		return sdkgo.NewMutationBranch(CancelDeployBranchInvalidResponse, Deploy{}, failure(sdkgo.FailureProtocol, "cancelDeploy", "response was malformed or oversized"), sdkgo.Receipt{})
+	}
+	deploy, err := decodeDeploy(body)
+	if err != nil {
+		return sdkgo.NewMutationBranch(CancelDeployBranchInvalidResponse, Deploy{}, failure(sdkgo.FailureProtocol, "cancelDeploy", "response was malformed"), sdkgo.Receipt{})
+	}
+	return sdkgo.NewMutationBranch(CancelDeployBranchCancelled, deploy, nil, sdkgo.Receipt{})
+}
+
 // ListSitesOperation invokes listSites with one provider request.
 type ListSitesOperation struct{ client *Client }
 
