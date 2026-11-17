@@ -2,6 +2,538 @@
   "connector": "constantcontact",
   "scenarios": [
     {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-readServerFailure",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"reader@example.com\",\"permission_to_send\":\"implicit\"},\"first_name\":\"Old\",\"last_name\":\"Name\",\"job_title\":\"Staff\",\"company_name\":\"Old Inc\",\"birthday_month\":11,\"birthday_day\":24,\"anniversary\":\"2006-11-15\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"reader@example.com\",\"permission_to_send\":\"implicit\"},\"first_name\":\"Avery\",\"last_name\":\"Reader\",\"job_title\":\"Director\",\"company_name\":\"Example Inc\",\"birthday_month\":11,\"birthday_day\":24,\"anniversary\":\"2006-11-15\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestBody": {
+            "anniversary": "2006-11-15",
+            "birthday_day": 24,
+            "birthday_month": 11,
+            "company_name": "Example Inc",
+            "email_address": {
+              "address": "reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "job_title": "Director",
+            "last_name": "Reader",
+            "update_source": "Account"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "emailAddress": "reader@example.com",
+          "emailPermission": "implicit",
+          "firstName": "Avery",
+          "lastName": "Reader"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-success",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-notFound",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"reader@example.com\",\"permission_to_send\":\"implicit\"},\"first_name\":\"Old\",\"last_name\":\"Name\",\"job_title\":\"Staff\",\"company_name\":\"Old Inc\",\"birthday_month\":11,\"birthday_day\":24,\"anniversary\":\"2006-11-15\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestBody": {
+            "anniversary": "2006-11-15",
+            "birthday_day": 24,
+            "birthday_month": 11,
+            "company_name": "Example Inc",
+            "email_address": {
+              "address": "reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "job_title": "Director",
+            "last_name": "Reader",
+            "update_source": "Account"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-providerRejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"reader@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-invalidResponse",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "bad",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-defect",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-rateLimited",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"reader@example.com\",\"permission_to_send\":\"implicit\"},\"first_name\":\"Old\",\"last_name\":\"Name\",\"job_title\":\"Staff\",\"company_name\":\"Old Inc\",\"birthday_month\":11,\"birthday_day\":24,\"anniversary\":\"2006-11-15\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestBody": {
+            "anniversary": "2006-11-15",
+            "birthday_day": 24,
+            "birthday_month": 11,
+            "company_name": "Example Inc",
+            "email_address": {
+              "address": "reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "job_title": "Director",
+            "last_name": "Reader",
+            "update_source": "Account"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-serviceUnavailable",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "body": "{\"contact_id\":\"1898ae62-4752-11e9-9c8a-fa163e6b01c1\",\"email_address\":{\"address\":\"reader@example.com\",\"permission_to_send\":\"implicit\"},\"first_name\":\"Old\",\"last_name\":\"Name\",\"job_title\":\"Staff\",\"company_name\":\"Old Inc\",\"birthday_month\":11,\"birthday_day\":24,\"anniversary\":\"2006-11-15\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":\"unknown\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestBody": {
+            "anniversary": "2006-11-15",
+            "birthday_day": 24,
+            "birthday_month": 11,
+            "company_name": "Example Inc",
+            "email_address": {
+              "address": "reader@example.com",
+              "permission_to_send": "implicit"
+            },
+            "first_name": "Avery",
+            "job_title": "Director",
+            "last_name": "Reader",
+            "update_source": "Account"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-serverFailure",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "432f0b04-4384-5c23-a2d9-3875f3eb4965",
+      "input": {
+        "companyName": "Example Inc",
+        "contactId": "1898ae62-4752-11e9-9c8a-fa163e6b01c1",
+        "firstName": "Avery",
+        "jobTitle": "Director",
+        "lastName": "Reader",
+        "updateSource": "Account"
+      },
+      "name": "updateContact-transportFailure",
+      "operation": "updateContact"
+    },
+    {
       "callId": "60e74aff-fcf3-581d-bc24-28aa3f0cc423",
       "exchanges": [
         {

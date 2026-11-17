@@ -39,7 +39,8 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"createContact": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateContact(), reference, scenario.CallID),
+		"createContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.CreateContact(), reference, scenario.CallID),
+		"updateContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateContact(), reference, scenario.CallID),
 		"getContact":        newConformanceQueryInvocation(t, scenario.Input, context, client.GetContact(), reference),
 		"listContacts":      newConformanceQueryInvocation(t, scenario.Input, context, client.ListContacts(), reference),
 		"deleteContact":     newConformanceMutationInvocation(t, scenario.Input, context, client.DeleteContact(), reference, scenario.CallID),

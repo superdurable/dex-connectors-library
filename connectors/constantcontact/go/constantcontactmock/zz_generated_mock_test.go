@@ -24,6 +24,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[constantcontact.ContactsPage](`{"contacts":[{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","emailAddress":"reader@example.com"}]}`)
 			return err
 		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[constantcontact.ContactMetadata](`{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1","emailAddress":"reader@example.com","firstName":"Avery","lastName":"Reader","emailPermission":"implicit"}`)
+			return err
+		}},
 		{name: "deleteContact/deletedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[constantcontact.DeleteContactOutput](`{"contactId":"1898ae62-4752-11e9-9c8a-fa163e6b01c1"}`)
 			return err
@@ -67,6 +71,9 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
 		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
 	}
 	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
 		t.Errorf("deleteContact mock has another definition")

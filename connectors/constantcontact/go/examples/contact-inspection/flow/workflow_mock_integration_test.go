@@ -26,7 +26,8 @@ func TestContactInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	flow := NewFlow(mock.Connection())
 	contactListsFlow := NewContactListsFlow(mock.Connection())
 	createContactFlow := NewCreateContactFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, contactListsFlow, createContactFlow})
+	updateContactFlow := NewUpdateContactFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, contactListsFlow, createContactFlow, updateContactFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -78,4 +79,15 @@ func TestContactInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, createResult.DecodeSingleOutput(&createdContact))
 	require.Equal(t, "reader@example.com", createdContact.EmailAddress)
 	require.Len(t, mock.CreateContact().Calls(), 1)
+	updatedName := "Updated"
+	updateFlowID := "constantcontact-update-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, updateContactFlow, updateFlowID, constantcontact.UpdateContactInput{ContactID: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", UpdateSource: "Account", FirstName: &updatedName}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	updateResult, err := client.WaitForFlow(ctx, updateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, updateResult.Status, updateResult.ErrorMessage)
+	var updatedContact constantcontact.ContactMetadata
+	require.NoError(t, updateResult.DecodeSingleOutput(&updatedContact))
+	require.Equal(t, "1898ae62-4752-11e9-9c8a-fa163e6b01c1", updatedContact.ContactID)
+	require.Len(t, mock.UpdateContact().Calls(), 1)
 }

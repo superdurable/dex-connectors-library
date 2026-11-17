@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: constantcontact
   displayName: Constant Contact
-  description: Create, search, and delete contacts, and manage contact lists through the Constant Contact V3 API.
+  description: Create, update, search, and delete contacts, and manage contact lists through the Constant Contact V3 API.
   company: Constant Contact
   categories: [marketing]
   version: v0.2.0
@@ -132,6 +132,27 @@ spec:
           default: true
           description: One contact is returned.
           output: {contacts: [{contactId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", emailAddress: "reader@example.com"}]}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: ContactMetadata
+      kind: mutation
+      description: Update selected contact name and company fields while preserving other core fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Constant Contact updated the contact.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed contact JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A sample contact name was updated.
+          output: {contactId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", emailAddress: "reader@example.com", firstName: "Avery", lastName: "Reader", emailPermission: "implicit"}
     - name: deleteContact
       goName: DeleteContact
       inputType: DeleteContactInput
