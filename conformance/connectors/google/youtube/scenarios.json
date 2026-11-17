@@ -4238,6 +4238,6382 @@
       ],
       "name": "addPlaylistItem-insert-unavailable-lagging-readback",
       "operation": "addPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"PLcurated123\",\"snippet\":{\"title\":\"Compiler picks\",\"description\":\"Curated videos\"},\"status\":{\"privacyStatus\":\"private\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "description": "Curated videos",
+          "id": "PLcurated123",
+          "privacyStatus": "private",
+          "title": "Compiler picks"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "getPlaylist-found",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "getPlaylist-notFound",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "getPlaylist-quotaExhausted",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "getPlaylist-providerRejected",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "getPlaylist-invalidResponse",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "?"
+      },
+      "name": "getPlaylist-defect",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "getPlaylist-rateLimit",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "getPlaylist-serverUnavailable",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "getPlaylist-transportFailure",
+      "operation": "getPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"PLcurated123\",\"snippet\":{\"title\":\"Compiler picks\",\"description\":\"Curated videos\"},\"status\":{\"privacyStatus\":\"private\"}}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "next",
+          "playlists": [
+            {
+              "description": "Curated videos",
+              "id": "PLcurated123",
+              "privacyStatus": "private",
+              "title": "Compiler picks"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "mine": true,
+        "pageToken": "cursor"
+      },
+      "name": "listPlaylists-listed",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextPageToken": "",
+          "playlists": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "mine": true,
+        "pageToken": "cursor"
+      },
+      "name": "listPlaylists-notFound",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "nextPageToken": "",
+          "playlists": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "mine": true,
+        "pageToken": "cursor"
+      },
+      "name": "listPlaylists-quotaExhausted",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "nextPageToken": "",
+          "playlists": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "mine": true,
+        "pageToken": "cursor"
+      },
+      "name": "listPlaylists-providerRejected",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "playlists": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "mine": true,
+        "pageToken": "cursor"
+      },
+      "name": "listPlaylists-invalidResponse",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": "",
+          "playlists": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "bad",
+        "mine": true
+      },
+      "name": "listPlaylists-defect",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "mine": true,
+        "pageToken": "cursor"
+      },
+      "name": "listPlaylists-rateLimit",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "mine": true,
+        "pageToken": "cursor"
+      },
+      "name": "listPlaylists-serverUnavailable",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "mine": true,
+        "pageToken": "cursor"
+      },
+      "name": "listPlaylists-transportFailure",
+      "operation": "listPlaylists"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"PLcurated123\",\"snippet\":{\"title\":\"Updated picks\",\"description\":\"Curated videos\"},\"status\":{\"privacyStatus\":\"private\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "PLcurated123",
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Updated picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "description": "Curated videos",
+          "id": "PLcurated123",
+          "privacyStatus": "private",
+          "title": "Updated picks"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": "Updated picks"
+      },
+      "name": "updatePlaylist-updated",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "PLcurated123",
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Updated picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": "Updated picks"
+      },
+      "name": "updatePlaylist-notFound",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "PLcurated123",
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Updated picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": "Updated picks"
+      },
+      "name": "updatePlaylist-quotaExhausted",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "PLcurated123",
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Updated picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": "Updated picks"
+      },
+      "name": "updatePlaylist-providerRejected",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "PLcurated123",
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Updated picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": "Updated picks"
+      },
+      "name": "updatePlaylist-invalidResponse",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": ""
+      },
+      "name": "updatePlaylist-defect",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "PLcurated123",
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Updated picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": "Updated picks"
+      },
+      "name": "updatePlaylist-rateLimit",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "PLcurated123",
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Updated picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": "Updated picks"
+      },
+      "name": "updatePlaylist-serverUnavailable",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "PLcurated123",
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Updated picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d09bc1d1-6268-58be-9e91-189ea88a768e",
+      "input": {
+        "description": "Curated videos",
+        "playlistId": "PLcurated123",
+        "privacyStatus": "private",
+        "title": "Updated picks"
+      },
+      "name": "updatePlaylist-transportFailure",
+      "operation": "updatePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "playlistId": "PLcurated123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "deletePlaylist-deleted",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "playlistId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "deletePlaylist-notFound",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "playlistId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "deletePlaylist-quotaExhausted",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "playlistId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "deletePlaylist-providerRejected",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "playlistId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "deletePlaylist-invalidResponse",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "playlistId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "?"
+      },
+      "name": "deletePlaylist-defect",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "deletePlaylist-rateLimit",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "deletePlaylist-serverUnavailable",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "id": [
+              "PLcurated123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d4e235e4-7eca-5aec-ac4b-b8ab5579b6c9",
+      "input": {
+        "playlistId": "PLcurated123"
+      },
+      "name": "deletePlaylist-transportFailure",
+      "operation": "deletePlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"PLITEM001\",\"snippet\":{\"playlistId\":\"PLcurated123\",\"title\":\"Compiler release walkthrough\",\"position\":0,\"publishedAt\":\"2026-10-26T10:00:00Z\",\"resourceId\":{\"kind\":\"youtube#video\",\"videoId\":\"AbCdEfGhI12\"}},\"contentDetails\":{\"videoPublishedAt\":\"2026-10-20T10:00:00Z\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "addedAt": "2026-10-26T10:00:00Z",
+          "id": "PLITEM001",
+          "playlistId": "PLcurated123",
+          "position": 0,
+          "title": "Compiler release walkthrough",
+          "videoId": "AbCdEfGhI12",
+          "videoPublishedAt": "2026-10-20T10:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "getPlaylistItem-found",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "addedAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "playlistId": "",
+          "position": 0,
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "getPlaylistItem-notFound",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "addedAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "playlistId": "",
+          "position": 0,
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "getPlaylistItem-quotaExhausted",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "addedAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "playlistId": "",
+          "position": 0,
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "getPlaylistItem-providerRejected",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "addedAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "playlistId": "",
+          "position": 0,
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "getPlaylistItem-invalidResponse",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "addedAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "playlistId": "",
+          "position": 0,
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "?"
+      },
+      "name": "getPlaylistItem-defect",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "getPlaylistItem-rateLimit",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "getPlaylistItem-serverUnavailable",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "getPlaylistItem-transportFailure",
+      "operation": "getPlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "playlistItemId": "PLITEM001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "deletePlaylistItem-deleted",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "playlistItemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "deletePlaylistItem-notFound",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "playlistItemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "deletePlaylistItem-quotaExhausted",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "playlistItemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "deletePlaylistItem-providerRejected",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "playlistItemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "deletePlaylistItem-invalidResponse",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "playlistItemId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "?"
+      },
+      "name": "deletePlaylistItem-defect",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "deletePlaylistItem-rateLimit",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "deletePlaylistItem-serverUnavailable",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "id": [
+              "PLITEM001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "208f68fa-fd2a-5a49-9fa0-d1b74f958753",
+      "input": {
+        "playlistItemId": "PLITEM001"
+      },
+      "name": "deletePlaylistItem-transportFailure",
+      "operation": "deletePlaylistItem"
+    },
+    {
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"PLcurated123\",\"snippet\":{\"title\":\"Compiler picks\",\"description\":\"Curated videos\"},\"status\":{\"privacyStatus\":\"private\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+          "providerId": "PLcurated123",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "Curated videos",
+          "id": "PLcurated123",
+          "privacyStatus": "private",
+          "title": "Compiler picks"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "name": "createPlaylist-created",
+      "operation": "createPlaylist"
+    },
+    {
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "name": "createPlaylist-quotaExhausted",
+      "operation": "createPlaylist"
+    },
+    {
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "name": "createPlaylist-providerRejected",
+      "operation": "createPlaylist"
+    },
+    {
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": ""
+      },
+      "name": "createPlaylist-defect",
+      "operation": "createPlaylist"
+    },
+    {
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "name": "createPlaylist-rateLimit",
+      "operation": "createPlaylist"
+    },
+    {
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "name": "createPlaylist-serverUnavailable",
+      "operation": "createPlaylist"
+    },
+    {
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "name": "createPlaylist-transportFailure",
+      "operation": "createPlaylist"
+    },
+    {
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "name": "createPlaylist-unknownOutcome",
+      "operation": "createPlaylist"
+    },
+    {
+      "attempts": 2,
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"items\":[{\"id\":\"PLcurated123\",\"snippet\":{\"title\":\"Compiler picks\",\"description\":\"Curated videos\"},\"status\":{\"privacyStatus\":\"private\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "50"
+            ],
+            "mine": [
+              "true"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "description": "Curated videos",
+          "id": "PLcurated123",
+          "privacyStatus": "private",
+          "title": "Compiler picks"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createPlaylist-readbackConfirmed",
+      "operation": "createPlaylist"
+    },
+    {
+      "attempts": 2,
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "50"
+            ],
+            "mine": [
+              "true"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"PLcurated123\",\"snippet\":{\"title\":\"Compiler picks\",\"description\":\"Curated videos\"},\"status\":{\"privacyStatus\":\"private\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+          "providerId": "PLcurated123",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "description": "Curated videos",
+          "id": "PLcurated123",
+          "privacyStatus": "private",
+          "title": "Compiler picks"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createPlaylist-readbackResend",
+      "operation": "createPlaylist"
+    },
+    {
+      "attempts": 4,
+      "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "50"
+            ],
+            "mine": [
+              "true"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "50"
+            ],
+            "mine": [
+              "true"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "description": "Curated videos",
+              "title": "Compiler picks"
+            },
+            "status": {
+              "privacyStatus": "private"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlists",
+          "query": {
+            "maxResults": [
+              "50"
+            ],
+            "mine": [
+              "true"
+            ],
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "description": "",
+          "id": "",
+          "privacyStatus": "",
+          "title": ""
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+      "input": {
+        "description": "Curated videos",
+        "privacyStatus": "private",
+        "title": "Compiler picks"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 3,
+            "callId": "7abca88c-8228-5ef8-8ced-406be9b2a795",
+            "sendCount": 3,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createPlaylist-uncertain",
+      "operation": "createPlaylist"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"AbCdEfGhI12\",\"snippet\":{\"channelId\":\"UC1234567890123456789012\",\"channelTitle\":\"Compiler Lab\",\"title\":\"Compiler release walkthrough\",\"description\":\"A short compiler tour\",\"publishedAt\":\"2026-10-20T10:00:00Z\"},\"contentDetails\":{\"duration\":\"PT4M13S\"},\"status\":{\"privacyStatus\":\"public\"},\"statistics\":{\"viewCount\":\"1200\"}}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "chart": [
+              "mostPopular"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,contentDetails,status,statistics"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "next",
+          "videos": [
+            {
+              "channelId": "UC1234567890123456789012",
+              "channelTitle": "Compiler Lab",
+              "description": "A short compiler tour",
+              "duration": "PT4M13S",
+              "id": "AbCdEfGhI12",
+              "privacyStatus": "public",
+              "publishedAt": "2026-10-20T10:00:00Z",
+              "title": "Compiler release walkthrough",
+              "viewCount": 1200
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor",
+        "regionCode": "US"
+      },
+      "name": "listVideos-listed",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "chart": [
+              "mostPopular"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,contentDetails,status,statistics"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextPageToken": "",
+          "videos": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor",
+        "regionCode": "US"
+      },
+      "name": "listVideos-notFound",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "chart": [
+              "mostPopular"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,contentDetails,status,statistics"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "nextPageToken": "",
+          "videos": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor",
+        "regionCode": "US"
+      },
+      "name": "listVideos-quotaExhausted",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "chart": [
+              "mostPopular"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,contentDetails,status,statistics"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "nextPageToken": "",
+          "videos": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor",
+        "regionCode": "US"
+      },
+      "name": "listVideos-providerRejected",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "chart": [
+              "mostPopular"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,contentDetails,status,statistics"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "videos": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor",
+        "regionCode": "US"
+      },
+      "name": "listVideos-invalidResponse",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": "",
+          "videos": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "us"
+      },
+      "name": "listVideos-defect",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "chart": [
+              "mostPopular"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,contentDetails,status,statistics"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor",
+        "regionCode": "US"
+      },
+      "name": "listVideos-rateLimit",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "chart": [
+              "mostPopular"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,contentDetails,status,statistics"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor",
+        "regionCode": "US"
+      },
+      "name": "listVideos-serverUnavailable",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "chart": [
+              "mostPopular"
+            ],
+            "maxResults": [
+              "10"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet,contentDetails,status,statistics"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor",
+        "regionCode": "US"
+      },
+      "name": "listVideos-transportFailure",
+      "operation": "listVideos"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"27\",\"snippet\":{\"title\":\"Education\",\"assignable\":true}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videoCategories",
+          "query": {
+            "part": [
+              "snippet"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "categories": [
+            {
+              "assignable": true,
+              "id": "27",
+              "title": "Education"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "US"
+      },
+      "name": "listVideoCategories-listed",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videoCategories",
+          "query": {
+            "part": [
+              "snippet"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "US"
+      },
+      "name": "listVideoCategories-notFound",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videoCategories",
+          "query": {
+            "part": [
+              "snippet"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "US"
+      },
+      "name": "listVideoCategories-quotaExhausted",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videoCategories",
+          "query": {
+            "part": [
+              "snippet"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "US"
+      },
+      "name": "listVideoCategories-providerRejected",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videoCategories",
+          "query": {
+            "part": [
+              "snippet"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "US"
+      },
+      "name": "listVideoCategories-invalidResponse",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "categories": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "us"
+      },
+      "name": "listVideoCategories-defect",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videoCategories",
+          "query": {
+            "part": [
+              "snippet"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "US"
+      },
+      "name": "listVideoCategories-rateLimit",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videoCategories",
+          "query": {
+            "part": [
+              "snippet"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "US"
+      },
+      "name": "listVideoCategories-serverUnavailable",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/videoCategories",
+          "query": {
+            "part": [
+              "snippet"
+            ],
+            "regionCode": [
+              "US"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "regionCode": "US"
+      },
+      "name": "listVideoCategories-transportFailure",
+      "operation": "listVideoCategories"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/videos/rate",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ],
+            "rating": [
+              "like"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "rated",
+        "failureKind": "",
+        "output": {
+          "rating": "like",
+          "videoId": "AbCdEfGhI12"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "like",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-rated",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/videos/rate",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ],
+            "rating": [
+              "like"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "rating": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "like",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-notFound",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/videos/rate",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ],
+            "rating": [
+              "like"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "rating": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "like",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-quotaExhausted",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/videos/rate",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ],
+            "rating": [
+              "like"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "rating": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "like",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-providerRejected",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/videos/rate",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ],
+            "rating": [
+              "like"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "rating": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "like",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-invalidResponse",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rating": "",
+          "videoId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "bad",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-defect",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/videos/rate",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ],
+            "rating": [
+              "like"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "like",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-rateLimit",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/videos/rate",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ],
+            "rating": [
+              "like"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "like",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-serverUnavailable",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/videos/rate",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ],
+            "rating": [
+              "like"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "786b9cab-20e4-503b-988f-83e0666c8237",
+      "input": {
+        "rating": "like",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "rateVideo-transportFailure",
+      "operation": "rateVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "videoId": "AbCdEfGhI12"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "deleteVideo-deleted",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "deleteVideo-notFound",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "deleteVideo-quotaExhausted",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "deleteVideo-providerRejected",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "deleteVideo-invalidResponse",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "videoId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "?"
+      },
+      "name": "deleteVideo-defect",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "deleteVideo-rateLimit",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "deleteVideo-serverUnavailable",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "id": [
+              "AbCdEfGhI12"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b80a88b4-69fa-5474-956f-78f50fffec44",
+      "input": {
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "deleteVideo-transportFailure",
+      "operation": "deleteVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AbCdEfGhI12\",\"snippet\":{\"title\":\"Updated walkthrough\",\"description\":\"A short compiler tour\",\"categoryId\":\"27\"},\"status\":{\"privacyStatus\":\"public\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "AbCdEfGhI12",
+            "snippet": {
+              "categoryId": "27",
+              "description": "A short compiler tour",
+              "title": "Updated walkthrough"
+            },
+            "status": {
+              "privacyStatus": "public"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "categoryId": "27",
+          "description": "A short compiler tour",
+          "privacyStatus": "public",
+          "title": "Updated walkthrough",
+          "videoId": "AbCdEfGhI12"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "Updated walkthrough",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-updated",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "AbCdEfGhI12",
+            "snippet": {
+              "categoryId": "27",
+              "description": "A short compiler tour",
+              "title": "Updated walkthrough"
+            },
+            "status": {
+              "privacyStatus": "public"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "categoryId": "",
+          "description": "",
+          "privacyStatus": "",
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "Updated walkthrough",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-notFound",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "AbCdEfGhI12",
+            "snippet": {
+              "categoryId": "27",
+              "description": "A short compiler tour",
+              "title": "Updated walkthrough"
+            },
+            "status": {
+              "privacyStatus": "public"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "categoryId": "",
+          "description": "",
+          "privacyStatus": "",
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "Updated walkthrough",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-quotaExhausted",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "AbCdEfGhI12",
+            "snippet": {
+              "categoryId": "27",
+              "description": "A short compiler tour",
+              "title": "Updated walkthrough"
+            },
+            "status": {
+              "privacyStatus": "public"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "categoryId": "",
+          "description": "",
+          "privacyStatus": "",
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "Updated walkthrough",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-providerRejected",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "AbCdEfGhI12",
+            "snippet": {
+              "categoryId": "27",
+              "description": "A short compiler tour",
+              "title": "Updated walkthrough"
+            },
+            "status": {
+              "privacyStatus": "public"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "categoryId": "",
+          "description": "",
+          "privacyStatus": "",
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "Updated walkthrough",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-invalidResponse",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "categoryId": "",
+          "description": "",
+          "privacyStatus": "",
+          "title": "",
+          "videoId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-defect",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "AbCdEfGhI12",
+            "snippet": {
+              "categoryId": "27",
+              "description": "A short compiler tour",
+              "title": "Updated walkthrough"
+            },
+            "status": {
+              "privacyStatus": "public"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "Updated walkthrough",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-rateLimit",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "AbCdEfGhI12",
+            "snippet": {
+              "categoryId": "27",
+              "description": "A short compiler tour",
+              "title": "Updated walkthrough"
+            },
+            "status": {
+              "privacyStatus": "public"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "Updated walkthrough",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-serverUnavailable",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "be196038-7c32-5303-8e13-bb65984124cf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/videos",
+          "query": {
+            "part": [
+              "snippet,status"
+            ]
+          },
+          "requestBody": {
+            "id": "AbCdEfGhI12",
+            "snippet": {
+              "categoryId": "27",
+              "description": "A short compiler tour",
+              "title": "Updated walkthrough"
+            },
+            "status": {
+              "privacyStatus": "public"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "be196038-7c32-5303-8e13-bb65984124cf",
+      "input": {
+        "categoryId": "27",
+        "description": "A short compiler tour",
+        "privacyStatus": "public",
+        "title": "Updated walkthrough",
+        "videoId": "AbCdEfGhI12"
+      },
+      "name": "updateVideo-transportFailure",
+      "operation": "updateVideo"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"UC1234567890123456789012\",\"snippet\":{\"title\":\"Compiler Lab\",\"description\":\"Compiler tutorials\"}}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "channels": [
+            {
+              "description": "Compiler tutorials",
+              "id": "UC1234567890123456789012",
+              "title": "Compiler Lab"
+            }
+          ],
+          "nextPageToken": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor"
+      },
+      "name": "listChannels-listed",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "channels": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor"
+      },
+      "name": "listChannels-notFound",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "channels": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor"
+      },
+      "name": "listChannels-quotaExhausted",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "channels": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor"
+      },
+      "name": "listChannels-providerRejected",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "channels": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor"
+      },
+      "name": "listChannels-invalidResponse",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "channels": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "bad token"
+      },
+      "name": "listChannels-defect",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor"
+      },
+      "name": "listChannels-rateLimit",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor"
+      },
+      "name": "listChannels-serverUnavailable",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "maxResults": [
+              "10"
+            ],
+            "mine": [
+              "true"
+            ],
+            "pageToken": [
+              "cursor"
+            ],
+            "part": [
+              "snippet"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 10,
+        "pageToken": "cursor"
+      },
+      "name": "listChannels-transportFailure",
+      "operation": "listChannels"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"UC1234567890123456789012\",\"brandingSettings\":{\"channel\":{\"description\":\"Compiler tutorials\",\"keywords\":\"compiler\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "id": [
+              "UC1234567890123456789012"
+            ],
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"UC1234567890123456789012\",\"brandingSettings\":{\"channel\":{\"description\":\"Updated compiler tutorials\",\"keywords\":\"compiler\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestBody": {
+            "brandingSettings": {
+              "channel": {
+                "description": "Updated compiler tutorials",
+                "keywords": "compiler"
+              }
+            },
+            "id": "UC1234567890123456789012"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "description": "Updated compiler tutorials",
+          "id": "UC1234567890123456789012"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "UC1234567890123456789012",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-updated",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [
+        {
+          "body": "{\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "id": [
+              "UC1234567890123456789012"
+            ],
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "description": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "UC1234567890123456789012",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-notFound",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"quotaExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "id": [
+              "UC1234567890123456789012"
+            ],
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "quotaExhausted",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "description": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "UC1234567890123456789012",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-quotaExhausted",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "id": [
+              "UC1234567890123456789012"
+            ],
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "description": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "UC1234567890123456789012",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-providerRejected",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "id": [
+              "UC1234567890123456789012"
+            ],
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "description": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "UC1234567890123456789012",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-invalidResponse",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "description": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "bad",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-defect",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "id": [
+              "UC1234567890123456789012"
+            ],
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "UC1234567890123456789012",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-rateLimit",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "id": [
+              "UC1234567890123456789012"
+            ],
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "UC1234567890123456789012",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-serverUnavailable",
+      "operation": "updateChannel"
+    },
+    {
+      "callId": "0113e916-815b-5c36-8175-3f70a8534073",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/channels",
+          "query": {
+            "id": [
+              "UC1234567890123456789012"
+            ],
+            "part": [
+              "brandingSettings"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0113e916-815b-5c36-8175-3f70a8534073",
+      "input": {
+        "channelId": "UC1234567890123456789012",
+        "description": "Updated compiler tutorials"
+      },
+      "name": "updateChannel-transportFailure",
+      "operation": "updateChannel"
     }
   ],
   "schemaVersion": 1

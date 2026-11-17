@@ -43,6 +43,22 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	GetTag() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	ListTriggers() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage]
+	GetTrigger() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	ListVariables() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage]
+	GetVariable() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	ListFolders() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage]
+	GetFolder() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	ListTemplates() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage]
+	GetTemplate() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	ListEnvironments() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage]
+	GetEnvironment() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	GetVersion() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	GetAccount() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	GetContainer() sdkgo.Query[ResourcePathInput, TagManagerResource]
+	ListWorkspaces() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage]
+	GetWorkspace() sdkgo.Query[ResourcePathInput, TagManagerResource]
 	ListAccounts() sdkgo.Query[ListAccountsInput, AccountsPage]
 	ListContainers() sdkgo.Query[ListContainersInput, ContainersPage]
 	ListTags() sdkgo.Query[ListTagsInput, TagsPage]
@@ -50,6 +66,54 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) GetTag() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetTag()
+}
+func (operations clientOperations) ListTriggers() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage] {
+	return operations.client.ListTriggers()
+}
+func (operations clientOperations) GetTrigger() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetTrigger()
+}
+func (operations clientOperations) ListVariables() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage] {
+	return operations.client.ListVariables()
+}
+func (operations clientOperations) GetVariable() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetVariable()
+}
+func (operations clientOperations) ListFolders() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage] {
+	return operations.client.ListFolders()
+}
+func (operations clientOperations) GetFolder() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetFolder()
+}
+func (operations clientOperations) ListTemplates() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage] {
+	return operations.client.ListTemplates()
+}
+func (operations clientOperations) GetTemplate() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetTemplate()
+}
+func (operations clientOperations) ListEnvironments() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage] {
+	return operations.client.ListEnvironments()
+}
+func (operations clientOperations) GetEnvironment() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetEnvironment()
+}
+func (operations clientOperations) GetVersion() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetVersion()
+}
+func (operations clientOperations) GetAccount() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetAccount()
+}
+func (operations clientOperations) GetContainer() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetContainer()
+}
+func (operations clientOperations) ListWorkspaces() sdkgo.Query[ListChildResourcesInput, TagManagerResourcesPage] {
+	return operations.client.ListWorkspaces()
+}
+func (operations clientOperations) GetWorkspace() sdkgo.Query[ResourcePathInput, TagManagerResource] {
+	return operations.client.GetWorkspace()
+}
 func (operations clientOperations) ListAccounts() sdkgo.Query[ListAccountsInput, AccountsPage] {
 	return operations.client.ListAccounts()
 }
@@ -258,6 +322,1142 @@ func (credentials Credentials) validateSharedCredential() error {
 		return fmt.Errorf("credential access_token is required")
 	}
 	return nil
+}
+
+const GetTagBranchFound sdkgo.BranchID = "found"
+const GetTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTagBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTagDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTag"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTagBranchFound, Description: "Google returned the resource."},
+		{ID: GetTagBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: GetTagBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTagBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTagResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetTagStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getTag"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTagResult]                            `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetTagResult]                            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTagResult]                            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTagResult]                            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetTagStep[IN any](config GetTagStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTag(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTagResult] {
+			branches := make([]sdkgo.BranchTarget[GetTagResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTagBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTagBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTagBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTagBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTriggersBranchListed sdkgo.BranchID = "listed"
+const ListTriggersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTriggersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTriggersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTriggersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTriggers"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTriggersBranchListed, Description: "Google returned a resource page."},
+		{ID: ListTriggersBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: ListTriggersBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTriggersBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTriggersResult = sdkgo.QueryResult[TagManagerResourcesPage]
+
+type ListTriggersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                                   `connector:"operationId=listTriggers"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChildResourcesInput                           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTriggersResult]                           `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTriggersResult]                           `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTriggersResult]                           `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTriggersResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResourcesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListTriggersStep[IN any](config ListTriggersStepConfig[IN]) sdkgo.QueryStep[IN, ListChildResourcesInput, TagManagerResourcesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChildResourcesInput, TagManagerResourcesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTriggers(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTriggersResult] {
+			branches := make([]sdkgo.BranchTarget[ListTriggersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTriggersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTriggersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTriggersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTriggersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTriggerBranchFound sdkgo.BranchID = "found"
+const GetTriggerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTriggerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTriggerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTriggerDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTrigger"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTriggerBranchFound, Description: "Google returned the resource."},
+		{ID: GetTriggerBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: GetTriggerBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTriggerBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTriggerResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetTriggerStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getTrigger"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTriggerResult]                        `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetTriggerResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTriggerResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTriggerResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetTriggerStep[IN any](config GetTriggerStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTrigger(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTriggerResult] {
+			branches := make([]sdkgo.BranchTarget[GetTriggerResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTriggerBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTriggerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTriggerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTriggerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListVariablesBranchListed sdkgo.BranchID = "listed"
+const ListVariablesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListVariablesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListVariablesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListVariablesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listVariables"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListVariablesBranchListed, Description: "Google returned a resource page."},
+		{ID: ListVariablesBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: ListVariablesBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: ListVariablesBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListVariablesResult = sdkgo.QueryResult[TagManagerResourcesPage]
+
+type ListVariablesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                                   `connector:"operationId=listVariables"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChildResourcesInput                           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListVariablesResult]                          `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListVariablesResult]                          `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListVariablesResult]                          `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListVariablesResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResourcesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListVariablesStep[IN any](config ListVariablesStepConfig[IN]) sdkgo.QueryStep[IN, ListChildResourcesInput, TagManagerResourcesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChildResourcesInput, TagManagerResourcesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListVariables(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListVariablesResult] {
+			branches := make([]sdkgo.BranchTarget[ListVariablesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListVariablesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListVariablesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListVariablesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListVariablesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetVariableBranchFound sdkgo.BranchID = "found"
+const GetVariableBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetVariableBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetVariableBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetVariableDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getVariable"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetVariableBranchFound, Description: "Google returned the resource."},
+		{ID: GetVariableBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: GetVariableBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: GetVariableBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetVariableResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetVariableStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getVariable"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetVariableResult]                       `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetVariableResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetVariableResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetVariableResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetVariableStep[IN any](config GetVariableStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetVariable(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetVariableResult] {
+			branches := make([]sdkgo.BranchTarget[GetVariableResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetVariableBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetVariableBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetVariableBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetVariableBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListFoldersBranchListed sdkgo.BranchID = "listed"
+const ListFoldersBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListFoldersBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListFoldersBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListFoldersDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listFolders"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListFoldersBranchListed, Description: "Google returned a resource page."},
+		{ID: ListFoldersBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: ListFoldersBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: ListFoldersBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListFoldersResult = sdkgo.QueryResult[TagManagerResourcesPage]
+
+type ListFoldersStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                                   `connector:"operationId=listFolders"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChildResourcesInput                           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListFoldersResult]                            `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListFoldersResult]                            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListFoldersResult]                            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListFoldersResult]                            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResourcesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListFoldersStep[IN any](config ListFoldersStepConfig[IN]) sdkgo.QueryStep[IN, ListChildResourcesInput, TagManagerResourcesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChildResourcesInput, TagManagerResourcesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListFolders(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListFoldersResult] {
+			branches := make([]sdkgo.BranchTarget[ListFoldersResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListFoldersBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListFoldersBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListFoldersBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListFoldersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetFolderBranchFound sdkgo.BranchID = "found"
+const GetFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetFolderDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetFolderBranchFound, Description: "Google returned the resource."},
+		{ID: GetFolderBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: GetFolderBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: GetFolderBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetFolderResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetFolderStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getFolder"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetFolderResult]                         `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetFolderResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetFolderResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetFolderResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetFolderStep[IN any](config GetFolderStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetFolderResult] {
+			branches := make([]sdkgo.BranchTarget[GetFolderResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetFolderBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListTemplatesBranchListed sdkgo.BranchID = "listed"
+const ListTemplatesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListTemplatesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListTemplatesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListTemplatesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listTemplates"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListTemplatesBranchListed, Description: "Google returned a resource page."},
+		{ID: ListTemplatesBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: ListTemplatesBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: ListTemplatesBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListTemplatesResult = sdkgo.QueryResult[TagManagerResourcesPage]
+
+type ListTemplatesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                                   `connector:"operationId=listTemplates"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChildResourcesInput                           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListTemplatesResult]                          `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListTemplatesResult]                          `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListTemplatesResult]                          `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListTemplatesResult]                          `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResourcesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListTemplatesStep[IN any](config ListTemplatesStepConfig[IN]) sdkgo.QueryStep[IN, ListChildResourcesInput, TagManagerResourcesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChildResourcesInput, TagManagerResourcesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListTemplates(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListTemplatesResult] {
+			branches := make([]sdkgo.BranchTarget[ListTemplatesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListTemplatesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListTemplatesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListTemplatesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListTemplatesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetTemplateBranchFound sdkgo.BranchID = "found"
+const GetTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetTemplateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetTemplateDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetTemplateBranchFound, Description: "Google returned the resource."},
+		{ID: GetTemplateBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: GetTemplateBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: GetTemplateBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetTemplateResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetTemplateStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getTemplate"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetTemplateResult]                       `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetTemplateResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetTemplateResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetTemplateResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetTemplateStep[IN any](config GetTemplateStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[GetTemplateResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetTemplateBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetTemplateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetTemplateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEnvironmentsBranchListed sdkgo.BranchID = "listed"
+const ListEnvironmentsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEnvironmentsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEnvironmentsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEnvironmentsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEnvironments"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEnvironmentsBranchListed, Description: "Google returned a resource page."},
+		{ID: ListEnvironmentsBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: ListEnvironmentsBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: ListEnvironmentsBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEnvironmentsResult = sdkgo.QueryResult[TagManagerResourcesPage]
+
+type ListEnvironmentsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                                   `connector:"operationId=listEnvironments"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChildResourcesInput                           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListEnvironmentsResult]                       `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListEnvironmentsResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEnvironmentsResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEnvironmentsResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResourcesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListEnvironmentsStep[IN any](config ListEnvironmentsStepConfig[IN]) sdkgo.QueryStep[IN, ListChildResourcesInput, TagManagerResourcesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChildResourcesInput, TagManagerResourcesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEnvironments(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEnvironmentsResult] {
+			branches := make([]sdkgo.BranchTarget[ListEnvironmentsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListEnvironmentsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEnvironmentsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEnvironmentsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEnvironmentsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetEnvironmentBranchFound sdkgo.BranchID = "found"
+const GetEnvironmentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEnvironmentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEnvironmentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEnvironmentDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEnvironment"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEnvironmentBranchFound, Description: "Google returned the resource."},
+		{ID: GetEnvironmentBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: GetEnvironmentBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: GetEnvironmentBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEnvironmentResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetEnvironmentStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getEnvironment"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEnvironmentResult]                    `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetEnvironmentResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEnvironmentResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEnvironmentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetEnvironmentStep[IN any](config GetEnvironmentStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEnvironment(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEnvironmentResult] {
+			branches := make([]sdkgo.BranchTarget[GetEnvironmentResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEnvironmentBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEnvironmentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEnvironmentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEnvironmentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetVersionBranchFound sdkgo.BranchID = "found"
+const GetVersionBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetVersionBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetVersionBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetVersionDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getVersion"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetVersionBranchFound, Description: "Google returned the resource."},
+		{ID: GetVersionBranchProviderRejected, Description: "Google definitively rejected the request.", Optional: true},
+		{ID: GetVersionBranchInvalidResponse, Description: "Google returned malformed or oversized JSON.", Optional: true},
+		{ID: GetVersionBranchDefect, Description: "The resource path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetVersionResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetVersionStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getVersion"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetVersionResult]                        `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetVersionResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetVersionResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetVersionResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetVersionStep[IN any](config GetVersionStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetVersion(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetVersionResult] {
+			branches := make([]sdkgo.BranchTarget[GetVersionResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetVersionBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetVersionBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetVersionBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetVersionBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAccountBranchFound sdkgo.BranchID = "found"
+const GetAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAccountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAccountDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAccountBranchFound, Description: "Google returned the account."},
+		{ID: GetAccountBranchProviderRejected, Description: "Google definitively rejected the account lookup.", Optional: true},
+		{ID: GetAccountBranchInvalidResponse, Description: "Google returned malformed or oversized account JSON.", Optional: true},
+		{ID: GetAccountBranchDefect, Description: "The account path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAccountResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetAccountStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getAccount"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAccountResult]                        `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetAccountResult]                        `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAccountResult]                        `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAccountResult]                        `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetAccountStep[IN any](config GetAccountStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAccountResult] {
+			branches := make([]sdkgo.BranchTarget[GetAccountResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAccountBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAccountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAccountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetContainerBranchFound sdkgo.BranchID = "found"
+const GetContainerBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetContainerBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetContainerBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetContainerDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getContainer"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetContainerBranchFound, Description: "Google returned the container."},
+		{ID: GetContainerBranchProviderRejected, Description: "Google definitively rejected the container lookup.", Optional: true},
+		{ID: GetContainerBranchInvalidResponse, Description: "Google returned malformed or oversized container JSON.", Optional: true},
+		{ID: GetContainerBranchDefect, Description: "The container path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetContainerResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetContainerStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getContainer"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetContainerResult]                      `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetContainerResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetContainerResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetContainerResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetContainerStep[IN any](config GetContainerStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetContainer(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetContainerResult] {
+			branches := make([]sdkgo.BranchTarget[GetContainerResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetContainerBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetContainerBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetContainerBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetContainerBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListWorkspacesBranchListed sdkgo.BranchID = "listed"
+const ListWorkspacesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListWorkspacesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListWorkspacesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListWorkspacesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listWorkspaces"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListWorkspacesBranchListed, Description: "Google returned a workspace page."},
+		{ID: ListWorkspacesBranchProviderRejected, Description: "Google definitively rejected the workspace list.", Optional: true},
+		{ID: ListWorkspacesBranchInvalidResponse, Description: "Google returned malformed or oversized workspace JSON.", Optional: true},
+		{ID: ListWorkspacesBranchDefect, Description: "The container path, page token, or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListWorkspacesResult = sdkgo.QueryResult[TagManagerResourcesPage]
+
+type ListWorkspacesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                   `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                                   `connector:"operationId=listWorkspaces"`
+	StepType                       string                                                     `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                     Connection                                                 `connector:"connection"`
+	ConnectionName                 string                                                     `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChildResourcesInput                           `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListWorkspacesResult]                         `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListWorkspacesResult]                         `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListWorkspacesResult]                         `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListWorkspacesResult]                         `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResourcesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewListWorkspacesStep[IN any](config ListWorkspacesStepConfig[IN]) sdkgo.QueryStep[IN, ListChildResourcesInput, TagManagerResourcesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChildResourcesInput, TagManagerResourcesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListWorkspaces(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListWorkspacesResult] {
+			branches := make([]sdkgo.BranchTarget[ListWorkspacesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListWorkspacesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListWorkspacesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListWorkspacesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListWorkspacesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetWorkspaceBranchFound sdkgo.BranchID = "found"
+const GetWorkspaceBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetWorkspaceBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetWorkspaceBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetWorkspaceDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getWorkspace"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetWorkspaceBranchFound, Description: "Google returned the workspace."},
+		{ID: GetWorkspaceBranchProviderRejected, Description: "Google definitively rejected the workspace lookup.", Optional: true},
+		{ID: GetWorkspaceBranchInvalidResponse, Description: "Google returned malformed or oversized workspace JSON.", Optional: true},
+		{ID: GetWorkspaceBranchDefect, Description: "The workspace path or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetWorkspaceResult = sdkgo.QueryResult[TagManagerResource]
+
+type GetWorkspaceStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=google-tag-manager"`
+	operationID                    struct{}                                              `connector:"operationId=getWorkspace"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ResourcePathInput                            `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetWorkspaceResult]                      `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetWorkspaceResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetWorkspaceResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetWorkspaceResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[TagManagerResource]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewGetWorkspaceStep[IN any](config GetWorkspaceStepConfig[IN]) sdkgo.QueryStep[IN, ResourcePathInput, TagManagerResource] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-tag-manager connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ResourcePathInput, TagManagerResource]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetWorkspace(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetWorkspaceResult] {
+			branches := make([]sdkgo.BranchTarget[GetWorkspaceResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetWorkspaceBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetWorkspaceBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetWorkspaceBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetWorkspaceBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListAccountsBranchListed sdkgo.BranchID = "listed"

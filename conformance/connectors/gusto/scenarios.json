@@ -311,6 +311,427 @@
       },
       "name": "getEmployee-transportFailure",
       "operation": "getEmployee"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [
+        {
+          "body": "[{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "employees": [
+            {
+              "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+              "email": "ada@example.com",
+              "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+              "firstName": "Ada",
+              "lastName": "Lovelace"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-listed",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "employees": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-empty",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "employees": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-missing",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "employees": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-providerRejected",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "employees": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-invalidResponse",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "employees": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "bad",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-defect",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-rateLimit429",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-unavailable503",
+      "operation": "listEmployees"
+    },
+    {
+      "callId": "94a39fbd-c13f-466e-b03c-424707219410",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/companies/7d61f73e-a18c-46a5-88e2-2bfa894657d7/employees",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+        "page": 1,
+        "perPage": 25
+      },
+      "name": "listEmployees-transportFailure",
+      "operation": "listEmployees"
     }
   ],
   "schemaVersion": 1
