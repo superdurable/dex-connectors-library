@@ -24,8 +24,14 @@ def test_manifest_operations_branches_and_mocks() -> None:
     package = tomllib.loads((CONNECTOR_DIRECTORY / "python" / "pyproject.toml").read_text())
     assert manifest["spec"]["languages"]["python"]["version"] == "v" + package["project"]["version"]
     assert package["project"]["name"] == "dex-connector-resend"
-    operations = {operation["name"]: operation for operation in manifest["spec"]["operations"]}
-    assert set(operations) == {"sendEmail", "getEmail"}
+    python_operations = set(manifest["spec"]["languages"]["python"]["operations"])
+    assert python_operations == {"sendEmail", "getEmail"}
+    operations = {
+        operation["name"]: operation
+        for operation in manifest["spec"]["operations"]
+        if operation["name"] in python_operations
+    }
+    assert set(operations) == python_operations
     for definition, kind in ((SEND_EMAIL_DEFINITION, "mutation"), (GET_EMAIL_DEFINITION, "query")):
         operation = operations[definition.operation.operation_id]
         assert definition.operation.connector_id == manifest["metadata"]["name"]
