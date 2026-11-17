@@ -40,11 +40,15 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ExpirePaymentLink() sdkgo.Mutation[ExpirePaymentLinkInput, PaymentLinkStatus]
 	GetPaymentLink() sdkgo.Query[GetPaymentLinkInput, PaymentLinkStatus]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ExpirePaymentLink() sdkgo.Mutation[ExpirePaymentLinkInput, PaymentLinkStatus] {
+	return operations.client.ExpirePaymentLink()
+}
 func (operations clientOperations) GetPaymentLink() sdkgo.Query[GetPaymentLinkInput, PaymentLinkStatus] {
 	return operations.client.GetPaymentLink()
 }
@@ -184,6 +188,83 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ExpirePaymentLinkBranchExpired sdkgo.BranchID = "expired"
+const ExpirePaymentLinkBranchNotFound sdkgo.BranchID = "notFound"
+const ExpirePaymentLinkBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ExpirePaymentLinkBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ExpirePaymentLinkBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ExpirePaymentLinkDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "expirePaymentLink"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ExpirePaymentLinkBranchExpired, Description: "Adyen confirmed the link expired."},
+		{ID: ExpirePaymentLinkBranchNotFound, Description: "Adyen did not expose the payment link.", Optional: true},
+		{ID: ExpirePaymentLinkBranchProviderRejected, Description: "Adyen conclusively rejected expiry.", Optional: true},
+		{ID: ExpirePaymentLinkBranchInvalidResponse, Description: "Adyen returned malformed or oversized JSON.", Optional: true},
+		{ID: ExpirePaymentLinkBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ExpirePaymentLinkResult = sdkgo.MutationResult[PaymentLinkStatus]
+
+type ExpirePaymentLinkStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                `connector:"connectorId=adyen"`
+	operationID                       struct{}                                                `connector:"operationId=expirePaymentLink"`
+	StepType                          string                                                  `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                   `connector:"annotations"`
+	Connection                        Connection                                              `connector:"connection"`
+	ConnectionName                    string                                                  `connector:"connectionName"`
+	MapToOperationInput               func(IN) ExpirePaymentLinkInput                         `connector:"mapToOperationInput"`
+	Expired                           sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=expired"`
+	NotFound                          sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[ExpirePaymentLinkResult]                   `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PaymentLinkStatus]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                        `connector:"stepOptionsOverride"`
+}
+
+func NewExpirePaymentLinkStep[IN any](config ExpirePaymentLinkStepConfig[IN]) sdkgo.MutationStep[IN, ExpirePaymentLinkInput, PaymentLinkStatus] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("adyen connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, ExpirePaymentLinkInput, PaymentLinkStatus]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ExpirePaymentLink(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ExpirePaymentLinkResult] {
+			branches := make([]sdkgo.BranchTarget[ExpirePaymentLinkResult], 0, 5)
+			if config.Expired.HasStep() {
+				branches = append(branches, config.Expired.BranchTarget(ExpirePaymentLinkBranchExpired))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(ExpirePaymentLinkBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ExpirePaymentLinkBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ExpirePaymentLinkBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ExpirePaymentLinkBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetPaymentLinkBranchFound sdkgo.BranchID = "found"

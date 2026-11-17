@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "expirePaymentLink/expiredDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[adyen.PaymentLinkStatus](`{"id":"PL50C5F751CED39G71","status":"expired","currencyCode":"EUR"}`)
+			return err
+		}},
 		{name: "getPaymentLink/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[adyen.PaymentLinkStatus](`{"id":"PL50C5F751CED39G71","status":"completed","currencyCode":"EUR"}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ExpirePaymentLink().Definition().Operation.OperationID != "expirePaymentLink" {
+		t.Errorf("expirePaymentLink mock has another definition")
+	}
 	if mock.GetPaymentLink().Definition().Operation.OperationID != "getPaymentLink" {
 		t.Errorf("getPaymentLink mock has another definition")
 	}

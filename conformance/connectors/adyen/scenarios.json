@@ -2,6 +2,334 @@
   "connector": "adyen",
   "scenarios": [
     {
+      "callId": "139872d7-7357-5495-a564-8db377afcc9f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"PL50C5F751CED39G71\",\"status\":\"expired\",\"amount\":{\"currency\":\"EUR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestBody": {
+            "status": "expired"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "expired",
+        "failureKind": "",
+        "output": {
+          "currencyCode": "EUR",
+          "id": "PL50C5F751CED39G71",
+          "status": "expired"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139872d7-7357-5495-a564-8db377afcc9f",
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "expirePaymentLink-expired",
+      "operation": "expirePaymentLink"
+    },
+    {
+      "callId": "139872d7-7357-5495-a564-8db377afcc9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestBody": {
+            "status": "expired"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139872d7-7357-5495-a564-8db377afcc9f",
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "expirePaymentLink-notFound",
+      "operation": "expirePaymentLink"
+    },
+    {
+      "callId": "139872d7-7357-5495-a564-8db377afcc9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestBody": {
+            "status": "expired"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139872d7-7357-5495-a564-8db377afcc9f",
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "expirePaymentLink-providerRejected",
+      "operation": "expirePaymentLink"
+    },
+    {
+      "callId": "139872d7-7357-5495-a564-8db377afcc9f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"PL50C5F751CED39G71\",\"status\":\"active\",\"amount\":{\"currency\":\"EUR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestBody": {
+            "status": "expired"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139872d7-7357-5495-a564-8db377afcc9f",
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "expirePaymentLink-invalidResponse",
+      "operation": "expirePaymentLink"
+    },
+    {
+      "callId": "139872d7-7357-5495-a564-8db377afcc9f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139872d7-7357-5495-a564-8db377afcc9f",
+      "input": {
+        "paymentLinkId": ""
+      },
+      "name": "expirePaymentLink-defect",
+      "operation": "expirePaymentLink"
+    },
+    {
+      "callId": "139872d7-7357-5495-a564-8db377afcc9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestBody": {
+            "status": "expired"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139872d7-7357-5495-a564-8db377afcc9f",
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "expirePaymentLink-rateLimit",
+      "operation": "expirePaymentLink"
+    },
+    {
+      "callId": "139872d7-7357-5495-a564-8db377afcc9f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestBody": {
+            "status": "expired"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139872d7-7357-5495-a564-8db377afcc9f",
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "expirePaymentLink-serverUnavailable",
+      "operation": "expirePaymentLink"
+    },
+    {
+      "callId": "139872d7-7357-5495-a564-8db377afcc9f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestBody": {
+            "status": "expired"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "139872d7-7357-5495-a564-8db377afcc9f",
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "expirePaymentLink-transportFailure",
+      "operation": "expirePaymentLink"
+    },
+    {
       "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
       "exchanges": [
         {

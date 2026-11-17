@@ -25,3 +25,7 @@ GOWORK=off go run ./examples/payment-link-inspection
 Start `AdyenPaymentLinkInspection` with a unique Flow ID and input `{"paymentLinkId":"PL50C5F751CED39G71"}`. Replace the sample with a payment link ID returned by Adyen. The Worker connects to Dex Server without an inbound listener.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test ./...`. Real Adyen authorization and retrieval remain unverified.
+
+## Payment link expiry
+
+The same Worker registers `AdyenExpirePaymentLink`. Start it with `ExpirePaymentLinkInput{PaymentLinkID: "PL50C5F751CED39G71"}` to force a link to `expired`. The checked-in mock-backed integration test exercises the mutation through a real Dex Worker and Client.
