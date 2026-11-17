@@ -108,9 +108,8 @@ alwaysApply: true
 
 ## Tests
 
-- Start local Dex tests with `dexcli dev -open=false`; pass `--open=false`
-  to other Dex CLI commands that can open a browser, such as `dexcli visualize`.
-  Open Dex Web only when the requested verification requires its UI.
+- Run `dexcli visualize` with `--open=false` for local verification unless
+  the requested verification requires its browser UI.
 - Run all modules with `GOWORK=off` and use the repository Makefile.
 - Prefer real Dex integration tests across Worker, Client, persistence, retry,
   Trigger, RPC, Attribute, Stream, and transition boundaries.
