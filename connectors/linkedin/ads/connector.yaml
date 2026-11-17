@@ -42,7 +42,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large ad account pages.
+        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large Advertising resource responses.
         default: 2097152
   auth:
     type: oauth2
@@ -75,7 +75,7 @@ spec:
         - In LinkedIn Developer > My Apps, create or select an app, open Products, and request Advertising API access. Development-tier approval supplies r_ads for reading ad accounts; the consenting member also needs an Ad Account role.
         - Open Auth > OAuth 2.0 settings and register the exact redirect URL displayed by Dex Web under Authorized redirect URLs. Confirm r_ads appears among the app's OAuth permissions before authorization.
         - Copy Client ID and Client Secret from Auth > Application credentials into Dex Web. The Client Secret is secret. Authorize the member with r_ads; Dex stores the access token, and a refresh token only if LinkedIn grants programmatic refresh.
-        - Run listAdAccounts to discover numeric account IDs and names. Use an ID from that response for campaign-group and campaign searches; use a returned campaign ID for creative searches. Leave baseUrl, marketingVersion, timeout, and maxResponseBytes blank for their displayed defaults; reauthorize when a non-refreshable token expires.
+        - Run listAdAccounts to discover numeric account IDs and names. Use returned numeric group and campaign IDs for getCampaignGroup and getCampaign, and a full sponsoredCreative URN from listCreatives for getCreative; blank IDs are invalid. Leave baseUrl, marketingVersion, timeout, and maxResponseBytes blank for their displayed defaults; reauthorize when a non-refreshable token expires.
     oauth2:
       authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization
       tokenEndpoint: https://www.linkedin.com/oauth/v2/accessToken
@@ -174,3 +174,87 @@ spec:
           default: true
           description: One draft creative is visible.
           output: {creatives: [{id: 'urn:li:sponsoredCreative:119962155', campaign: 'urn:li:sponsoredCampaign:360035215', intendedStatus: DRAFT}], nextPageToken: ''}
+    - name: getAdAccount
+      goName: GetAdAccount
+      inputType: GetAdAccountInput
+      outputType: AdAccount
+      kind: query
+      description: Read one LinkedIn Advertising account by decimal ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: LinkedIn returned the account.}
+        - {id: notFound, goName: NotFound, description: LinkedIn did not expose the account., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned invalid account JSON., optional: true}
+        - {id: defect, goName: Defect, description: Account ID or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One account is visible.
+          output: {id: '507404993', name: Example Account}
+    - name: getCampaignGroup
+      goName: GetCampaignGroup
+      inputType: GetCampaignGroupInput
+      outputType: CampaignGroup
+      kind: query
+      description: Read one campaign group in an Advertising account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: LinkedIn returned the campaign group.}
+        - {id: notFound, goName: NotFound, description: LinkedIn did not expose the group., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned invalid group JSON., optional: true}
+        - {id: defect, goName: Defect, description: Account or group ID is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One campaign group is visible.
+          output: {id: '603407684', name: Example Group, status: ACTIVE}
+    - name: getCampaign
+      goName: GetCampaign
+      inputType: GetCampaignInput
+      outputType: Campaign
+      kind: query
+      description: Read one campaign in an Advertising account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: LinkedIn returned the campaign.}
+        - {id: notFound, goName: NotFound, description: LinkedIn did not expose the campaign., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned invalid campaign JSON., optional: true}
+        - {id: defect, goName: Defect, description: Account or campaign ID is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One campaign is visible.
+          output: {id: '360035215', name: Example Campaign, status: ACTIVE}
+    - name: getCreative
+      goName: GetCreative
+      inputType: GetCreativeInput
+      outputType: Creative
+      kind: query
+      description: Read one creative in an Advertising account by its URN.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: LinkedIn returned the creative.}
+        - {id: notFound, goName: NotFound, description: LinkedIn did not expose the creative., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned invalid creative JSON., optional: true}
+        - {id: defect, goName: Defect, description: Account ID or creative URN is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One draft creative is visible.
+          output: {id: 'urn:li:sponsoredCreative:119962155', campaign: 'urn:li:sponsoredCampaign:360035215', intendedStatus: DRAFT}

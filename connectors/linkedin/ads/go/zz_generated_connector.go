@@ -48,6 +48,10 @@ type Operations interface {
 	ListCampaignGroups() sdkgo.Query[ListCampaignGroupsInput, CampaignGroupsPage]
 	ListCampaigns() sdkgo.Query[ListCampaignsInput, CampaignsPage]
 	ListCreatives() sdkgo.Query[ListCreativesInput, CreativesPage]
+	GetAdAccount() sdkgo.Query[GetAdAccountInput, AdAccount]
+	GetCampaignGroup() sdkgo.Query[GetCampaignGroupInput, CampaignGroup]
+	GetCampaign() sdkgo.Query[GetCampaignInput, Campaign]
+	GetCreative() sdkgo.Query[GetCreativeInput, Creative]
 }
 
 type clientOperations struct{ client *Client }
@@ -63,6 +67,18 @@ func (operations clientOperations) ListCampaigns() sdkgo.Query[ListCampaignsInpu
 }
 func (operations clientOperations) ListCreatives() sdkgo.Query[ListCreativesInput, CreativesPage] {
 	return operations.client.ListCreatives()
+}
+func (operations clientOperations) GetAdAccount() sdkgo.Query[GetAdAccountInput, AdAccount] {
+	return operations.client.GetAdAccount()
+}
+func (operations clientOperations) GetCampaignGroup() sdkgo.Query[GetCampaignGroupInput, CampaignGroup] {
+	return operations.client.GetCampaignGroup()
+}
+func (operations clientOperations) GetCampaign() sdkgo.Query[GetCampaignInput, Campaign] {
+	return operations.client.GetCampaign()
+}
+func (operations clientOperations) GetCreative() sdkgo.Query[GetCreativeInput, Creative] {
+	return operations.client.GetCreative()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -542,6 +558,314 @@ func NewListCreativesStep[IN any](config ListCreativesStepConfig[IN]) sdkgo.Quer
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListCreativesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetAdAccountBranchFound sdkgo.BranchID = "found"
+const GetAdAccountBranchNotFound sdkgo.BranchID = "notFound"
+const GetAdAccountBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetAdAccountBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetAdAccountBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetAdAccountDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getAdAccount"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetAdAccountBranchFound, Description: "LinkedIn returned the account."},
+		{ID: GetAdAccountBranchNotFound, Description: "LinkedIn did not expose the account.", Optional: true},
+		{ID: GetAdAccountBranchProviderRejected, Description: "LinkedIn rejected the read.", Optional: true},
+		{ID: GetAdAccountBranchInvalidResponse, Description: "LinkedIn returned invalid account JSON.", Optional: true},
+		{ID: GetAdAccountBranchDefect, Description: "Account ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetAdAccountResult = sdkgo.QueryResult[AdAccount]
+
+type GetAdAccountStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                     `connector:"connectorId=linkedin-ads"`
+	operationID                    struct{}                                     `connector:"operationId=getAdAccount"`
+	StepType                       string                                       `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                     Connection                                   `connector:"connection"`
+	ConnectionName                 string                                       `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetAdAccountInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetAdAccountResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetAdAccountResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetAdAccountResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetAdAccountResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetAdAccountResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[AdAccount]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewGetAdAccountStep[IN any](config GetAdAccountStepConfig[IN]) sdkgo.QueryStep[IN, GetAdAccountInput, AdAccount] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("linkedin-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetAdAccountInput, AdAccount]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetAdAccount(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetAdAccountResult] {
+			branches := make([]sdkgo.BranchTarget[GetAdAccountResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetAdAccountBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetAdAccountBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetAdAccountBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetAdAccountBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetAdAccountBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCampaignGroupBranchFound sdkgo.BranchID = "found"
+const GetCampaignGroupBranchNotFound sdkgo.BranchID = "notFound"
+const GetCampaignGroupBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCampaignGroupBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCampaignGroupBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCampaignGroupDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCampaignGroup"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCampaignGroupBranchFound, Description: "LinkedIn returned the campaign group."},
+		{ID: GetCampaignGroupBranchNotFound, Description: "LinkedIn did not expose the group.", Optional: true},
+		{ID: GetCampaignGroupBranchProviderRejected, Description: "LinkedIn rejected the read.", Optional: true},
+		{ID: GetCampaignGroupBranchInvalidResponse, Description: "LinkedIn returned invalid group JSON.", Optional: true},
+		{ID: GetCampaignGroupBranchDefect, Description: "Account or group ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCampaignGroupResult = sdkgo.QueryResult[CampaignGroup]
+
+type GetCampaignGroupStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=linkedin-ads"`
+	operationID                    struct{}                                         `connector:"operationId=getCampaignGroup"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCampaignGroupInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCampaignGroupResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCampaignGroupResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCampaignGroupResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCampaignGroupResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCampaignGroupResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[CampaignGroup]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetCampaignGroupStep[IN any](config GetCampaignGroupStepConfig[IN]) sdkgo.QueryStep[IN, GetCampaignGroupInput, CampaignGroup] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("linkedin-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCampaignGroupInput, CampaignGroup]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCampaignGroup(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCampaignGroupResult] {
+			branches := make([]sdkgo.BranchTarget[GetCampaignGroupResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCampaignGroupBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCampaignGroupBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCampaignGroupBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCampaignGroupBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCampaignGroupBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCampaignBranchFound sdkgo.BranchID = "found"
+const GetCampaignBranchNotFound sdkgo.BranchID = "notFound"
+const GetCampaignBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCampaignBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCampaignBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCampaignDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCampaign"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCampaignBranchFound, Description: "LinkedIn returned the campaign."},
+		{ID: GetCampaignBranchNotFound, Description: "LinkedIn did not expose the campaign.", Optional: true},
+		{ID: GetCampaignBranchProviderRejected, Description: "LinkedIn rejected the read.", Optional: true},
+		{ID: GetCampaignBranchInvalidResponse, Description: "LinkedIn returned invalid campaign JSON.", Optional: true},
+		{ID: GetCampaignBranchDefect, Description: "Account or campaign ID is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCampaignResult = sdkgo.QueryResult[Campaign]
+
+type GetCampaignStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=linkedin-ads"`
+	operationID                    struct{}                                    `connector:"operationId=getCampaign"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCampaignInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCampaignResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCampaignResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCampaignResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCampaignResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCampaignResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Campaign]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetCampaignStep[IN any](config GetCampaignStepConfig[IN]) sdkgo.QueryStep[IN, GetCampaignInput, Campaign] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("linkedin-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCampaignInput, Campaign]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCampaign(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCampaignResult] {
+			branches := make([]sdkgo.BranchTarget[GetCampaignResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCampaignBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCampaignBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCampaignBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCampaignBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCampaignBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetCreativeBranchFound sdkgo.BranchID = "found"
+const GetCreativeBranchNotFound sdkgo.BranchID = "notFound"
+const GetCreativeBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetCreativeBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetCreativeBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetCreativeDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getCreative"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetCreativeBranchFound, Description: "LinkedIn returned the creative."},
+		{ID: GetCreativeBranchNotFound, Description: "LinkedIn did not expose the creative.", Optional: true},
+		{ID: GetCreativeBranchProviderRejected, Description: "LinkedIn rejected the read.", Optional: true},
+		{ID: GetCreativeBranchInvalidResponse, Description: "LinkedIn returned invalid creative JSON.", Optional: true},
+		{ID: GetCreativeBranchDefect, Description: "Account ID or creative URN is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetCreativeResult = sdkgo.QueryResult[Creative]
+
+type GetCreativeStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                    `connector:"connectorId=linkedin-ads"`
+	operationID                    struct{}                                    `connector:"operationId=getCreative"`
+	StepType                       string                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                       `connector:"annotations"`
+	Connection                     Connection                                  `connector:"connection"`
+	ConnectionName                 string                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetCreativeInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetCreativeResult]             `connector:"branch=found"`
+	NotFound                       sdkgo.Target[GetCreativeResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected               sdkgo.Target[GetCreativeResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetCreativeResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetCreativeResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[Creative]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetCreativeStep[IN any](config GetCreativeStepConfig[IN]) sdkgo.QueryStep[IN, GetCreativeInput, Creative] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("linkedin-ads connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetCreativeInput, Creative]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetCreative(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetCreativeResult] {
+			branches := make([]sdkgo.BranchTarget[GetCreativeResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetCreativeBranchFound))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(GetCreativeBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetCreativeBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetCreativeBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetCreativeBranchDefect))
 			}
 			return branches
 		}(),

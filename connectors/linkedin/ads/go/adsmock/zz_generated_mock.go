@@ -22,6 +22,10 @@ type Mock struct {
 	listCampaignGroups *connectormock.Query[ads.ListCampaignGroupsInput, ads.CampaignGroupsPage]
 	listCampaigns      *connectormock.Query[ads.ListCampaignsInput, ads.CampaignsPage]
 	listCreatives      *connectormock.Query[ads.ListCreativesInput, ads.CreativesPage]
+	getAdAccount       *connectormock.Query[ads.GetAdAccountInput, ads.AdAccount]
+	getCampaignGroup   *connectormock.Query[ads.GetCampaignGroupInput, ads.CampaignGroup]
+	getCampaign        *connectormock.Query[ads.GetCampaignInput, ads.Campaign]
+	getCreative        *connectormock.Query[ads.GetCreativeInput, ads.Creative]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,11 +37,19 @@ func New(t testing.TB, connectionName string) *Mock {
 		listCampaignGroups: connectormock.NewQuery[ads.ListCampaignGroupsInput, ads.CampaignGroupsPage](t, ads.ListCampaignGroupsDefinition),
 		listCampaigns:      connectormock.NewQuery[ads.ListCampaignsInput, ads.CampaignsPage](t, ads.ListCampaignsDefinition),
 		listCreatives:      connectormock.NewQuery[ads.ListCreativesInput, ads.CreativesPage](t, ads.ListCreativesDefinition),
+		getAdAccount:       connectormock.NewQuery[ads.GetAdAccountInput, ads.AdAccount](t, ads.GetAdAccountDefinition),
+		getCampaignGroup:   connectormock.NewQuery[ads.GetCampaignGroupInput, ads.CampaignGroup](t, ads.GetCampaignGroupDefinition),
+		getCampaign:        connectormock.NewQuery[ads.GetCampaignInput, ads.Campaign](t, ads.GetCampaignDefinition),
+		getCreative:        connectormock.NewQuery[ads.GetCreativeInput, ads.Creative](t, ads.GetCreativeDefinition),
 	}
 	mock.listAdAccounts.Default(ListAdAccountsDefault())
 	mock.listCampaignGroups.Default(ListCampaignGroupsDefault())
 	mock.listCampaigns.Default(ListCampaignsDefault())
 	mock.listCreatives.Default(ListCreativesDefault())
+	mock.getAdAccount.Default(GetAdAccountDefault())
+	mock.getCampaignGroup.Default(GetCampaignGroupDefault())
+	mock.getCampaign.Default(GetCampaignDefault())
+	mock.getCreative.Default(GetCreativeDefault())
 	connection, err := ads.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "linkedin-ads", Name: connectionName})
 	if err != nil {
 		t.Fatalf("linkedin-ads mock connection: %v", err)
@@ -69,6 +81,26 @@ func (mock *Mock) ListCreatives() *connectormock.Query[ads.ListCreativesInput, a
 	return mock.listCreatives
 }
 
+// GetAdAccount returns the getAdAccount script.
+func (mock *Mock) GetAdAccount() *connectormock.Query[ads.GetAdAccountInput, ads.AdAccount] {
+	return mock.getAdAccount
+}
+
+// GetCampaignGroup returns the getCampaignGroup script.
+func (mock *Mock) GetCampaignGroup() *connectormock.Query[ads.GetCampaignGroupInput, ads.CampaignGroup] {
+	return mock.getCampaignGroup
+}
+
+// GetCampaign returns the getCampaign script.
+func (mock *Mock) GetCampaign() *connectormock.Query[ads.GetCampaignInput, ads.Campaign] {
+	return mock.getCampaign
+}
+
+// GetCreative returns the getCreative script.
+func (mock *Mock) GetCreative() *connectormock.Query[ads.GetCreativeInput, ads.Creative] {
+	return mock.getCreative
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListAdAccounts() sdkgo.Query[ads.ListAdAccountsInput, ads.AdAccountsPage] {
@@ -82,6 +114,18 @@ func (operations mockOperations) ListCampaigns() sdkgo.Query[ads.ListCampaignsIn
 }
 func (operations mockOperations) ListCreatives() sdkgo.Query[ads.ListCreativesInput, ads.CreativesPage] {
 	return operations.mock.listCreatives
+}
+func (operations mockOperations) GetAdAccount() sdkgo.Query[ads.GetAdAccountInput, ads.AdAccount] {
+	return operations.mock.getAdAccount
+}
+func (operations mockOperations) GetCampaignGroup() sdkgo.Query[ads.GetCampaignGroupInput, ads.CampaignGroup] {
+	return operations.mock.getCampaignGroup
+}
+func (operations mockOperations) GetCampaign() sdkgo.Query[ads.GetCampaignInput, ads.Campaign] {
+	return operations.mock.getCampaign
+}
+func (operations mockOperations) GetCreative() sdkgo.Query[ads.GetCreativeInput, ads.Creative] {
+	return operations.mock.getCreative
 }
 
 // ListAdAccountsListed selects the listed branch: LinkedIn returned the selected ad account page.
@@ -227,3 +271,161 @@ func ListCreativesListedDefault() connectormock.Case[ads.CreativesPage] {
 func ListCreativesDefault() connectormock.Case[ads.CreativesPage] {
 	return ListCreativesListedDefault()
 }
+
+// GetAdAccountFound selects the found branch: LinkedIn returned the account.
+func GetAdAccountFound(value ads.AdAccount, failure *sdkgo.Failure) connectormock.Case[ads.AdAccount] {
+	return connectormock.Branch(ads.GetAdAccountBranchFound, value, failure)
+}
+
+// GetAdAccountNotFound selects the notFound branch: LinkedIn did not expose the account.
+func GetAdAccountNotFound(value ads.AdAccount, failure *sdkgo.Failure) connectormock.Case[ads.AdAccount] {
+	return connectormock.Branch(ads.GetAdAccountBranchNotFound, value, failure)
+}
+
+// GetAdAccountProviderRejected selects the providerRejected branch: LinkedIn rejected the read.
+func GetAdAccountProviderRejected(value ads.AdAccount, failure *sdkgo.Failure) connectormock.Case[ads.AdAccount] {
+	return connectormock.Branch(ads.GetAdAccountBranchProviderRejected, value, failure)
+}
+
+// GetAdAccountInvalidResponse selects the invalidResponse branch: LinkedIn returned invalid account JSON.
+func GetAdAccountInvalidResponse(value ads.AdAccount, failure *sdkgo.Failure) connectormock.Case[ads.AdAccount] {
+	return connectormock.Branch(ads.GetAdAccountBranchInvalidResponse, value, failure)
+}
+
+// GetAdAccountDefect selects the defect branch: Account ID or credentials are invalid.
+func GetAdAccountDefect(value ads.AdAccount, failure *sdkgo.Failure) connectormock.Case[ads.AdAccount] {
+	return connectormock.Branch(ads.GetAdAccountBranchDefect, value, failure)
+}
+
+// GetAdAccountRetry asks Dex to retry the getAdAccount Step, after the delay when it is positive.
+func GetAdAccountRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.AdAccount] {
+	return connectormock.Retry[ads.AdAccount](failure, after)
+}
+
+// GetAdAccountFoundDefault is the manifest mock foundDefault: One account is visible.
+func GetAdAccountFoundDefault() connectormock.Case[ads.AdAccount] {
+	value := connectormock.MustDecodeOutput[ads.AdAccount](`{"id":"507404993","name":"Example Account"}`)
+	return connectormock.Branch(ads.GetAdAccountBranchFound, value, nil)
+}
+
+// GetAdAccountDefault is the manifest default, foundDefault, which New installs.
+func GetAdAccountDefault() connectormock.Case[ads.AdAccount] { return GetAdAccountFoundDefault() }
+
+// GetCampaignGroupFound selects the found branch: LinkedIn returned the campaign group.
+func GetCampaignGroupFound(value ads.CampaignGroup, failure *sdkgo.Failure) connectormock.Case[ads.CampaignGroup] {
+	return connectormock.Branch(ads.GetCampaignGroupBranchFound, value, failure)
+}
+
+// GetCampaignGroupNotFound selects the notFound branch: LinkedIn did not expose the group.
+func GetCampaignGroupNotFound(value ads.CampaignGroup, failure *sdkgo.Failure) connectormock.Case[ads.CampaignGroup] {
+	return connectormock.Branch(ads.GetCampaignGroupBranchNotFound, value, failure)
+}
+
+// GetCampaignGroupProviderRejected selects the providerRejected branch: LinkedIn rejected the read.
+func GetCampaignGroupProviderRejected(value ads.CampaignGroup, failure *sdkgo.Failure) connectormock.Case[ads.CampaignGroup] {
+	return connectormock.Branch(ads.GetCampaignGroupBranchProviderRejected, value, failure)
+}
+
+// GetCampaignGroupInvalidResponse selects the invalidResponse branch: LinkedIn returned invalid group JSON.
+func GetCampaignGroupInvalidResponse(value ads.CampaignGroup, failure *sdkgo.Failure) connectormock.Case[ads.CampaignGroup] {
+	return connectormock.Branch(ads.GetCampaignGroupBranchInvalidResponse, value, failure)
+}
+
+// GetCampaignGroupDefect selects the defect branch: Account or group ID is invalid.
+func GetCampaignGroupDefect(value ads.CampaignGroup, failure *sdkgo.Failure) connectormock.Case[ads.CampaignGroup] {
+	return connectormock.Branch(ads.GetCampaignGroupBranchDefect, value, failure)
+}
+
+// GetCampaignGroupRetry asks Dex to retry the getCampaignGroup Step, after the delay when it is positive.
+func GetCampaignGroupRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.CampaignGroup] {
+	return connectormock.Retry[ads.CampaignGroup](failure, after)
+}
+
+// GetCampaignGroupFoundDefault is the manifest mock foundDefault: One campaign group is visible.
+func GetCampaignGroupFoundDefault() connectormock.Case[ads.CampaignGroup] {
+	value := connectormock.MustDecodeOutput[ads.CampaignGroup](`{"id":"603407684","name":"Example Group","status":"ACTIVE"}`)
+	return connectormock.Branch(ads.GetCampaignGroupBranchFound, value, nil)
+}
+
+// GetCampaignGroupDefault is the manifest default, foundDefault, which New installs.
+func GetCampaignGroupDefault() connectormock.Case[ads.CampaignGroup] {
+	return GetCampaignGroupFoundDefault()
+}
+
+// GetCampaignFound selects the found branch: LinkedIn returned the campaign.
+func GetCampaignFound(value ads.Campaign, failure *sdkgo.Failure) connectormock.Case[ads.Campaign] {
+	return connectormock.Branch(ads.GetCampaignBranchFound, value, failure)
+}
+
+// GetCampaignNotFound selects the notFound branch: LinkedIn did not expose the campaign.
+func GetCampaignNotFound(value ads.Campaign, failure *sdkgo.Failure) connectormock.Case[ads.Campaign] {
+	return connectormock.Branch(ads.GetCampaignBranchNotFound, value, failure)
+}
+
+// GetCampaignProviderRejected selects the providerRejected branch: LinkedIn rejected the read.
+func GetCampaignProviderRejected(value ads.Campaign, failure *sdkgo.Failure) connectormock.Case[ads.Campaign] {
+	return connectormock.Branch(ads.GetCampaignBranchProviderRejected, value, failure)
+}
+
+// GetCampaignInvalidResponse selects the invalidResponse branch: LinkedIn returned invalid campaign JSON.
+func GetCampaignInvalidResponse(value ads.Campaign, failure *sdkgo.Failure) connectormock.Case[ads.Campaign] {
+	return connectormock.Branch(ads.GetCampaignBranchInvalidResponse, value, failure)
+}
+
+// GetCampaignDefect selects the defect branch: Account or campaign ID is invalid.
+func GetCampaignDefect(value ads.Campaign, failure *sdkgo.Failure) connectormock.Case[ads.Campaign] {
+	return connectormock.Branch(ads.GetCampaignBranchDefect, value, failure)
+}
+
+// GetCampaignRetry asks Dex to retry the getCampaign Step, after the delay when it is positive.
+func GetCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.Campaign] {
+	return connectormock.Retry[ads.Campaign](failure, after)
+}
+
+// GetCampaignFoundDefault is the manifest mock foundDefault: One campaign is visible.
+func GetCampaignFoundDefault() connectormock.Case[ads.Campaign] {
+	value := connectormock.MustDecodeOutput[ads.Campaign](`{"id":"360035215","name":"Example Campaign","status":"ACTIVE"}`)
+	return connectormock.Branch(ads.GetCampaignBranchFound, value, nil)
+}
+
+// GetCampaignDefault is the manifest default, foundDefault, which New installs.
+func GetCampaignDefault() connectormock.Case[ads.Campaign] { return GetCampaignFoundDefault() }
+
+// GetCreativeFound selects the found branch: LinkedIn returned the creative.
+func GetCreativeFound(value ads.Creative, failure *sdkgo.Failure) connectormock.Case[ads.Creative] {
+	return connectormock.Branch(ads.GetCreativeBranchFound, value, failure)
+}
+
+// GetCreativeNotFound selects the notFound branch: LinkedIn did not expose the creative.
+func GetCreativeNotFound(value ads.Creative, failure *sdkgo.Failure) connectormock.Case[ads.Creative] {
+	return connectormock.Branch(ads.GetCreativeBranchNotFound, value, failure)
+}
+
+// GetCreativeProviderRejected selects the providerRejected branch: LinkedIn rejected the read.
+func GetCreativeProviderRejected(value ads.Creative, failure *sdkgo.Failure) connectormock.Case[ads.Creative] {
+	return connectormock.Branch(ads.GetCreativeBranchProviderRejected, value, failure)
+}
+
+// GetCreativeInvalidResponse selects the invalidResponse branch: LinkedIn returned invalid creative JSON.
+func GetCreativeInvalidResponse(value ads.Creative, failure *sdkgo.Failure) connectormock.Case[ads.Creative] {
+	return connectormock.Branch(ads.GetCreativeBranchInvalidResponse, value, failure)
+}
+
+// GetCreativeDefect selects the defect branch: Account ID or creative URN is invalid.
+func GetCreativeDefect(value ads.Creative, failure *sdkgo.Failure) connectormock.Case[ads.Creative] {
+	return connectormock.Branch(ads.GetCreativeBranchDefect, value, failure)
+}
+
+// GetCreativeRetry asks Dex to retry the getCreative Step, after the delay when it is positive.
+func GetCreativeRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ads.Creative] {
+	return connectormock.Retry[ads.Creative](failure, after)
+}
+
+// GetCreativeFoundDefault is the manifest mock foundDefault: One draft creative is visible.
+func GetCreativeFoundDefault() connectormock.Case[ads.Creative] {
+	value := connectormock.MustDecodeOutput[ads.Creative](`{"id":"urn:li:sponsoredCreative:119962155","campaign":"urn:li:sponsoredCampaign:360035215","intendedStatus":"DRAFT"}`)
+	return connectormock.Branch(ads.GetCreativeBranchFound, value, nil)
+}
+
+// GetCreativeDefault is the manifest default, foundDefault, which New installs.
+func GetCreativeDefault() connectormock.Case[ads.Creative] { return GetCreativeFoundDefault() }

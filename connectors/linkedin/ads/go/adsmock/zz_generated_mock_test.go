@@ -32,6 +32,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[ads.CreativesPage](`{"creatives":[{"id":"urn:li:sponsoredCreative:119962155","campaign":"urn:li:sponsoredCampaign:360035215","intendedStatus":"DRAFT"}],"nextPageToken":""}`)
 			return err
 		}},
+		{name: "getAdAccount/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.AdAccount](`{"id":"507404993","name":"Example Account"}`)
+			return err
+		}},
+		{name: "getCampaignGroup/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.CampaignGroup](`{"id":"603407684","name":"Example Group","status":"ACTIVE"}`)
+			return err
+		}},
+		{name: "getCampaign/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.Campaign](`{"id":"360035215","name":"Example Campaign","status":"ACTIVE"}`)
+			return err
+		}},
+		{name: "getCreative/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ads.Creative](`{"id":"urn:li:sponsoredCreative:119962155","campaign":"urn:li:sponsoredCampaign:360035215","intendedStatus":"DRAFT"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -53,5 +69,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.ListCreatives().Definition().Operation.OperationID != "listCreatives" {
 		t.Errorf("listCreatives mock has another definition")
+	}
+	if mock.GetAdAccount().Definition().Operation.OperationID != "getAdAccount" {
+		t.Errorf("getAdAccount mock has another definition")
+	}
+	if mock.GetCampaignGroup().Definition().Operation.OperationID != "getCampaignGroup" {
+		t.Errorf("getCampaignGroup mock has another definition")
+	}
+	if mock.GetCampaign().Definition().Operation.OperationID != "getCampaign" {
+		t.Errorf("getCampaign mock has another definition")
+	}
+	if mock.GetCreative().Definition().Operation.OperationID != "getCreative" {
+		t.Errorf("getCreative mock has another definition")
 	}
 }
