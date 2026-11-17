@@ -236,6 +236,16 @@ Every non-happy branch is optional. The example wires only the happy branch;
 an unwired optional outcome fails the Flow. Provider error response text and
 credentials never enter a Dex result, receipt, Stream, or log.
 
+## Automation events
+
+`CreateEvent` and `SendEvent` use bounded `limited` retries. Create reads
+back the name and schema after an unknown send; a delivery may be repeated
+at most three times. Get/list, absolute schema updates, and deletion are
+safe. `UpdateEvent` can clear the schema with `clearSchema`. Event payloads
+are accepted as inputs but never returned by the connector. The runnable
+[`create-event` example](go/examples/create-event/README.md) exercises the
+create path through a real Dex Worker and generated provider mock.
+
 ## Webhooks
 
 `CreateWebhook` and `ReplayWebhookEvent` use bounded `limited` retries;

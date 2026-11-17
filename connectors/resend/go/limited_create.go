@@ -203,7 +203,7 @@ func (request resendLimitedCreate[T]) invoke() sdkgo.MutationAttempt[T] {
 		}
 		return mutationFailure[T](request.operation, request.rejected, sdkgo.FailureProviderRejection, "provider reports the resource already exists")
 	}
-	if dispatch.status != http.StatusOK && dispatch.status != http.StatusCreated {
+	if dispatch.status != http.StatusOK && dispatch.status != http.StatusCreated && dispatch.status != http.StatusAccepted {
 		if hasPossibleEarlierSend {
 			return request.uncertain("earlier create may have succeeded")
 		}

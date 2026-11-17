@@ -31991,6 +31991,2731 @@
       ],
       "name": "replayWebhookEvent-send-cap",
       "operation": "replayWebhookEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"event\",\"id\":\"event-1\",\"name\":\"order.paid\",\"schema\":{\"total\":\"number\",\"customer\":\"string\"},\"created_at\":\"2026-11-16T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created_at": "2026-11-16T00:00:00Z",
+          "id": "event-1",
+          "name": "order.paid",
+          "schema": {
+            "customer": "string",
+            "total": "number"
+          },
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "getEvent-success",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "name": "",
+          "schema": {},
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "getEvent-missing",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "name": "",
+          "schema": {},
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "getEvent-rejected",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "name": "",
+          "schema": {},
+          "updated_at": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "getEvent-invalid",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created_at": "",
+          "id": "",
+          "name": "",
+          "schema": {},
+          "updated_at": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "identifier": ""
+      },
+      "name": "getEvent-defect",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "getEvent-rate",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "getEvent-server",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "getEvent-transport",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"event\",\"id\":\"event-1\",\"name\":\"order.paid\",\"schema\":{\"total\":\"number\",\"customer\":\"string\"},\"created_at\":\"2026-11-16T00:00:00Z\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": [
+            {
+              "created_at": "2026-11-16T00:00:00Z",
+              "id": "event-1",
+              "name": "order.paid",
+              "schema": {
+                "customer": "string",
+                "total": "number"
+              },
+              "updated_at": ""
+            }
+          ],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10
+      },
+      "name": "listEvents-success",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10
+      },
+      "name": "listEvents-rejected",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10
+      },
+      "name": "listEvents-invalid",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "data": [],
+          "has_more": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": -1
+      },
+      "name": "listEvents-defect",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10
+      },
+      "name": "listEvents-rate",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10
+      },
+      "name": "listEvents-server",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "after": [
+              "event-0"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "event-0",
+        "limit": 10
+      },
+      "name": "listEvents-transport",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"event\",\"id\":\"event-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "42138037-3438-588a-b075-01b3a68e726c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "event-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "order.paid",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "createEvent-success",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "42138037-3438-588a-b075-01b3a68e726c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "order.paid",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "createEvent-rejected",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "42138037-3438-588a-b075-01b3a68e726c",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "order.paid",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "createEvent-429",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "42138037-3438-588a-b075-01b3a68e726c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "order.paid",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "createEvent-5xx",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "42138037-3438-588a-b075-01b3a68e726c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "order.paid",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "createEvent-transport",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "createEvent-defect",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "42138037-3438-588a-b075-01b3a68e726c",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "order.paid",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "createEvent-conflict",
+      "operation": "createEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"object\":\"event\",\"id\":\"event-1\",\"name\":\"order.paid\",\"schema\":{\"total\":\"number\",\"customer\":\"string\"},\"created_at\":\"2026-11-16T00:00:00Z\"}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "event-1"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "order.paid",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "42138037-3438-588a-b075-01b3a68e726c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEvent-retry-readback",
+      "operation": "createEvent"
+    },
+    {
+      "attempts": 3,
+      "callId": "42138037-3438-588a-b075-01b3a68e726c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/events",
+          "query": {
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events",
+          "requestBody": {
+            "name": "order.paid",
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "42138037-3438-588a-b075-01b3a68e726c",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "id": ""
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "42138037-3438-588a-b075-01b3a68e726c",
+      "input": {
+        "name": "order.paid",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "42138037-3438-588a-b075-01b3a68e726c",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 3,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "42138037-3438-588a-b075-01b3a68e726c",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEvent-send-cap",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"event\",\"id\":\"event-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/events/event-1",
+          "requestBody": {
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "event-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "identifier": "event-1",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "updateEvent-success",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/events/event-1",
+          "requestBody": {
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "identifier": "event-1",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "updateEvent-notFound",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/events/event-1",
+          "requestBody": {
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "identifier": "event-1",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "updateEvent-providerRejected",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/events/event-1",
+          "requestBody": {
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "identifier": "event-1",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "updateEvent-invalidResponse",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "identifier": "",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "updateEvent-defect",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/events/event-1",
+          "requestBody": {
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "identifier": "event-1",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "updateEvent-429",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/events/event-1",
+          "requestBody": {
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "identifier": "event-1",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "updateEvent-5xx",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/events/event-1",
+          "requestBody": {
+            "schema": {
+              "customer": "string",
+              "total": "number"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "identifier": "event-1",
+        "schema": {
+          "customer": "string",
+          "total": "number"
+        }
+      },
+      "name": "updateEvent-transport",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"event\",\"id\":\"event-1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "deleted": true,
+          "id": "event-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "deleteEvent-success",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "deleteEvent-notFound",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "deleteEvent-rejected",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "exchanges": [
+        {
+          "body": "{not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "deleteEvent-invalid",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "deleteEvent-429",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "deleteEvent-5xx",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/events/event-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "input": {
+        "identifier": "event-1"
+      },
+      "name": "deleteEvent-transport",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "deleted": false,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "433d0d8b-6804-5bb0-80b3-e1c65ca6ce6c",
+      "input": {
+        "identifier": ""
+      },
+      "name": "deleteEvent-defect",
+      "operation": "deleteEvent"
+    },
+    {
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"event\",\"event\":\"order.paid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "event": "order.paid"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "name": "sendEvent-success",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "event": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "name": "sendEvent-rejected",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "name": "sendEvent-429",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "name": "sendEvent-5xx",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "name": "sendEvent-transport",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "",
+        "payload": {
+          "total": 42
+        }
+      },
+      "name": "sendEvent-defect",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "event": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "name": "sendEvent-conflict",
+      "operation": "sendEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"event\",\"event\":\"order.paid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "sendCount": 2,
+          "state": "claimed"
+        },
+        "output": {
+          "event": "order.paid"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEvent-retry-readback",
+      "operation": "sendEvent"
+    },
+    {
+      "attempts": 3,
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "email": "buyer@example.test",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "event": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "email": "buyer@example.test",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendEvent-send-cap",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"event\",\"event\":\"order.paid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/events/send",
+          "requestBody": {
+            "contact_id": "contact-1",
+            "event": "order.paid",
+            "payload": {
+              "total": 42
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "event": "order.paid"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "29cd970e-acbe-5a4a-b1c7-31d96fbfbe32",
+      "input": {
+        "contactId": "contact-1",
+        "event": "order.paid",
+        "payload": {
+          "total": 42
+        }
+      },
+      "name": "sendEvent-contact-id",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"event\",\"id\":\"event-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/events/event-1",
+          "requestBody": {
+            "schema": null
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "event-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "60e5a2ba-3022-545c-93d2-dacc24ea7abd",
+      "input": {
+        "clearSchema": true,
+        "identifier": "event-1"
+      },
+      "name": "updateEvent-clear-schema",
+      "operation": "updateEvent"
     }
   ],
   "schemaVersion": 1

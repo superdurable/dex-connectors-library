@@ -100,6 +100,12 @@ type Mock struct {
 	getWebhookEvent              *connectormock.Query[resend.GetWebhookEventInput, resend.WebhookEvent]
 	listWebhookEventAttempts     *connectormock.Query[resend.ListWebhookEventAttemptsInput, resend.WebhookEventAttemptPage]
 	replayWebhookEvent           *connectormock.Mutation[resend.ReplayWebhookEventInput, resend.WebhookEvent]
+	createEvent                  *connectormock.Mutation[resend.CreateEventInput, resend.EventReference]
+	getEvent                     *connectormock.Query[resend.GetEventInput, resend.Event]
+	listEvents                   *connectormock.Query[resend.ListEventsInput, resend.EventPage]
+	updateEvent                  *connectormock.Mutation[resend.UpdateEventInput, resend.EventReference]
+	deleteEvent                  *connectormock.Mutation[resend.DeleteEventInput, resend.DeletedEvent]
+	sendEvent                    *connectormock.Mutation[resend.SendEventInput, resend.EventSendReference]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -189,6 +195,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		getWebhookEvent:              connectormock.NewQuery[resend.GetWebhookEventInput, resend.WebhookEvent](t, resend.GetWebhookEventDefinition),
 		listWebhookEventAttempts:     connectormock.NewQuery[resend.ListWebhookEventAttemptsInput, resend.WebhookEventAttemptPage](t, resend.ListWebhookEventAttemptsDefinition),
 		replayWebhookEvent:           connectormock.NewMutation[resend.ReplayWebhookEventInput, resend.WebhookEvent](t, resend.ReplayWebhookEventDefinition),
+		createEvent:                  connectormock.NewMutation[resend.CreateEventInput, resend.EventReference](t, resend.CreateEventDefinition),
+		getEvent:                     connectormock.NewQuery[resend.GetEventInput, resend.Event](t, resend.GetEventDefinition),
+		listEvents:                   connectormock.NewQuery[resend.ListEventsInput, resend.EventPage](t, resend.ListEventsDefinition),
+		updateEvent:                  connectormock.NewMutation[resend.UpdateEventInput, resend.EventReference](t, resend.UpdateEventDefinition),
+		deleteEvent:                  connectormock.NewMutation[resend.DeleteEventInput, resend.DeletedEvent](t, resend.DeleteEventDefinition),
+		sendEvent:                    connectormock.NewMutation[resend.SendEventInput, resend.EventSendReference](t, resend.SendEventDefinition),
 	}
 	mock.createContact.Default(CreateContactDefault())
 	mock.createDomain.Default(CreateDomainDefault())
@@ -272,6 +284,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.getWebhookEvent.Default(GetWebhookEventDefault())
 	mock.listWebhookEventAttempts.Default(ListWebhookEventAttemptsDefault())
 	mock.replayWebhookEvent.Default(ReplayWebhookEventDefault())
+	mock.createEvent.Default(CreateEventDefault())
+	mock.getEvent.Default(GetEventDefault())
+	mock.listEvents.Default(ListEventsDefault())
+	mock.updateEvent.Default(UpdateEventDefault())
+	mock.deleteEvent.Default(DeleteEventDefault())
+	mock.sendEvent.Default(SendEventDefault())
 	connection, err := resend.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "resend", Name: connectionName})
 	if err != nil {
 		t.Fatalf("resend mock connection: %v", err)
@@ -693,6 +711,36 @@ func (mock *Mock) ReplayWebhookEvent() *connectormock.Mutation[resend.ReplayWebh
 	return mock.replayWebhookEvent
 }
 
+// CreateEvent returns the createEvent script.
+func (mock *Mock) CreateEvent() *connectormock.Mutation[resend.CreateEventInput, resend.EventReference] {
+	return mock.createEvent
+}
+
+// GetEvent returns the getEvent script.
+func (mock *Mock) GetEvent() *connectormock.Query[resend.GetEventInput, resend.Event] {
+	return mock.getEvent
+}
+
+// ListEvents returns the listEvents script.
+func (mock *Mock) ListEvents() *connectormock.Query[resend.ListEventsInput, resend.EventPage] {
+	return mock.listEvents
+}
+
+// UpdateEvent returns the updateEvent script.
+func (mock *Mock) UpdateEvent() *connectormock.Mutation[resend.UpdateEventInput, resend.EventReference] {
+	return mock.updateEvent
+}
+
+// DeleteEvent returns the deleteEvent script.
+func (mock *Mock) DeleteEvent() *connectormock.Mutation[resend.DeleteEventInput, resend.DeletedEvent] {
+	return mock.deleteEvent
+}
+
+// SendEvent returns the sendEvent script.
+func (mock *Mock) SendEvent() *connectormock.Mutation[resend.SendEventInput, resend.EventSendReference] {
+	return mock.sendEvent
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateContact() sdkgo.Mutation[resend.CreateContactInput, resend.ContactReference] {
@@ -940,6 +988,24 @@ func (operations mockOperations) ListWebhookEventAttempts() sdkgo.Query[resend.L
 }
 func (operations mockOperations) ReplayWebhookEvent() sdkgo.Mutation[resend.ReplayWebhookEventInput, resend.WebhookEvent] {
 	return operations.mock.replayWebhookEvent
+}
+func (operations mockOperations) CreateEvent() sdkgo.Mutation[resend.CreateEventInput, resend.EventReference] {
+	return operations.mock.createEvent
+}
+func (operations mockOperations) GetEvent() sdkgo.Query[resend.GetEventInput, resend.Event] {
+	return operations.mock.getEvent
+}
+func (operations mockOperations) ListEvents() sdkgo.Query[resend.ListEventsInput, resend.EventPage] {
+	return operations.mock.listEvents
+}
+func (operations mockOperations) UpdateEvent() sdkgo.Mutation[resend.UpdateEventInput, resend.EventReference] {
+	return operations.mock.updateEvent
+}
+func (operations mockOperations) DeleteEvent() sdkgo.Mutation[resend.DeleteEventInput, resend.DeletedEvent] {
+	return operations.mock.deleteEvent
+}
+func (operations mockOperations) SendEvent() sdkgo.Mutation[resend.SendEventInput, resend.EventSendReference] {
+	return operations.mock.sendEvent
 }
 
 // CreateContactCreated selects the created branch: Resend created or confirmed the contact.
@@ -4056,4 +4122,231 @@ func ReplayWebhookEventReplayWebhookEventDefault() connectormock.Case[resend.Web
 // ReplayWebhookEventDefault is the manifest default, replayWebhookEventDefault, which New installs.
 func ReplayWebhookEventDefault() connectormock.Case[resend.WebhookEvent] {
 	return ReplayWebhookEventReplayWebhookEventDefault()
+}
+
+// CreateEventCreated selects the created branch: Resend completed the event request.
+func CreateEventCreated(value resend.EventReference, failure *sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Branch(resend.CreateEventBranchCreated, value, failure)
+}
+
+// CreateEventProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateEventProviderRejected(value resend.EventReference, failure *sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Branch(resend.CreateEventBranchProviderRejected, value, failure)
+}
+
+// CreateEventDefect selects the defect branch: Local input or credentials are invalid.
+func CreateEventDefect(value resend.EventReference, failure *sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Branch(resend.CreateEventBranchDefect, value, failure)
+}
+
+// CreateEventUncertain returns an uncertain createEvent outcome.
+func CreateEventUncertain(value resend.EventReference, failure sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateEventRetry asks Dex to retry the createEvent Step, after the delay when it is positive.
+func CreateEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EventReference] {
+	return connectormock.Retry[resend.EventReference](failure, after)
+}
+
+// CreateEventCreateEventDefault is the manifest mock createEventDefault: Resend completed the event request.
+func CreateEventCreateEventDefault() connectormock.Case[resend.EventReference] {
+	value := connectormock.MustDecodeOutput[resend.EventReference](`{"id":"event-1"}`)
+	return connectormock.Branch(resend.CreateEventBranchCreated, value, nil)
+}
+
+// CreateEventDefault is the manifest default, createEventDefault, which New installs.
+func CreateEventDefault() connectormock.Case[resend.EventReference] {
+	return CreateEventCreateEventDefault()
+}
+
+// GetEventFound selects the found branch: Resend completed the event request.
+func GetEventFound(value resend.Event, failure *sdkgo.Failure) connectormock.Case[resend.Event] {
+	return connectormock.Branch(resend.GetEventBranchFound, value, failure)
+}
+
+// GetEventNotFound selects the notFound branch: The event does not exist.
+func GetEventNotFound(value resend.Event, failure *sdkgo.Failure) connectormock.Case[resend.Event] {
+	return connectormock.Branch(resend.GetEventBranchNotFound, value, failure)
+}
+
+// GetEventProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetEventProviderRejected(value resend.Event, failure *sdkgo.Failure) connectormock.Case[resend.Event] {
+	return connectormock.Branch(resend.GetEventBranchProviderRejected, value, failure)
+}
+
+// GetEventInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetEventInvalidResponse(value resend.Event, failure *sdkgo.Failure) connectormock.Case[resend.Event] {
+	return connectormock.Branch(resend.GetEventBranchInvalidResponse, value, failure)
+}
+
+// GetEventDefect selects the defect branch: Local input or credentials are invalid.
+func GetEventDefect(value resend.Event, failure *sdkgo.Failure) connectormock.Case[resend.Event] {
+	return connectormock.Branch(resend.GetEventBranchDefect, value, failure)
+}
+
+// GetEventRetry asks Dex to retry the getEvent Step, after the delay when it is positive.
+func GetEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Event] {
+	return connectormock.Retry[resend.Event](failure, after)
+}
+
+// GetEventGetEventDefault is the manifest mock getEventDefault: Resend completed the event request.
+func GetEventGetEventDefault() connectormock.Case[resend.Event] {
+	value := connectormock.MustDecodeOutput[resend.Event](`{"id":"event-1","name":"order.paid","schema":{"total":"number"}}`)
+	return connectormock.Branch(resend.GetEventBranchFound, value, nil)
+}
+
+// GetEventDefault is the manifest default, getEventDefault, which New installs.
+func GetEventDefault() connectormock.Case[resend.Event] { return GetEventGetEventDefault() }
+
+// ListEventsListed selects the listed branch: Resend completed the event request.
+func ListEventsListed(value resend.EventPage, failure *sdkgo.Failure) connectormock.Case[resend.EventPage] {
+	return connectormock.Branch(resend.ListEventsBranchListed, value, failure)
+}
+
+// ListEventsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListEventsProviderRejected(value resend.EventPage, failure *sdkgo.Failure) connectormock.Case[resend.EventPage] {
+	return connectormock.Branch(resend.ListEventsBranchProviderRejected, value, failure)
+}
+
+// ListEventsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListEventsInvalidResponse(value resend.EventPage, failure *sdkgo.Failure) connectormock.Case[resend.EventPage] {
+	return connectormock.Branch(resend.ListEventsBranchInvalidResponse, value, failure)
+}
+
+// ListEventsDefect selects the defect branch: Local input or credentials are invalid.
+func ListEventsDefect(value resend.EventPage, failure *sdkgo.Failure) connectormock.Case[resend.EventPage] {
+	return connectormock.Branch(resend.ListEventsBranchDefect, value, failure)
+}
+
+// ListEventsRetry asks Dex to retry the listEvents Step, after the delay when it is positive.
+func ListEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EventPage] {
+	return connectormock.Retry[resend.EventPage](failure, after)
+}
+
+// ListEventsListEventsDefault is the manifest mock listEventsDefault: Resend completed the event request.
+func ListEventsListEventsDefault() connectormock.Case[resend.EventPage] {
+	value := connectormock.MustDecodeOutput[resend.EventPage](`{"data":[{"id":"event-1","name":"order.paid","schema":{"total":"number"}}],"has_more":false}`)
+	return connectormock.Branch(resend.ListEventsBranchListed, value, nil)
+}
+
+// ListEventsDefault is the manifest default, listEventsDefault, which New installs.
+func ListEventsDefault() connectormock.Case[resend.EventPage] { return ListEventsListEventsDefault() }
+
+// UpdateEventUpdated selects the updated branch: Resend completed the event request.
+func UpdateEventUpdated(value resend.EventReference, failure *sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Branch(resend.UpdateEventBranchUpdated, value, failure)
+}
+
+// UpdateEventNotFound selects the notFound branch: The event does not exist.
+func UpdateEventNotFound(value resend.EventReference, failure *sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Branch(resend.UpdateEventBranchNotFound, value, failure)
+}
+
+// UpdateEventProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateEventProviderRejected(value resend.EventReference, failure *sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Branch(resend.UpdateEventBranchProviderRejected, value, failure)
+}
+
+// UpdateEventInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateEventInvalidResponse(value resend.EventReference, failure *sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Branch(resend.UpdateEventBranchInvalidResponse, value, failure)
+}
+
+// UpdateEventDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateEventDefect(value resend.EventReference, failure *sdkgo.Failure) connectormock.Case[resend.EventReference] {
+	return connectormock.Branch(resend.UpdateEventBranchDefect, value, failure)
+}
+
+// UpdateEventRetry asks Dex to retry the updateEvent Step, after the delay when it is positive.
+func UpdateEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EventReference] {
+	return connectormock.Retry[resend.EventReference](failure, after)
+}
+
+// UpdateEventUpdateEventDefault is the manifest mock updateEventDefault: Resend completed the event request.
+func UpdateEventUpdateEventDefault() connectormock.Case[resend.EventReference] {
+	value := connectormock.MustDecodeOutput[resend.EventReference](`{"id":"event-1"}`)
+	return connectormock.Branch(resend.UpdateEventBranchUpdated, value, nil)
+}
+
+// UpdateEventDefault is the manifest default, updateEventDefault, which New installs.
+func UpdateEventDefault() connectormock.Case[resend.EventReference] {
+	return UpdateEventUpdateEventDefault()
+}
+
+// DeleteEventDeleted selects the deleted branch: Resend completed the event request.
+func DeleteEventDeleted(value resend.DeletedEvent, failure *sdkgo.Failure) connectormock.Case[resend.DeletedEvent] {
+	return connectormock.Branch(resend.DeleteEventBranchDeleted, value, failure)
+}
+
+// DeleteEventNotFound selects the notFound branch: The event does not exist.
+func DeleteEventNotFound(value resend.DeletedEvent, failure *sdkgo.Failure) connectormock.Case[resend.DeletedEvent] {
+	return connectormock.Branch(resend.DeleteEventBranchNotFound, value, failure)
+}
+
+// DeleteEventProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteEventProviderRejected(value resend.DeletedEvent, failure *sdkgo.Failure) connectormock.Case[resend.DeletedEvent] {
+	return connectormock.Branch(resend.DeleteEventBranchProviderRejected, value, failure)
+}
+
+// DeleteEventInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteEventInvalidResponse(value resend.DeletedEvent, failure *sdkgo.Failure) connectormock.Case[resend.DeletedEvent] {
+	return connectormock.Branch(resend.DeleteEventBranchInvalidResponse, value, failure)
+}
+
+// DeleteEventDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteEventDefect(value resend.DeletedEvent, failure *sdkgo.Failure) connectormock.Case[resend.DeletedEvent] {
+	return connectormock.Branch(resend.DeleteEventBranchDefect, value, failure)
+}
+
+// DeleteEventRetry asks Dex to retry the deleteEvent Step, after the delay when it is positive.
+func DeleteEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedEvent] {
+	return connectormock.Retry[resend.DeletedEvent](failure, after)
+}
+
+// DeleteEventDeleteEventDefault is the manifest mock deleteEventDefault: Resend completed the event request.
+func DeleteEventDeleteEventDefault() connectormock.Case[resend.DeletedEvent] {
+	value := connectormock.MustDecodeOutput[resend.DeletedEvent](`{"id":"event-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteEventBranchDeleted, value, nil)
+}
+
+// DeleteEventDefault is the manifest default, deleteEventDefault, which New installs.
+func DeleteEventDefault() connectormock.Case[resend.DeletedEvent] {
+	return DeleteEventDeleteEventDefault()
+}
+
+// SendEventSent selects the sent branch: Resend completed the event request.
+func SendEventSent(value resend.EventSendReference, failure *sdkgo.Failure) connectormock.Case[resend.EventSendReference] {
+	return connectormock.Branch(resend.SendEventBranchSent, value, failure)
+}
+
+// SendEventProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func SendEventProviderRejected(value resend.EventSendReference, failure *sdkgo.Failure) connectormock.Case[resend.EventSendReference] {
+	return connectormock.Branch(resend.SendEventBranchProviderRejected, value, failure)
+}
+
+// SendEventDefect selects the defect branch: Local input or credentials are invalid.
+func SendEventDefect(value resend.EventSendReference, failure *sdkgo.Failure) connectormock.Case[resend.EventSendReference] {
+	return connectormock.Branch(resend.SendEventBranchDefect, value, failure)
+}
+
+// SendEventUncertain returns an uncertain sendEvent outcome.
+func SendEventUncertain(value resend.EventSendReference, failure sdkgo.Failure) connectormock.Case[resend.EventSendReference] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendEventRetry asks Dex to retry the sendEvent Step, after the delay when it is positive.
+func SendEventRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.EventSendReference] {
+	return connectormock.Retry[resend.EventSendReference](failure, after)
+}
+
+// SendEventSendEventDefault is the manifest mock sendEventDefault: Resend completed the event request.
+func SendEventSendEventDefault() connectormock.Case[resend.EventSendReference] {
+	value := connectormock.MustDecodeOutput[resend.EventSendReference](`{"event":"order.paid"}`)
+	return connectormock.Branch(resend.SendEventBranchSent, value, nil)
+}
+
+// SendEventDefault is the manifest default, sendEventDefault, which New installs.
+func SendEventDefault() connectormock.Case[resend.EventSendReference] {
+	return SendEventSendEventDefault()
 }

@@ -1478,3 +1478,102 @@ spec:
     execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
     mocks:
     - {name: replayWebhookEventDefault, branch: replayed, default: true, description: Resend completed the webhook request., output: {id: event-1}}
+  - name: createEvent
+    goName: CreateEvent
+    inputType: CreateEventInput
+    outputType: EventReference
+    kind: mutation
+    description: Create a named automation event type with a flat payload schema.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend completed the event request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createEventDefault, branch: created, default: true, description: Resend completed the event request., output: {id: event-1}}
+  - name: getEvent
+    goName: GetEvent
+    inputType: GetEventInput
+    outputType: Event
+    kind: query
+    description: Retrieve one automation event type.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend completed the event request.}
+    - {id: notFound, goName: NotFound, description: The event does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getEventDefault, branch: found, default: true, description: Resend completed the event request., output: {id: event-1, name: order.paid, schema: {total: number}}}
+  - name: listEvents
+    goName: ListEvents
+    inputType: ListEventsInput
+    outputType: EventPage
+    kind: query
+    description: List automation event types.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend completed the event request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listEventsDefault, branch: listed, default: true, description: Resend completed the event request., output: {data: [{id: event-1, name: order.paid, schema: {total: number}}], has_more: false}}
+  - name: updateEvent
+    goName: UpdateEvent
+    inputType: UpdateEventInput
+    outputType: EventReference
+    kind: mutation
+    description: Replace or clear an event type's flat payload schema.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend completed the event request.}
+    - {id: notFound, goName: NotFound, description: The event does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateEventDefault, branch: updated, default: true, description: Resend completed the event request., output: {id: event-1}}
+  - name: deleteEvent
+    goName: DeleteEvent
+    inputType: DeleteEventInput
+    outputType: DeletedEvent
+    kind: mutation
+    description: Delete one automation event type.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend completed the event request.}
+    - {id: notFound, goName: NotFound, description: The event does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteEventDefault, branch: deleted, default: true, description: Resend completed the event request., output: {id: event-1, deleted: true}}
+  - name: sendEvent
+    goName: SendEvent
+    inputType: SendEventInput
+    outputType: EventSendReference
+    kind: mutation
+    description: Send one named event for a contact.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: sent, goName: Sent, description: Resend completed the event request.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+    - {id: uncertain, goName: Uncertain, description: Bounded sends ended without confirming the request., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: sendEventDefault, branch: sent, default: true, description: Resend completed the event request., output: {event: order.paid}}
