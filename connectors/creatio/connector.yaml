@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: creatio
   displayName: Creatio
-  description: Read one contact from a Creatio OData 4 instance.
+  description: Read and manage contacts in a Creatio OData 4 instance.
   company: Creatio
   categories: [crm-sales]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: creatio
   languages:
@@ -44,7 +44,7 @@ spec:
         goName: MaxResponseBytes
         type: integer
         default: 1048576
-        description: Maximum complete Creatio JSON response in bytes. Blank uses the displayed default; increase only for unusually large contact records.
+        description: Maximum complete Creatio JSON response in bytes. Blank uses the displayed default; increase only for unusually large contact pages.
   auth:
     refreshable: true
     type: apiKey
@@ -67,7 +67,7 @@ spec:
     guide:
       startURL: https://academy.creatio.com/guides/no-code-customization/8.2/base-integrations/oauth-2-0/set-up-the-oauth-2-0-authorization-instruction
       steps:
-        - In your Creatio instance, open System Designer > OAuth 2.0 integrated applications > New. Create a dedicated technical user and grant it read permission on Contact, then copy Client Id and Client secret into Dex Web. Client secret is secret; no user consent screen or redirect URI is needed.
+        - In your Creatio instance, open System Designer > OAuth 2.0 integrated applications > New. Create a dedicated technical user and grant it read, create, update, and delete permission on Contact, then copy Client Id and Client secret into Dex Web. Client secret is secret; no user consent screen or redirect URI is needed.
         - Open System Designer > System settings > Authorization server Url for OAuth 2.0 integrations (OAuth20IdentityServerUrl). Append /connect/token to that HTTPS URL and enter it as tokenEndpoint. Copy your signed-in Creatio application origin as baseUrl; neither URL is secret.
         - Leave access_token, timeout, and maxResponseBytes blank. Dex mints a token with client_credentials and renews it before expiry. Find a contact's UUID in your instance's Contacts page or OData response and pass it as contactId in Flow input.
     clientCredentials:
@@ -103,3 +103,83 @@ spec:
           default: true
           description: A sample contact is returned.
           output: {id: 90a68db5-cb3a-4f64-bb60-c0a934ee7600, name: Ada Lovelace, email: ada@example.com}
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: Read one bounded page of contact IDs, names, and emails.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Creatio returned a contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio rejected the contact list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Creatio returned invalid or oversized OData JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact is listed.
+          output: {contacts: [{id: 90a68db5-cb3a-4f64-bb60-c0a934ee7600, name: Ada Lovelace, email: ada@example.com}]}
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: ContactSummary
+      kind: mutation
+      description: Create one contact with a bounded send count.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Creatio created the contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: One sample contact is created.
+          output: {id: 90a68db5-cb3a-4f64-bb60-c0a934ee7600, name: Ada Lovelace, email: ada@example.com}
+    - name: updateContact
+      goName: UpdateContact
+      inputType: UpdateContactInput
+      outputType: ContactWriteOutput
+      kind: mutation
+      description: Patch selected Contact fields while preserving other fields.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Creatio updated the contact.}
+        - {id: notFound, goName: NotFound, description: No accessible contact has this UUID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio rejected the update., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: One sample contact is updated.
+          output: {id: 90a68db5-cb3a-4f64-bb60-c0a934ee7600}
+    - name: deleteContact
+      goName: DeleteContact
+      inputType: DeleteContactInput
+      outputType: ContactWriteOutput
+      kind: mutation
+      description: Permanently delete one Contact by UUID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Creatio deleted the contact.}
+        - {id: notFound, goName: NotFound, description: No accessible contact has this UUID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio rejected the deletion., optional: true}
+        - {id: defect, goName: Defect, description: Input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: One sample contact is deleted.
+          output: {id: 90a68db5-cb3a-4f64-bb60-c0a934ee7600}

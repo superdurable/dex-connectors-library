@@ -20,6 +20,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[creatio.ContactSummary](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}`)
 			return err
 		}},
+		{name: "listContacts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ContactsPage](`{"contacts":[{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}]}`)
+			return err
+		}},
+		{name: "createContact/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ContactSummary](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}`)
+			return err
+		}},
+		{name: "updateContact/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ContactWriteOutput](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600"}`)
+			return err
+		}},
+		{name: "deleteContact/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[creatio.ContactWriteOutput](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +48,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")
+	}
+	if mock.ListContacts().Definition().Operation.OperationID != "listContacts" {
+		t.Errorf("listContacts mock has another definition")
+	}
+	if mock.CreateContact().Definition().Operation.OperationID != "createContact" {
+		t.Errorf("createContact mock has another definition")
+	}
+	if mock.UpdateContact().Definition().Operation.OperationID != "updateContact" {
+		t.Errorf("updateContact mock has another definition")
+	}
+	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
+		t.Errorf("deleteContact mock has another definition")
 	}
 }

@@ -500,6 +500,1198 @@
       },
       "name": "getContact-emptyCollection",
       "operation": "getContact"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"Id\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"Name\":\"Ada Lovelace\",\"Email\":\"ada@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "email": "ada@example.com",
+              "id": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+              "name": "Ada Lovelace"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listContacts-success",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contacts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listContacts-providerRejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contacts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listContacts-invalidResponse",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contacts": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 201
+      },
+      "name": "listContacts-defect",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listContacts-rateLimit",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listContacts-serverUnavailable",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000804",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$orderby": [
+              "Id"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$skip": [
+              "25"
+            ],
+            "$top": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageNumber": 2,
+        "pageSize": 25
+      },
+      "name": "listContacts-transportFailure",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "exchanges": [
+        {
+          "body": "{\"Id\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"Name\":\"Ada Lovelace\",\"Email\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Contact",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+          "providerId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "ada@example.com",
+          "id": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "name": "Ada Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "createContact-success",
+      "operation": "createContact"
+    },
+    {
+      "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Contact",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "createContact-providerRejected",
+      "operation": "createContact"
+    },
+    {
+      "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "input": {
+        "email": "ada@example.com",
+        "name": ""
+      },
+      "name": "createContact-defect",
+      "operation": "createContact"
+    },
+    {
+      "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Contact",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "createContact-rateLimit",
+      "operation": "createContact"
+    },
+    {
+      "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Contact",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "createContact-serverUnavailable",
+      "operation": "createContact"
+    },
+    {
+      "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/0/odata/Contact",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "createContact-transportFailure",
+      "operation": "createContact"
+    },
+    {
+      "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Name eq 'Ada Lovelace' and Email eq 'ada@example.com'"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+      "input": {
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "createContact-uncertain",
+      "operation": "createContact",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "callId": "83ca2323-99f9-57e7-af61-667ae96aa0e3",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "updateContact-success",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "updateContact-notFound",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "updateContact-providerRejected",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "input": {
+        "contactId": "invalid",
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "updateContact-defect",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "updateContact-rateLimit",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "updateContact-serverUnavailable",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestBody": {
+            "Email": "ada@example.com",
+            "Name": "Ada Lovelace"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2f5d0391-3d4d-5c44-89d8-b57983ed7744",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+        "email": "ada@example.com",
+        "name": "Ada Lovelace"
+      },
+      "name": "updateContact-transportFailure",
+      "operation": "updateContact"
+    },
+    {
+      "callId": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "deleteContact-success",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "deleteContact-notFound",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "deleteContact-providerRejected",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "input": {
+        "contactId": "invalid"
+      },
+      "name": "deleteContact-defect",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "deleteContact-rateLimit",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "deleteContact-serverUnavailable",
+      "operation": "deleteContact"
+    },
+    {
+      "callId": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/0/odata/Contact(90a68db5-cb3a-4f64-bb60-c0a934ee7600)",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7ca6dbe0-1f51-56b5-ab67-2ab51c5450b7",
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "deleteContact-transportFailure",
+      "operation": "deleteContact"
     }
   ],
   "schemaVersion": 1

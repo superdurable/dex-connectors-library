@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted creatio connection. Script each operation through its accessor.
 type Mock struct {
-	connection creatio.Connection
-	getContact *connectormock.Query[creatio.GetContactInput, creatio.ContactSummary]
+	connection    creatio.Connection
+	getContact    *connectormock.Query[creatio.GetContactInput, creatio.ContactSummary]
+	listContacts  *connectormock.Query[creatio.ListContactsInput, creatio.ContactsPage]
+	createContact *connectormock.Mutation[creatio.CreateContactInput, creatio.ContactSummary]
+	updateContact *connectormock.Mutation[creatio.UpdateContactInput, creatio.ContactWriteOutput]
+	deleteContact *connectormock.Mutation[creatio.DeleteContactInput, creatio.ContactWriteOutput]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getContact: connectormock.NewQuery[creatio.GetContactInput, creatio.ContactSummary](t, creatio.GetContactDefinition),
+		getContact:    connectormock.NewQuery[creatio.GetContactInput, creatio.ContactSummary](t, creatio.GetContactDefinition),
+		listContacts:  connectormock.NewQuery[creatio.ListContactsInput, creatio.ContactsPage](t, creatio.ListContactsDefinition),
+		createContact: connectormock.NewMutation[creatio.CreateContactInput, creatio.ContactSummary](t, creatio.CreateContactDefinition),
+		updateContact: connectormock.NewMutation[creatio.UpdateContactInput, creatio.ContactWriteOutput](t, creatio.UpdateContactDefinition),
+		deleteContact: connectormock.NewMutation[creatio.DeleteContactInput, creatio.ContactWriteOutput](t, creatio.DeleteContactDefinition),
 	}
 	mock.getContact.Default(GetContactDefault())
+	mock.listContacts.Default(ListContactsDefault())
+	mock.createContact.Default(CreateContactDefault())
+	mock.updateContact.Default(UpdateContactDefault())
+	mock.deleteContact.Default(DeleteContactDefault())
 	connection, err := creatio.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "creatio", Name: connectionName})
 	if err != nil {
 		t.Fatalf("creatio mock connection: %v", err)
@@ -45,10 +57,42 @@ func (mock *Mock) GetContact() *connectormock.Query[creatio.GetContactInput, cre
 	return mock.getContact
 }
 
+// ListContacts returns the listContacts script.
+func (mock *Mock) ListContacts() *connectormock.Query[creatio.ListContactsInput, creatio.ContactsPage] {
+	return mock.listContacts
+}
+
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[creatio.CreateContactInput, creatio.ContactSummary] {
+	return mock.createContact
+}
+
+// UpdateContact returns the updateContact script.
+func (mock *Mock) UpdateContact() *connectormock.Mutation[creatio.UpdateContactInput, creatio.ContactWriteOutput] {
+	return mock.updateContact
+}
+
+// DeleteContact returns the deleteContact script.
+func (mock *Mock) DeleteContact() *connectormock.Mutation[creatio.DeleteContactInput, creatio.ContactWriteOutput] {
+	return mock.deleteContact
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetContact() sdkgo.Query[creatio.GetContactInput, creatio.ContactSummary] {
 	return operations.mock.getContact
+}
+func (operations mockOperations) ListContacts() sdkgo.Query[creatio.ListContactsInput, creatio.ContactsPage] {
+	return operations.mock.listContacts
+}
+func (operations mockOperations) CreateContact() sdkgo.Mutation[creatio.CreateContactInput, creatio.ContactSummary] {
+	return operations.mock.createContact
+}
+func (operations mockOperations) UpdateContact() sdkgo.Mutation[creatio.UpdateContactInput, creatio.ContactWriteOutput] {
+	return operations.mock.updateContact
+}
+func (operations mockOperations) DeleteContact() sdkgo.Mutation[creatio.DeleteContactInput, creatio.ContactWriteOutput] {
+	return operations.mock.deleteContact
 }
 
 // GetContactFound selects the found branch: Creatio returned the selected contact.
@@ -89,3 +133,147 @@ func GetContactFoundDefault() connectormock.Case[creatio.ContactSummary] {
 
 // GetContactDefault is the manifest default, foundDefault, which New installs.
 func GetContactDefault() connectormock.Case[creatio.ContactSummary] { return GetContactFoundDefault() }
+
+// ListContactsListed selects the listed branch: Creatio returned a contact page.
+func ListContactsListed(value creatio.ContactsPage, failure *sdkgo.Failure) connectormock.Case[creatio.ContactsPage] {
+	return connectormock.Branch(creatio.ListContactsBranchListed, value, failure)
+}
+
+// ListContactsProviderRejected selects the providerRejected branch: Creatio rejected the contact list.
+func ListContactsProviderRejected(value creatio.ContactsPage, failure *sdkgo.Failure) connectormock.Case[creatio.ContactsPage] {
+	return connectormock.Branch(creatio.ListContactsBranchProviderRejected, value, failure)
+}
+
+// ListContactsInvalidResponse selects the invalidResponse branch: Creatio returned invalid or oversized OData JSON.
+func ListContactsInvalidResponse(value creatio.ContactsPage, failure *sdkgo.Failure) connectormock.Case[creatio.ContactsPage] {
+	return connectormock.Branch(creatio.ListContactsBranchInvalidResponse, value, failure)
+}
+
+// ListContactsDefect selects the defect branch: Input or connection credentials are invalid.
+func ListContactsDefect(value creatio.ContactsPage, failure *sdkgo.Failure) connectormock.Case[creatio.ContactsPage] {
+	return connectormock.Branch(creatio.ListContactsBranchDefect, value, failure)
+}
+
+// ListContactsRetry asks Dex to retry the listContacts Step, after the delay when it is positive.
+func ListContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ContactsPage] {
+	return connectormock.Retry[creatio.ContactsPage](failure, after)
+}
+
+// ListContactsListedDefault is the manifest mock listedDefault: One sample contact is listed.
+func ListContactsListedDefault() connectormock.Case[creatio.ContactsPage] {
+	value := connectormock.MustDecodeOutput[creatio.ContactsPage](`{"contacts":[{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}]}`)
+	return connectormock.Branch(creatio.ListContactsBranchListed, value, nil)
+}
+
+// ListContactsDefault is the manifest default, listedDefault, which New installs.
+func ListContactsDefault() connectormock.Case[creatio.ContactsPage] {
+	return ListContactsListedDefault()
+}
+
+// CreateContactCreated selects the created branch: Creatio created the contact.
+func CreateContactCreated(value creatio.ContactSummary, failure *sdkgo.Failure) connectormock.Case[creatio.ContactSummary] {
+	return connectormock.Branch(creatio.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Creatio rejected creation.
+func CreateContactProviderRejected(value creatio.ContactSummary, failure *sdkgo.Failure) connectormock.Case[creatio.ContactSummary] {
+	return connectormock.Branch(creatio.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value creatio.ContactSummary, failure sdkgo.Failure) connectormock.Case[creatio.ContactSummary] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Input or connection credentials are invalid.
+func CreateContactDefect(value creatio.ContactSummary, failure *sdkgo.Failure) connectormock.Case[creatio.ContactSummary] {
+	return connectormock.Branch(creatio.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ContactSummary] {
+	return connectormock.Retry[creatio.ContactSummary](failure, after)
+}
+
+// CreateContactCreatedDefault is the manifest mock createdDefault: One sample contact is created.
+func CreateContactCreatedDefault() connectormock.Case[creatio.ContactSummary] {
+	value := connectormock.MustDecodeOutput[creatio.ContactSummary](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600","name":"Ada Lovelace","email":"ada@example.com"}`)
+	return connectormock.Branch(creatio.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createdDefault, which New installs.
+func CreateContactDefault() connectormock.Case[creatio.ContactSummary] {
+	return CreateContactCreatedDefault()
+}
+
+// UpdateContactUpdated selects the updated branch: Creatio updated the contact.
+func UpdateContactUpdated(value creatio.ContactWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Branch(creatio.UpdateContactBranchUpdated, value, failure)
+}
+
+// UpdateContactNotFound selects the notFound branch: No accessible contact has this UUID.
+func UpdateContactNotFound(value creatio.ContactWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Branch(creatio.UpdateContactBranchNotFound, value, failure)
+}
+
+// UpdateContactProviderRejected selects the providerRejected branch: Creatio rejected the update.
+func UpdateContactProviderRejected(value creatio.ContactWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Branch(creatio.UpdateContactBranchProviderRejected, value, failure)
+}
+
+// UpdateContactDefect selects the defect branch: Input or connection credentials are invalid.
+func UpdateContactDefect(value creatio.ContactWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Branch(creatio.UpdateContactBranchDefect, value, failure)
+}
+
+// UpdateContactRetry asks Dex to retry the updateContact Step, after the delay when it is positive.
+func UpdateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Retry[creatio.ContactWriteOutput](failure, after)
+}
+
+// UpdateContactUpdatedDefault is the manifest mock updatedDefault: One sample contact is updated.
+func UpdateContactUpdatedDefault() connectormock.Case[creatio.ContactWriteOutput] {
+	value := connectormock.MustDecodeOutput[creatio.ContactWriteOutput](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600"}`)
+	return connectormock.Branch(creatio.UpdateContactBranchUpdated, value, nil)
+}
+
+// UpdateContactDefault is the manifest default, updatedDefault, which New installs.
+func UpdateContactDefault() connectormock.Case[creatio.ContactWriteOutput] {
+	return UpdateContactUpdatedDefault()
+}
+
+// DeleteContactDeleted selects the deleted branch: Creatio deleted the contact.
+func DeleteContactDeleted(value creatio.ContactWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Branch(creatio.DeleteContactBranchDeleted, value, failure)
+}
+
+// DeleteContactNotFound selects the notFound branch: No accessible contact has this UUID.
+func DeleteContactNotFound(value creatio.ContactWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Branch(creatio.DeleteContactBranchNotFound, value, failure)
+}
+
+// DeleteContactProviderRejected selects the providerRejected branch: Creatio rejected the deletion.
+func DeleteContactProviderRejected(value creatio.ContactWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Branch(creatio.DeleteContactBranchProviderRejected, value, failure)
+}
+
+// DeleteContactDefect selects the defect branch: Input or connection credentials are invalid.
+func DeleteContactDefect(value creatio.ContactWriteOutput, failure *sdkgo.Failure) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Branch(creatio.DeleteContactBranchDefect, value, failure)
+}
+
+// DeleteContactRetry asks Dex to retry the deleteContact Step, after the delay when it is positive.
+func DeleteContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[creatio.ContactWriteOutput] {
+	return connectormock.Retry[creatio.ContactWriteOutput](failure, after)
+}
+
+// DeleteContactDeletedDefault is the manifest mock deletedDefault: One sample contact is deleted.
+func DeleteContactDeletedDefault() connectormock.Case[creatio.ContactWriteOutput] {
+	value := connectormock.MustDecodeOutput[creatio.ContactWriteOutput](`{"id":"90a68db5-cb3a-4f64-bb60-c0a934ee7600"}`)
+	return connectormock.Branch(creatio.DeleteContactBranchDeleted, value, nil)
+}
+
+// DeleteContactDefault is the manifest default, deletedDefault, which New installs.
+func DeleteContactDefault() connectormock.Case[creatio.ContactWriteOutput] {
+	return DeleteContactDeletedDefault()
+}
