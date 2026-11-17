@@ -8,7 +8,8 @@ import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, load
 import { AirtableClient } from '../src/client.js';
 import { GetRecordInputSchema, ListRecordsInputSchema, UpdateRecordsInputSchema, UpsertRecordsInputSchema, type UpdateRecordsInput, type UpsertRecordsInput } from '../src/generated/models.js';
 
-const scenarios = loadScenarios(new URL('../../../../conformance/connectors/airtable/scenarios.json', import.meta.url));
+const scenarios = loadScenarios(new URL('../../../../conformance/connectors/airtable/scenarios.json', import.meta.url))
+  .filter(scenario => ['listRecords', 'getRecord', 'upsertRecords', 'updateRecords'].includes(scenario.operation));
 const connection = { provider: 'airtable', name: 'airtable-refund-policies' };
 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAirtable));

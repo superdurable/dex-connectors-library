@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: airtable
   displayName: Airtable
-  description: List, read, idempotently upsert, and update typed Airtable records, and start Flows when records are created or changed, with base, table, and field pickers.
+  description: List, read, create, upsert, update, and delete typed Airtable records, and start Flows when records are created or changed, with base, table, and field pickers.
   company: Airtable
   categories: [productivity, databases-storage]
-  version: v0.24.0
+  version: v0.25.0
 spec:
   provider: airtable
   languages:
@@ -122,6 +122,59 @@ spec:
       configurationType: RecordChangedTriggerConfiguration
       description: Receive each record of one picked table that is created or changed after the last processed change, as reported by a picked Last modified time field.
   operations:
+    - name: createRecord
+      goName: CreateRecord
+      inputType: CreateRecordInput
+      outputType: Record
+      kind: mutation
+      description: Append one record to a table without requiring a merge field; a repeated unknown outcome can create a duplicate.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: Airtable created and returned the record.}
+        - {id: providerRejected, goName: ProviderRejected, description: Airtable conclusively rejected the create request., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connector configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: limited
+        maxSends: 3
+      mocks:
+        - name: createdReviewRecord
+          branch: created
+          description: Appending a review record returns its new ID.
+          default: true
+          output: {id: recReviewCreated1, createdTime: "2026-11-16T09:00:00Z", fields: {"Case ID": case-created}}
+        - name: createDenied
+          branch: providerRejected
+          description: Creating a record without data.records:write is denied.
+          failure: {kind: AUTHORIZATION, message: Airtable denied the record create.}
+    - name: deleteRecord
+      goName: DeleteRecord
+      inputType: DeleteRecordInput
+      outputType: DeletedRecord
+      kind: mutation
+      description: Delete one record by ID; an already absent record meets the requested final state.
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: Airtable deleted the record.}
+        - {id: alreadyAbsent, goName: AlreadyAbsent, description: The record was already absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Airtable conclusively rejected the delete request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Airtable returned an invalid delete response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connector configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        repeatOnUnknown: safe
+      mocks:
+        - name: deletedReviewRecord
+          branch: deleted
+          description: Deleting a review record confirms its ID.
+          default: true
+          output: {recordId: recReviewCreated1}
+        - name: missingReviewRecord
+          branch: alreadyAbsent
+          description: Deleting an already absent review record has no further effect.
+          failure: {kind: NOT_FOUND, message: Airtable found no such record.}
     - name: listRecords
       goName: ListRecords
       inputType: ListRecordsInput

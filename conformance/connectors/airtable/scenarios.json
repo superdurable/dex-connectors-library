@@ -2103,6 +2103,749 @@
       ],
       "name": "updateRecords-transport-after-send-converges",
       "operation": "updateRecords"
+    },
+    {
+      "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"recReviewCreated1\",\"createdTime\":\"2026-11-16T09:00:00Z\",\"fields\":{\"Case ID\":\"case-created\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "fields": {
+              "Case ID": "case-created"
+            },
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+          "providerId": "recReviewCreated1",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createdTime": "2026-11-16T09:00:00Z",
+          "fields": {
+            "Case ID": "case-created"
+          },
+          "id": "recReviewCreated1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": {
+          "Case ID": "case-created"
+        },
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "createRecord-success",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"INVALID_PERMISSIONS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "fields": {
+              "Case ID": "case-created"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createdTime": "0001-01-01T00:00:00Z",
+          "fields": {},
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": {
+          "Case ID": "case-created"
+        },
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "createRecord-provider-rejected",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdTime": "0001-01-01T00:00:00Z",
+          "fields": {},
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "input": {
+        "baseId": "bad-base",
+        "fields": {
+          "Case ID": "case-created"
+        },
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "createRecord-defect",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "fields": {
+              "Case ID": "case-created"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "LOCAL_DEFECT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "createdTime": "0001-01-01T00:00:00Z",
+          "fields": {},
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": {
+          "Case ID": "case-created"
+        },
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "createRecord-uncertain-response",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"RATE_LIMIT_REACHED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "fields": {
+              "Case ID": "case-created"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": {
+          "Case ID": "case-created"
+        },
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "createRecord-retry-429",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"SERVER_ERROR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "fields": {
+              "Case ID": "case-created"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": {
+          "Case ID": "case-created"
+        },
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "createRecord-retry-503",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"SERVER_ERROR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "fields": {
+              "Case ID": "case-created"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": {
+          "Case ID": "case-created"
+        },
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "createRecord-retry-500",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "fields": {
+              "Case ID": "case-created"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbfa74d5-a7fd-5d03-af55-0ecdb730f03a",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": {
+          "Case ID": "case-created"
+        },
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "createRecord-transport-before-send",
+      "operation": "createRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"recReviewCreated1\",\"deleted\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recReviewCreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "recordId": "recReviewCreated1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-success",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"NOT_FOUND\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recReviewCreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "alreadyAbsent",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "recordId": "recReviewCreated1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-already-absent",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"INVALID_PERMISSIONS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recReviewCreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "recordId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-provider-rejected",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"recReviewCreated1\",\"deleted\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recReviewCreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "recordId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-invalid-response",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "recordId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "bad-base",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-defect",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"RATE_LIMIT_REACHED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recReviewCreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-retry-429",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"SERVER_ERROR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recReviewCreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-retry-503",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"SERVER_ERROR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recReviewCreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-retry-500",
+      "operation": "deleteRecord"
+    },
+    {
+      "callId": "22da26c0-6418-585d-90b5-06536471a987",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recReviewCreated1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "22da26c0-6418-585d-90b5-06536471a987",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recReviewCreated1",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "deleteRecord-transport-before-send",
+      "operation": "deleteRecord"
     }
   ],
   "schemaVersion": 1

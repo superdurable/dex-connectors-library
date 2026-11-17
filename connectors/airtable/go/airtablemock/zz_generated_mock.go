@@ -18,6 +18,8 @@ import (
 // Mock is a scripted airtable connection. Script each operation through its accessor.
 type Mock struct {
 	connection    airtable.Connection
+	createRecord  *connectormock.Mutation[airtable.CreateRecordInput, airtable.Record]
+	deleteRecord  *connectormock.Mutation[airtable.DeleteRecordInput, airtable.DeletedRecord]
 	listRecords   *connectormock.Query[airtable.ListRecordsInput, airtable.RecordPage]
 	getRecord     *connectormock.Query[airtable.GetRecordInput, airtable.Record]
 	upsertRecords *connectormock.Mutation[airtable.UpsertRecordsInput, airtable.UpsertedRecords]
@@ -29,11 +31,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createRecord:  connectormock.NewMutation[airtable.CreateRecordInput, airtable.Record](t, airtable.CreateRecordDefinition),
+		deleteRecord:  connectormock.NewMutation[airtable.DeleteRecordInput, airtable.DeletedRecord](t, airtable.DeleteRecordDefinition),
 		listRecords:   connectormock.NewQuery[airtable.ListRecordsInput, airtable.RecordPage](t, airtable.ListRecordsDefinition),
 		getRecord:     connectormock.NewQuery[airtable.GetRecordInput, airtable.Record](t, airtable.GetRecordDefinition),
 		upsertRecords: connectormock.NewMutation[airtable.UpsertRecordsInput, airtable.UpsertedRecords](t, airtable.UpsertRecordsDefinition),
 		updateRecords: connectormock.NewMutation[airtable.UpdateRecordsInput, airtable.UpdatedRecords](t, airtable.UpdateRecordsDefinition),
 	}
+	mock.createRecord.Default(CreateRecordDefault())
+	mock.deleteRecord.Default(DeleteRecordDefault())
 	mock.listRecords.Default(ListRecordsDefault())
 	mock.getRecord.Default(GetRecordDefault())
 	mock.upsertRecords.Default(UpsertRecordsDefault())
@@ -48,6 +54,16 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() airtable.Connection { return mock.connection }
+
+// CreateRecord returns the createRecord script.
+func (mock *Mock) CreateRecord() *connectormock.Mutation[airtable.CreateRecordInput, airtable.Record] {
+	return mock.createRecord
+}
+
+// DeleteRecord returns the deleteRecord script.
+func (mock *Mock) DeleteRecord() *connectormock.Mutation[airtable.DeleteRecordInput, airtable.DeletedRecord] {
+	return mock.deleteRecord
+}
 
 // ListRecords returns the listRecords script.
 func (mock *Mock) ListRecords() *connectormock.Query[airtable.ListRecordsInput, airtable.RecordPage] {
@@ -71,6 +87,12 @@ func (mock *Mock) UpdateRecords() *connectormock.Mutation[airtable.UpdateRecords
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateRecord() sdkgo.Mutation[airtable.CreateRecordInput, airtable.Record] {
+	return operations.mock.createRecord
+}
+func (operations mockOperations) DeleteRecord() sdkgo.Mutation[airtable.DeleteRecordInput, airtable.DeletedRecord] {
+	return operations.mock.deleteRecord
+}
 func (operations mockOperations) ListRecords() sdkgo.Query[airtable.ListRecordsInput, airtable.RecordPage] {
 	return operations.mock.listRecords
 }
@@ -82,6 +104,90 @@ func (operations mockOperations) UpsertRecords() sdkgo.Mutation[airtable.UpsertR
 }
 func (operations mockOperations) UpdateRecords() sdkgo.Mutation[airtable.UpdateRecordsInput, airtable.UpdatedRecords] {
 	return operations.mock.updateRecords
+}
+
+// CreateRecordCreated selects the created branch: Airtable created and returned the record.
+func CreateRecordCreated(value airtable.Record, failure *sdkgo.Failure) connectormock.Case[airtable.Record] {
+	return connectormock.Branch(airtable.CreateRecordBranchCreated, value, failure)
+}
+
+// CreateRecordProviderRejected selects the providerRejected branch: Airtable conclusively rejected the create request.
+func CreateRecordProviderRejected(value airtable.Record, failure *sdkgo.Failure) connectormock.Case[airtable.Record] {
+	return connectormock.Branch(airtable.CreateRecordBranchProviderRejected, value, failure)
+}
+
+// CreateRecordDefect selects the defect branch: Local input or connector configuration is invalid.
+func CreateRecordDefect(value airtable.Record, failure *sdkgo.Failure) connectormock.Case[airtable.Record] {
+	return connectormock.Branch(airtable.CreateRecordBranchDefect, value, failure)
+}
+
+// CreateRecordRetry asks Dex to retry the createRecord Step, after the delay when it is positive.
+func CreateRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[airtable.Record] {
+	return connectormock.Retry[airtable.Record](failure, after)
+}
+
+// CreateRecordCreatedReviewRecord is the manifest mock createdReviewRecord: Appending a review record returns its new ID.
+func CreateRecordCreatedReviewRecord() connectormock.Case[airtable.Record] {
+	value := connectormock.MustDecodeOutput[airtable.Record](`{"id":"recReviewCreated1","createdTime":"2026-11-16T09:00:00Z","fields":{"Case ID":"case-created"}}`)
+	return connectormock.Branch(airtable.CreateRecordBranchCreated, value, nil)
+}
+
+// CreateRecordCreateDenied is the manifest mock createDenied: Creating a record without data.records:write is denied.
+func CreateRecordCreateDenied() connectormock.Case[airtable.Record] {
+	var value airtable.Record
+	return connectormock.Branch(airtable.CreateRecordBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "Airtable denied the record create."})
+}
+
+// CreateRecordDefault is the manifest default, createdReviewRecord, which New installs.
+func CreateRecordDefault() connectormock.Case[airtable.Record] {
+	return CreateRecordCreatedReviewRecord()
+}
+
+// DeleteRecordDeleted selects the deleted branch: Airtable deleted the record.
+func DeleteRecordDeleted(value airtable.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[airtable.DeletedRecord] {
+	return connectormock.Branch(airtable.DeleteRecordBranchDeleted, value, failure)
+}
+
+// DeleteRecordAlreadyAbsent selects the alreadyAbsent branch: The record was already absent.
+func DeleteRecordAlreadyAbsent(value airtable.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[airtable.DeletedRecord] {
+	return connectormock.Branch(airtable.DeleteRecordBranchAlreadyAbsent, value, failure)
+}
+
+// DeleteRecordProviderRejected selects the providerRejected branch: Airtable conclusively rejected the delete request.
+func DeleteRecordProviderRejected(value airtable.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[airtable.DeletedRecord] {
+	return connectormock.Branch(airtable.DeleteRecordBranchProviderRejected, value, failure)
+}
+
+// DeleteRecordInvalidResponse selects the invalidResponse branch: Airtable returned an invalid delete response.
+func DeleteRecordInvalidResponse(value airtable.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[airtable.DeletedRecord] {
+	return connectormock.Branch(airtable.DeleteRecordBranchInvalidResponse, value, failure)
+}
+
+// DeleteRecordDefect selects the defect branch: Local input or connector configuration is invalid.
+func DeleteRecordDefect(value airtable.DeletedRecord, failure *sdkgo.Failure) connectormock.Case[airtable.DeletedRecord] {
+	return connectormock.Branch(airtable.DeleteRecordBranchDefect, value, failure)
+}
+
+// DeleteRecordRetry asks Dex to retry the deleteRecord Step, after the delay when it is positive.
+func DeleteRecordRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[airtable.DeletedRecord] {
+	return connectormock.Retry[airtable.DeletedRecord](failure, after)
+}
+
+// DeleteRecordDeletedReviewRecord is the manifest mock deletedReviewRecord: Deleting a review record confirms its ID.
+func DeleteRecordDeletedReviewRecord() connectormock.Case[airtable.DeletedRecord] {
+	value := connectormock.MustDecodeOutput[airtable.DeletedRecord](`{"recordId":"recReviewCreated1"}`)
+	return connectormock.Branch(airtable.DeleteRecordBranchDeleted, value, nil)
+}
+
+// DeleteRecordMissingReviewRecord is the manifest mock missingReviewRecord: Deleting an already absent review record has no further effect.
+func DeleteRecordMissingReviewRecord() connectormock.Case[airtable.DeletedRecord] {
+	var value airtable.DeletedRecord
+	return connectormock.Branch(airtable.DeleteRecordBranchAlreadyAbsent, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "Airtable found no such record."})
+}
+
+// DeleteRecordDefault is the manifest default, deletedReviewRecord, which New installs.
+func DeleteRecordDefault() connectormock.Case[airtable.DeletedRecord] {
+	return DeleteRecordDeletedReviewRecord()
 }
 
 // ListRecordsListed selects the listed branch: Airtable returned one bounded page of matching records; the page may be empty.

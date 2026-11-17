@@ -4,9 +4,10 @@
 // Package airtable connects Dex applications to Airtable bases through the
 // Airtable Web API.
 //
-// A Client exposes four operations on one table: ListRecords and GetRecord
-// read records, UpsertRecords creates or updates records matched by merge
-// fields, and UpdateRecords sets fields on records by record ID. Cell values
+// A Client exposes six operations on one table: ListRecords and GetRecord
+// read records, CreateRecord appends, UpsertRecords creates or updates records
+// matched by merge fields, UpdateRecords sets fields, and DeleteRecord removes
+// a record by ID. Cell values
 // keep Airtable's typed JSON form, such as numbers, checkboxes, and arrays of
 // linked record IDs, through CellValue.
 //
@@ -200,6 +201,16 @@ func (client *Client) UpsertRecords() UpsertRecordsOperation {
 // UpdateRecords returns the record update Mutation bound to this client.
 func (client *Client) UpdateRecords() UpdateRecordsOperation {
 	return UpdateRecordsOperation{client: client}
+}
+
+// CreateRecord returns the append-only record creation Mutation.
+func (client *Client) CreateRecord() CreateRecordOperation {
+	return CreateRecordOperation{client: client}
+}
+
+// DeleteRecord returns the convergent record deletion Mutation.
+func (client *Client) DeleteRecord() DeleteRecordOperation {
+	return DeleteRecordOperation{client: client}
 }
 
 // exchange paces, authenticates, and sends one request, then classifies any non-2xx outcome.
