@@ -1134,6 +1134,7 @@ for material in ({"secret_access_key": "secret"}, {**required, "session_token": 
 
 func TestPythonCodegenCreatesRealNestedMockFacades(t *testing.T) {
 	for _, connectorDirectory := range []string{
+		"365api",
 		filepath.Join("amazon", "sqs"),
 		filepath.Join("google", "calendar"),
 		filepath.Join("microsoft", "outlook-calendar"),
