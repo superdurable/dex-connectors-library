@@ -4,11 +4,13 @@
 package ashby
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = "/api"
@@ -21,7 +23,24 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {APIKey: sdkgo.NewSecretString("sample-ashby-api-key")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+	fenceContext := singledispatchtest.NewContext("ashby-conformance", "create-candidate")
+	if len(scenario.PriorHeartbeat) != 0 {
+		var prior struct {
+			Attempt int32           `json:"attempt"`
+			Value   json.RawMessage `json:"value"`
+		}
+		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &prior))
+		for attempt := int32(0); attempt < prior.Attempt; attempt++ {
+			fenceContext.AdvanceAttempt()
+		}
+		require.NoError(t, fenceContext.SetPersistedCheckpoint(prior.Value))
+	}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			fenceContext.AdvanceAttempt()
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"createCandidate": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateCandidate(), reference, scenario.CallID),
 		"addCandidateTag": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.AddCandidateTag(), reference, scenario.CallID),
 		"removeCandidateTag": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.RemoveCandidateTag(), reference, scenario.CallID),
 		"getCandidate": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCandidate(), reference),

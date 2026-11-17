@@ -40,6 +40,7 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreateCandidate() sdkgo.Mutation[CreateCandidateInput, CandidateProfile]
 	AddCandidateTag() sdkgo.Mutation[CandidateTagInput, CandidateProfile]
 	RemoveCandidateTag() sdkgo.Mutation[CandidateTagInput, CandidateProfile]
 	ListCandidates() sdkgo.Query[ListCandidatesInput, CandidatePage]
@@ -49,6 +50,9 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreateCandidate() sdkgo.Mutation[CreateCandidateInput, CandidateProfile] {
+	return operations.client.CreateCandidate()
+}
 func (operations clientOperations) AddCandidateTag() sdkgo.Mutation[CandidateTagInput, CandidateProfile] {
 	return operations.client.AddCandidateTag()
 }
@@ -202,6 +206,82 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const CreateCandidateBranchCreated sdkgo.BranchID = "created"
+const CreateCandidateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateCandidateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateCandidateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateCandidateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createCandidate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateCandidateBranchCreated, Description: "Ashby returned the new candidate."},
+		{ID: CreateCandidateBranchProviderRejected, Description: "Ashby definitively rejected the create request.", Optional: true},
+		{ID: CreateCandidateBranchUncertain, Description: "Ashby may have created a candidate but the bounded send cap was reached.", Optional: true},
+		{ID: CreateCandidateBranchDefect, Description: "Candidate name or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateCandidateResult = sdkgo.MutationResult[CandidateProfile]
+
+type CreateCandidateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=ashby"`
+	operationID                       struct{}                                               `connector:"operationId=createCandidate"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateCandidateInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateCandidateResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateCandidateResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateCandidateResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateCandidateResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CandidateProfile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateCandidateStep[IN any](config CreateCandidateStepConfig[IN]) sdkgo.MutationStep[IN, CreateCandidateInput, CandidateProfile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateCandidateInput, CandidateProfile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateCandidate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateCandidateResult] {
+			branches := make([]sdkgo.BranchTarget[CreateCandidateResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateCandidateBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateCandidateBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateCandidateBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateCandidateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
 const AddCandidateTagBranchAdded sdkgo.BranchID = "added"
 const AddCandidateTagBranchProviderRejected sdkgo.BranchID = "providerRejected"
 const AddCandidateTagBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
@@ -220,6 +300,7 @@ var AddCandidateTagDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type AddCandidateTagResult = sdkgo.MutationResult[CandidateProfile]
@@ -291,6 +372,7 @@ var RemoveCandidateTagDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type RemoveCandidateTagResult = sdkgo.MutationResult[CandidateProfile]
@@ -435,6 +517,7 @@ var UpdateCandidateDefinition = sdkgo.MutationDefinition{
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
 		ExecuteDurability: dex.StepDurabilityAsync,
 	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
 }
 
 type UpdateCandidateResult = sdkgo.MutationResult[CandidateProfile]

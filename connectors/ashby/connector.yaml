@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Read candidate identities, replace names, and manage candidate tags in Ashby.
+  description: Create and read candidates, replace names, and manage candidate tags in Ashby.
   company: Ashby
   categories: [hr-recruiting]
   version: v0.2.0
@@ -55,6 +55,26 @@ spec:
         - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write permissions for these operations. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. Results omit email, phone, and resume data.
   operations:
+    - name: createCandidate
+      goName: CreateCandidate
+      inputType: CreateCandidateInput
+      outputType: CandidateProfile
+      kind: mutation
+      description: Create a candidate with a display name; a duplicate after an ambiguous send may be acceptable.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Ashby returned the new candidate.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby definitively rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Ashby may have created a candidate but the bounded send cap was reached., optional: true}
+        - {id: defect, goName: Defect, description: Candidate name or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample candidate is created.
+          output: {id: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, name: Example Candidate, createdAt: '2024-01-15T10:30:00.000Z', updatedAt: '2024-01-16T10:30:00.000Z'}
     - name: addCandidateTag
       goName: AddCandidateTag
       inputType: CandidateTagInput

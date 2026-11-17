@@ -6,6 +6,8 @@ The same Worker registers `AshbyCandidateRename`, which calls `updateCandidate` 
 
 The Worker also registers `AshbyCandidateTag`, which calls `addCandidateTag` with `{"candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","tagId":"38430ede-5bd2-41fc-b474-87591cb98cbc"}`. Replace both sample UUIDs with an existing candidate and tag from Ashby; use a disposable candidate for a live write. The API key needs **Candidates write**. Its optional branches are unwired.
 
+The Worker also registers `AshbyCandidateCreate`, which calls `createCandidate` with `{"name":"Example Candidate"}`. Supply a complete first and last name; blank is invalid. The API key needs **Candidates write**. An unknown provider outcome can produce a duplicate candidate within the three-send cap; an unconfirmed outcome at the cap selects the optional `uncertain` branch, which this example leaves unwired.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/ashby/go`, run:
@@ -14,6 +16,7 @@ From `connectors/ashby/go`, run:
 dexcli visualize ./examples/candidate-inspection/flow/workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-inspection-fdg
 dexcli visualize ./examples/candidate-inspection/flow/rename_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-rename-fdg
 dexcli visualize ./examples/candidate-inspection/flow/tag_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-tag-fdg
+dexcli visualize ./examples/candidate-inspection/flow/create_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-create-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

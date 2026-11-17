@@ -18,6 +18,7 @@ import (
 // Mock is a scripted ashby connection. Script each operation through its accessor.
 type Mock struct {
 	connection         ashby.Connection
+	createCandidate    *connectormock.Mutation[ashby.CreateCandidateInput, ashby.CandidateProfile]
 	addCandidateTag    *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
 	removeCandidateTag *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile]
 	listCandidates     *connectormock.Query[ashby.ListCandidatesInput, ashby.CandidatePage]
@@ -30,12 +31,14 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		createCandidate:    connectormock.NewMutation[ashby.CreateCandidateInput, ashby.CandidateProfile](t, ashby.CreateCandidateDefinition),
 		addCandidateTag:    connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.AddCandidateTagDefinition),
 		removeCandidateTag: connectormock.NewMutation[ashby.CandidateTagInput, ashby.CandidateProfile](t, ashby.RemoveCandidateTagDefinition),
 		listCandidates:     connectormock.NewQuery[ashby.ListCandidatesInput, ashby.CandidatePage](t, ashby.ListCandidatesDefinition),
 		updateCandidate:    connectormock.NewMutation[ashby.UpdateCandidateInput, ashby.CandidateProfile](t, ashby.UpdateCandidateDefinition),
 		getCandidate:       connectormock.NewQuery[ashby.GetCandidateInput, ashby.CandidateProfile](t, ashby.GetCandidateDefinition),
 	}
+	mock.createCandidate.Default(CreateCandidateDefault())
 	mock.addCandidateTag.Default(AddCandidateTagDefault())
 	mock.removeCandidateTag.Default(RemoveCandidateTagDefault())
 	mock.listCandidates.Default(ListCandidatesDefault())
@@ -51,6 +54,11 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() ashby.Connection { return mock.connection }
+
+// CreateCandidate returns the createCandidate script.
+func (mock *Mock) CreateCandidate() *connectormock.Mutation[ashby.CreateCandidateInput, ashby.CandidateProfile] {
+	return mock.createCandidate
+}
 
 // AddCandidateTag returns the addCandidateTag script.
 func (mock *Mock) AddCandidateTag() *connectormock.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile] {
@@ -79,6 +87,9 @@ func (mock *Mock) GetCandidate() *connectormock.Query[ashby.GetCandidateInput, a
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreateCandidate() sdkgo.Mutation[ashby.CreateCandidateInput, ashby.CandidateProfile] {
+	return operations.mock.createCandidate
+}
 func (operations mockOperations) AddCandidateTag() sdkgo.Mutation[ashby.CandidateTagInput, ashby.CandidateProfile] {
 	return operations.mock.addCandidateTag
 }
@@ -93,6 +104,42 @@ func (operations mockOperations) UpdateCandidate() sdkgo.Mutation[ashby.UpdateCa
 }
 func (operations mockOperations) GetCandidate() sdkgo.Query[ashby.GetCandidateInput, ashby.CandidateProfile] {
 	return operations.mock.getCandidate
+}
+
+// CreateCandidateCreated selects the created branch: Ashby returned the new candidate.
+func CreateCandidateCreated(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.CreateCandidateBranchCreated, value, failure)
+}
+
+// CreateCandidateProviderRejected selects the providerRejected branch: Ashby definitively rejected the create request.
+func CreateCandidateProviderRejected(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.CreateCandidateBranchProviderRejected, value, failure)
+}
+
+// CreateCandidateUncertain returns an uncertain createCandidate outcome.
+func CreateCandidateUncertain(value ashby.CandidateProfile, failure sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCandidateDefect selects the defect branch: Candidate name or credentials are invalid.
+func CreateCandidateDefect(value ashby.CandidateProfile, failure *sdkgo.Failure) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Branch(ashby.CreateCandidateBranchDefect, value, failure)
+}
+
+// CreateCandidateRetry asks Dex to retry the createCandidate Step, after the delay when it is positive.
+func CreateCandidateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ashby.CandidateProfile] {
+	return connectormock.Retry[ashby.CandidateProfile](failure, after)
+}
+
+// CreateCandidateCreatedDefault is the manifest mock createdDefault: A sample candidate is created.
+func CreateCandidateCreatedDefault() connectormock.Case[ashby.CandidateProfile] {
+	value := connectormock.MustDecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+	return connectormock.Branch(ashby.CreateCandidateBranchCreated, value, nil)
+}
+
+// CreateCandidateDefault is the manifest default, createdDefault, which New installs.
+func CreateCandidateDefault() connectormock.Case[ashby.CandidateProfile] {
+	return CreateCandidateCreatedDefault()
 }
 
 // AddCandidateTagAdded selects the added branch: Ashby returned the tagged candidate.

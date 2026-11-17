@@ -6,6 +6,7 @@ package ashby
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -97,6 +98,10 @@ func (client *Client) postCandidateInfo(call sdkgo.Call, candidateID string) pro
 }
 
 func (client *Client) postOperation(call sdkgo.Call, operationPath string, payload any) providerResponse {
+	return client.postOperationWithContext(call, call.Context, operationPath, payload)
+}
+
+func (client *Client) postOperationWithContext(call sdkgo.Call, requestContext context.Context, operationPath string, payload any) providerResponse {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil || credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
@@ -109,7 +114,7 @@ func (client *Client) postOperation(call sdkgo.Call, operationPath string, paylo
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}
-	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+operationPath, bytes.NewReader(requestBody))
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, client.baseURL+operationPath, bytes.NewReader(requestBody))
 	if err != nil {
 		return providerResponse{err: errRequest}
 	}

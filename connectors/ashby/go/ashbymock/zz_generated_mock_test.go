@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createCandidate/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
 		{name: "addCandidateTag/addedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ashby.CandidateProfile](`{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
 			return err
@@ -46,6 +50,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreateCandidate().Definition().Operation.OperationID != "createCandidate" {
+		t.Errorf("createCandidate mock has another definition")
+	}
 	if mock.AddCandidateTag().Definition().Operation.OperationID != "addCandidateTag" {
 		t.Errorf("addCandidateTag mock has another definition")
 	}
