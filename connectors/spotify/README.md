@@ -13,7 +13,7 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/spotify`.
 The Python and TypeScript packages offer `listPlaylistTracks` to Dex agent
 hosts as a read-only tool.
 
-The Go connector reads playlist metadata with `getPlaylist`, lists a user's playlists with `listUserPlaylists`, searches playlists with `searchPlaylists`, and lists one bounded page of tracks with `listPlaylistTracks`. `getPlaylist` returns the owner ID, name, description, Spotify link, visibility, and snapshot ID. The new operations are safe Queries and use the existing `playlist-read-private` grant. `listUserPlaylists` accepts a Spotify user ID or leaves it blank to list the current user's playlists. `searchPlaylists` accepts a nonempty text query and an optional two-letter market. Both return one page with `nextOffset` for continuation.
+The Go connector reads playlist metadata with `getPlaylist`, lists the authenticated user's playlists with `listUserPlaylists`, searches playlists with `searchPlaylists`, and lists one bounded page of tracks with `listPlaylistTracks`. `getPlaylist` returns the owner ID, name, description, Spotify link, visibility, and snapshot ID. The new operations are safe Queries and use the existing `playlist-read-private` grant. `searchPlaylists` accepts a nonempty text query and an optional two-letter market. Both list operations return one page with `nextOffset` for continuation. Spotify removed listing another user's playlists from development-mode apps in February 2026.
 
 The Spotify connector lists one bounded page of tracks from a playlist through
 Spotify's official [Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)

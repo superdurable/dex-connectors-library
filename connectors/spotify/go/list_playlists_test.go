@@ -29,7 +29,7 @@ func TestListUserPlaylistsAndSearchPlaylistsUseDocumentedEndpoints(t *testing.T)
 		require.Equal(t, "1", request.URL.Query().Get("limit"))
 		require.Equal(t, "0", request.URL.Query().Get("offset"))
 		switch request.URL.Path {
-		case "/v1/users/sample-user/playlists":
+		case "/v1/me/playlists":
 			writeJSON(t, response, playlistPage)
 		case "/v1/search":
 			require.Equal(t, "Example", request.URL.Query().Get("q"))
@@ -45,7 +45,7 @@ func TestListUserPlaylistsAndSearchPlaylistsUseDocumentedEndpoints(t *testing.T)
 	client := newClient(t, server.URL+"/v1", spotify.Config{})
 	listed, err := sdkgo.RunQuery(testsupport.NewDexContext("playlist-flow", "list-user-playlists"),
 		client.ListUserPlaylists(), spotifyConnection,
-		spotify.ListUserPlaylistsInput{UserID: "sample-user", Limit: 1})
+		spotify.ListUserPlaylistsInput{Limit: 1})
 	require.NoError(t, err)
 	require.Equal(t, spotify.ListUserPlaylistsBranchListed, listed.Branch)
 	require.Equal(t, 1, listed.Value.NextOffset)

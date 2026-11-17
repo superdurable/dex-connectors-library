@@ -266,10 +266,10 @@ var ListUserPlaylistsDefinition = sdkgo.QueryDefinition{
 		{ID: ListUserPlaylistsBranchListed, Description: "The playlist page was loaded."},
 		{ID: ListUserPlaylistsBranchAuthorizationRevoked, Description: "The Spotify OAuth grant is invalid or revoked.", Optional: true},
 		{ID: ListUserPlaylistsBranchAccessDenied, Description: "The user cannot read this playlist collection.", Optional: true},
-		{ID: ListUserPlaylistsBranchNotFound, Description: "Spotify could not find this user.", Optional: true},
+		{ID: ListUserPlaylistsBranchNotFound, Description: "Spotify could not find this playlist collection.", Optional: true},
 		{ID: ListUserPlaylistsBranchProviderRejected, Description: "Spotify conclusively rejected the request.", Optional: true},
 		{ID: ListUserPlaylistsBranchInvalidResponse, Description: "Spotify returned invalid or oversized playlist metadata.", Optional: true},
-		{ID: ListUserPlaylistsBranchDefect, Description: "The user ID, page settings, or local connection is invalid.", Optional: true},
+		{ID: ListUserPlaylistsBranchDefect, Description: "The page settings or local connection is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),

@@ -99,7 +99,7 @@ func ListUserPlaylistsAccessDenied(value spotify.PlaylistSummaryPage, failure *s
 	return connectormock.Branch(spotify.ListUserPlaylistsBranchAccessDenied, value, failure)
 }
 
-// ListUserPlaylistsNotFound selects the notFound branch: Spotify could not find this user.
+// ListUserPlaylistsNotFound selects the notFound branch: Spotify could not find this playlist collection.
 func ListUserPlaylistsNotFound(value spotify.PlaylistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.PlaylistSummaryPage] {
 	return connectormock.Branch(spotify.ListUserPlaylistsBranchNotFound, value, failure)
 }
@@ -114,7 +114,7 @@ func ListUserPlaylistsInvalidResponse(value spotify.PlaylistSummaryPage, failure
 	return connectormock.Branch(spotify.ListUserPlaylistsBranchInvalidResponse, value, failure)
 }
 
-// ListUserPlaylistsDefect selects the defect branch: The user ID, page settings, or local connection is invalid.
+// ListUserPlaylistsDefect selects the defect branch: The page settings or local connection is invalid.
 func ListUserPlaylistsDefect(value spotify.PlaylistSummaryPage, failure *sdkgo.Failure) connectormock.Case[spotify.PlaylistSummaryPage] {
 	return connectormock.Branch(spotify.ListUserPlaylistsBranchDefect, value, failure)
 }

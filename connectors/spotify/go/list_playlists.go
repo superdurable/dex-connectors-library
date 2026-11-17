@@ -16,10 +16,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-// ListUserPlaylistsInput selects one page from the current user's or another user's playlists.
+// ListUserPlaylistsInput selects one page from the authenticated user's playlists.
 type ListUserPlaylistsInput struct {
-	// UserID is a Spotify user ID; blank selects the authenticated user's playlists.
-	UserID string `json:"userId,omitempty"`
 	// Limit is 1 through 50; zero uses 20 playlists per page.
 	Limit int `json:"limit,omitempty"`
 	// Offset is the zero-based starting playlist position.
@@ -52,7 +50,7 @@ type PlaylistSummaryPage struct {
 	NextOffset int `json:"nextOffset,omitempty"`
 }
 
-// ListUserPlaylistsOperation lists playlists for one Spotify user.
+// ListUserPlaylistsOperation lists playlists for the authenticated Spotify user.
 type ListUserPlaylistsOperation struct{ client *Client }
 
 // ListUserPlaylists returns the Query bound to this client.
@@ -67,19 +65,12 @@ func (ListUserPlaylistsOperation) Definition() sdkgo.QueryDefinition {
 
 // Invoke reads one user playlist page without exposing provider response text in failures.
 func (operation ListUserPlaylistsOperation) Invoke(call sdkgo.Call, input ListUserPlaylistsInput) sdkgo.QueryAttempt[PlaylistSummaryPage] {
-	if input.UserID != "" && !validSpotifyUserID(input.UserID) {
-		return playlistPageFailure(ListUserPlaylistsBranchDefect, sdkgo.FailureValidation, "userId is not a valid Spotify user ID")
-	}
 	limit, offset, ok := validatePlaylistPage(input.Limit, input.Offset)
 	if !ok {
 		return playlistPageFailure(ListUserPlaylistsBranchDefect, sdkgo.FailureValidation, "limit or offset is outside Spotify's range")
 	}
-	path := "/me/playlists"
-	if input.UserID != "" {
-		path = "/users/" + url.PathEscape(input.UserID) + "/playlists"
-	}
 	query := url.Values{"limit": {strconv.Itoa(limit)}, "offset": {strconv.Itoa(offset)}}
-	return operation.client.readPlaylistPage(call, path, query, false, playlistPageBranches{
+	return operation.client.readPlaylistPage(call, "/me/playlists", query, false, playlistPageBranches{
 		listed: ListUserPlaylistsBranchListed, authorizationRevoked: ListUserPlaylistsBranchAuthorizationRevoked,
 		accessDenied: ListUserPlaylistsBranchAccessDenied, notFound: ListUserPlaylistsBranchNotFound,
 		providerRejected: ListUserPlaylistsBranchProviderRejected, invalidResponse: ListUserPlaylistsBranchInvalidResponse,
@@ -202,12 +193,6 @@ func validatePlaylistPage(limit, offset int) (int, int, bool) {
 		limit = 20
 	}
 	return limit, offset, limit >= 1 && limit <= 50 && offset >= 0 && offset <= 2147483647
-}
-
-func validSpotifyUserID(userID string) bool {
-	return len(userID) <= 128 && utf8.ValidString(userID) && strings.IndexFunc(userID, func(character rune) bool {
-		return unicode.IsControl(character) || character == '/' || character == '?' || character == '#'
-	}) == -1
 }
 
 func isASCIICountryCode(value string) bool {

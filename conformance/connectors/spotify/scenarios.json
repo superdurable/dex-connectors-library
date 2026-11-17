@@ -9,7 +9,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -58,8 +58,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 1,
-        "userId": "sample-user"
+        "offset": 1
       },
       "name": "listUserPlaylistsListed",
       "operation": "listUserPlaylists"
@@ -72,7 +71,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -111,8 +110,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 0,
-        "userId": "sample-user"
+        "offset": 0
       },
       "name": "listUserPlaylistsAuthorizationRevoked",
       "operation": "listUserPlaylists"
@@ -125,7 +123,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -164,8 +162,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 0,
-        "userId": "sample-user"
+        "offset": 0
       },
       "name": "listUserPlaylistsAccessDenied",
       "operation": "listUserPlaylists"
@@ -178,7 +175,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -217,8 +214,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 0,
-        "userId": "sample-user"
+        "offset": 0
       },
       "name": "listUserPlaylistsNotFound",
       "operation": "listUserPlaylists"
@@ -231,7 +227,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -270,8 +266,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 0,
-        "userId": "sample-user"
+        "offset": 0
       },
       "name": "listUserPlaylistsProviderRejected",
       "operation": "listUserPlaylists"
@@ -284,7 +279,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -323,8 +318,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 0,
-        "userId": "sample-user"
+        "offset": 0
       },
       "name": "listUserPlaylistsInvalidResponse",
       "operation": "listUserPlaylists"
@@ -337,7 +331,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -370,8 +364,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 0,
-        "userId": "sample-user"
+        "offset": 0
       },
       "name": "listUserPlaylistsRateLimit",
       "operation": "listUserPlaylists"
@@ -384,7 +377,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -417,8 +410,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 0,
-        "userId": "sample-user"
+        "offset": 0
       },
       "name": "listUserPlaylistsAvailability",
       "operation": "listUserPlaylists"
@@ -429,7 +421,7 @@
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v1/users/sample-user/playlists",
+          "path": "/v1/me/playlists",
           "query": {
             "limit": [
               "20"
@@ -462,8 +454,7 @@
       },
       "input": {
         "limit": 20,
-        "offset": 0,
-        "userId": "sample-user"
+        "offset": 0
       },
       "name": "listUserPlaylistsTransport",
       "operation": "listUserPlaylists"
@@ -486,7 +477,7 @@
         "uncertain": false
       },
       "input": {
-        "userId": "bad/user"
+        "limit": -1
       },
       "name": "listUserPlaylistsDefect",
       "operation": "listUserPlaylists"

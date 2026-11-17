@@ -99,7 +99,7 @@ spec:
       inputType: ListUserPlaylistsInput
       outputType: PlaylistSummaryPage
       kind: query
-      description: List one bounded page of playlists for a Spotify user, or the current user when userId is blank.
+      description: List one bounded page of playlists owned or followed by the authenticated Spotify user.
       idempotency: none
       authorization: required
       execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
@@ -107,10 +107,10 @@ spec:
         - {id: listed, goName: Listed, description: The playlist page was loaded.}
         - {id: authorizationRevoked, goName: AuthorizationRevoked, description: The Spotify OAuth grant is invalid or revoked., optional: true}
         - {id: accessDenied, goName: AccessDenied, description: The user cannot read this playlist collection., optional: true}
-        - {id: notFound, goName: NotFound, description: Spotify could not find this user., optional: true}
+        - {id: notFound, goName: NotFound, description: Spotify could not find this playlist collection., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the request., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned invalid or oversized playlist metadata., optional: true}
-        - {id: defect, goName: Defect, description: "The user ID, page settings, or local connection is invalid.", optional: true}
+        - {id: defect, goName: Defect, description: "The page settings or local connection is invalid.", optional: true}
       pagination: {inputField: offset, nextField: nextOffset}
       mocks:
         - name: sampleUserPlaylists
