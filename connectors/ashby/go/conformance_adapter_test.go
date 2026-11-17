@@ -40,6 +40,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			fenceContext.AdvanceAttempt()
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listInterviews": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListInterviews(), reference),
+		"getInterview": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetInterview(), reference),
+		"listInterviewSchedules": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListInterviewSchedules(), reference),
+		"getInterviewSchedule": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetInterviewSchedule(), reference),
+		"createInterviewSchedule": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateInterviewSchedule(), reference, scenario.CallID),
+		"cancelInterviewSchedule": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelInterviewSchedule(), reference, scenario.CallID),
+		"cancelInterviewEvent": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.CancelInterviewEvent(), reference, scenario.CallID),
 		"listApplications": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListApplications(), reference),
 		"getApplication": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetApplication(), reference),
 		"createApplication": newConformanceMutationInvocation(t, scenario.Input, fenceContext, client.CreateApplication(), reference, scenario.CallID),

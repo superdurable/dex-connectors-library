@@ -135,29 +135,29 @@ func executeJobQuery[OUT any](client *Client, call sdkgo.Call, operationName str
 		return jobQueryBranch[OUT](operationName, branches.defect, sdkgo.FailureAuthentication, "Ashby credentials are unavailable or invalid")
 	}
 	if errors.Is(response.err, errRequest) {
-		return sdkgo.NewQueryRetry[OUT](jobFailure(operationName, sdkgo.FailureTransport, "Ashby job request failed"), 0)
+		return sdkgo.NewQueryRetry[OUT](jobFailure(operationName, sdkgo.FailureTransport, "Ashby query request failed"), 0)
 	}
 	if response.status == http.StatusTooManyRequests {
-		return sdkgo.NewQueryRetry[OUT](jobFailure(operationName, sdkgo.FailureRateLimit, "Ashby rate limited the job request"), response.retryAfter)
+		return sdkgo.NewQueryRetry[OUT](jobFailure(operationName, sdkgo.FailureRateLimit, "Ashby rate limited the query"), response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewQueryRetry[OUT](jobFailure(operationName, sdkgo.FailureAvailability, "Ashby job endpoint is unavailable"), response.retryAfter)
+		return sdkgo.NewQueryRetry[OUT](jobFailure(operationName, sdkgo.FailureAvailability, "Ashby query endpoint is unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return jobQueryBranch[OUT](operationName, branches.rejected, sdkgo.FailureProviderRejection, "Ashby rejected the job request with HTTP "+strconv.Itoa(response.status))
+		return jobQueryBranch[OUT](operationName, branches.rejected, sdkgo.FailureProviderRejection, "Ashby rejected the query with HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return jobQueryBranch[OUT](operationName, branches.invalid, sdkgo.FailureResponseTooLarge, "Ashby job response exceeded the configured limit")
+		return jobQueryBranch[OUT](operationName, branches.invalid, sdkgo.FailureResponseTooLarge, "Ashby query response exceeded the configured limit")
 	}
 	if response.err != nil {
-		return sdkgo.NewQueryRetry[OUT](jobFailure(operationName, sdkgo.FailureTransport, "Ashby job response was interrupted"), 0)
+		return sdkgo.NewQueryRetry[OUT](jobFailure(operationName, sdkgo.FailureTransport, "Ashby query response was interrupted"), 0)
 	}
 	output, rejectionCode, err := decode(response.body)
 	if err != nil {
-		return jobQueryBranch[OUT](operationName, branches.invalid, sdkgo.FailureProtocol, "Ashby returned invalid job JSON")
+		return jobQueryBranch[OUT](operationName, branches.invalid, sdkgo.FailureProtocol, "Ashby returned invalid query JSON")
 	}
 	if rejectionCode != "" {
-		return jobQueryBranch[OUT](operationName, branches.rejected, sdkgo.FailureProviderRejection, "Ashby rejected the job request")
+		return jobQueryBranch[OUT](operationName, branches.rejected, sdkgo.FailureProviderRejection, "Ashby rejected the query")
 	}
 	return sdkgo.NewQueryBranch(branches.success, output, nil, sdkgo.Receipt{})
 }

@@ -179,7 +179,7 @@ func decodeApplicationPage(body []byte) (ApplicationPage, string, error) {
 	return page, "", nil
 }
 
-func executeApplicationWrite[OUT any](client *Client, call sdkgo.Call, operationName, path string, input any, successBranch, rejectionBranch, invalidBranch, defectBranch sdkgo.BranchID, decode func([]byte) (OUT, string, error), matches func(OUT) bool) sdkgo.MutationAttempt[OUT] {
+func executeAshbySafeWrite[OUT any](client *Client, call sdkgo.Call, operationName, path string, input any, successBranch, rejectionBranch, invalidBranch, defectBranch sdkgo.BranchID, decode func([]byte) (OUT, string, error), matches func(OUT) bool) sdkgo.MutationAttempt[OUT] {
 	response := client.postOperation(call, path, input)
 	failure := func(kind sdkgo.FailureKind, message string) sdkgo.Failure {
 		return jobFailure(operationName, kind, message)
@@ -193,29 +193,29 @@ func executeApplicationWrite[OUT any](client *Client, call sdkgo.Call, operation
 		return branch(defectBranch, sdkgo.FailureAuthentication, "Ashby credentials are unavailable")
 	}
 	if errors.Is(response.err, errRequest) {
-		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "Ashby application request failed"), 0)
+		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "Ashby write request failed"), 0)
 	}
 	if response.status == http.StatusTooManyRequests {
-		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureRateLimit, "Ashby rate limited the application request"), response.retryAfter)
+		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureRateLimit, "Ashby rate limited the write"), response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
-		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureAvailability, "Ashby application endpoint is unavailable"), response.retryAfter)
+		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureAvailability, "Ashby write endpoint is unavailable"), response.retryAfter)
 	}
 	if response.status != http.StatusOK {
-		return branch(rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected application request with HTTP "+strconv.Itoa(response.status))
+		return branch(rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected the write with HTTP "+strconv.Itoa(response.status))
 	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return branch(invalidBranch, sdkgo.FailureResponseTooLarge, "Ashby application response exceeded the configured limit")
+		return branch(invalidBranch, sdkgo.FailureResponseTooLarge, "Ashby write response exceeded the configured limit")
 	}
 	if response.err != nil {
-		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "Ashby application response was interrupted"), 0)
+		return sdkgo.NewMutationRetry[OUT](failure(sdkgo.FailureTransport, "Ashby write response was interrupted"), 0)
 	}
 	output, code, err := decode(response.body)
 	if err != nil || code == "" && !matches(output) {
-		return branch(invalidBranch, sdkgo.FailureProtocol, "Ashby returned an invalid application")
+		return branch(invalidBranch, sdkgo.FailureProtocol, "Ashby returned an invalid write result")
 	}
 	if code != "" {
-		return branch(rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected the application request")
+		return branch(rejectionBranch, sdkgo.FailureProviderRejection, "Ashby rejected the write")
 	}
 	return sdkgo.NewMutationBranch(successBranch, output, nil, sdkgo.Receipt{})
 }

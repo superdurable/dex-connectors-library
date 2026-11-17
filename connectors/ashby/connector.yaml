@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: ashby
   displayName: Ashby
-  description: Create and read candidates, jobs, and applications; manage tags, notes, job status, and application stages in Ashby.
+  description: Create and read candidates, jobs, applications, and interview schedules; manage tags, notes, stages, and schedule cancellation in Ashby.
   company: Ashby
   categories: [hr-recruiting]
   version: v0.2.0
@@ -48,14 +48,156 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Ashby API key from Admin > API Keys. Grant Candidates and Jobs read/write permissions for the operations used, plus Candidates delete for application deletion; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
+        description: Secret Ashby API key from Admin > API Keys. Grant Candidates, Jobs, and Interviews read/write permissions for the operations used, plus Candidates delete for application deletion; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
     guide:
       startURL: https://app.ashbyhq.com
       steps:
-        - In Ashby, open Admin > API Keys and create or select an API key with Candidates read/write and Jobs read/write permissions for the operations used; application.delete also requires Candidates delete. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
+        - In Ashby, open Admin > API Keys and create or select an API key with Candidates, Jobs, and Interviews read/write permissions for the operations used; application.delete also requires Candidates delete. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
         - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. For tag operations, find the non-secret tag UUID in Ashby Admin > Organization Settings > Candidate Tags or candidateTag.list (which additionally needs Hiring Process read permission) and pass it as tagId; blank is invalid. For project association, open Sourcing > Projects or use candidate.listProjects and pass the non-secret project UUID as projectId; blank is invalid. Candidate notes accept plaintext up to 8192 bytes; omit secrets. Results omit email, phone, resume, and note content.
         - For jobs, open Jobs > Jobs to find a job UUID, and select its team and location in the job settings for createJob; blank IDs are invalid. For applications, open a candidate in Candidates > Search and select an application for its UUID. Use the job and interview-plan stage IDs from that application's job setup. Omit archiveReasonId unless moving to an Archived stage; then select a reason in Ashby settings. Find sourceId under Admin > Organization Settings > Sources. All IDs are non-secret UUIDs; blank IDs are invalid. Application results omit candidate contact information and forms.
+        - For interviews, open the application's Interview Plan to find interviewId and interviewScheduleId, or use interview.list and interviewSchedule.list with Interviews read permission. Schedule creation requires an application UUID, one to ten RFC3339 event start and end times, and Ashby interviewer account emails; optional interviewId selects a definition, while blank uses Ashby's default. Cancel endpoints require non-secret schedule and event UUIDs; blank is invalid. Schedule results omit meeting links and interviewer identities.
   operations:
+    - name: listInterviews
+      goName: ListInterviews
+      inputType: ListInterviewsInput
+      outputType: InterviewPage
+      kind: query
+      description: List Ashby interview identities and types.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Ashby returned the interview result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the interview request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local interview input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample interview result is returned.
+          output: {interviews: [{id: ac0b2c21-70a2-4c02-93ac-41d932b43af5, title: Technical Interview, type: Interview, jobId: 1be42b8e-cafd-4beb-8121-f4981eb20f42}], moreDataAvailable: false}
+    - name: getInterview
+      goName: GetInterview
+      inputType: GetInterviewInput
+      outputType: InterviewSummary
+      kind: query
+      description: Read one Ashby interview identity.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Ashby returned the interview result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the interview request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local interview input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample interview result is returned.
+          output: {id: ac0b2c21-70a2-4c02-93ac-41d932b43af5, title: Technical Interview, type: Interview, jobId: 1be42b8e-cafd-4beb-8121-f4981eb20f42}
+    - name: listInterviewSchedules
+      goName: ListInterviewSchedules
+      inputType: ListInterviewSchedulesInput
+      outputType: InterviewSchedulePage
+      kind: query
+      description: List interview schedules for an application.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Ashby returned the interview result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the interview request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local interview input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A sample interview result is returned.
+          output: {schedules: [{id: 22d41b5a-f30f-4ec7-9a6c-e3b84be454ca, applicationId: 6d724bc1-2587-4915-adb3-d70c1dd940db, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Scheduled, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}], moreDataAvailable: false}
+    - name: getInterviewSchedule
+      goName: GetInterviewSchedule
+      inputType: GetInterviewScheduleInput
+      outputType: InterviewScheduleSummary
+      kind: query
+      description: Read one Ashby interview schedule.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Ashby returned the interview result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the interview request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local interview input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample interview result is returned.
+          output: {id: 22d41b5a-f30f-4ec7-9a6c-e3b84be454ca, applicationId: 6d724bc1-2587-4915-adb3-d70c1dd940db, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Scheduled, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+    - name: createInterviewSchedule
+      goName: CreateInterviewSchedule
+      inputType: CreateInterviewScheduleInput
+      outputType: InterviewScheduleSummary
+      kind: mutation
+      description: Create a scheduled interview event for an application.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Ashby returned the interview result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the interview request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The interview may have been scheduled but the send cap was reached., optional: true}
+        - {id: defect, goName: Defect, description: Local interview input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A sample interview result is returned.
+          output: {id: 22d41b5a-f30f-4ec7-9a6c-e3b84be454ca, applicationId: 6d724bc1-2587-4915-adb3-d70c1dd940db, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Scheduled, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+    - name: cancelInterviewSchedule
+      goName: CancelInterviewSchedule
+      inputType: CancelInterviewScheduleInput
+      outputType: InterviewScheduleSummary
+      kind: mutation
+      description: Cancel an existing interview schedule.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: cancelled, goName: Cancelled, description: Ashby returned the interview result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the interview request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local interview input or credentials are invalid., optional: true}
+      mocks:
+        - name: cancelledDefault
+          branch: cancelled
+          default: true
+          description: A sample interview result is returned.
+          output: {id: 22d41b5a-f30f-4ec7-9a6c-e3b84be454ca, applicationId: 6d724bc1-2587-4915-adb3-d70c1dd940db, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Cancelled, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+    - name: cancelInterviewEvent
+      goName: CancelInterviewEvent
+      inputType: CancelInterviewEventInput
+      outputType: InterviewScheduleSummary
+      kind: mutation
+      description: Cancel one event on an API-created interview schedule.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: cancelled, goName: Cancelled, description: Ashby returned the interview result.}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the interview request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local interview input or credentials are invalid., optional: true}
+      mocks:
+        - name: cancelledDefault
+          branch: cancelled
+          default: true
+          description: A sample interview result is returned.
+          output: {id: 22d41b5a-f30f-4ec7-9a6c-e3b84be454ca, applicationId: 6d724bc1-2587-4915-adb3-d70c1dd940db, interviewStageId: c153b3e9-8b97-4fc0-bad1-6c654122c1f8, status: Scheduled, createdAt: "2024-01-15T10:30:00.000Z", updatedAt: "2024-01-16T10:30:00.000Z"}
+
     - name: listApplications
       goName: ListApplications
       inputType: ListApplicationsInput

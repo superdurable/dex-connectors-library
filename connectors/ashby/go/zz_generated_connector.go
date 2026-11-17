@@ -40,6 +40,13 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListInterviews() sdkgo.Query[ListInterviewsInput, InterviewPage]
+	GetInterview() sdkgo.Query[GetInterviewInput, InterviewSummary]
+	ListInterviewSchedules() sdkgo.Query[ListInterviewSchedulesInput, InterviewSchedulePage]
+	GetInterviewSchedule() sdkgo.Query[GetInterviewScheduleInput, InterviewScheduleSummary]
+	CreateInterviewSchedule() sdkgo.Mutation[CreateInterviewScheduleInput, InterviewScheduleSummary]
+	CancelInterviewSchedule() sdkgo.Mutation[CancelInterviewScheduleInput, InterviewScheduleSummary]
+	CancelInterviewEvent() sdkgo.Mutation[CancelInterviewEventInput, InterviewScheduleSummary]
 	ListApplications() sdkgo.Query[ListApplicationsInput, ApplicationPage]
 	GetApplication() sdkgo.Query[GetApplicationInput, ApplicationSummary]
 	CreateApplication() sdkgo.Mutation[CreateApplicationInput, ApplicationSummary]
@@ -69,6 +76,27 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListInterviews() sdkgo.Query[ListInterviewsInput, InterviewPage] {
+	return operations.client.ListInterviews()
+}
+func (operations clientOperations) GetInterview() sdkgo.Query[GetInterviewInput, InterviewSummary] {
+	return operations.client.GetInterview()
+}
+func (operations clientOperations) ListInterviewSchedules() sdkgo.Query[ListInterviewSchedulesInput, InterviewSchedulePage] {
+	return operations.client.ListInterviewSchedules()
+}
+func (operations clientOperations) GetInterviewSchedule() sdkgo.Query[GetInterviewScheduleInput, InterviewScheduleSummary] {
+	return operations.client.GetInterviewSchedule()
+}
+func (operations clientOperations) CreateInterviewSchedule() sdkgo.Mutation[CreateInterviewScheduleInput, InterviewScheduleSummary] {
+	return operations.client.CreateInterviewSchedule()
+}
+func (operations clientOperations) CancelInterviewSchedule() sdkgo.Mutation[CancelInterviewScheduleInput, InterviewScheduleSummary] {
+	return operations.client.CancelInterviewSchedule()
+}
+func (operations clientOperations) CancelInterviewEvent() sdkgo.Mutation[CancelInterviewEventInput, InterviewScheduleSummary] {
+	return operations.client.CancelInterviewEvent()
+}
 func (operations clientOperations) ListApplications() sdkgo.Query[ListApplicationsInput, ApplicationPage] {
 	return operations.client.ListApplications()
 }
@@ -280,6 +308,510 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential api_key is required")
 	}
 	return nil
+}
+
+const ListInterviewsBranchListed sdkgo.BranchID = "listed"
+const ListInterviewsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInterviewsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInterviewsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInterviewsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInterviews"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInterviewsBranchListed, Description: "Ashby returned the interview result."},
+		{ID: ListInterviewsBranchProviderRejected, Description: "Ashby conclusively rejected the interview request.", Optional: true},
+		{ID: ListInterviewsBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: ListInterviewsBranchDefect, Description: "Local interview input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInterviewsResult = sdkgo.QueryResult[InterviewPage]
+
+type ListInterviewsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=ashby"`
+	operationID                    struct{}                                         `connector:"operationId=listInterviews"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInterviewsInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInterviewsResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListInterviewsResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInterviewsResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInterviewsResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InterviewPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewListInterviewsStep[IN any](config ListInterviewsStepConfig[IN]) sdkgo.QueryStep[IN, ListInterviewsInput, InterviewPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInterviewsInput, InterviewPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInterviews(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInterviewsResult] {
+			branches := make([]sdkgo.BranchTarget[ListInterviewsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInterviewsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInterviewsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInterviewsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInterviewsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInterviewBranchFound sdkgo.BranchID = "found"
+const GetInterviewBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInterviewBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInterviewBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInterviewDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInterview"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInterviewBranchFound, Description: "Ashby returned the interview result."},
+		{ID: GetInterviewBranchProviderRejected, Description: "Ashby conclusively rejected the interview request.", Optional: true},
+		{ID: GetInterviewBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: GetInterviewBranchDefect, Description: "Local interview input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInterviewResult = sdkgo.QueryResult[InterviewSummary]
+
+type GetInterviewStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                            `connector:"connectorId=ashby"`
+	operationID                    struct{}                                            `connector:"operationId=getInterview"`
+	StepType                       string                                              `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                     Connection                                          `connector:"connection"`
+	ConnectionName                 string                                              `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInterviewInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInterviewResult]                    `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetInterviewResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInterviewResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInterviewResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InterviewSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewGetInterviewStep[IN any](config GetInterviewStepConfig[IN]) sdkgo.QueryStep[IN, GetInterviewInput, InterviewSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInterviewInput, InterviewSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInterview(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInterviewResult] {
+			branches := make([]sdkgo.BranchTarget[GetInterviewResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInterviewBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInterviewBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInterviewBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInterviewBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListInterviewSchedulesBranchListed sdkgo.BranchID = "listed"
+const ListInterviewSchedulesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListInterviewSchedulesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListInterviewSchedulesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListInterviewSchedulesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listInterviewSchedules"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListInterviewSchedulesBranchListed, Description: "Ashby returned the interview result."},
+		{ID: ListInterviewSchedulesBranchProviderRejected, Description: "Ashby conclusively rejected the interview request.", Optional: true},
+		{ID: ListInterviewSchedulesBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: ListInterviewSchedulesBranchDefect, Description: "Local interview input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListInterviewSchedulesResult = sdkgo.QueryResult[InterviewSchedulePage]
+
+type ListInterviewSchedulesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                 `connector:"connectorId=ashby"`
+	operationID                    struct{}                                                 `connector:"operationId=listInterviewSchedules"`
+	StepType                       string                                                   `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                     Connection                                               `connector:"connection"`
+	ConnectionName                 string                                                   `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListInterviewSchedulesInput                     `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListInterviewSchedulesResult]               `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListInterviewSchedulesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListInterviewSchedulesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListInterviewSchedulesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InterviewSchedulePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+}
+
+func NewListInterviewSchedulesStep[IN any](config ListInterviewSchedulesStepConfig[IN]) sdkgo.QueryStep[IN, ListInterviewSchedulesInput, InterviewSchedulePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListInterviewSchedulesInput, InterviewSchedulePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListInterviewSchedules(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListInterviewSchedulesResult] {
+			branches := make([]sdkgo.BranchTarget[ListInterviewSchedulesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListInterviewSchedulesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListInterviewSchedulesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListInterviewSchedulesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListInterviewSchedulesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetInterviewScheduleBranchFound sdkgo.BranchID = "found"
+const GetInterviewScheduleBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetInterviewScheduleBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetInterviewScheduleBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetInterviewScheduleDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getInterviewSchedule"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetInterviewScheduleBranchFound, Description: "Ashby returned the interview result."},
+		{ID: GetInterviewScheduleBranchProviderRejected, Description: "Ashby conclusively rejected the interview request.", Optional: true},
+		{ID: GetInterviewScheduleBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: GetInterviewScheduleBranchDefect, Description: "Local interview input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetInterviewScheduleResult = sdkgo.QueryResult[InterviewScheduleSummary]
+
+type GetInterviewScheduleStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                    `connector:"connectorId=ashby"`
+	operationID                    struct{}                                                    `connector:"operationId=getInterviewSchedule"`
+	StepType                       string                                                      `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                       `connector:"annotations"`
+	Connection                     Connection                                                  `connector:"connection"`
+	ConnectionName                 string                                                      `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetInterviewScheduleInput                          `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetInterviewScheduleResult]                    `connector:"branch=found"`
+	ProviderRejected               sdkgo.Target[GetInterviewScheduleResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetInterviewScheduleResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetInterviewScheduleResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[InterviewScheduleSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                            `connector:"stepOptionsOverride"`
+}
+
+func NewGetInterviewScheduleStep[IN any](config GetInterviewScheduleStepConfig[IN]) sdkgo.QueryStep[IN, GetInterviewScheduleInput, InterviewScheduleSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetInterviewScheduleInput, InterviewScheduleSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetInterviewSchedule(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetInterviewScheduleResult] {
+			branches := make([]sdkgo.BranchTarget[GetInterviewScheduleResult], 0, 4)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetInterviewScheduleBranchFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetInterviewScheduleBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetInterviewScheduleBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetInterviewScheduleBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateInterviewScheduleBranchCreated sdkgo.BranchID = "created"
+const CreateInterviewScheduleBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateInterviewScheduleBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateInterviewScheduleBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateInterviewScheduleDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createInterviewSchedule"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateInterviewScheduleBranchCreated, Description: "Ashby returned the interview result."},
+		{ID: CreateInterviewScheduleBranchProviderRejected, Description: "Ashby conclusively rejected the interview request.", Optional: true},
+		{ID: CreateInterviewScheduleBranchUncertain, Description: "The interview may have been scheduled but the send cap was reached.", Optional: true},
+		{ID: CreateInterviewScheduleBranchDefect, Description: "Local interview input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateInterviewScheduleResult = sdkgo.MutationResult[InterviewScheduleSummary]
+
+type CreateInterviewScheduleStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=ashby"`
+	operationID                       struct{}                                                       `connector:"operationId=createInterviewSchedule"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateInterviewScheduleInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateInterviewScheduleResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateInterviewScheduleResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateInterviewScheduleResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateInterviewScheduleResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InterviewScheduleSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateInterviewScheduleStep[IN any](config CreateInterviewScheduleStepConfig[IN]) sdkgo.MutationStep[IN, CreateInterviewScheduleInput, InterviewScheduleSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateInterviewScheduleInput, InterviewScheduleSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateInterviewSchedule(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateInterviewScheduleResult] {
+			branches := make([]sdkgo.BranchTarget[CreateInterviewScheduleResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateInterviewScheduleBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateInterviewScheduleBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateInterviewScheduleBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateInterviewScheduleBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CancelInterviewScheduleBranchCancelled sdkgo.BranchID = "cancelled"
+const CancelInterviewScheduleBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelInterviewScheduleBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelInterviewScheduleBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelInterviewScheduleDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelInterviewSchedule"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelInterviewScheduleBranchCancelled, Description: "Ashby returned the interview result."},
+		{ID: CancelInterviewScheduleBranchProviderRejected, Description: "Ashby conclusively rejected the interview request.", Optional: true},
+		{ID: CancelInterviewScheduleBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: CancelInterviewScheduleBranchDefect, Description: "Local interview input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CancelInterviewScheduleResult = sdkgo.MutationResult[InterviewScheduleSummary]
+
+type CancelInterviewScheduleStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=ashby"`
+	operationID                       struct{}                                                       `connector:"operationId=cancelInterviewSchedule"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelInterviewScheduleInput                          `connector:"mapToOperationInput"`
+	Cancelled                         sdkgo.Target[CancelInterviewScheduleResult]                    `connector:"branch=cancelled"`
+	ProviderRejected                  sdkgo.Target[CancelInterviewScheduleResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelInterviewScheduleResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelInterviewScheduleResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InterviewScheduleSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+}
+
+func NewCancelInterviewScheduleStep[IN any](config CancelInterviewScheduleStepConfig[IN]) sdkgo.MutationStep[IN, CancelInterviewScheduleInput, InterviewScheduleSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelInterviewScheduleInput, InterviewScheduleSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelInterviewSchedule(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelInterviewScheduleResult] {
+			branches := make([]sdkgo.BranchTarget[CancelInterviewScheduleResult], 0, 4)
+			if config.Cancelled.HasStep() {
+				branches = append(branches, config.Cancelled.BranchTarget(CancelInterviewScheduleBranchCancelled))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelInterviewScheduleBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelInterviewScheduleBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelInterviewScheduleBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CancelInterviewEventBranchCancelled sdkgo.BranchID = "cancelled"
+const CancelInterviewEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CancelInterviewEventBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const CancelInterviewEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CancelInterviewEventDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "cancelInterviewEvent"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CancelInterviewEventBranchCancelled, Description: "Ashby returned the interview result."},
+		{ID: CancelInterviewEventBranchProviderRejected, Description: "Ashby conclusively rejected the interview request.", Optional: true},
+		{ID: CancelInterviewEventBranchInvalidResponse, Description: "Ashby returned malformed or oversized JSON.", Optional: true},
+		{ID: CancelInterviewEventBranchDefect, Description: "Local interview input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type CancelInterviewEventResult = sdkgo.MutationResult[InterviewScheduleSummary]
+
+type CancelInterviewEventStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                       `connector:"connectorId=ashby"`
+	operationID                       struct{}                                                       `connector:"operationId=cancelInterviewEvent"`
+	StepType                          string                                                         `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                          `connector:"annotations"`
+	Connection                        Connection                                                     `connector:"connection"`
+	ConnectionName                    string                                                         `connector:"connectionName"`
+	MapToOperationInput               func(IN) CancelInterviewEventInput                             `connector:"mapToOperationInput"`
+	Cancelled                         sdkgo.Target[CancelInterviewEventResult]                       `connector:"branch=cancelled"`
+	ProviderRejected                  sdkgo.Target[CancelInterviewEventResult]                       `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[CancelInterviewEventResult]                       `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[CancelInterviewEventResult]                       `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[InterviewScheduleSummary]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                               `connector:"stepOptionsOverride"`
+}
+
+func NewCancelInterviewEventStep[IN any](config CancelInterviewEventStepConfig[IN]) sdkgo.MutationStep[IN, CancelInterviewEventInput, InterviewScheduleSummary] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("ashby connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CancelInterviewEventInput, InterviewScheduleSummary]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CancelInterviewEvent(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CancelInterviewEventResult] {
+			branches := make([]sdkgo.BranchTarget[CancelInterviewEventResult], 0, 4)
+			if config.Cancelled.HasStep() {
+				branches = append(branches, config.Cancelled.BranchTarget(CancelInterviewEventBranchCancelled))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CancelInterviewEventBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(CancelInterviewEventBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CancelInterviewEventBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const ListApplicationsBranchListed sdkgo.BranchID = "listed"

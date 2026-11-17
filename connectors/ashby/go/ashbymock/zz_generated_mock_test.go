@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listInterviews/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewPage](`{"interviews":[{"id":"ac0b2c21-70a2-4c02-93ac-41d932b43af5","title":"Technical Interview","type":"Interview","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "getInterview/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewSummary](`{"id":"ac0b2c21-70a2-4c02-93ac-41d932b43af5","title":"Technical Interview","type":"Interview","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42"}`)
+			return err
+		}},
+		{name: "listInterviewSchedules/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewSchedulePage](`{"schedules":[{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Scheduled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
+			return err
+		}},
+		{name: "getInterviewSchedule/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewScheduleSummary](`{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Scheduled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "createInterviewSchedule/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewScheduleSummary](`{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Scheduled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "cancelInterviewSchedule/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewScheduleSummary](`{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Cancelled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
+		{name: "cancelInterviewEvent/cancelledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ashby.InterviewScheduleSummary](`{"id":"22d41b5a-f30f-4ec7-9a6c-e3b84be454ca","applicationId":"6d724bc1-2587-4915-adb3-d70c1dd940db","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Scheduled","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}`)
+			return err
+		}},
 		{name: "listApplications/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[ashby.ApplicationPage](`{"applications":[{"id":"6d724bc1-2587-4915-adb3-d70c1dd940db","candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42","interviewStageId":"c153b3e9-8b97-4fc0-bad1-6c654122c1f8","status":"Active","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}],"moreDataAvailable":false}`)
 			return err
@@ -126,6 +154,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListInterviews().Definition().Operation.OperationID != "listInterviews" {
+		t.Errorf("listInterviews mock has another definition")
+	}
+	if mock.GetInterview().Definition().Operation.OperationID != "getInterview" {
+		t.Errorf("getInterview mock has another definition")
+	}
+	if mock.ListInterviewSchedules().Definition().Operation.OperationID != "listInterviewSchedules" {
+		t.Errorf("listInterviewSchedules mock has another definition")
+	}
+	if mock.GetInterviewSchedule().Definition().Operation.OperationID != "getInterviewSchedule" {
+		t.Errorf("getInterviewSchedule mock has another definition")
+	}
+	if mock.CreateInterviewSchedule().Definition().Operation.OperationID != "createInterviewSchedule" {
+		t.Errorf("createInterviewSchedule mock has another definition")
+	}
+	if mock.CancelInterviewSchedule().Definition().Operation.OperationID != "cancelInterviewSchedule" {
+		t.Errorf("cancelInterviewSchedule mock has another definition")
+	}
+	if mock.CancelInterviewEvent().Definition().Operation.OperationID != "cancelInterviewEvent" {
+		t.Errorf("cancelInterviewEvent mock has another definition")
+	}
 	if mock.ListApplications().Definition().Operation.OperationID != "listApplications" {
 		t.Errorf("listApplications mock has another definition")
 	}

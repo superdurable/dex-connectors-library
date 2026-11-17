@@ -18,6 +18,8 @@ The Worker also registers `AshbyJobCreate`, which calls `createJob` with `{"titl
 
 The Worker also registers `AshbyApplicationCreate`, which calls `createApplication` with `{"candidateId":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","jobId":"1be42b8e-cafd-4beb-8121-f4981eb20f42"}`. Find both UUIDs under **Candidates > Search** and **Jobs > Jobs**. Use a disposable candidate and job for a live run. The API key needs **Candidates write**. An unknown response can create a duplicate application within the three-send cap; the optional `uncertain` branch is unwired.
 
+The Worker also registers `AshbyInterviewScheduleCreate`, which calls `createInterviewSchedule` with an application UUID and an event containing RFC3339 start/end times and an Ashby interviewer email. Find the application under **Candidates > Search**, choose a future time, and use a disposable application for a live run. The API key needs **Interviews write**. An unknown response can create duplicate calendar events within the three-send cap; the optional `uncertain` branch is unwired.
+
 ## Strict FDG 2.0 generation
 
 From `connectors/ashby/go`, run:
@@ -32,6 +34,7 @@ dexcli visualize ./examples/candidate-inspection/flow/project_workflow.go --sche
 dexcli visualize ./examples/candidate-inspection/flow/note_workflow.go --schema-version 2.0 --json --out /tmp/ashby-candidate-note-fdg
 dexcli visualize ./examples/candidate-inspection/flow/job_workflow.go --schema-version 2.0 --json --out /tmp/ashby-job-create-fdg
 dexcli visualize ./examples/candidate-inspection/flow/application_workflow.go --schema-version 2.0 --json --out /tmp/ashby-application-create-fdg
+dexcli visualize ./examples/candidate-inspection/flow/schedule_workflow.go --schema-version 2.0 --json --out /tmp/ashby-interview-schedule-create-fdg
 ```
 
 The command must report `valid: true`. An unpublished connector may report `connector_release_required` until release metadata exists.

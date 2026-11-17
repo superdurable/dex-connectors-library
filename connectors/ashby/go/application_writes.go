@@ -128,7 +128,7 @@ func (operation TransferApplicationOperation) Invoke(call sdkgo.Call, input Tran
 		TransferApplicationInput
 		StartAutomaticActivities bool `json:"startAutomaticActivities"`
 	}{TransferApplicationInput: input, StartAutomaticActivities: false}
-	return executeApplicationWrite(operation.client, call, "transferApplication", "/application.transfer", request, TransferApplicationBranchTransferred, TransferApplicationBranchProviderRejected, TransferApplicationBranchInvalidResponse, TransferApplicationBranchDefect, decodeApplicationSummary, func(output ApplicationSummary) bool {
+	return executeAshbySafeWrite(operation.client, call, "transferApplication", "/application.transfer", request, TransferApplicationBranchTransferred, TransferApplicationBranchProviderRejected, TransferApplicationBranchInvalidResponse, TransferApplicationBranchDefect, decodeApplicationSummary, func(output ApplicationSummary) bool {
 		return output.ID == input.ApplicationID && output.JobID == input.JobID && output.InterviewStageID == input.InterviewStageID
 	})
 }
@@ -164,7 +164,7 @@ func (operation SetApplicationSourceOperation) Invoke(call sdkgo.Call, input Set
 	if !validCandidateID(input.ApplicationID) || !validCandidateID(input.SourceID) {
 		return applicationSafeBranch[ApplicationSummary]("setApplicationSource", SetApplicationSourceBranchDefect, sdkgo.FailureValidation, "application or source ID is invalid")
 	}
-	return executeApplicationWrite(operation.client, call, "setApplicationSource", "/application.changeSource", input, SetApplicationSourceBranchSet, SetApplicationSourceBranchProviderRejected, SetApplicationSourceBranchInvalidResponse, SetApplicationSourceBranchDefect, decodeApplicationSummary, func(output ApplicationSummary) bool { return output.ID == input.ApplicationID })
+	return executeAshbySafeWrite(operation.client, call, "setApplicationSource", "/application.changeSource", input, SetApplicationSourceBranchSet, SetApplicationSourceBranchProviderRejected, SetApplicationSourceBranchInvalidResponse, SetApplicationSourceBranchDefect, decodeApplicationSummary, func(output ApplicationSummary) bool { return output.ID == input.ApplicationID })
 }
 
 // DeleteApplicationInput identifies an application to remove.
@@ -202,7 +202,7 @@ func (operation DeleteApplicationOperation) Invoke(call sdkgo.Call, input Delete
 	if !validCandidateID(input.ApplicationID) {
 		return applicationSafeBranch[DeletedApplication]("deleteApplication", DeleteApplicationBranchDefect, sdkgo.FailureValidation, "application ID is invalid")
 	}
-	return executeApplicationWrite(operation.client, call, "deleteApplication", "/application.delete", input, DeleteApplicationBranchDeleted, DeleteApplicationBranchProviderRejected, DeleteApplicationBranchInvalidResponse, DeleteApplicationBranchDefect, decodeDeletedApplication, func(output DeletedApplication) bool { return output.ApplicationID == input.ApplicationID })
+	return executeAshbySafeWrite(operation.client, call, "deleteApplication", "/application.delete", input, DeleteApplicationBranchDeleted, DeleteApplicationBranchProviderRejected, DeleteApplicationBranchInvalidResponse, DeleteApplicationBranchDefect, decodeDeletedApplication, func(output DeletedApplication) bool { return output.ApplicationID == input.ApplicationID })
 }
 
 func decodeDeletedApplication(body []byte) (DeletedApplication, string, error) {
