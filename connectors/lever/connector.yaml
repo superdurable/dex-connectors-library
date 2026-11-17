@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: lever
   displayName: Lever
-  description: Read selected Lever opportunity fields from the Data API.
+  description: Read and manage Lever opportunities through the Data API.
   company: Lever
   categories: [hr-recruiting]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: lever
   languages:
@@ -52,9 +52,29 @@ spec:
     guide:
       startURL: https://hire.lever.co
       steps:
-        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, and copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
+        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities and write access if using Go mutations, then copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity UID in Lever or the list opportunities API and pass it as opportunityId; blank is invalid. Confidential opportunities require corresponding account access.
   operations:
+    - name: listOpportunities
+      goName: ListOpportunities
+      inputType: ListOpportunitiesInput
+      outputType: OpportunitiesPage
+      kind: query
+      description: List one page of opportunities with optional email and stage filters.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Lever returned the opportunity page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One opportunity is returned.
+          output: {opportunities: [{id: 250d8f03-738a-4bba-a671-8a3d73477145, name: Sample Candidate, stage: 00922a60-7c15-422b-b086-f62000824fd7}], nextOffset: ''}
     - name: getOpportunity
       goName: GetOpportunity
       inputType: GetOpportunityInput
@@ -76,3 +96,70 @@ spec:
           default: true
           description: One sample opportunity is returned.
           output: {id: 250d8f03-738a-4bba-a671-8a3d73477145, name: Sample Candidate, stage: 00922a60-7c15-422b-b086-f62000824fd7}
+    - name: updateOpportunityStage
+      goName: UpdateOpportunityStage
+      inputType: UpdateOpportunityStageInput
+      outputType: OpportunityStage
+      kind: mutation
+      description: Replace an opportunity's current stage with a selected stage UID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The opportunity now holds the requested stage.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the stage update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized read-back JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: The opportunity was advanced to the requested stage.
+          output: {id: 250d8f03-738a-4bba-a671-8a3d73477145, name: Sample Candidate, stage: 00922a60-7c15-422b-b086-f62000824fd7}
+    - name: setOpportunityArchiveState
+      goName: SetOpportunityArchiveState
+      inputType: SetOpportunityArchiveStateInput
+      outputType: OpportunityArchiveState
+      kind: mutation
+      description: Archive an opportunity with a reason UID or unarchive it when the reason is blank.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: The opportunity now holds the requested archive state.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the archive change., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized read-back JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: archivedDefault
+          branch: updated
+          default: true
+          description: The opportunity is archived for the supplied reason.
+          output: {opportunityId: 250d8f03-738a-4bba-a671-8a3d73477145, archived: true, reasonId: 63dd55b2-a99f-4e7b-985f-22c7bf80ab42}
+    - name: createOpportunity
+      goName: CreateOpportunity
+      inputType: CreateOpportunityInput
+      outputType: CreatedOpportunity
+      kind: mutation
+      description: Create one candidate opportunity using a name and email address.
+      idempotency: required
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+        repeatOnUnknown: limited
+        maxSends: 3
+      branches:
+        - {id: created, goName: Created, description: Lever confirmed the new opportunity ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the create request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Lever may have created an opportunity but no ID was confirmed at the send cap., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, credentials, or dispatch checkpoint are invalid.", optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Lever created a candidate opportunity.
+          output: {id: 250d8f03-738a-4bba-a671-8a3d73477145}

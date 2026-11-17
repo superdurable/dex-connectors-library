@@ -58,4 +58,5 @@ func TestOpportunityInspectionUsesDefaultMockWithRealDex(t *testing.T) {
 	require.Equal(t, "Sample Candidate", output.Name)
 	require.Equal(t, "00922a60-7c15-422b-b086-f62000824fd7", output.Stage)
 	require.Len(t, mock.GetOpportunity().Calls(), 1)
+	require.Len(t, mock.ListOpportunities().Calls(), 1)
 }

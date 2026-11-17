@@ -40,13 +40,29 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListOpportunities() sdkgo.Query[ListOpportunitiesInput, OpportunitiesPage]
 	GetOpportunity() sdkgo.Query[GetOpportunityInput, OpportunityStage]
+	UpdateOpportunityStage() sdkgo.Mutation[UpdateOpportunityStageInput, OpportunityStage]
+	SetOpportunityArchiveState() sdkgo.Mutation[SetOpportunityArchiveStateInput, OpportunityArchiveState]
+	CreateOpportunity() sdkgo.Mutation[CreateOpportunityInput, CreatedOpportunity]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListOpportunities() sdkgo.Query[ListOpportunitiesInput, OpportunitiesPage] {
+	return operations.client.ListOpportunities()
+}
 func (operations clientOperations) GetOpportunity() sdkgo.Query[GetOpportunityInput, OpportunityStage] {
 	return operations.client.GetOpportunity()
+}
+func (operations clientOperations) UpdateOpportunityStage() sdkgo.Mutation[UpdateOpportunityStageInput, OpportunityStage] {
+	return operations.client.UpdateOpportunityStage()
+}
+func (operations clientOperations) SetOpportunityArchiveState() sdkgo.Mutation[SetOpportunityArchiveStateInput, OpportunityArchiveState] {
+	return operations.client.SetOpportunityArchiveState()
+}
+func (operations clientOperations) CreateOpportunity() sdkgo.Mutation[CreateOpportunityInput, CreatedOpportunity] {
+	return operations.client.CreateOpportunity()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -186,6 +202,77 @@ func (credentials Credentials) Validate() error {
 	return nil
 }
 
+const ListOpportunitiesBranchListed sdkgo.BranchID = "listed"
+const ListOpportunitiesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListOpportunitiesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListOpportunitiesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListOpportunitiesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listOpportunities"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListOpportunitiesBranchListed, Description: "Lever returned the opportunity page."},
+		{ID: ListOpportunitiesBranchProviderRejected, Description: "Lever conclusively rejected the lookup.", Optional: true},
+		{ID: ListOpportunitiesBranchInvalidResponse, Description: "Lever returned malformed or oversized JSON.", Optional: true},
+		{ID: ListOpportunitiesBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListOpportunitiesResult = sdkgo.QueryResult[OpportunitiesPage]
+
+type ListOpportunitiesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=lever"`
+	operationID                    struct{}                                             `connector:"operationId=listOpportunities"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListOpportunitiesInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListOpportunitiesResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListOpportunitiesResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListOpportunitiesResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListOpportunitiesResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[OpportunitiesPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListOpportunitiesStep[IN any](config ListOpportunitiesStepConfig[IN]) sdkgo.QueryStep[IN, ListOpportunitiesInput, OpportunitiesPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListOpportunitiesInput, OpportunitiesPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListOpportunities(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListOpportunitiesResult] {
+			branches := make([]sdkgo.BranchTarget[ListOpportunitiesResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListOpportunitiesBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListOpportunitiesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListOpportunitiesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListOpportunitiesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
 const GetOpportunityBranchFound sdkgo.BranchID = "found"
 const GetOpportunityBranchNotFound sdkgo.BranchID = "notFound"
 const GetOpportunityBranchProviderRejected sdkgo.BranchID = "providerRejected"
@@ -260,5 +347,237 @@ func NewGetOpportunityStep[IN any](config GetOpportunityStepConfig[IN]) sdkgo.Qu
 		}(),
 		ResultAttribute:     config.ResultAttribute,
 		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateOpportunityStageBranchUpdated sdkgo.BranchID = "updated"
+const UpdateOpportunityStageBranchNotFound sdkgo.BranchID = "notFound"
+const UpdateOpportunityStageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateOpportunityStageBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UpdateOpportunityStageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateOpportunityStageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateOpportunityStage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateOpportunityStageBranchUpdated, Description: "The opportunity now holds the requested stage."},
+		{ID: UpdateOpportunityStageBranchNotFound, Description: "Lever did not expose the opportunity.", Optional: true},
+		{ID: UpdateOpportunityStageBranchProviderRejected, Description: "Lever conclusively rejected the stage update.", Optional: true},
+		{ID: UpdateOpportunityStageBranchInvalidResponse, Description: "Lever returned malformed or oversized read-back JSON.", Optional: true},
+		{ID: UpdateOpportunityStageBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateOpportunityStageResult = sdkgo.MutationResult[OpportunityStage]
+
+type UpdateOpportunityStageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                               `connector:"connectorId=lever"`
+	operationID                       struct{}                                               `connector:"operationId=updateOpportunityStage"`
+	StepType                          string                                                 `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                  `connector:"annotations"`
+	Connection                        Connection                                             `connector:"connection"`
+	ConnectionName                    string                                                 `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateOpportunityStageInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateOpportunityStageResult]             `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[UpdateOpportunityStageResult]             `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[UpdateOpportunityStageResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UpdateOpportunityStageResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UpdateOpportunityStageResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[OpportunityStage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                       `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateOpportunityStageStep[IN any](config UpdateOpportunityStageStepConfig[IN]) sdkgo.MutationStep[IN, UpdateOpportunityStageInput, OpportunityStage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateOpportunityStageInput, OpportunityStage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateOpportunityStage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateOpportunityStageResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateOpportunityStageResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateOpportunityStageBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(UpdateOpportunityStageBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateOpportunityStageBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UpdateOpportunityStageBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateOpportunityStageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SetOpportunityArchiveStateBranchUpdated sdkgo.BranchID = "updated"
+const SetOpportunityArchiveStateBranchNotFound sdkgo.BranchID = "notFound"
+const SetOpportunityArchiveStateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SetOpportunityArchiveStateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const SetOpportunityArchiveStateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SetOpportunityArchiveStateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "setOpportunityArchiveState"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SetOpportunityArchiveStateBranchUpdated, Description: "The opportunity now holds the requested archive state."},
+		{ID: SetOpportunityArchiveStateBranchNotFound, Description: "Lever did not expose the opportunity.", Optional: true},
+		{ID: SetOpportunityArchiveStateBranchProviderRejected, Description: "Lever conclusively rejected the archive change.", Optional: true},
+		{ID: SetOpportunityArchiveStateBranchInvalidResponse, Description: "Lever returned malformed or oversized read-back JSON.", Optional: true},
+		{ID: SetOpportunityArchiveStateBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type SetOpportunityArchiveStateResult = sdkgo.MutationResult[OpportunityArchiveState]
+
+type SetOpportunityArchiveStateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                      `connector:"connectorId=lever"`
+	operationID                       struct{}                                                      `connector:"operationId=setOpportunityArchiveState"`
+	StepType                          string                                                        `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                         `connector:"annotations"`
+	Connection                        Connection                                                    `connector:"connection"`
+	ConnectionName                    string                                                        `connector:"connectionName"`
+	MapToOperationInput               func(IN) SetOpportunityArchiveStateInput                      `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[SetOpportunityArchiveStateResult]                `connector:"branch=updated"`
+	NotFound                          sdkgo.Target[SetOpportunityArchiveStateResult]                `connector:"branch=notFound,optional"`
+	ProviderRejected                  sdkgo.Target[SetOpportunityArchiveStateResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[SetOpportunityArchiveStateResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[SetOpportunityArchiveStateResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[OpportunityArchiveState]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewSetOpportunityArchiveStateStep[IN any](config SetOpportunityArchiveStateStepConfig[IN]) sdkgo.MutationStep[IN, SetOpportunityArchiveStateInput, OpportunityArchiveState] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SetOpportunityArchiveStateInput, OpportunityArchiveState]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SetOpportunityArchiveState(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SetOpportunityArchiveStateResult] {
+			branches := make([]sdkgo.BranchTarget[SetOpportunityArchiveStateResult], 0, 5)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(SetOpportunityArchiveStateBranchUpdated))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(SetOpportunityArchiveStateBranchNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SetOpportunityArchiveStateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(SetOpportunityArchiveStateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SetOpportunityArchiveStateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const CreateOpportunityBranchCreated sdkgo.BranchID = "created"
+const CreateOpportunityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateOpportunityBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateOpportunityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateOpportunityDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createOpportunity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateOpportunityBranchCreated, Description: "Lever confirmed the new opportunity ID."},
+		{ID: CreateOpportunityBranchProviderRejected, Description: "Lever conclusively rejected the create request.", Optional: true},
+		{ID: CreateOpportunityBranchUncertain, Description: "Lever may have created an opportunity but no ID was confirmed at the send cap.", Optional: true},
+		{ID: CreateOpportunityBranchDefect, Description: "Local input, credentials, or dispatch checkpoint are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateOpportunityResult = sdkgo.MutationResult[CreatedOpportunity]
+
+type CreateOpportunityStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                 `connector:"connectorId=lever"`
+	operationID                       struct{}                                                 `connector:"operationId=createOpportunity"`
+	StepType                          string                                                   `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                    `connector:"annotations"`
+	Connection                        Connection                                               `connector:"connection"`
+	ConnectionName                    string                                                   `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateOpportunityInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateOpportunityResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateOpportunityResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateOpportunityResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateOpportunityResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedOpportunity]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                         `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateOpportunityStep[IN any](config CreateOpportunityStepConfig[IN]) sdkgo.MutationStep[IN, CreateOpportunityInput, CreatedOpportunity] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("lever connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateOpportunityInput, CreatedOpportunity]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateOpportunity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateOpportunityResult] {
+			branches := make([]sdkgo.BranchTarget[CreateOpportunityResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateOpportunityBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateOpportunityBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateOpportunityBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateOpportunityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
 	})
 }

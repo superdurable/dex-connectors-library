@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted lever connection. Script each operation through its accessor.
 type Mock struct {
-	connection     lever.Connection
-	getOpportunity *connectormock.Query[lever.GetOpportunityInput, lever.OpportunityStage]
+	connection                 lever.Connection
+	listOpportunities          *connectormock.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage]
+	getOpportunity             *connectormock.Query[lever.GetOpportunityInput, lever.OpportunityStage]
+	updateOpportunityStage     *connectormock.Mutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage]
+	setOpportunityArchiveState *connectormock.Mutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState]
+	createOpportunity          *connectormock.Mutation[lever.CreateOpportunityInput, lever.CreatedOpportunity]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getOpportunity: connectormock.NewQuery[lever.GetOpportunityInput, lever.OpportunityStage](t, lever.GetOpportunityDefinition),
+		listOpportunities:          connectormock.NewQuery[lever.ListOpportunitiesInput, lever.OpportunitiesPage](t, lever.ListOpportunitiesDefinition),
+		getOpportunity:             connectormock.NewQuery[lever.GetOpportunityInput, lever.OpportunityStage](t, lever.GetOpportunityDefinition),
+		updateOpportunityStage:     connectormock.NewMutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage](t, lever.UpdateOpportunityStageDefinition),
+		setOpportunityArchiveState: connectormock.NewMutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState](t, lever.SetOpportunityArchiveStateDefinition),
+		createOpportunity:          connectormock.NewMutation[lever.CreateOpportunityInput, lever.CreatedOpportunity](t, lever.CreateOpportunityDefinition),
 	}
+	mock.listOpportunities.Default(ListOpportunitiesDefault())
 	mock.getOpportunity.Default(GetOpportunityDefault())
+	mock.updateOpportunityStage.Default(UpdateOpportunityStageDefault())
+	mock.setOpportunityArchiveState.Default(SetOpportunityArchiveStateDefault())
+	mock.createOpportunity.Default(CreateOpportunityDefault())
 	connection, err := lever.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "lever", Name: connectionName})
 	if err != nil {
 		t.Fatalf("lever mock connection: %v", err)
@@ -40,15 +52,83 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() lever.Connection { return mock.connection }
 
+// ListOpportunities returns the listOpportunities script.
+func (mock *Mock) ListOpportunities() *connectormock.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage] {
+	return mock.listOpportunities
+}
+
 // GetOpportunity returns the getOpportunity script.
 func (mock *Mock) GetOpportunity() *connectormock.Query[lever.GetOpportunityInput, lever.OpportunityStage] {
 	return mock.getOpportunity
 }
 
+// UpdateOpportunityStage returns the updateOpportunityStage script.
+func (mock *Mock) UpdateOpportunityStage() *connectormock.Mutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage] {
+	return mock.updateOpportunityStage
+}
+
+// SetOpportunityArchiveState returns the setOpportunityArchiveState script.
+func (mock *Mock) SetOpportunityArchiveState() *connectormock.Mutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState] {
+	return mock.setOpportunityArchiveState
+}
+
+// CreateOpportunity returns the createOpportunity script.
+func (mock *Mock) CreateOpportunity() *connectormock.Mutation[lever.CreateOpportunityInput, lever.CreatedOpportunity] {
+	return mock.createOpportunity
+}
+
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListOpportunities() sdkgo.Query[lever.ListOpportunitiesInput, lever.OpportunitiesPage] {
+	return operations.mock.listOpportunities
+}
 func (operations mockOperations) GetOpportunity() sdkgo.Query[lever.GetOpportunityInput, lever.OpportunityStage] {
 	return operations.mock.getOpportunity
+}
+func (operations mockOperations) UpdateOpportunityStage() sdkgo.Mutation[lever.UpdateOpportunityStageInput, lever.OpportunityStage] {
+	return operations.mock.updateOpportunityStage
+}
+func (operations mockOperations) SetOpportunityArchiveState() sdkgo.Mutation[lever.SetOpportunityArchiveStateInput, lever.OpportunityArchiveState] {
+	return operations.mock.setOpportunityArchiveState
+}
+func (operations mockOperations) CreateOpportunity() sdkgo.Mutation[lever.CreateOpportunityInput, lever.CreatedOpportunity] {
+	return operations.mock.createOpportunity
+}
+
+// ListOpportunitiesListed selects the listed branch: Lever returned the opportunity page.
+func ListOpportunitiesListed(value lever.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Branch(lever.ListOpportunitiesBranchListed, value, failure)
+}
+
+// ListOpportunitiesProviderRejected selects the providerRejected branch: Lever conclusively rejected the lookup.
+func ListOpportunitiesProviderRejected(value lever.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Branch(lever.ListOpportunitiesBranchProviderRejected, value, failure)
+}
+
+// ListOpportunitiesInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized JSON.
+func ListOpportunitiesInvalidResponse(value lever.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Branch(lever.ListOpportunitiesBranchInvalidResponse, value, failure)
+}
+
+// ListOpportunitiesDefect selects the defect branch: Local input or credentials are invalid.
+func ListOpportunitiesDefect(value lever.OpportunitiesPage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Branch(lever.ListOpportunitiesBranchDefect, value, failure)
+}
+
+// ListOpportunitiesRetry asks Dex to retry the listOpportunities Step, after the delay when it is positive.
+func ListOpportunitiesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.OpportunitiesPage] {
+	return connectormock.Retry[lever.OpportunitiesPage](failure, after)
+}
+
+// ListOpportunitiesListedDefault is the manifest mock listedDefault: One opportunity is returned.
+func ListOpportunitiesListedDefault() connectormock.Case[lever.OpportunitiesPage] {
+	value := connectormock.MustDecodeOutput[lever.OpportunitiesPage](`{"opportunities":[{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}],"nextOffset":""}`)
+	return connectormock.Branch(lever.ListOpportunitiesBranchListed, value, nil)
+}
+
+// ListOpportunitiesDefault is the manifest default, listedDefault, which New installs.
+func ListOpportunitiesDefault() connectormock.Case[lever.OpportunitiesPage] {
+	return ListOpportunitiesListedDefault()
 }
 
 // GetOpportunityFound selects the found branch: Lever returned the opportunity.
@@ -90,4 +170,122 @@ func GetOpportunityFoundDefault() connectormock.Case[lever.OpportunityStage] {
 // GetOpportunityDefault is the manifest default, foundDefault, which New installs.
 func GetOpportunityDefault() connectormock.Case[lever.OpportunityStage] {
 	return GetOpportunityFoundDefault()
+}
+
+// UpdateOpportunityStageUpdated selects the updated branch: The opportunity now holds the requested stage.
+func UpdateOpportunityStageUpdated(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchUpdated, value, failure)
+}
+
+// UpdateOpportunityStageNotFound selects the notFound branch: Lever did not expose the opportunity.
+func UpdateOpportunityStageNotFound(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchNotFound, value, failure)
+}
+
+// UpdateOpportunityStageProviderRejected selects the providerRejected branch: Lever conclusively rejected the stage update.
+func UpdateOpportunityStageProviderRejected(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchProviderRejected, value, failure)
+}
+
+// UpdateOpportunityStageInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized read-back JSON.
+func UpdateOpportunityStageInvalidResponse(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchInvalidResponse, value, failure)
+}
+
+// UpdateOpportunityStageDefect selects the defect branch: Local input or credentials are invalid.
+func UpdateOpportunityStageDefect(value lever.OpportunityStage, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchDefect, value, failure)
+}
+
+// UpdateOpportunityStageRetry asks Dex to retry the updateOpportunityStage Step, after the delay when it is positive.
+func UpdateOpportunityStageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.OpportunityStage] {
+	return connectormock.Retry[lever.OpportunityStage](failure, after)
+}
+
+// UpdateOpportunityStageUpdatedDefault is the manifest mock updatedDefault: The opportunity was advanced to the requested stage.
+func UpdateOpportunityStageUpdatedDefault() connectormock.Case[lever.OpportunityStage] {
+	value := connectormock.MustDecodeOutput[lever.OpportunityStage](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}`)
+	return connectormock.Branch(lever.UpdateOpportunityStageBranchUpdated, value, nil)
+}
+
+// UpdateOpportunityStageDefault is the manifest default, updatedDefault, which New installs.
+func UpdateOpportunityStageDefault() connectormock.Case[lever.OpportunityStage] {
+	return UpdateOpportunityStageUpdatedDefault()
+}
+
+// SetOpportunityArchiveStateUpdated selects the updated branch: The opportunity now holds the requested archive state.
+func SetOpportunityArchiveStateUpdated(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchUpdated, value, failure)
+}
+
+// SetOpportunityArchiveStateNotFound selects the notFound branch: Lever did not expose the opportunity.
+func SetOpportunityArchiveStateNotFound(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchNotFound, value, failure)
+}
+
+// SetOpportunityArchiveStateProviderRejected selects the providerRejected branch: Lever conclusively rejected the archive change.
+func SetOpportunityArchiveStateProviderRejected(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchProviderRejected, value, failure)
+}
+
+// SetOpportunityArchiveStateInvalidResponse selects the invalidResponse branch: Lever returned malformed or oversized read-back JSON.
+func SetOpportunityArchiveStateInvalidResponse(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchInvalidResponse, value, failure)
+}
+
+// SetOpportunityArchiveStateDefect selects the defect branch: Local input or credentials are invalid.
+func SetOpportunityArchiveStateDefect(value lever.OpportunityArchiveState, failure *sdkgo.Failure) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchDefect, value, failure)
+}
+
+// SetOpportunityArchiveStateRetry asks Dex to retry the setOpportunityArchiveState Step, after the delay when it is positive.
+func SetOpportunityArchiveStateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.OpportunityArchiveState] {
+	return connectormock.Retry[lever.OpportunityArchiveState](failure, after)
+}
+
+// SetOpportunityArchiveStateArchivedDefault is the manifest mock archivedDefault: The opportunity is archived for the supplied reason.
+func SetOpportunityArchiveStateArchivedDefault() connectormock.Case[lever.OpportunityArchiveState] {
+	value := connectormock.MustDecodeOutput[lever.OpportunityArchiveState](`{"opportunityId":"250d8f03-738a-4bba-a671-8a3d73477145","archived":true,"reasonId":"63dd55b2-a99f-4e7b-985f-22c7bf80ab42"}`)
+	return connectormock.Branch(lever.SetOpportunityArchiveStateBranchUpdated, value, nil)
+}
+
+// SetOpportunityArchiveStateDefault is the manifest default, archivedDefault, which New installs.
+func SetOpportunityArchiveStateDefault() connectormock.Case[lever.OpportunityArchiveState] {
+	return SetOpportunityArchiveStateArchivedDefault()
+}
+
+// CreateOpportunityCreated selects the created branch: Lever confirmed the new opportunity ID.
+func CreateOpportunityCreated(value lever.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Branch(lever.CreateOpportunityBranchCreated, value, failure)
+}
+
+// CreateOpportunityProviderRejected selects the providerRejected branch: Lever conclusively rejected the create request.
+func CreateOpportunityProviderRejected(value lever.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Branch(lever.CreateOpportunityBranchProviderRejected, value, failure)
+}
+
+// CreateOpportunityUncertain returns an uncertain createOpportunity outcome.
+func CreateOpportunityUncertain(value lever.CreatedOpportunity, failure sdkgo.Failure) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateOpportunityDefect selects the defect branch: Local input, credentials, or dispatch checkpoint are invalid.
+func CreateOpportunityDefect(value lever.CreatedOpportunity, failure *sdkgo.Failure) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Branch(lever.CreateOpportunityBranchDefect, value, failure)
+}
+
+// CreateOpportunityRetry asks Dex to retry the createOpportunity Step, after the delay when it is positive.
+func CreateOpportunityRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[lever.CreatedOpportunity] {
+	return connectormock.Retry[lever.CreatedOpportunity](failure, after)
+}
+
+// CreateOpportunityCreatedDefault is the manifest mock createdDefault: Lever created a candidate opportunity.
+func CreateOpportunityCreatedDefault() connectormock.Case[lever.CreatedOpportunity] {
+	value := connectormock.MustDecodeOutput[lever.CreatedOpportunity](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145"}`)
+	return connectormock.Branch(lever.CreateOpportunityBranchCreated, value, nil)
+}
+
+// CreateOpportunityDefault is the manifest default, createdDefault, which New installs.
+func CreateOpportunityDefault() connectormock.Case[lever.CreatedOpportunity] {
+	return CreateOpportunityCreatedDefault()
 }

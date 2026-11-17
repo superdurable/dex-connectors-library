@@ -1,6 +1,6 @@
 {
   "connectorId": "lever",
-  "releaseTag": "connectors/lever/go/v0.1.0",
+  "releaseTag": "connectors/lever/go/v0.2.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-lever",

@@ -16,8 +16,24 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listOpportunities/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.OpportunitiesPage](`{"opportunities":[{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}],"nextOffset":""}`)
+			return err
+		}},
 		{name: "getOpportunity/foundDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[lever.OpportunityStage](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}`)
+			return err
+		}},
+		{name: "updateOpportunityStage/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.OpportunityStage](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145","name":"Sample Candidate","stage":"00922a60-7c15-422b-b086-f62000824fd7"}`)
+			return err
+		}},
+		{name: "setOpportunityArchiveState/archivedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.OpportunityArchiveState](`{"opportunityId":"250d8f03-738a-4bba-a671-8a3d73477145","archived":true,"reasonId":"63dd55b2-a99f-4e7b-985f-22c7bf80ab42"}`)
+			return err
+		}},
+		{name: "createOpportunity/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[lever.CreatedOpportunity](`{"id":"250d8f03-738a-4bba-a671-8a3d73477145"}`)
 			return err
 		}},
 	}
@@ -30,7 +46,19 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListOpportunities().Definition().Operation.OperationID != "listOpportunities" {
+		t.Errorf("listOpportunities mock has another definition")
+	}
 	if mock.GetOpportunity().Definition().Operation.OperationID != "getOpportunity" {
 		t.Errorf("getOpportunity mock has another definition")
+	}
+	if mock.UpdateOpportunityStage().Definition().Operation.OperationID != "updateOpportunityStage" {
+		t.Errorf("updateOpportunityStage mock has another definition")
+	}
+	if mock.SetOpportunityArchiveState().Definition().Operation.OperationID != "setOpportunityArchiveState" {
+		t.Errorf("setOpportunityArchiveState mock has another definition")
+	}
+	if mock.CreateOpportunity().Definition().Operation.OperationID != "createOpportunity" {
+		t.Errorf("createOpportunity mock has another definition")
 	}
 }
