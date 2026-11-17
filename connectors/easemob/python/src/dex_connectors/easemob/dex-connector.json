@@ -1,0 +1,60 @@
+{
+  "connectorId": "easemob",
+  "releaseTag": "connectors/easemob/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-easemob",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_user_detail_step",
+      "kind": "query",
+      "operationId": "getUserDetail",
+      "inputType": "GetUserDetailInput",
+      "description": "Read one IM user's nonsecret account details.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserDetailInput selects one IM user by ID.",
+        "properties": {
+          "userId": {
+            "description": "UserID is the registered IM user ID, with lowercase letters, digits, underscore, hyphen, or period.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
