@@ -11,6 +11,11 @@ spec:
   provider: baidu-maps
   languages:
     python: {version: v0.1.0, operations: [geocodeAddress], triggers: []}
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-baidu-maps"
+      operations: [geocodeAddress]
+      triggers: []
   codegen:
     go:
       package: baidumaps
