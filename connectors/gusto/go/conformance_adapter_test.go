@@ -24,6 +24,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	client, err := New(Config{BaseURL: endpoint, RedirectURI: "https://dex.example/callback"}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getEmployee": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEmployee(), reference),
+		"getEmployee":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEmployee(), reference),
+		"listEmployees": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEmployees(), reference),
 	}}
 }
