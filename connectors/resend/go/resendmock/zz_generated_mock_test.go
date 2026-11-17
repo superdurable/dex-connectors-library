@@ -116,6 +116,30 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[resend.EmailMetrics](`{"start_date":"2026-11-01T00:00:00Z","end_date":"2026-11-02T00:00:00Z","metrics":["sent"],"dimensions":[],"granularity":"daily","totals":{"sent":1}}`)
 			return err
 		}},
+		{name: "createSegment/createSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SegmentReference](`{"id":"segment-1"}`)
+			return err
+		}},
+		{name: "getSegment/getSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.Segment](`{"id":"segment-1","name":"Active Users"}`)
+			return err
+		}},
+		{name: "listSegments/listSegmentsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SegmentPage](`{"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}`)
+			return err
+		}},
+		{name: "updateSegment/updateSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.SegmentReference](`{"id":"segment-1"}`)
+			return err
+		}},
+		{name: "deleteSegment/deleteSegmentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.DeletedSegment](`{"id":"segment-1","deleted":true}`)
+			return err
+		}},
+		{name: "listSegmentContacts/listSegmentContactsDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[resend.ContactPage](`{"data":[{"id":"contact-1","email":"reader@example.test"}],"has_more":false}`)
+			return err
+		}},
 		{name: "getContact/getContactDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[resend.Contact](`{"id":"contact-1","email":"reader@example.test","unsubscribed":false}`)
 			return err
@@ -216,6 +240,24 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetEmailMetrics().Definition().Operation.OperationID != "getEmailMetrics" {
 		t.Errorf("getEmailMetrics mock has another definition")
+	}
+	if mock.CreateSegment().Definition().Operation.OperationID != "createSegment" {
+		t.Errorf("createSegment mock has another definition")
+	}
+	if mock.GetSegment().Definition().Operation.OperationID != "getSegment" {
+		t.Errorf("getSegment mock has another definition")
+	}
+	if mock.ListSegments().Definition().Operation.OperationID != "listSegments" {
+		t.Errorf("listSegments mock has another definition")
+	}
+	if mock.UpdateSegment().Definition().Operation.OperationID != "updateSegment" {
+		t.Errorf("updateSegment mock has another definition")
+	}
+	if mock.DeleteSegment().Definition().Operation.OperationID != "deleteSegment" {
+		t.Errorf("deleteSegment mock has another definition")
+	}
+	if mock.ListSegmentContacts().Definition().Operation.OperationID != "listSegmentContacts" {
+		t.Errorf("listSegmentContacts mock has another definition")
 	}
 	if mock.GetContact().Definition().Operation.OperationID != "getContact" {
 		t.Errorf("getContact mock has another definition")

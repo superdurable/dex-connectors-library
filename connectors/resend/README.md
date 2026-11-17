@@ -55,6 +55,12 @@ unverified.
 | `listReceivedEmailAttachments` | query | EmailAttachmentPage |
 | `getReceivedEmailAttachment` | query | EmailAttachment |
 | `getEmailMetrics` | query | EmailMetrics |
+| `createSegment` | mutation | SegmentReference |
+| `getSegment` | query | Segment |
+| `listSegments` | query | SegmentPage |
+| `updateSegment` | mutation | SegmentReference |
+| `deleteSegment` | mutation | DeletedSegment |
+| `listSegmentContacts` | query | ContactPage |
 
 Topic CRUD follows [Resend's Topics API](https://resend.com/docs/api-reference/topics/create-topic).
 `createTopic` is `limited` with three possible sends and read-back by topic
@@ -67,6 +73,15 @@ Names are at most 50 characters, descriptions at most 200, and visibility is
 `public` or `private`; blank visibility on creation uses private. See the
 checked-in [create-topic Flow](go/examples/create-topic/README.md) for a
 mock-backed Dex Worker and Client run.
+
+Segment CRUD follows [Resend's Segments API](https://resend.com/docs/api-reference/segments/create-segment).
+`createSegment` uses the `limited` tier, checks names across paginated
+read-back, and caps possible sends at three. `getSegment`, `listSegments`,
+and `listSegmentContacts` are safe reads; `updateSegment` is an absolute
+rename, and `deleteSegment` is repeat-safe. Find segment IDs under
+[Resend Segments](https://resend.com/segments); blank names and IDs are
+invalid. The [create-segment Flow](go/examples/create-segment/README.md)
+demonstrates the generated factory.
 
 Sent and received attachment queries return metadata but omit Resend's
 short-lived signed `download_url`, because that URL grants access to content.

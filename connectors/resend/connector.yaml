@@ -58,7 +58,7 @@ spec:
       startURL: https://resend.com/api-keys
       steps:
       - Open https://resend.com/api-keys and sign in or create an account.
-      - Follow API Keys > Create API Key. Create a full access API key for email, contact, domain, and topic operations; a sending-only key still supports sendEmail but cannot use every operation.
+      - Follow API Keys > Create API Key. Create a full access API key for email, contact, domain, topic, and segment operations; a sending-only key still supports sendEmail but cannot use every operation.
         then copy its secret value. It is an opaque secret string; blank prevents
         requests.
       - Paste the token into the secret api_key field and save the connection; leave
@@ -525,6 +525,104 @@ spec:
     execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
     mocks:
     - {name: getEmailMetricsDefault, branch: found, default: true, description: Resend returned email information., output: {"start_date":"2026-11-01T00:00:00Z","end_date":"2026-11-02T00:00:00Z","metrics":["sent"],"dimensions":[],"granularity":"daily","totals":{"sent":1}}}
+  - name: createSegment
+    goName: CreateSegment
+    inputType: CreateSegmentInput
+    outputType: SegmentReference
+    kind: mutation
+    description: Create Segment through the Resend Segments API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: created, goName: Created, description: Resend created the requested resource.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: limited, maxSends: 3, executeMethodTimeout: 30s, durability: sync}
+    mocks:
+    - {name: createSegmentDefault, branch: created, default: true, description: Resend created the requested resource., output: {"id":"segment-1"}}
+  - name: getSegment
+    goName: GetSegment
+    inputType: GetSegmentInput
+    outputType: Segment
+    kind: query
+    description: Get Segment through the Resend Segments API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: found, goName: Found, description: Resend found the requested resource.}
+    - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: getSegmentDefault, branch: found, default: true, description: Resend found the requested resource., output: {"id":"segment-1","name":"Active Users"}}
+  - name: listSegments
+    goName: ListSegments
+    inputType: ListSegmentsInput
+    outputType: SegmentPage
+    kind: query
+    description: List Segments through the Resend Segments API.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the requested resource.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listSegmentsDefault, branch: listed, default: true, description: Resend listed the requested resource., output: {"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}}
+  - name: updateSegment
+    goName: UpdateSegment
+    inputType: UpdateSegmentInput
+    outputType: SegmentReference
+    kind: mutation
+    description: Update Segment through the Resend Segments API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: updated, goName: Updated, description: Resend updated the requested resource.}
+    - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: updateSegmentDefault, branch: updated, default: true, description: Resend updated the requested resource., output: {"id":"segment-1"}}
+  - name: deleteSegment
+    goName: DeleteSegment
+    inputType: DeleteSegmentInput
+    outputType: DeletedSegment
+    kind: mutation
+    description: Delete Segment through the Resend Segments API.
+    idempotency: required
+    authorization: required
+    branches:
+    - {id: deleted, goName: Deleted, description: Resend deleted the requested resource.}
+    - {id: notFound, goName: NotFound, description: The segment does not exist., optional: true}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: deleteSegmentDefault, branch: deleted, default: true, description: Resend deleted the requested resource., output: {"id":"segment-1","deleted":true}}
+  - name: listSegmentContacts
+    goName: ListSegmentContacts
+    inputType: ListSegmentContactsInput
+    outputType: ContactPage
+    kind: query
+    description: List global contacts belonging to a segment.
+    idempotency: none
+    authorization: required
+    branches:
+    - {id: listed, goName: Listed, description: Resend listed the requested resource.}
+    - {id: providerRejected, goName: ProviderRejected, description: Resend definitively rejected the request., optional: true}
+    - {id: invalidResponse, goName: InvalidResponse, description: Resend returned an invalid response., optional: true}
+    - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+    execution: {repeatOnUnknown: safe, executeMethodTimeout: 30s, durability: async}
+    mocks:
+    - {name: listSegmentContactsDefault, branch: listed, default: true, description: Resend listed the requested resource., output: {"data":[{"id":"contact-1","email":"reader@example.test"}],"has_more":false}}
   - name: getContact
     goName: GetContact
     inputType: GetContactInput

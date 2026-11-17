@@ -43,6 +43,12 @@ type Mock struct {
 	listReceivedEmailAttachments *connectormock.Query[resend.ListReceivedEmailAttachmentsInput, resend.EmailAttachmentPage]
 	getReceivedEmailAttachment   *connectormock.Query[resend.GetReceivedEmailAttachmentInput, resend.EmailAttachment]
 	getEmailMetrics              *connectormock.Query[resend.GetEmailMetricsInput, resend.EmailMetrics]
+	createSegment                *connectormock.Mutation[resend.CreateSegmentInput, resend.SegmentReference]
+	getSegment                   *connectormock.Query[resend.GetSegmentInput, resend.Segment]
+	listSegments                 *connectormock.Query[resend.ListSegmentsInput, resend.SegmentPage]
+	updateSegment                *connectormock.Mutation[resend.UpdateSegmentInput, resend.SegmentReference]
+	deleteSegment                *connectormock.Mutation[resend.DeleteSegmentInput, resend.DeletedSegment]
+	listSegmentContacts          *connectormock.Query[resend.ListSegmentContactsInput, resend.ContactPage]
 	getContact                   *connectormock.Query[resend.GetContactInput, resend.Contact]
 	listContacts                 *connectormock.Query[resend.ListContactsInput, resend.ContactPage]
 	getDomain                    *connectormock.Query[resend.GetDomainInput, resend.Domain]
@@ -79,6 +85,12 @@ func New(t testing.TB, connectionName string) *Mock {
 		listReceivedEmailAttachments: connectormock.NewQuery[resend.ListReceivedEmailAttachmentsInput, resend.EmailAttachmentPage](t, resend.ListReceivedEmailAttachmentsDefinition),
 		getReceivedEmailAttachment:   connectormock.NewQuery[resend.GetReceivedEmailAttachmentInput, resend.EmailAttachment](t, resend.GetReceivedEmailAttachmentDefinition),
 		getEmailMetrics:              connectormock.NewQuery[resend.GetEmailMetricsInput, resend.EmailMetrics](t, resend.GetEmailMetricsDefinition),
+		createSegment:                connectormock.NewMutation[resend.CreateSegmentInput, resend.SegmentReference](t, resend.CreateSegmentDefinition),
+		getSegment:                   connectormock.NewQuery[resend.GetSegmentInput, resend.Segment](t, resend.GetSegmentDefinition),
+		listSegments:                 connectormock.NewQuery[resend.ListSegmentsInput, resend.SegmentPage](t, resend.ListSegmentsDefinition),
+		updateSegment:                connectormock.NewMutation[resend.UpdateSegmentInput, resend.SegmentReference](t, resend.UpdateSegmentDefinition),
+		deleteSegment:                connectormock.NewMutation[resend.DeleteSegmentInput, resend.DeletedSegment](t, resend.DeleteSegmentDefinition),
+		listSegmentContacts:          connectormock.NewQuery[resend.ListSegmentContactsInput, resend.ContactPage](t, resend.ListSegmentContactsDefinition),
 		getContact:                   connectormock.NewQuery[resend.GetContactInput, resend.Contact](t, resend.GetContactDefinition),
 		listContacts:                 connectormock.NewQuery[resend.ListContactsInput, resend.ContactPage](t, resend.ListContactsDefinition),
 		getDomain:                    connectormock.NewQuery[resend.GetDomainInput, resend.Domain](t, resend.GetDomainDefinition),
@@ -109,6 +121,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock.listReceivedEmailAttachments.Default(ListReceivedEmailAttachmentsDefault())
 	mock.getReceivedEmailAttachment.Default(GetReceivedEmailAttachmentDefault())
 	mock.getEmailMetrics.Default(GetEmailMetricsDefault())
+	mock.createSegment.Default(CreateSegmentDefault())
+	mock.getSegment.Default(GetSegmentDefault())
+	mock.listSegments.Default(ListSegmentsDefault())
+	mock.updateSegment.Default(UpdateSegmentDefault())
+	mock.deleteSegment.Default(DeleteSegmentDefault())
+	mock.listSegmentContacts.Default(ListSegmentContactsDefault())
 	mock.getContact.Default(GetContactDefault())
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getDomain.Default(GetDomainDefault())
@@ -249,6 +267,36 @@ func (mock *Mock) GetEmailMetrics() *connectormock.Query[resend.GetEmailMetricsI
 	return mock.getEmailMetrics
 }
 
+// CreateSegment returns the createSegment script.
+func (mock *Mock) CreateSegment() *connectormock.Mutation[resend.CreateSegmentInput, resend.SegmentReference] {
+	return mock.createSegment
+}
+
+// GetSegment returns the getSegment script.
+func (mock *Mock) GetSegment() *connectormock.Query[resend.GetSegmentInput, resend.Segment] {
+	return mock.getSegment
+}
+
+// ListSegments returns the listSegments script.
+func (mock *Mock) ListSegments() *connectormock.Query[resend.ListSegmentsInput, resend.SegmentPage] {
+	return mock.listSegments
+}
+
+// UpdateSegment returns the updateSegment script.
+func (mock *Mock) UpdateSegment() *connectormock.Mutation[resend.UpdateSegmentInput, resend.SegmentReference] {
+	return mock.updateSegment
+}
+
+// DeleteSegment returns the deleteSegment script.
+func (mock *Mock) DeleteSegment() *connectormock.Mutation[resend.DeleteSegmentInput, resend.DeletedSegment] {
+	return mock.deleteSegment
+}
+
+// ListSegmentContacts returns the listSegmentContacts script.
+func (mock *Mock) ListSegmentContacts() *connectormock.Query[resend.ListSegmentContactsInput, resend.ContactPage] {
+	return mock.listSegmentContacts
+}
+
 // GetContact returns the getContact script.
 func (mock *Mock) GetContact() *connectormock.Query[resend.GetContactInput, resend.Contact] {
 	return mock.getContact
@@ -345,6 +393,24 @@ func (operations mockOperations) GetReceivedEmailAttachment() sdkgo.Query[resend
 }
 func (operations mockOperations) GetEmailMetrics() sdkgo.Query[resend.GetEmailMetricsInput, resend.EmailMetrics] {
 	return operations.mock.getEmailMetrics
+}
+func (operations mockOperations) CreateSegment() sdkgo.Mutation[resend.CreateSegmentInput, resend.SegmentReference] {
+	return operations.mock.createSegment
+}
+func (operations mockOperations) GetSegment() sdkgo.Query[resend.GetSegmentInput, resend.Segment] {
+	return operations.mock.getSegment
+}
+func (operations mockOperations) ListSegments() sdkgo.Query[resend.ListSegmentsInput, resend.SegmentPage] {
+	return operations.mock.listSegments
+}
+func (operations mockOperations) UpdateSegment() sdkgo.Mutation[resend.UpdateSegmentInput, resend.SegmentReference] {
+	return operations.mock.updateSegment
+}
+func (operations mockOperations) DeleteSegment() sdkgo.Mutation[resend.DeleteSegmentInput, resend.DeletedSegment] {
+	return operations.mock.deleteSegment
+}
+func (operations mockOperations) ListSegmentContacts() sdkgo.Query[resend.ListSegmentContactsInput, resend.ContactPage] {
+	return operations.mock.listSegmentContacts
 }
 func (operations mockOperations) GetContact() sdkgo.Query[resend.GetContactInput, resend.Contact] {
 	return operations.mock.getContact
@@ -1312,6 +1378,230 @@ func GetEmailMetricsGetEmailMetricsDefault() connectormock.Case[resend.EmailMetr
 // GetEmailMetricsDefault is the manifest default, getEmailMetricsDefault, which New installs.
 func GetEmailMetricsDefault() connectormock.Case[resend.EmailMetrics] {
 	return GetEmailMetricsGetEmailMetricsDefault()
+}
+
+// CreateSegmentCreated selects the created branch: Resend created the requested resource.
+func CreateSegmentCreated(value resend.SegmentReference, failure *sdkgo.Failure) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Branch(resend.CreateSegmentBranchCreated, value, failure)
+}
+
+// CreateSegmentProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func CreateSegmentProviderRejected(value resend.SegmentReference, failure *sdkgo.Failure) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Branch(resend.CreateSegmentBranchProviderRejected, value, failure)
+}
+
+// CreateSegmentDefect selects the defect branch: Local input or connection is invalid.
+func CreateSegmentDefect(value resend.SegmentReference, failure *sdkgo.Failure) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Branch(resend.CreateSegmentBranchDefect, value, failure)
+}
+
+// CreateSegmentRetry asks Dex to retry the createSegment Step, after the delay when it is positive.
+func CreateSegmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Retry[resend.SegmentReference](failure, after)
+}
+
+// CreateSegmentCreateSegmentDefault is the manifest mock createSegmentDefault: Resend created the requested resource.
+func CreateSegmentCreateSegmentDefault() connectormock.Case[resend.SegmentReference] {
+	value := connectormock.MustDecodeOutput[resend.SegmentReference](`{"id":"segment-1"}`)
+	return connectormock.Branch(resend.CreateSegmentBranchCreated, value, nil)
+}
+
+// CreateSegmentDefault is the manifest default, createSegmentDefault, which New installs.
+func CreateSegmentDefault() connectormock.Case[resend.SegmentReference] {
+	return CreateSegmentCreateSegmentDefault()
+}
+
+// GetSegmentFound selects the found branch: Resend found the requested resource.
+func GetSegmentFound(value resend.Segment, failure *sdkgo.Failure) connectormock.Case[resend.Segment] {
+	return connectormock.Branch(resend.GetSegmentBranchFound, value, failure)
+}
+
+// GetSegmentNotFound selects the notFound branch: The segment does not exist.
+func GetSegmentNotFound(value resend.Segment, failure *sdkgo.Failure) connectormock.Case[resend.Segment] {
+	return connectormock.Branch(resend.GetSegmentBranchNotFound, value, failure)
+}
+
+// GetSegmentProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func GetSegmentProviderRejected(value resend.Segment, failure *sdkgo.Failure) connectormock.Case[resend.Segment] {
+	return connectormock.Branch(resend.GetSegmentBranchProviderRejected, value, failure)
+}
+
+// GetSegmentInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func GetSegmentInvalidResponse(value resend.Segment, failure *sdkgo.Failure) connectormock.Case[resend.Segment] {
+	return connectormock.Branch(resend.GetSegmentBranchInvalidResponse, value, failure)
+}
+
+// GetSegmentDefect selects the defect branch: Local input or connection is invalid.
+func GetSegmentDefect(value resend.Segment, failure *sdkgo.Failure) connectormock.Case[resend.Segment] {
+	return connectormock.Branch(resend.GetSegmentBranchDefect, value, failure)
+}
+
+// GetSegmentRetry asks Dex to retry the getSegment Step, after the delay when it is positive.
+func GetSegmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.Segment] {
+	return connectormock.Retry[resend.Segment](failure, after)
+}
+
+// GetSegmentGetSegmentDefault is the manifest mock getSegmentDefault: Resend found the requested resource.
+func GetSegmentGetSegmentDefault() connectormock.Case[resend.Segment] {
+	value := connectormock.MustDecodeOutput[resend.Segment](`{"id":"segment-1","name":"Active Users"}`)
+	return connectormock.Branch(resend.GetSegmentBranchFound, value, nil)
+}
+
+// GetSegmentDefault is the manifest default, getSegmentDefault, which New installs.
+func GetSegmentDefault() connectormock.Case[resend.Segment] { return GetSegmentGetSegmentDefault() }
+
+// ListSegmentsListed selects the listed branch: Resend listed the requested resource.
+func ListSegmentsListed(value resend.SegmentPage, failure *sdkgo.Failure) connectormock.Case[resend.SegmentPage] {
+	return connectormock.Branch(resend.ListSegmentsBranchListed, value, failure)
+}
+
+// ListSegmentsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListSegmentsProviderRejected(value resend.SegmentPage, failure *sdkgo.Failure) connectormock.Case[resend.SegmentPage] {
+	return connectormock.Branch(resend.ListSegmentsBranchProviderRejected, value, failure)
+}
+
+// ListSegmentsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListSegmentsInvalidResponse(value resend.SegmentPage, failure *sdkgo.Failure) connectormock.Case[resend.SegmentPage] {
+	return connectormock.Branch(resend.ListSegmentsBranchInvalidResponse, value, failure)
+}
+
+// ListSegmentsDefect selects the defect branch: Local input or connection is invalid.
+func ListSegmentsDefect(value resend.SegmentPage, failure *sdkgo.Failure) connectormock.Case[resend.SegmentPage] {
+	return connectormock.Branch(resend.ListSegmentsBranchDefect, value, failure)
+}
+
+// ListSegmentsRetry asks Dex to retry the listSegments Step, after the delay when it is positive.
+func ListSegmentsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SegmentPage] {
+	return connectormock.Retry[resend.SegmentPage](failure, after)
+}
+
+// ListSegmentsListSegmentsDefault is the manifest mock listSegmentsDefault: Resend listed the requested resource.
+func ListSegmentsListSegmentsDefault() connectormock.Case[resend.SegmentPage] {
+	value := connectormock.MustDecodeOutput[resend.SegmentPage](`{"data":[{"id":"segment-1","name":"Active Users"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListSegmentsBranchListed, value, nil)
+}
+
+// ListSegmentsDefault is the manifest default, listSegmentsDefault, which New installs.
+func ListSegmentsDefault() connectormock.Case[resend.SegmentPage] {
+	return ListSegmentsListSegmentsDefault()
+}
+
+// UpdateSegmentUpdated selects the updated branch: Resend updated the requested resource.
+func UpdateSegmentUpdated(value resend.SegmentReference, failure *sdkgo.Failure) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Branch(resend.UpdateSegmentBranchUpdated, value, failure)
+}
+
+// UpdateSegmentNotFound selects the notFound branch: The segment does not exist.
+func UpdateSegmentNotFound(value resend.SegmentReference, failure *sdkgo.Failure) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Branch(resend.UpdateSegmentBranchNotFound, value, failure)
+}
+
+// UpdateSegmentProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func UpdateSegmentProviderRejected(value resend.SegmentReference, failure *sdkgo.Failure) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Branch(resend.UpdateSegmentBranchProviderRejected, value, failure)
+}
+
+// UpdateSegmentInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func UpdateSegmentInvalidResponse(value resend.SegmentReference, failure *sdkgo.Failure) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Branch(resend.UpdateSegmentBranchInvalidResponse, value, failure)
+}
+
+// UpdateSegmentDefect selects the defect branch: Local input or connection is invalid.
+func UpdateSegmentDefect(value resend.SegmentReference, failure *sdkgo.Failure) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Branch(resend.UpdateSegmentBranchDefect, value, failure)
+}
+
+// UpdateSegmentRetry asks Dex to retry the updateSegment Step, after the delay when it is positive.
+func UpdateSegmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.SegmentReference] {
+	return connectormock.Retry[resend.SegmentReference](failure, after)
+}
+
+// UpdateSegmentUpdateSegmentDefault is the manifest mock updateSegmentDefault: Resend updated the requested resource.
+func UpdateSegmentUpdateSegmentDefault() connectormock.Case[resend.SegmentReference] {
+	value := connectormock.MustDecodeOutput[resend.SegmentReference](`{"id":"segment-1"}`)
+	return connectormock.Branch(resend.UpdateSegmentBranchUpdated, value, nil)
+}
+
+// UpdateSegmentDefault is the manifest default, updateSegmentDefault, which New installs.
+func UpdateSegmentDefault() connectormock.Case[resend.SegmentReference] {
+	return UpdateSegmentUpdateSegmentDefault()
+}
+
+// DeleteSegmentDeleted selects the deleted branch: Resend deleted the requested resource.
+func DeleteSegmentDeleted(value resend.DeletedSegment, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSegment] {
+	return connectormock.Branch(resend.DeleteSegmentBranchDeleted, value, failure)
+}
+
+// DeleteSegmentNotFound selects the notFound branch: The segment does not exist.
+func DeleteSegmentNotFound(value resend.DeletedSegment, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSegment] {
+	return connectormock.Branch(resend.DeleteSegmentBranchNotFound, value, failure)
+}
+
+// DeleteSegmentProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func DeleteSegmentProviderRejected(value resend.DeletedSegment, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSegment] {
+	return connectormock.Branch(resend.DeleteSegmentBranchProviderRejected, value, failure)
+}
+
+// DeleteSegmentInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func DeleteSegmentInvalidResponse(value resend.DeletedSegment, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSegment] {
+	return connectormock.Branch(resend.DeleteSegmentBranchInvalidResponse, value, failure)
+}
+
+// DeleteSegmentDefect selects the defect branch: Local input or connection is invalid.
+func DeleteSegmentDefect(value resend.DeletedSegment, failure *sdkgo.Failure) connectormock.Case[resend.DeletedSegment] {
+	return connectormock.Branch(resend.DeleteSegmentBranchDefect, value, failure)
+}
+
+// DeleteSegmentRetry asks Dex to retry the deleteSegment Step, after the delay when it is positive.
+func DeleteSegmentRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.DeletedSegment] {
+	return connectormock.Retry[resend.DeletedSegment](failure, after)
+}
+
+// DeleteSegmentDeleteSegmentDefault is the manifest mock deleteSegmentDefault: Resend deleted the requested resource.
+func DeleteSegmentDeleteSegmentDefault() connectormock.Case[resend.DeletedSegment] {
+	value := connectormock.MustDecodeOutput[resend.DeletedSegment](`{"id":"segment-1","deleted":true}`)
+	return connectormock.Branch(resend.DeleteSegmentBranchDeleted, value, nil)
+}
+
+// DeleteSegmentDefault is the manifest default, deleteSegmentDefault, which New installs.
+func DeleteSegmentDefault() connectormock.Case[resend.DeletedSegment] {
+	return DeleteSegmentDeleteSegmentDefault()
+}
+
+// ListSegmentContactsListed selects the listed branch: Resend listed the requested resource.
+func ListSegmentContactsListed(value resend.ContactPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPage] {
+	return connectormock.Branch(resend.ListSegmentContactsBranchListed, value, failure)
+}
+
+// ListSegmentContactsProviderRejected selects the providerRejected branch: Resend definitively rejected the request.
+func ListSegmentContactsProviderRejected(value resend.ContactPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPage] {
+	return connectormock.Branch(resend.ListSegmentContactsBranchProviderRejected, value, failure)
+}
+
+// ListSegmentContactsInvalidResponse selects the invalidResponse branch: Resend returned an invalid response.
+func ListSegmentContactsInvalidResponse(value resend.ContactPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPage] {
+	return connectormock.Branch(resend.ListSegmentContactsBranchInvalidResponse, value, failure)
+}
+
+// ListSegmentContactsDefect selects the defect branch: Local input or connection is invalid.
+func ListSegmentContactsDefect(value resend.ContactPage, failure *sdkgo.Failure) connectormock.Case[resend.ContactPage] {
+	return connectormock.Branch(resend.ListSegmentContactsBranchDefect, value, failure)
+}
+
+// ListSegmentContactsRetry asks Dex to retry the listSegmentContacts Step, after the delay when it is positive.
+func ListSegmentContactsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[resend.ContactPage] {
+	return connectormock.Retry[resend.ContactPage](failure, after)
+}
+
+// ListSegmentContactsListSegmentContactsDefault is the manifest mock listSegmentContactsDefault: Resend listed the requested resource.
+func ListSegmentContactsListSegmentContactsDefault() connectormock.Case[resend.ContactPage] {
+	value := connectormock.MustDecodeOutput[resend.ContactPage](`{"data":[{"id":"contact-1","email":"reader@example.test"}],"has_more":false}`)
+	return connectormock.Branch(resend.ListSegmentContactsBranchListed, value, nil)
+}
+
+// ListSegmentContactsDefault is the manifest default, listSegmentContactsDefault, which New installs.
+func ListSegmentContactsDefault() connectormock.Case[resend.ContactPage] {
+	return ListSegmentContactsListSegmentContactsDefault()
 }
 
 // GetContactFound selects the found branch: Resend returned the contact.
