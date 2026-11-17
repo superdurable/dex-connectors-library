@@ -17,8 +17,12 @@ import (
 
 // Mock is a scripted wave connection. Script each operation through its accessor.
 type Mock struct {
-	connection  wave.Connection
-	getCustomer *connectormock.Query[wave.GetCustomerInput, wave.CustomerProfile]
+	connection     wave.Connection
+	getCustomer    *connectormock.Query[wave.GetCustomerInput, wave.CustomerProfile]
+	listCustomers  *connectormock.Query[wave.ListCustomersInput, wave.CustomerPage]
+	createCustomer *connectormock.Mutation[wave.CreateCustomerInput, wave.CustomerProfile]
+	updateCustomer *connectormock.Mutation[wave.UpdateCustomerInput, wave.CustomerProfile]
+	deleteCustomer *connectormock.Mutation[wave.DeleteCustomerInput, wave.DeletedCustomer]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +30,17 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getCustomer: connectormock.NewQuery[wave.GetCustomerInput, wave.CustomerProfile](t, wave.GetCustomerDefinition),
+		getCustomer:    connectormock.NewQuery[wave.GetCustomerInput, wave.CustomerProfile](t, wave.GetCustomerDefinition),
+		listCustomers:  connectormock.NewQuery[wave.ListCustomersInput, wave.CustomerPage](t, wave.ListCustomersDefinition),
+		createCustomer: connectormock.NewMutation[wave.CreateCustomerInput, wave.CustomerProfile](t, wave.CreateCustomerDefinition),
+		updateCustomer: connectormock.NewMutation[wave.UpdateCustomerInput, wave.CustomerProfile](t, wave.UpdateCustomerDefinition),
+		deleteCustomer: connectormock.NewMutation[wave.DeleteCustomerInput, wave.DeletedCustomer](t, wave.DeleteCustomerDefinition),
 	}
 	mock.getCustomer.Default(GetCustomerDefault())
+	mock.listCustomers.Default(ListCustomersDefault())
+	mock.createCustomer.Default(CreateCustomerDefault())
+	mock.updateCustomer.Default(UpdateCustomerDefault())
+	mock.deleteCustomer.Default(DeleteCustomerDefault())
 	connection, err := wave.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "wave", Name: connectionName})
 	if err != nil {
 		t.Fatalf("wave mock connection: %v", err)
@@ -45,10 +57,42 @@ func (mock *Mock) GetCustomer() *connectormock.Query[wave.GetCustomerInput, wave
 	return mock.getCustomer
 }
 
+// ListCustomers returns the listCustomers script.
+func (mock *Mock) ListCustomers() *connectormock.Query[wave.ListCustomersInput, wave.CustomerPage] {
+	return mock.listCustomers
+}
+
+// CreateCustomer returns the createCustomer script.
+func (mock *Mock) CreateCustomer() *connectormock.Mutation[wave.CreateCustomerInput, wave.CustomerProfile] {
+	return mock.createCustomer
+}
+
+// UpdateCustomer returns the updateCustomer script.
+func (mock *Mock) UpdateCustomer() *connectormock.Mutation[wave.UpdateCustomerInput, wave.CustomerProfile] {
+	return mock.updateCustomer
+}
+
+// DeleteCustomer returns the deleteCustomer script.
+func (mock *Mock) DeleteCustomer() *connectormock.Mutation[wave.DeleteCustomerInput, wave.DeletedCustomer] {
+	return mock.deleteCustomer
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) GetCustomer() sdkgo.Query[wave.GetCustomerInput, wave.CustomerProfile] {
 	return operations.mock.getCustomer
+}
+func (operations mockOperations) ListCustomers() sdkgo.Query[wave.ListCustomersInput, wave.CustomerPage] {
+	return operations.mock.listCustomers
+}
+func (operations mockOperations) CreateCustomer() sdkgo.Mutation[wave.CreateCustomerInput, wave.CustomerProfile] {
+	return operations.mock.createCustomer
+}
+func (operations mockOperations) UpdateCustomer() sdkgo.Mutation[wave.UpdateCustomerInput, wave.CustomerProfile] {
+	return operations.mock.updateCustomer
+}
+func (operations mockOperations) DeleteCustomer() sdkgo.Mutation[wave.DeleteCustomerInput, wave.DeletedCustomer] {
+	return operations.mock.deleteCustomer
 }
 
 // GetCustomerFound selects the found branch: Wave returned the customer.
@@ -89,3 +133,152 @@ func GetCustomerFoundDefault() connectormock.Case[wave.CustomerProfile] {
 
 // GetCustomerDefault is the manifest default, foundDefault, which New installs.
 func GetCustomerDefault() connectormock.Case[wave.CustomerProfile] { return GetCustomerFoundDefault() }
+
+// ListCustomersListed selects the listed branch: Wave returned a page of customers.
+func ListCustomersListed(value wave.CustomerPage, failure *sdkgo.Failure) connectormock.Case[wave.CustomerPage] {
+	return connectormock.Branch(wave.ListCustomersBranchListed, value, failure)
+}
+
+// ListCustomersNotFound selects the notFound branch: The business was not found.
+func ListCustomersNotFound(value wave.CustomerPage, failure *sdkgo.Failure) connectormock.Case[wave.CustomerPage] {
+	return connectormock.Branch(wave.ListCustomersBranchNotFound, value, failure)
+}
+
+// ListCustomersProviderRejected selects the providerRejected branch: Wave rejected the query.
+func ListCustomersProviderRejected(value wave.CustomerPage, failure *sdkgo.Failure) connectormock.Case[wave.CustomerPage] {
+	return connectormock.Branch(wave.ListCustomersBranchProviderRejected, value, failure)
+}
+
+// ListCustomersInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func ListCustomersInvalidResponse(value wave.CustomerPage, failure *sdkgo.Failure) connectormock.Case[wave.CustomerPage] {
+	return connectormock.Branch(wave.ListCustomersBranchInvalidResponse, value, failure)
+}
+
+// ListCustomersDefect selects the defect branch: Input or credentials are invalid.
+func ListCustomersDefect(value wave.CustomerPage, failure *sdkgo.Failure) connectormock.Case[wave.CustomerPage] {
+	return connectormock.Branch(wave.ListCustomersBranchDefect, value, failure)
+}
+
+// ListCustomersRetry asks Dex to retry the listCustomers Step, after the delay when it is positive.
+func ListCustomersRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.CustomerPage] {
+	return connectormock.Retry[wave.CustomerPage](failure, after)
+}
+
+// ListCustomersListedDefault is the manifest mock listedDefault: One example customer was listed.
+func ListCustomersListedDefault() connectormock.Case[wave.CustomerPage] {
+	value := connectormock.MustDecodeOutput[wave.CustomerPage](`{"businessId":"business-1","customers":[{"businessId":"business-1","id":"customer-1","name":"Example Customer"}],"currentPage":1,"totalPages":1,"totalCount":1}`)
+	return connectormock.Branch(wave.ListCustomersBranchListed, value, nil)
+}
+
+// ListCustomersDefault is the manifest default, listedDefault, which New installs.
+func ListCustomersDefault() connectormock.Case[wave.CustomerPage] {
+	return ListCustomersListedDefault()
+}
+
+// CreateCustomerCreated selects the created branch: Wave created the customer.
+func CreateCustomerCreated(value wave.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Branch(wave.CreateCustomerBranchCreated, value, failure)
+}
+
+// CreateCustomerProviderRejected selects the providerRejected branch: Wave rejected the customer input.
+func CreateCustomerProviderRejected(value wave.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Branch(wave.CreateCustomerBranchProviderRejected, value, failure)
+}
+
+// CreateCustomerUncertain returns an uncertain createCustomer outcome.
+func CreateCustomerUncertain(value wave.CustomerProfile, failure sdkgo.Failure) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateCustomerDefect selects the defect branch: Input or credentials are invalid.
+func CreateCustomerDefect(value wave.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Branch(wave.CreateCustomerBranchDefect, value, failure)
+}
+
+// CreateCustomerRetry asks Dex to retry the createCustomer Step, after the delay when it is positive.
+func CreateCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Retry[wave.CustomerProfile](failure, after)
+}
+
+// CreateCustomerCreatedDefault is the manifest mock createdDefault: One example customer was created.
+func CreateCustomerCreatedDefault() connectormock.Case[wave.CustomerProfile] {
+	value := connectormock.MustDecodeOutput[wave.CustomerProfile](`{"businessId":"business-1","id":"customer-1","name":"Example Customer"}`)
+	return connectormock.Branch(wave.CreateCustomerBranchCreated, value, nil)
+}
+
+// CreateCustomerDefault is the manifest default, createdDefault, which New installs.
+func CreateCustomerDefault() connectormock.Case[wave.CustomerProfile] {
+	return CreateCustomerCreatedDefault()
+}
+
+// UpdateCustomerUpdated selects the updated branch: Wave updated the customer.
+func UpdateCustomerUpdated(value wave.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Branch(wave.UpdateCustomerBranchUpdated, value, failure)
+}
+
+// UpdateCustomerProviderRejected selects the providerRejected branch: Wave rejected the update.
+func UpdateCustomerProviderRejected(value wave.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Branch(wave.UpdateCustomerBranchProviderRejected, value, failure)
+}
+
+// UpdateCustomerInvalidResponse selects the invalidResponse branch: Wave returned malformed or oversized JSON.
+func UpdateCustomerInvalidResponse(value wave.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Branch(wave.UpdateCustomerBranchInvalidResponse, value, failure)
+}
+
+// UpdateCustomerDefect selects the defect branch: Input or credentials are invalid.
+func UpdateCustomerDefect(value wave.CustomerProfile, failure *sdkgo.Failure) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Branch(wave.UpdateCustomerBranchDefect, value, failure)
+}
+
+// UpdateCustomerRetry asks Dex to retry the updateCustomer Step, after the delay when it is positive.
+func UpdateCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.CustomerProfile] {
+	return connectormock.Retry[wave.CustomerProfile](failure, after)
+}
+
+// UpdateCustomerUpdatedDefault is the manifest mock updatedDefault: One example customer was updated.
+func UpdateCustomerUpdatedDefault() connectormock.Case[wave.CustomerProfile] {
+	value := connectormock.MustDecodeOutput[wave.CustomerProfile](`{"businessId":"business-1","id":"customer-1","name":"Updated Customer"}`)
+	return connectormock.Branch(wave.UpdateCustomerBranchUpdated, value, nil)
+}
+
+// UpdateCustomerDefault is the manifest default, updatedDefault, which New installs.
+func UpdateCustomerDefault() connectormock.Case[wave.CustomerProfile] {
+	return UpdateCustomerUpdatedDefault()
+}
+
+// DeleteCustomerDeleted selects the deleted branch: Wave deleted the customer.
+func DeleteCustomerDeleted(value wave.DeletedCustomer, failure *sdkgo.Failure) connectormock.Case[wave.DeletedCustomer] {
+	return connectormock.Branch(wave.DeleteCustomerBranchDeleted, value, failure)
+}
+
+// DeleteCustomerProviderRejected selects the providerRejected branch: Wave rejected the deletion.
+func DeleteCustomerProviderRejected(value wave.DeletedCustomer, failure *sdkgo.Failure) connectormock.Case[wave.DeletedCustomer] {
+	return connectormock.Branch(wave.DeleteCustomerBranchProviderRejected, value, failure)
+}
+
+// DeleteCustomerInvalidResponse selects the invalidResponse branch: Wave returned malformed JSON.
+func DeleteCustomerInvalidResponse(value wave.DeletedCustomer, failure *sdkgo.Failure) connectormock.Case[wave.DeletedCustomer] {
+	return connectormock.Branch(wave.DeleteCustomerBranchInvalidResponse, value, failure)
+}
+
+// DeleteCustomerDefect selects the defect branch: Input or credentials are invalid.
+func DeleteCustomerDefect(value wave.DeletedCustomer, failure *sdkgo.Failure) connectormock.Case[wave.DeletedCustomer] {
+	return connectormock.Branch(wave.DeleteCustomerBranchDefect, value, failure)
+}
+
+// DeleteCustomerRetry asks Dex to retry the deleteCustomer Step, after the delay when it is positive.
+func DeleteCustomerRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wave.DeletedCustomer] {
+	return connectormock.Retry[wave.DeletedCustomer](failure, after)
+}
+
+// DeleteCustomerDeletedDefault is the manifest mock deletedDefault: One example customer was deleted.
+func DeleteCustomerDeletedDefault() connectormock.Case[wave.DeletedCustomer] {
+	value := connectormock.MustDecodeOutput[wave.DeletedCustomer](`{"id":"customer-1"}`)
+	return connectormock.Branch(wave.DeleteCustomerBranchDeleted, value, nil)
+}
+
+// DeleteCustomerDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCustomerDefault() connectormock.Case[wave.DeletedCustomer] {
+	return DeleteCustomerDeletedDefault()
+}

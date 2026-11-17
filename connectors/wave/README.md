@@ -1,6 +1,20 @@
 # Wave connector
 
-The Go, Python, and TypeScript `getCustomer` Query reads one customer from a Wave business by GraphQL ID. It sends a fixed, read-only query to [Wave's public GraphQL API](https://developer.waveapps.com/hc/en-us/articles/360032911011-Query-Get-customer-by-id) and returns the business ID, customer ID, and name. A missing business or customer selects the optional `notFound` branch. Rate limits, server failures, and transport failures retry.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/wave/go@v0.2.0`.
+
+The Go, Python, and TypeScript `getCustomer` Query reads one customer from a Wave business by GraphQL ID. The Go module also lists, creates, renames, and deletes customers. These operations send fixed GraphQL documents to [Wave's public GraphQL API](https://developer.waveapps.com/hc/en-us/articles/360019968212-API-Reference). A missing business or customer selects the optional `notFound` branch when declared. Rate limits, server failures, and transport failures retry.
+
+## Go operations
+
+| Factory | Purpose | Repeat tier |
+| --- | --- | --- |
+| `NewGetCustomerStep` | Read one customer by business and customer IDs | safe |
+| `NewListCustomersStep` | List one 1-based page of customers by business ID | safe |
+| `NewCreateCustomerStep` | Create a named customer in a business | limited, maximum three possible sends |
+| `NewUpdateCustomerStep` | Replace a customer's name by ID | safe |
+| `NewDeleteCustomerStep` | Delete a customer by ID | safe |
+
+Wave's `customerCreate` GraphQL mutation has no documented request idempotency token. After an unknown outcome, the create Step resends within its configured cap and selects `uncertain` when the cap is reached; customer name alone cannot confirm that this request created a record.
 
 ## Connection and configuration
 

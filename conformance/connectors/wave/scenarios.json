@@ -406,6 +406,1470 @@
       },
       "name": "getCustomer-transportFailure",
       "operation": "getCustomer"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002001",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"customers\":{\"pageInfo\":{\"currentPage\":1,\"totalPages\":1,\"totalCount\":1},\"edges\":[{\"node\":{\"id\":\"customer-1\",\"name\":\"Example Customer\"}}]}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "currentPage": 1,
+          "customers": [
+            {
+              "businessId": "business-1",
+              "id": "customer-1",
+              "name": "Example Customer"
+            }
+          ],
+          "totalCount": 1,
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-success",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002002",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "customers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-notFound",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "customers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-providerRejected",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "customers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-invalidResponse",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002005",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "currentPage": 0,
+          "customers": [],
+          "totalCount": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-defect",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002006",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-429",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002007",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-5xx",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000002008",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query ListCustomers($businessId: ID!, $page: Int!, $pageSize: Int!) { business(id: $businessId) { id customers(page: $page, pageSize: $pageSize, sort: [NAME_ASC]) { pageInfo { currentPage totalPages totalCount } edges { node { id name } } } } }",
+            "variables": {
+              "businessId": "business-1",
+              "page": 1,
+              "pageSize": 20
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "page": 1,
+        "pageSize": 20
+      },
+      "name": "listCustomers-transport",
+      "operation": "listCustomers"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"customerCreate\":{\"didSucceed\":true,\"inputErrors\":[],\"customer\":{\"id\":\"customer-1\",\"name\":\"Example Customer\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "business-1",
+          "id": "customer-1",
+          "name": "Example Customer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-success",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-providerRejected",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-defect",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-429",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-5xx",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "name": "createCustomer-transport",
+      "operation": "createCustomer"
+    },
+    {
+      "attempts": 3,
+      "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation CreateCustomer($input: CustomerCreateInput!) { customerCreate(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "businessId": "business-1",
+                "name": "Example Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 3,
+          "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+          "sendCount": 3,
+          "state": "claimed"
+        },
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6ba24720-4ce3-578c-a177-3ad595282999",
+      "input": {
+        "businessId": "business-1",
+        "name": "Example Customer"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        },
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 2,
+            "callId": "6ba24720-4ce3-578c-a177-3ad595282999",
+            "sendCount": 2,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCustomer-uncertain",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"customerPatch\":{\"didSucceed\":true,\"inputErrors\":[],\"customer\":{\"id\":\"customer-1\",\"name\":\"Updated Customer\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "id": "customer-1",
+          "name": "Updated Customer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-success",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-providerRejected",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-invalidResponse",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-defect",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-429",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-5xx",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation UpdateCustomer($input: CustomerPatchInput!) { customerPatch(input: $input) { didSucceed inputErrors { code } customer { id name } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1",
+                "name": "Updated Customer"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "214b1cdc-45b1-5f78-aad0-743b277320b8",
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1",
+        "name": "Updated Customer"
+      },
+      "name": "updateCustomer-transport",
+      "operation": "updateCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"customerDelete\":{\"didSucceed\":true,\"inputErrors\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "customer-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-success",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-providerRejected",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-invalidResponse",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": ""
+      },
+      "name": "deleteCustomer-defect",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-429",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-5xx",
+      "operation": "deleteCustomer"
+    },
+    {
+      "callId": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "mutation DeleteCustomer($input: CustomerDeleteInput!) { customerDelete(input: $input) { didSucceed inputErrors { code } } }",
+            "variables": {
+              "input": {
+                "id": "customer-1"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6ac0750e-18da-5720-8d71-01c6b363d9b8",
+      "input": {
+        "customerId": "customer-1"
+      },
+      "name": "deleteCustomer-transport",
+      "operation": "deleteCustomer"
     }
   ],
   "schemaVersion": 1

@@ -4,6 +4,7 @@
 package wave
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -21,7 +22,24 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		reference: {AccessToken: sdkgo.NewSecretString("sample-wave-access-token")},
 	}, WithHTTPClient(transport))
 	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"getCustomer": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomer(), reference),
+	ctx := &customerTestContext{}
+	if len(scenario.PriorHeartbeat) > 0 {
+		ctx.heartbeat = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
+		var marker struct {
+			Attempt int32 `json:"attempt"`
+		}
+		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
+		ctx.attempt = marker.Attempt + 1
+	}
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		if attempt > 1 {
+			ctx.attempt = int32(attempt)
+		}
+	}, actions: map[string]conformanceOperationInvocation{
+		"getCustomer":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCustomer(), reference),
+		"listCustomers":  newConformanceQueryInvocation(t, scenario.Input, ctx, client.ListCustomers(), reference),
+		"createCustomer": newConformanceMutationInvocation(t, scenario.Input, ctx, client.CreateCustomer(), reference, scenario.CallID),
+		"updateCustomer": newConformanceMutationInvocation(t, scenario.Input, ctx, client.UpdateCustomer(), reference, scenario.CallID),
+		"deleteCustomer": newConformanceMutationInvocation(t, scenario.Input, ctx, client.DeleteCustomer(), reference, scenario.CallID),
 	}}
 }

@@ -20,6 +20,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[wave.CustomerProfile](`{"businessId":"business-1","id":"customer-1","name":"Example Customer"}`)
 			return err
 		}},
+		{name: "listCustomers/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.CustomerPage](`{"businessId":"business-1","customers":[{"businessId":"business-1","id":"customer-1","name":"Example Customer"}],"currentPage":1,"totalPages":1,"totalCount":1}`)
+			return err
+		}},
+		{name: "createCustomer/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.CustomerProfile](`{"businessId":"business-1","id":"customer-1","name":"Example Customer"}`)
+			return err
+		}},
+		{name: "updateCustomer/updatedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.CustomerProfile](`{"businessId":"business-1","id":"customer-1","name":"Updated Customer"}`)
+			return err
+		}},
+		{name: "deleteCustomer/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wave.DeletedCustomer](`{"id":"customer-1"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +48,17 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.GetCustomer().Definition().Operation.OperationID != "getCustomer" {
 		t.Errorf("getCustomer mock has another definition")
+	}
+	if mock.ListCustomers().Definition().Operation.OperationID != "listCustomers" {
+		t.Errorf("listCustomers mock has another definition")
+	}
+	if mock.CreateCustomer().Definition().Operation.OperationID != "createCustomer" {
+		t.Errorf("createCustomer mock has another definition")
+	}
+	if mock.UpdateCustomer().Definition().Operation.OperationID != "updateCustomer" {
+		t.Errorf("updateCustomer mock has another definition")
+	}
+	if mock.DeleteCustomer().Definition().Operation.OperationID != "deleteCustomer" {
+		t.Errorf("deleteCustomer mock has another definition")
 	}
 }

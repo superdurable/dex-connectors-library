@@ -3,10 +3,10 @@ kind: Connector
 metadata:
   name: wave
   displayName: Wave
-  description: Read a Wave customer by business and customer IDs.
+  description: Read and manage Wave customers within a business.
   company: Wave
   categories: [finance-payments]
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: wave
   languages:
@@ -76,3 +76,68 @@ spec:
           default: true
           description: One sample customer is returned.
           output: {businessId: business-1, id: customer-1, name: Example Customer}
+    - name: listCustomers
+      goName: ListCustomers
+      inputType: ListCustomersInput
+      outputType: CustomerPage
+      kind: query
+      description: List one page of customers for a business.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Wave returned a page of customers.}
+        - {id: notFound, goName: NotFound, description: The business was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: listedDefault, branch: listed, default: true, description: One example customer was listed., output: {businessId: business-1, customers: [{businessId: business-1, id: customer-1, name: Example Customer}], currentPage: 1, totalPages: 1, totalCount: 1}}
+    - name: createCustomer
+      goName: CreateCustomer
+      inputType: CreateCustomerInput
+      outputType: CustomerProfile
+      kind: mutation
+      description: Create a named customer in a business.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Wave created the customer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the customer input., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Creation may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: createdDefault, branch: created, default: true, description: One example customer was created., output: {businessId: business-1, id: customer-1, name: Example Customer}}
+    - name: updateCustomer
+      goName: UpdateCustomer
+      inputType: UpdateCustomerInput
+      outputType: CustomerProfile
+      kind: mutation
+      description: Replace a customer's name by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Wave updated the customer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: updatedDefault, branch: updated, default: true, description: One example customer was updated., output: {businessId: business-1, id: customer-1, name: Updated Customer}}
+    - name: deleteCustomer
+      goName: DeleteCustomer
+      inputType: DeleteCustomerInput
+      outputType: DeletedCustomer
+      kind: mutation
+      description: Delete a customer by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Wave deleted the customer.}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed JSON., optional: true}
+        - {id: defect, goName: Defect, description: Input or credentials are invalid., optional: true}
+      mocks:
+        - {name: deletedDefault, branch: deleted, default: true, description: One example customer was deleted., output: {id: customer-1}}
