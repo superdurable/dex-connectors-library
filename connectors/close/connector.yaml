@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: close
   displayName: Close
-  description: Create, read, and maintain Close leads, contacts, opportunities, and tasks with a connection-owned API key.
+  description: Create, read, and maintain Close leads, contacts, opportunities, tasks, and notes with a connection-owned API key.
   company: Close
   categories: [crm-sales]
   version: v0.3.0
@@ -56,6 +56,108 @@ spec:
         - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
         - "To revoke access, delete the token on the same provider page."
   operations:
+    - name: listNotes
+      goName: ListNotes
+      inputType: ListNotesInput
+      outputType: NotePage
+      kind: query
+      description: List a bounded page of note activities on a lead.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Close returned the note page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Meridian Labs has one sample note.
+          output: {notes: [{id: acti_meridian1, leadId: lead_meridian1, note: Proposal reviewed, pinned: false}], hasMore: false}
+    - name: getNote
+      goName: GetNote
+      inputType: GetNoteInput
+      outputType: Note
+      kind: query
+      description: Read one note activity by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Close returned the note.}
+        - {id: notFound, goName: NotFound, description: The note does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A Meridian Labs note was found.
+          output: {id: acti_meridian1, leadId: lead_meridian1, note: Proposal reviewed, pinned: false}
+    - name: createNote
+      goName: CreateNote
+      inputType: CreateNoteInput
+      outputType: Note
+      kind: mutation
+      description: Create a plaintext note activity on a lead.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Close returned the created note.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The note may have been created but its identity could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: A Meridian Labs note was created.
+          output: {id: acti_meridian1, leadId: lead_meridian1, note: Proposal reviewed, pinned: false}
+    - name: updateNote
+      goName: UpdateNote
+      inputType: UpdateNoteInput
+      outputType: Note
+      kind: mutation
+      description: Replace the note text, title, or pinned state.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: updated, goName: Updated, description: Close returned the updated note.}
+        - {id: notFound, goName: NotFound, description: The note does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the update., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          default: true
+          description: A Meridian Labs note was pinned.
+          output: {id: acti_meridian1, leadId: lead_meridian1, note: Proposal reviewed, pinned: true}
+    - name: deleteNote
+      goName: DeleteNote
+      inputType: DeleteNoteInput
+      outputType: DeletedNote
+      kind: mutation
+      description: Delete a note activity by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 45s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Close accepted deletion or the note is already absent.}
+        - {id: providerRejected, goName: ProviderRejected, description: Close conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Close returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: A Meridian Labs note was deleted.
+          output: {noteId: acti_meridian1}
     - name: listTasks
       goName: ListTasks
       inputType: ListTasksInput

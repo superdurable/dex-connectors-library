@@ -96,7 +96,7 @@ func (operation CreateContactOperation) Invoke(call sdkgo.Call, input CreateCont
 }
 
 func invokeCloseCreate[T interface {
-	Lead | Contact | Opportunity | Task
+	Lead | Contact | Opportunity | Task | Note
 }](client *Client, call sdkgo.Call, operation, path string, body []byte, createdBranch, rejectedBranch, defectBranch sdkgo.BranchID, decode func([]byte) (T, error), validID func(string) bool) sdkgo.MutationAttempt[T] {
 	fence, err := singledispatch.NewFence(call, 45*time.Second, singledispatch.WithMaxSends(call.MaxSends()))
 	if err != nil {
@@ -191,7 +191,7 @@ func invokeCloseCreate[T interface {
 }
 
 func closeCreatedID[T interface {
-	Lead | Contact | Opportunity | Task
+	Lead | Contact | Opportunity | Task | Note
 }](value T) string {
 	switch resource := any(value).(type) {
 	case Lead:
@@ -201,6 +201,8 @@ func closeCreatedID[T interface {
 	case Opportunity:
 		return resource.ID
 	case Task:
+		return resource.ID
+	case Note:
 		return resource.ID
 	default:
 		return ""

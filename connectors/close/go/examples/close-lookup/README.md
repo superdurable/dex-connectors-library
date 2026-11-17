@@ -1,6 +1,6 @@
 # Close lookup example
 
-This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads`, `getLead`, Go `createContact`, Go `listContacts`, Go `listOpportunities`, and Go `listTasks` in one typed Flow. Each real run creates a new contact named `Ada Example` under the first lead.
+This Worker registers `CloseLookup` with static connection name `close`. It calls `listLeads`, `getLead`, Go `createContact`, Go `listContacts`, Go `listOpportunities`, Go `listTasks`, and Go `listNotes` in one typed Flow. Each real run creates a new contact named `Ada Example` under the first lead.
 
 ## Generate and run
 

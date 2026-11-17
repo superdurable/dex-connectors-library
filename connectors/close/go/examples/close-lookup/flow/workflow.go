@@ -21,10 +21,12 @@ const contactsStepType = "ReadCloseContacts"
 const createContactStepType = "CreateCloseContact"
 const opportunitiesStepType = "ReadCloseOpportunities"
 const tasksStepType = "ReadCloseTasks"
+const notesStepType = "ReadCloseNotes"
 
 var selectedLeadAttribute = dex.DefineAttribute[close.Lead]("close-selected-lead")
 var selectedContactsAttribute = dex.DefineAttribute[[]close.Contact]("close-selected-contacts")
 var selectedOpportunitiesAttribute = dex.DefineAttribute[[]close.Opportunity]("close-selected-opportunities")
+var selectedTasksAttribute = dex.DefineAttribute[[]close.Task]("close-selected-tasks")
 
 // Request is the typed Start Flow input.
 type Request struct {
@@ -42,6 +44,8 @@ type Outcome struct {
 	Opportunities []close.Opportunity `json:"opportunities"`
 	// Tasks contains the first page of lead tasks.
 	Tasks []close.Task `json:"tasks"`
+	// Notes contains the first page of note activities.
+	Notes []close.Note `json:"notes"`
 }
 
 // Flow reads the first and second provider resources.
@@ -58,7 +62,7 @@ func (*Flow) GetFlowType() string { return FlowType }
 
 // GetPersistenceSchema declares the example's durable state.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
-	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{selectedLeadAttribute, selectedContactsAttribute, selectedOpportunitiesAttribute}}
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{selectedLeadAttribute, selectedContactsAttribute, selectedOpportunitiesAttribute, selectedTasksAttribute}}
 }
 
 // GetRPCs registers Dex Web summary and display views.
@@ -90,7 +94,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStep(afterContacts{}),
 		dex.DefineStep(close.NewListOpportunitiesStep(close.ListOpportunitiesStepConfig[close.ListOpportunitiesInput]{StepType: opportunitiesStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read opportunities belonging to the selected lead."}, MapToOperationInput: func(input close.ListOpportunitiesInput) close.ListOpportunitiesInput { return input }, Listed: sdkgo.GoTo(afterOpportunities{})})),
 		dex.DefineStep(afterOpportunities{}),
-		dex.DefineStep(close.NewListTasksStep(close.ListTasksStepConfig[close.ListTasksInput]{StepType: tasksStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read tasks belonging to the selected lead."}, MapToOperationInput: func(input close.ListTasksInput) close.ListTasksInput { return input }, Listed: sdkgo.GoTo(completeLookup{})})),
+		dex.DefineStep(close.NewListTasksStep(close.ListTasksStepConfig[close.ListTasksInput]{StepType: tasksStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read tasks belonging to the selected lead."}, MapToOperationInput: func(input close.ListTasksInput) close.ListTasksInput { return input }, Listed: sdkgo.GoTo(afterTasks{})})),
+		dex.DefineStep(afterTasks{}),
+		dex.DefineStep(close.NewListNotesStep(close.ListNotesStepConfig[close.ListNotesInput]{StepType: notesStepType, ConnectionName: ConnectionName, Connection: flow.connection, Annotations: sdkgo.StepAnnotations{GroupID: "close-lookup", GroupLabel: "Close lookup", Explanation: "Read notes belonging to the selected lead."}, MapToOperationInput: func(input close.ListNotesInput) close.ListNotesInput { return input }, Listed: sdkgo.GoTo(completeLookup{})})),
 		dex.DefineStep(completeLookup{}),
 	}
 }
@@ -187,13 +193,30 @@ func (afterOpportunities) Execute(ctx dex.Context, result close.ListOpportunitie
 }
 
 // dex:group group-id:close-lookup group-label:"Close lookup"
-// dex:explanation text:"Complete the Flow with the lead and related records."
-type completeLookup struct {
+// dex:explanation text:"Save tasks and request the lead's notes."
+type afterTasks struct {
 	dex.StepDefaultsNoWaitFor[close.ListTasksResult]
 }
 
+func (afterTasks) Execute(ctx dex.Context, result close.ListTasksResult) (*dex.StepDecision, error) {
+	if err := selectedTasksAttribute.Set(ctx, result.Value.Tasks); err != nil {
+		return nil, err
+	}
+	lead, err := selectedLeadAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GoTo(sdkgo.StepRef[close.ListNotesInput](notesStepType), close.ListNotesInput{LeadID: lead.ID, Limit: 10}), nil
+}
+
+// dex:group group-id:close-lookup group-label:"Close lookup"
+// dex:explanation text:"Complete the Flow with the lead and related records."
+type completeLookup struct {
+	dex.StepDefaultsNoWaitFor[close.ListNotesResult]
+}
+
 func (completeLookup) GetStepType() string { return "CompleteCloseLookup" }
-func (completeLookup) Execute(ctx dex.Context, result close.ListTasksResult) (*dex.StepDecision, error) {
+func (completeLookup) Execute(ctx dex.Context, result close.ListNotesResult) (*dex.StepDecision, error) {
 	lead, err := selectedLeadAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -206,5 +229,9 @@ func (completeLookup) Execute(ctx dex.Context, result close.ListTasksResult) (*d
 	if err != nil {
 		return nil, err
 	}
-	return dex.GracefulComplete(Outcome{Lead: lead, Contacts: contacts, Opportunities: opportunities, Tasks: result.Value.Tasks}), nil
+	tasks, err := selectedTasksAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(Outcome{Lead: lead, Contacts: contacts, Opportunities: opportunities, Tasks: tasks, Notes: result.Value.Notes}), nil
 }

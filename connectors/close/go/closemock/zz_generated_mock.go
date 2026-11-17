@@ -18,6 +18,11 @@ import (
 // Mock is a scripted close connection. Script each operation through its accessor.
 type Mock struct {
 	connection        close.Connection
+	listNotes         *connectormock.Query[close.ListNotesInput, close.NotePage]
+	getNote           *connectormock.Query[close.GetNoteInput, close.Note]
+	createNote        *connectormock.Mutation[close.CreateNoteInput, close.Note]
+	updateNote        *connectormock.Mutation[close.UpdateNoteInput, close.Note]
+	deleteNote        *connectormock.Mutation[close.DeleteNoteInput, close.DeletedNote]
 	listTasks         *connectormock.Query[close.ListTasksInput, close.TaskPage]
 	getTask           *connectormock.Query[close.GetTaskInput, close.Task]
 	createTask        *connectormock.Mutation[close.CreateTaskInput, close.Task]
@@ -45,6 +50,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listNotes:         connectormock.NewQuery[close.ListNotesInput, close.NotePage](t, close.ListNotesDefinition),
+		getNote:           connectormock.NewQuery[close.GetNoteInput, close.Note](t, close.GetNoteDefinition),
+		createNote:        connectormock.NewMutation[close.CreateNoteInput, close.Note](t, close.CreateNoteDefinition),
+		updateNote:        connectormock.NewMutation[close.UpdateNoteInput, close.Note](t, close.UpdateNoteDefinition),
+		deleteNote:        connectormock.NewMutation[close.DeleteNoteInput, close.DeletedNote](t, close.DeleteNoteDefinition),
 		listTasks:         connectormock.NewQuery[close.ListTasksInput, close.TaskPage](t, close.ListTasksDefinition),
 		getTask:           connectormock.NewQuery[close.GetTaskInput, close.Task](t, close.GetTaskDefinition),
 		createTask:        connectormock.NewMutation[close.CreateTaskInput, close.Task](t, close.CreateTaskDefinition),
@@ -66,6 +76,11 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteContact:     connectormock.NewMutation[close.DeleteContactInput, close.DeletedContact](t, close.DeleteContactDefinition),
 		getLead:           connectormock.NewQuery[close.GetLeadInput, close.Lead](t, close.GetLeadDefinition),
 	}
+	mock.listNotes.Default(ListNotesDefault())
+	mock.getNote.Default(GetNoteDefault())
+	mock.createNote.Default(CreateNoteDefault())
+	mock.updateNote.Default(UpdateNoteDefault())
+	mock.deleteNote.Default(DeleteNoteDefault())
 	mock.listTasks.Default(ListTasksDefault())
 	mock.getTask.Default(GetTaskDefault())
 	mock.createTask.Default(CreateTaskDefault())
@@ -96,6 +111,29 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() close.Connection { return mock.connection }
+
+// ListNotes returns the listNotes script.
+func (mock *Mock) ListNotes() *connectormock.Query[close.ListNotesInput, close.NotePage] {
+	return mock.listNotes
+}
+
+// GetNote returns the getNote script.
+func (mock *Mock) GetNote() *connectormock.Query[close.GetNoteInput, close.Note] { return mock.getNote }
+
+// CreateNote returns the createNote script.
+func (mock *Mock) CreateNote() *connectormock.Mutation[close.CreateNoteInput, close.Note] {
+	return mock.createNote
+}
+
+// UpdateNote returns the updateNote script.
+func (mock *Mock) UpdateNote() *connectormock.Mutation[close.UpdateNoteInput, close.Note] {
+	return mock.updateNote
+}
+
+// DeleteNote returns the deleteNote script.
+func (mock *Mock) DeleteNote() *connectormock.Mutation[close.DeleteNoteInput, close.DeletedNote] {
+	return mock.deleteNote
+}
 
 // ListTasks returns the listTasks script.
 func (mock *Mock) ListTasks() *connectormock.Query[close.ListTasksInput, close.TaskPage] {
@@ -195,6 +233,21 @@ func (mock *Mock) GetLead() *connectormock.Query[close.GetLeadInput, close.Lead]
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListNotes() sdkgo.Query[close.ListNotesInput, close.NotePage] {
+	return operations.mock.listNotes
+}
+func (operations mockOperations) GetNote() sdkgo.Query[close.GetNoteInput, close.Note] {
+	return operations.mock.getNote
+}
+func (operations mockOperations) CreateNote() sdkgo.Mutation[close.CreateNoteInput, close.Note] {
+	return operations.mock.createNote
+}
+func (operations mockOperations) UpdateNote() sdkgo.Mutation[close.UpdateNoteInput, close.Note] {
+	return operations.mock.updateNote
+}
+func (operations mockOperations) DeleteNote() sdkgo.Mutation[close.DeleteNoteInput, close.DeletedNote] {
+	return operations.mock.deleteNote
+}
 func (operations mockOperations) ListTasks() sdkgo.Query[close.ListTasksInput, close.TaskPage] {
 	return operations.mock.listTasks
 }
@@ -255,6 +308,186 @@ func (operations mockOperations) DeleteContact() sdkgo.Mutation[close.DeleteCont
 func (operations mockOperations) GetLead() sdkgo.Query[close.GetLeadInput, close.Lead] {
 	return operations.mock.getLead
 }
+
+// ListNotesListed selects the listed branch: Close returned the note page.
+func ListNotesListed(value close.NotePage, failure *sdkgo.Failure) connectormock.Case[close.NotePage] {
+	return connectormock.Branch(close.ListNotesBranchListed, value, failure)
+}
+
+// ListNotesProviderRejected selects the providerRejected branch: Close conclusively rejected the read.
+func ListNotesProviderRejected(value close.NotePage, failure *sdkgo.Failure) connectormock.Case[close.NotePage] {
+	return connectormock.Branch(close.ListNotesBranchProviderRejected, value, failure)
+}
+
+// ListNotesInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func ListNotesInvalidResponse(value close.NotePage, failure *sdkgo.Failure) connectormock.Case[close.NotePage] {
+	return connectormock.Branch(close.ListNotesBranchInvalidResponse, value, failure)
+}
+
+// ListNotesDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListNotesDefect(value close.NotePage, failure *sdkgo.Failure) connectormock.Case[close.NotePage] {
+	return connectormock.Branch(close.ListNotesBranchDefect, value, failure)
+}
+
+// ListNotesRetry asks Dex to retry the listNotes Step, after the delay when it is positive.
+func ListNotesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.NotePage] {
+	return connectormock.Retry[close.NotePage](failure, after)
+}
+
+// ListNotesListedDefault is the manifest mock listedDefault: Meridian Labs has one sample note.
+func ListNotesListedDefault() connectormock.Case[close.NotePage] {
+	value := connectormock.MustDecodeOutput[close.NotePage](`{"notes":[{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":false}],"hasMore":false}`)
+	return connectormock.Branch(close.ListNotesBranchListed, value, nil)
+}
+
+// ListNotesDefault is the manifest default, listedDefault, which New installs.
+func ListNotesDefault() connectormock.Case[close.NotePage] { return ListNotesListedDefault() }
+
+// GetNoteFound selects the found branch: Close returned the note.
+func GetNoteFound(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.GetNoteBranchFound, value, failure)
+}
+
+// GetNoteNotFound selects the notFound branch: The note does not exist.
+func GetNoteNotFound(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.GetNoteBranchNotFound, value, failure)
+}
+
+// GetNoteProviderRejected selects the providerRejected branch: Close conclusively rejected the read.
+func GetNoteProviderRejected(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.GetNoteBranchProviderRejected, value, failure)
+}
+
+// GetNoteInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func GetNoteInvalidResponse(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.GetNoteBranchInvalidResponse, value, failure)
+}
+
+// GetNoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func GetNoteDefect(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.GetNoteBranchDefect, value, failure)
+}
+
+// GetNoteRetry asks Dex to retry the getNote Step, after the delay when it is positive.
+func GetNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Note] {
+	return connectormock.Retry[close.Note](failure, after)
+}
+
+// GetNoteFoundDefault is the manifest mock foundDefault: A Meridian Labs note was found.
+func GetNoteFoundDefault() connectormock.Case[close.Note] {
+	value := connectormock.MustDecodeOutput[close.Note](`{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":false}`)
+	return connectormock.Branch(close.GetNoteBranchFound, value, nil)
+}
+
+// GetNoteDefault is the manifest default, foundDefault, which New installs.
+func GetNoteDefault() connectormock.Case[close.Note] { return GetNoteFoundDefault() }
+
+// CreateNoteCreated selects the created branch: Close returned the created note.
+func CreateNoteCreated(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.CreateNoteBranchCreated, value, failure)
+}
+
+// CreateNoteProviderRejected selects the providerRejected branch: Close conclusively rejected the creation.
+func CreateNoteProviderRejected(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.CreateNoteBranchProviderRejected, value, failure)
+}
+
+// CreateNoteUncertain returns an uncertain createNote outcome.
+func CreateNoteUncertain(value close.Note, failure sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateNoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func CreateNoteDefect(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.CreateNoteBranchDefect, value, failure)
+}
+
+// CreateNoteRetry asks Dex to retry the createNote Step, after the delay when it is positive.
+func CreateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Note] {
+	return connectormock.Retry[close.Note](failure, after)
+}
+
+// CreateNoteCreatedDefault is the manifest mock createdDefault: A Meridian Labs note was created.
+func CreateNoteCreatedDefault() connectormock.Case[close.Note] {
+	value := connectormock.MustDecodeOutput[close.Note](`{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":false}`)
+	return connectormock.Branch(close.CreateNoteBranchCreated, value, nil)
+}
+
+// CreateNoteDefault is the manifest default, createdDefault, which New installs.
+func CreateNoteDefault() connectormock.Case[close.Note] { return CreateNoteCreatedDefault() }
+
+// UpdateNoteUpdated selects the updated branch: Close returned the updated note.
+func UpdateNoteUpdated(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.UpdateNoteBranchUpdated, value, failure)
+}
+
+// UpdateNoteNotFound selects the notFound branch: The note does not exist.
+func UpdateNoteNotFound(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.UpdateNoteBranchNotFound, value, failure)
+}
+
+// UpdateNoteProviderRejected selects the providerRejected branch: Close conclusively rejected the update.
+func UpdateNoteProviderRejected(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.UpdateNoteBranchProviderRejected, value, failure)
+}
+
+// UpdateNoteInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func UpdateNoteInvalidResponse(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.UpdateNoteBranchInvalidResponse, value, failure)
+}
+
+// UpdateNoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func UpdateNoteDefect(value close.Note, failure *sdkgo.Failure) connectormock.Case[close.Note] {
+	return connectormock.Branch(close.UpdateNoteBranchDefect, value, failure)
+}
+
+// UpdateNoteRetry asks Dex to retry the updateNote Step, after the delay when it is positive.
+func UpdateNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.Note] {
+	return connectormock.Retry[close.Note](failure, after)
+}
+
+// UpdateNoteUpdatedDefault is the manifest mock updatedDefault: A Meridian Labs note was pinned.
+func UpdateNoteUpdatedDefault() connectormock.Case[close.Note] {
+	value := connectormock.MustDecodeOutput[close.Note](`{"id":"acti_meridian1","leadId":"lead_meridian1","note":"Proposal reviewed","pinned":true}`)
+	return connectormock.Branch(close.UpdateNoteBranchUpdated, value, nil)
+}
+
+// UpdateNoteDefault is the manifest default, updatedDefault, which New installs.
+func UpdateNoteDefault() connectormock.Case[close.Note] { return UpdateNoteUpdatedDefault() }
+
+// DeleteNoteDeleted selects the deleted branch: Close accepted deletion or the note is already absent.
+func DeleteNoteDeleted(value close.DeletedNote, failure *sdkgo.Failure) connectormock.Case[close.DeletedNote] {
+	return connectormock.Branch(close.DeleteNoteBranchDeleted, value, failure)
+}
+
+// DeleteNoteProviderRejected selects the providerRejected branch: Close conclusively rejected the deletion.
+func DeleteNoteProviderRejected(value close.DeletedNote, failure *sdkgo.Failure) connectormock.Case[close.DeletedNote] {
+	return connectormock.Branch(close.DeleteNoteBranchProviderRejected, value, failure)
+}
+
+// DeleteNoteInvalidResponse selects the invalidResponse branch: Close returned malformed or oversized JSON.
+func DeleteNoteInvalidResponse(value close.DeletedNote, failure *sdkgo.Failure) connectormock.Case[close.DeletedNote] {
+	return connectormock.Branch(close.DeleteNoteBranchInvalidResponse, value, failure)
+}
+
+// DeleteNoteDefect selects the defect branch: Local input or connection credentials are invalid.
+func DeleteNoteDefect(value close.DeletedNote, failure *sdkgo.Failure) connectormock.Case[close.DeletedNote] {
+	return connectormock.Branch(close.DeleteNoteBranchDefect, value, failure)
+}
+
+// DeleteNoteRetry asks Dex to retry the deleteNote Step, after the delay when it is positive.
+func DeleteNoteRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[close.DeletedNote] {
+	return connectormock.Retry[close.DeletedNote](failure, after)
+}
+
+// DeleteNoteDeletedDefault is the manifest mock deletedDefault: A Meridian Labs note was deleted.
+func DeleteNoteDeletedDefault() connectormock.Case[close.DeletedNote] {
+	value := connectormock.MustDecodeOutput[close.DeletedNote](`{"noteId":"acti_meridian1"}`)
+	return connectormock.Branch(close.DeleteNoteBranchDeleted, value, nil)
+}
+
+// DeleteNoteDefault is the manifest default, deletedDefault, which New installs.
+func DeleteNoteDefault() connectormock.Case[close.DeletedNote] { return DeleteNoteDeletedDefault() }
 
 // ListTasksListed selects the listed branch: Close returned the task page.
 func ListTasksListed(value close.TaskPage, failure *sdkgo.Failure) connectormock.Case[close.TaskPage] {
