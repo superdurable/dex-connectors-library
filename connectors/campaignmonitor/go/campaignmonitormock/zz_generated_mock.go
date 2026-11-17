@@ -18,6 +18,13 @@ import (
 // Mock is a scripted campaignmonitor connection. Script each operation through its accessor.
 type Mock struct {
 	connection          campaignmonitor.Connection
+	listCampaigns       *connectormock.Query[campaignmonitor.ListCampaignsInput, campaignmonitor.CampaignsPage]
+	getCampaignSummary  *connectormock.Query[campaignmonitor.GetCampaignSummaryInput, campaignmonitor.CampaignSummary]
+	createDraftCampaign *connectormock.Mutation[campaignmonitor.CreateDraftCampaignInput, campaignmonitor.CampaignIdentity]
+	sendCampaign        *connectormock.Mutation[campaignmonitor.SendCampaignInput, campaignmonitor.CampaignIdentity]
+	sendCampaignPreview *connectormock.Mutation[campaignmonitor.SendCampaignPreviewInput, campaignmonitor.CampaignIdentity]
+	unscheduleCampaign  *connectormock.Mutation[campaignmonitor.UnscheduleCampaignInput, campaignmonitor.CampaignIdentity]
+	deleteCampaign      *connectormock.Mutation[campaignmonitor.DeleteCampaignInput, campaignmonitor.CampaignIdentity]
 	listSegments        *connectormock.Query[campaignmonitor.ListSegmentsInput, campaignmonitor.SegmentsList]
 	getSegment          *connectormock.Query[campaignmonitor.GetSegmentInput, campaignmonitor.SegmentProfile]
 	createSegment       *connectormock.Mutation[campaignmonitor.CreateSegmentInput, campaignmonitor.SegmentIdentity]
@@ -41,6 +48,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
+		listCampaigns:       connectormock.NewQuery[campaignmonitor.ListCampaignsInput, campaignmonitor.CampaignsPage](t, campaignmonitor.ListCampaignsDefinition),
+		getCampaignSummary:  connectormock.NewQuery[campaignmonitor.GetCampaignSummaryInput, campaignmonitor.CampaignSummary](t, campaignmonitor.GetCampaignSummaryDefinition),
+		createDraftCampaign: connectormock.NewMutation[campaignmonitor.CreateDraftCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.CreateDraftCampaignDefinition),
+		sendCampaign:        connectormock.NewMutation[campaignmonitor.SendCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.SendCampaignDefinition),
+		sendCampaignPreview: connectormock.NewMutation[campaignmonitor.SendCampaignPreviewInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.SendCampaignPreviewDefinition),
+		unscheduleCampaign:  connectormock.NewMutation[campaignmonitor.UnscheduleCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.UnscheduleCampaignDefinition),
+		deleteCampaign:      connectormock.NewMutation[campaignmonitor.DeleteCampaignInput, campaignmonitor.CampaignIdentity](t, campaignmonitor.DeleteCampaignDefinition),
 		listSegments:        connectormock.NewQuery[campaignmonitor.ListSegmentsInput, campaignmonitor.SegmentsList](t, campaignmonitor.ListSegmentsDefinition),
 		getSegment:          connectormock.NewQuery[campaignmonitor.GetSegmentInput, campaignmonitor.SegmentProfile](t, campaignmonitor.GetSegmentDefinition),
 		createSegment:       connectormock.NewMutation[campaignmonitor.CreateSegmentInput, campaignmonitor.SegmentIdentity](t, campaignmonitor.CreateSegmentDefinition),
@@ -58,6 +72,13 @@ func New(t testing.TB, connectionName string) *Mock {
 		deleteSubscriber:    connectormock.NewMutation[campaignmonitor.DeleteSubscriberInput, campaignmonitor.SubscriberIdentity](t, campaignmonitor.DeleteSubscriberDefinition),
 		listClients:         connectormock.NewQuery[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList](t, campaignmonitor.ListClientsDefinition),
 	}
+	mock.listCampaigns.Default(ListCampaignsDefault())
+	mock.getCampaignSummary.Default(GetCampaignSummaryDefault())
+	mock.createDraftCampaign.Default(CreateDraftCampaignDefault())
+	mock.sendCampaign.Default(SendCampaignDefault())
+	mock.sendCampaignPreview.Default(SendCampaignPreviewDefault())
+	mock.unscheduleCampaign.Default(UnscheduleCampaignDefault())
+	mock.deleteCampaign.Default(DeleteCampaignDefault())
 	mock.listSegments.Default(ListSegmentsDefault())
 	mock.getSegment.Default(GetSegmentDefault())
 	mock.createSegment.Default(CreateSegmentDefault())
@@ -84,6 +105,41 @@ func New(t testing.TB, connectionName string) *Mock {
 
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() campaignmonitor.Connection { return mock.connection }
+
+// ListCampaigns returns the listCampaigns script.
+func (mock *Mock) ListCampaigns() *connectormock.Query[campaignmonitor.ListCampaignsInput, campaignmonitor.CampaignsPage] {
+	return mock.listCampaigns
+}
+
+// GetCampaignSummary returns the getCampaignSummary script.
+func (mock *Mock) GetCampaignSummary() *connectormock.Query[campaignmonitor.GetCampaignSummaryInput, campaignmonitor.CampaignSummary] {
+	return mock.getCampaignSummary
+}
+
+// CreateDraftCampaign returns the createDraftCampaign script.
+func (mock *Mock) CreateDraftCampaign() *connectormock.Mutation[campaignmonitor.CreateDraftCampaignInput, campaignmonitor.CampaignIdentity] {
+	return mock.createDraftCampaign
+}
+
+// SendCampaign returns the sendCampaign script.
+func (mock *Mock) SendCampaign() *connectormock.Mutation[campaignmonitor.SendCampaignInput, campaignmonitor.CampaignIdentity] {
+	return mock.sendCampaign
+}
+
+// SendCampaignPreview returns the sendCampaignPreview script.
+func (mock *Mock) SendCampaignPreview() *connectormock.Mutation[campaignmonitor.SendCampaignPreviewInput, campaignmonitor.CampaignIdentity] {
+	return mock.sendCampaignPreview
+}
+
+// UnscheduleCampaign returns the unscheduleCampaign script.
+func (mock *Mock) UnscheduleCampaign() *connectormock.Mutation[campaignmonitor.UnscheduleCampaignInput, campaignmonitor.CampaignIdentity] {
+	return mock.unscheduleCampaign
+}
+
+// DeleteCampaign returns the deleteCampaign script.
+func (mock *Mock) DeleteCampaign() *connectormock.Mutation[campaignmonitor.DeleteCampaignInput, campaignmonitor.CampaignIdentity] {
+	return mock.deleteCampaign
+}
 
 // ListSegments returns the listSegments script.
 func (mock *Mock) ListSegments() *connectormock.Query[campaignmonitor.ListSegmentsInput, campaignmonitor.SegmentsList] {
@@ -167,6 +223,27 @@ func (mock *Mock) ListClients() *connectormock.Query[campaignmonitor.ListClients
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) ListCampaigns() sdkgo.Query[campaignmonitor.ListCampaignsInput, campaignmonitor.CampaignsPage] {
+	return operations.mock.listCampaigns
+}
+func (operations mockOperations) GetCampaignSummary() sdkgo.Query[campaignmonitor.GetCampaignSummaryInput, campaignmonitor.CampaignSummary] {
+	return operations.mock.getCampaignSummary
+}
+func (operations mockOperations) CreateDraftCampaign() sdkgo.Mutation[campaignmonitor.CreateDraftCampaignInput, campaignmonitor.CampaignIdentity] {
+	return operations.mock.createDraftCampaign
+}
+func (operations mockOperations) SendCampaign() sdkgo.Mutation[campaignmonitor.SendCampaignInput, campaignmonitor.CampaignIdentity] {
+	return operations.mock.sendCampaign
+}
+func (operations mockOperations) SendCampaignPreview() sdkgo.Mutation[campaignmonitor.SendCampaignPreviewInput, campaignmonitor.CampaignIdentity] {
+	return operations.mock.sendCampaignPreview
+}
+func (operations mockOperations) UnscheduleCampaign() sdkgo.Mutation[campaignmonitor.UnscheduleCampaignInput, campaignmonitor.CampaignIdentity] {
+	return operations.mock.unscheduleCampaign
+}
+func (operations mockOperations) DeleteCampaign() sdkgo.Mutation[campaignmonitor.DeleteCampaignInput, campaignmonitor.CampaignIdentity] {
+	return operations.mock.deleteCampaign
+}
 func (operations mockOperations) ListSegments() sdkgo.Query[campaignmonitor.ListSegmentsInput, campaignmonitor.SegmentsList] {
 	return operations.mock.listSegments
 }
@@ -214,6 +291,263 @@ func (operations mockOperations) DeleteSubscriber() sdkgo.Mutation[campaignmonit
 }
 func (operations mockOperations) ListClients() sdkgo.Query[campaignmonitor.ListClientsInput, campaignmonitor.ClientsList] {
 	return operations.mock.listClients
+}
+
+// ListCampaignsListed selects the listed branch: Campaign Monitor returned the campaigns.
+func ListCampaignsListed(value campaignmonitor.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignsPage] {
+	return connectormock.Branch(campaignmonitor.ListCampaignsBranchListed, value, failure)
+}
+
+// ListCampaignsProviderRejected selects the providerRejected branch: Campaign Monitor rejected the lookup.
+func ListCampaignsProviderRejected(value campaignmonitor.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignsPage] {
+	return connectormock.Branch(campaignmonitor.ListCampaignsBranchProviderRejected, value, failure)
+}
+
+// ListCampaignsInvalidResponse selects the invalidResponse branch: Campaign Monitor returned invalid JSON.
+func ListCampaignsInvalidResponse(value campaignmonitor.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignsPage] {
+	return connectormock.Branch(campaignmonitor.ListCampaignsBranchInvalidResponse, value, failure)
+}
+
+// ListCampaignsDefect selects the defect branch: Local input or credentials are invalid.
+func ListCampaignsDefect(value campaignmonitor.CampaignsPage, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignsPage] {
+	return connectormock.Branch(campaignmonitor.ListCampaignsBranchDefect, value, failure)
+}
+
+// ListCampaignsRetry asks Dex to retry the listCampaigns Step, after the delay when it is positive.
+func ListCampaignsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.CampaignsPage] {
+	return connectormock.Retry[campaignmonitor.CampaignsPage](failure, after)
+}
+
+// ListCampaignsListedDefault is the manifest mock listedDefault: Sample draft campaign.
+func ListCampaignsListedDefault() connectormock.Case[campaignmonitor.CampaignsPage] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.CampaignsPage](`{"campaigns":[{"id":"campaign-1","name":"Autumn newsletter","subject":"New issue","status":"draft"}],"pageNumber":1,"pageSize":1,"totalRecords":1,"numberOfPages":1}`)
+	return connectormock.Branch(campaignmonitor.ListCampaignsBranchListed, value, nil)
+}
+
+// ListCampaignsDefault is the manifest default, listedDefault, which New installs.
+func ListCampaignsDefault() connectormock.Case[campaignmonitor.CampaignsPage] {
+	return ListCampaignsListedDefault()
+}
+
+// GetCampaignSummaryFound selects the found branch: Campaign Monitor returned the summary.
+func GetCampaignSummaryFound(value campaignmonitor.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignSummary] {
+	return connectormock.Branch(campaignmonitor.GetCampaignSummaryBranchFound, value, failure)
+}
+
+// GetCampaignSummaryNotFound selects the notFound branch: Campaign Monitor did not find the campaign.
+func GetCampaignSummaryNotFound(value campaignmonitor.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignSummary] {
+	return connectormock.Branch(campaignmonitor.GetCampaignSummaryBranchNotFound, value, failure)
+}
+
+// GetCampaignSummaryProviderRejected selects the providerRejected branch: Campaign Monitor rejected the lookup.
+func GetCampaignSummaryProviderRejected(value campaignmonitor.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignSummary] {
+	return connectormock.Branch(campaignmonitor.GetCampaignSummaryBranchProviderRejected, value, failure)
+}
+
+// GetCampaignSummaryInvalidResponse selects the invalidResponse branch: Campaign Monitor returned invalid JSON.
+func GetCampaignSummaryInvalidResponse(value campaignmonitor.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignSummary] {
+	return connectormock.Branch(campaignmonitor.GetCampaignSummaryBranchInvalidResponse, value, failure)
+}
+
+// GetCampaignSummaryDefect selects the defect branch: Local input or credentials are invalid.
+func GetCampaignSummaryDefect(value campaignmonitor.CampaignSummary, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignSummary] {
+	return connectormock.Branch(campaignmonitor.GetCampaignSummaryBranchDefect, value, failure)
+}
+
+// GetCampaignSummaryRetry asks Dex to retry the getCampaignSummary Step, after the delay when it is positive.
+func GetCampaignSummaryRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.CampaignSummary] {
+	return connectormock.Retry[campaignmonitor.CampaignSummary](failure, after)
+}
+
+// GetCampaignSummaryFoundDefault is the manifest mock foundDefault: Sample sent campaign metrics.
+func GetCampaignSummaryFoundDefault() connectormock.Case[campaignmonitor.CampaignSummary] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.CampaignSummary](`{"name":"Autumn newsletter","recipients":100,"totalOpened":20,"clicks":5,"unsubscribed":1}`)
+	return connectormock.Branch(campaignmonitor.GetCampaignSummaryBranchFound, value, nil)
+}
+
+// GetCampaignSummaryDefault is the manifest default, foundDefault, which New installs.
+func GetCampaignSummaryDefault() connectormock.Case[campaignmonitor.CampaignSummary] {
+	return GetCampaignSummaryFoundDefault()
+}
+
+// CreateDraftCampaignCreated selects the created branch: Campaign Monitor created the draft.
+func CreateDraftCampaignCreated(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.CreateDraftCampaignBranchCreated, value, failure)
+}
+
+// CreateDraftCampaignProviderRejected selects the providerRejected branch: Campaign Monitor rejected draft creation.
+func CreateDraftCampaignProviderRejected(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.CreateDraftCampaignBranchProviderRejected, value, failure)
+}
+
+// CreateDraftCampaignUncertain returns an uncertain createDraftCampaign outcome.
+func CreateDraftCampaignUncertain(value campaignmonitor.CampaignIdentity, failure sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateDraftCampaignDefect selects the defect branch: Local input or credentials are invalid.
+func CreateDraftCampaignDefect(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.CreateDraftCampaignBranchDefect, value, failure)
+}
+
+// CreateDraftCampaignRetry asks Dex to retry the createDraftCampaign Step, after the delay when it is positive.
+func CreateDraftCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Retry[campaignmonitor.CampaignIdentity](failure, after)
+}
+
+// CreateDraftCampaignCreatedDefault is the manifest mock createdDefault: Sample draft campaign.
+func CreateDraftCampaignCreatedDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-2","name":"Autumn issue"}`)
+	return connectormock.Branch(campaignmonitor.CreateDraftCampaignBranchCreated, value, nil)
+}
+
+// CreateDraftCampaignDefault is the manifest default, createdDefault, which New installs.
+func CreateDraftCampaignDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return CreateDraftCampaignCreatedDefault()
+}
+
+// SendCampaignSent selects the sent branch: Campaign Monitor accepted the campaign send.
+func SendCampaignSent(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.SendCampaignBranchSent, value, failure)
+}
+
+// SendCampaignProviderRejected selects the providerRejected branch: Campaign Monitor rejected the send.
+func SendCampaignProviderRejected(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.SendCampaignBranchProviderRejected, value, failure)
+}
+
+// SendCampaignUncertain returns an uncertain sendCampaign outcome.
+func SendCampaignUncertain(value campaignmonitor.CampaignIdentity, failure sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendCampaignDefect selects the defect branch: Local input or credentials are invalid.
+func SendCampaignDefect(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.SendCampaignBranchDefect, value, failure)
+}
+
+// SendCampaignRetry asks Dex to retry the sendCampaign Step, after the delay when it is positive.
+func SendCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Retry[campaignmonitor.CampaignIdentity](failure, after)
+}
+
+// SendCampaignSentDefault is the manifest mock sentDefault: Sample accepted campaign send.
+func SendCampaignSentDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-1","name":""}`)
+	return connectormock.Branch(campaignmonitor.SendCampaignBranchSent, value, nil)
+}
+
+// SendCampaignDefault is the manifest default, sentDefault, which New installs.
+func SendCampaignDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return SendCampaignSentDefault()
+}
+
+// SendCampaignPreviewSent selects the sent branch: Campaign Monitor accepted the preview.
+func SendCampaignPreviewSent(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.SendCampaignPreviewBranchSent, value, failure)
+}
+
+// SendCampaignPreviewProviderRejected selects the providerRejected branch: Campaign Monitor rejected the preview.
+func SendCampaignPreviewProviderRejected(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.SendCampaignPreviewBranchProviderRejected, value, failure)
+}
+
+// SendCampaignPreviewUncertain returns an uncertain sendCampaignPreview outcome.
+func SendCampaignPreviewUncertain(value campaignmonitor.CampaignIdentity, failure sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendCampaignPreviewDefect selects the defect branch: Local input or credentials are invalid.
+func SendCampaignPreviewDefect(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.SendCampaignPreviewBranchDefect, value, failure)
+}
+
+// SendCampaignPreviewRetry asks Dex to retry the sendCampaignPreview Step, after the delay when it is positive.
+func SendCampaignPreviewRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Retry[campaignmonitor.CampaignIdentity](failure, after)
+}
+
+// SendCampaignPreviewSentDefault is the manifest mock sentDefault: Sample accepted preview.
+func SendCampaignPreviewSentDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-1","name":""}`)
+	return connectormock.Branch(campaignmonitor.SendCampaignPreviewBranchSent, value, nil)
+}
+
+// SendCampaignPreviewDefault is the manifest default, sentDefault, which New installs.
+func SendCampaignPreviewDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return SendCampaignPreviewSentDefault()
+}
+
+// UnscheduleCampaignUnscheduled selects the unscheduled branch: Campaign Monitor unscheduled the campaign.
+func UnscheduleCampaignUnscheduled(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.UnscheduleCampaignBranchUnscheduled, value, failure)
+}
+
+// UnscheduleCampaignProviderRejected selects the providerRejected branch: Campaign Monitor rejected unscheduling.
+func UnscheduleCampaignProviderRejected(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.UnscheduleCampaignBranchProviderRejected, value, failure)
+}
+
+// UnscheduleCampaignInvalidResponse selects the invalidResponse branch: Campaign Monitor returned an oversized response.
+func UnscheduleCampaignInvalidResponse(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.UnscheduleCampaignBranchInvalidResponse, value, failure)
+}
+
+// UnscheduleCampaignDefect selects the defect branch: Local input or credentials are invalid.
+func UnscheduleCampaignDefect(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.UnscheduleCampaignBranchDefect, value, failure)
+}
+
+// UnscheduleCampaignRetry asks Dex to retry the unscheduleCampaign Step, after the delay when it is positive.
+func UnscheduleCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Retry[campaignmonitor.CampaignIdentity](failure, after)
+}
+
+// UnscheduleCampaignUnscheduledDefault is the manifest mock unscheduledDefault: Sample unscheduled campaign.
+func UnscheduleCampaignUnscheduledDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-1","name":""}`)
+	return connectormock.Branch(campaignmonitor.UnscheduleCampaignBranchUnscheduled, value, nil)
+}
+
+// UnscheduleCampaignDefault is the manifest default, unscheduledDefault, which New installs.
+func UnscheduleCampaignDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return UnscheduleCampaignUnscheduledDefault()
+}
+
+// DeleteCampaignDeleted selects the deleted branch: Campaign Monitor deleted the campaign.
+func DeleteCampaignDeleted(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteCampaignBranchDeleted, value, failure)
+}
+
+// DeleteCampaignProviderRejected selects the providerRejected branch: Campaign Monitor rejected deletion.
+func DeleteCampaignProviderRejected(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteCampaignBranchProviderRejected, value, failure)
+}
+
+// DeleteCampaignInvalidResponse selects the invalidResponse branch: Campaign Monitor returned an oversized response.
+func DeleteCampaignInvalidResponse(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteCampaignBranchInvalidResponse, value, failure)
+}
+
+// DeleteCampaignDefect selects the defect branch: Local input or credentials are invalid.
+func DeleteCampaignDefect(value campaignmonitor.CampaignIdentity, failure *sdkgo.Failure) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Branch(campaignmonitor.DeleteCampaignBranchDefect, value, failure)
+}
+
+// DeleteCampaignRetry asks Dex to retry the deleteCampaign Step, after the delay when it is positive.
+func DeleteCampaignRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return connectormock.Retry[campaignmonitor.CampaignIdentity](failure, after)
+}
+
+// DeleteCampaignDeletedDefault is the manifest mock deletedDefault: Sample deleted campaign.
+func DeleteCampaignDeletedDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	value := connectormock.MustDecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-1","name":""}`)
+	return connectormock.Branch(campaignmonitor.DeleteCampaignBranchDeleted, value, nil)
+}
+
+// DeleteCampaignDefault is the manifest default, deletedDefault, which New installs.
+func DeleteCampaignDefault() connectormock.Case[campaignmonitor.CampaignIdentity] {
+	return DeleteCampaignDeletedDefault()
 }
 
 // ListSegmentsListed selects the listed branch: Campaign Monitor returned the list's segments.

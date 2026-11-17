@@ -2,6 +2,2822 @@
   "connector": "campaignmonitor",
   "scenarios": [
     {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/send.json",
+          "requestBody": {
+            "ConfirmationEmail": "sender@example.com",
+            "SendDate": "2030-01-01 10:00"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "campaign-1",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com",
+        "sendDate": "2030-01-01 10:00"
+      },
+      "name": "sendCampaign-scheduled",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "[{\"CampaignID\":\"campaign-1\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/scheduled.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "campaign-1",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com",
+        "sendDate": "2030-01-01 10:00"
+      },
+      "name": "sendCampaign-scheduledReadback",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/sendpreview.json",
+          "requestBody": {
+            "PreviewRecipients": [
+              "preview@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "campaign-1",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "input": {
+        "campaignId": "campaign-1",
+        "recipients": [
+          "preview@example.com"
+        ]
+      },
+      "name": "sendCampaignPreview-success",
+      "operation": "sendCampaignPreview"
+    },
+    {
+      "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/sendpreview.json",
+          "requestBody": {
+            "PreviewRecipients": [
+              "preview@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "input": {
+        "campaignId": "campaign-1",
+        "recipients": [
+          "preview@example.com"
+        ]
+      },
+      "name": "sendCampaignPreview-providerRejected",
+      "operation": "sendCampaignPreview"
+    },
+    {
+      "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/sendpreview.json",
+          "requestBody": {
+            "PreviewRecipients": [
+              "preview@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "input": {
+        "campaignId": "campaign-1",
+        "recipients": [
+          "preview@example.com"
+        ]
+      },
+      "name": "sendCampaignPreview-429",
+      "operation": "sendCampaignPreview"
+    },
+    {
+      "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/sendpreview.json",
+          "requestBody": {
+            "PreviewRecipients": [
+              "preview@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "input": {
+        "campaignId": "campaign-1",
+        "recipients": [
+          "preview@example.com"
+        ]
+      },
+      "name": "sendCampaignPreview-503",
+      "operation": "sendCampaignPreview"
+    },
+    {
+      "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/sendpreview.json",
+          "requestBody": {
+            "PreviewRecipients": [
+              "preview@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "input": {
+        "campaignId": "campaign-1",
+        "recipients": [
+          "preview@example.com"
+        ]
+      },
+      "name": "sendCampaignPreview-500",
+      "operation": "sendCampaignPreview"
+    },
+    {
+      "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/sendpreview.json",
+          "requestBody": {
+            "PreviewRecipients": [
+              "preview@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "input": {
+        "campaignId": "campaign-1",
+        "recipients": [
+          "preview@example.com"
+        ]
+      },
+      "name": "sendCampaignPreview-transportFailure",
+      "operation": "sendCampaignPreview"
+    },
+    {
+      "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "input": {
+        "campaignId": "",
+        "recipients": [
+          "preview@example.com"
+        ]
+      },
+      "name": "sendCampaignPreview-defect",
+      "operation": "sendCampaignPreview"
+    },
+    {
+      "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "5dbb5107-feeb-54de-84b9-6c514455b510",
+      "input": {
+        "campaignId": "campaign-1",
+        "recipients": [
+          "preview@example.com"
+        ]
+      },
+      "name": "sendCampaignPreview-uncertainAfterSendCap",
+      "operation": "sendCampaignPreview",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "5dbb5107-feeb-54de-84b9-6c514455b510",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/unschedule.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unscheduled",
+        "failureKind": "",
+        "output": {
+          "id": "campaign-1",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "unscheduleCampaign-success",
+      "operation": "unscheduleCampaign"
+    },
+    {
+      "callId": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/unschedule.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "unscheduleCampaign-providerRejected",
+      "operation": "unscheduleCampaign"
+    },
+    {
+      "callId": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/unschedule.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "unscheduleCampaign-429",
+      "operation": "unscheduleCampaign"
+    },
+    {
+      "callId": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/unschedule.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "unscheduleCampaign-503",
+      "operation": "unscheduleCampaign"
+    },
+    {
+      "callId": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/unschedule.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "unscheduleCampaign-500",
+      "operation": "unscheduleCampaign"
+    },
+    {
+      "callId": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/unschedule.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "unscheduleCampaign-transportFailure",
+      "operation": "unscheduleCampaign"
+    },
+    {
+      "callId": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "input": {
+        "campaignId": ""
+      },
+      "name": "unscheduleCampaign-defect",
+      "operation": "unscheduleCampaign"
+    },
+    {
+      "callId": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "exchanges": [
+        {
+          "body": "unexpected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/unschedule.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a6de742-27ba-5fb4-89ed-344d911cad3a",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "unscheduleCampaign-invalidResponse",
+      "operation": "unscheduleCampaign"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [
+        {
+          "body": "[{\"CampaignID\":\"campaign-2\",\"Name\":\"Autumn issue\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "id": "campaign-2",
+          "name": "Autumn issue"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "client-1",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-confirmedReadback",
+      "operation": "createDraftCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "{\"Results\":[{\"CampaignID\":\"campaign-1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/campaigns.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "1000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "id": "campaign-1",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-confirmedReadback",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "sendCount": 1,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "[{\"CampaignID\":\"campaign-1\",\"Name\":\"Autumn newsletter\",\"Subject\":\"New issue\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": [
+            {
+              "id": "campaign-1",
+              "name": "Autumn newsletter",
+              "status": "draft",
+              "subject": "New issue"
+            }
+          ],
+          "numberOfPages": 1,
+          "pageNumber": 1,
+          "pageSize": 1,
+          "totalRecords": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "draft"
+      },
+      "name": "listCampaigns-draft",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "[{\"CampaignID\":\"campaign-3\",\"Name\":\"Winter newsletter\",\"Subject\":\"Winter issue\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/scheduled.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": [
+            {
+              "id": "campaign-3",
+              "name": "Winter newsletter",
+              "status": "scheduled",
+              "subject": "Winter issue"
+            }
+          ],
+          "numberOfPages": 1,
+          "pageNumber": 1,
+          "pageSize": 1,
+          "totalRecords": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "scheduled"
+      },
+      "name": "listCampaigns-scheduled",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"Results\":[{\"CampaignID\":\"campaign-4\",\"Name\":\"Spring newsletter\",\"Subject\":\"Spring issue\"}],\"PageNumber\":1,\"PageSize\":100,\"TotalNumberOfRecords\":1,\"NumberOfPages\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/campaigns.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "campaigns": [
+            {
+              "id": "campaign-4",
+              "name": "Spring newsletter",
+              "status": "sent",
+              "subject": "Spring issue"
+            }
+          ],
+          "numberOfPages": 1,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "totalRecords": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "sent"
+      },
+      "name": "listCampaigns-sent",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaigns": [],
+          "numberOfPages": 0,
+          "pageNumber": 0,
+          "pageSize": 0,
+          "totalRecords": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "draft"
+      },
+      "name": "listCampaigns-providerRejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaigns": [],
+          "numberOfPages": 0,
+          "pageNumber": 0,
+          "pageSize": 0,
+          "totalRecords": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "draft"
+      },
+      "name": "listCampaigns-invalidResponse",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "draft"
+      },
+      "name": "listCampaigns-429",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "draft"
+      },
+      "name": "listCampaigns-503",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "draft"
+      },
+      "name": "listCampaigns-500",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "client-1",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "draft"
+      },
+      "name": "listCampaigns-transportFailure",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaigns": [],
+          "numberOfPages": 0,
+          "pageNumber": 0,
+          "pageSize": 0,
+          "totalRecords": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "clientId": "",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "status": "draft"
+      },
+      "name": "listCampaigns-defect",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"Name\":\"Autumn newsletter\",\"Recipients\":100,\"TotalOpened\":20,\"Clicks\":5,\"Unsubscribed\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/campaign-1/summary.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "clicks": 5,
+          "name": "Autumn newsletter",
+          "recipients": 100,
+          "totalOpened": 20,
+          "unsubscribed": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "getCampaignSummary-success",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/campaign-1/summary.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "clicks": 0,
+          "name": "",
+          "recipients": 0,
+          "totalOpened": 0,
+          "unsubscribed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "getCampaignSummary-notFound",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/campaign-1/summary.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "clicks": 0,
+          "name": "",
+          "recipients": 0,
+          "totalOpened": 0,
+          "unsubscribed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "getCampaignSummary-providerRejected",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/campaign-1/summary.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clicks": 0,
+          "name": "",
+          "recipients": 0,
+          "totalOpened": 0,
+          "unsubscribed": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "getCampaignSummary-invalidResponse",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/campaign-1/summary.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "getCampaignSummary-429",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/campaign-1/summary.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "getCampaignSummary-503",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/campaign-1/summary.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "getCampaignSummary-500",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/campaign-1/summary.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "getCampaignSummary-transportFailure",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "clicks": 0,
+          "name": "",
+          "recipients": 0,
+          "totalOpened": 0,
+          "unsubscribed": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "campaignId": ""
+      },
+      "name": "getCampaignSummary-defect",
+      "operation": "getCampaignSummary"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [
+        {
+          "body": "\"campaign-2\"",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/client-1.json",
+          "requestBody": {
+            "FromEmail": "sender@example.com",
+            "FromName": "Newsletter Team",
+            "HtmlUrl": "https://example.com/campaign.html",
+            "InlineCss": true,
+            "ListIDs": [
+              "list-1"
+            ],
+            "Name": "Autumn issue",
+            "ReplyTo": "reply@example.com",
+            "SegmentIDs": [
+              "segment-1"
+            ],
+            "Subject": "New issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "campaign-2",
+          "name": "Autumn issue"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "client-1",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-success",
+      "operation": "createDraftCampaign"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/client-1.json",
+          "requestBody": {
+            "FromEmail": "sender@example.com",
+            "FromName": "Newsletter Team",
+            "HtmlUrl": "https://example.com/campaign.html",
+            "InlineCss": true,
+            "ListIDs": [
+              "list-1"
+            ],
+            "Name": "Autumn issue",
+            "ReplyTo": "reply@example.com",
+            "SegmentIDs": [
+              "segment-1"
+            ],
+            "Subject": "New issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "client-1",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-providerRejected",
+      "operation": "createDraftCampaign"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/client-1.json",
+          "requestBody": {
+            "FromEmail": "sender@example.com",
+            "FromName": "Newsletter Team",
+            "HtmlUrl": "https://example.com/campaign.html",
+            "InlineCss": true,
+            "ListIDs": [
+              "list-1"
+            ],
+            "Name": "Autumn issue",
+            "ReplyTo": "reply@example.com",
+            "SegmentIDs": [
+              "segment-1"
+            ],
+            "Subject": "New issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "client-1",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-429",
+      "operation": "createDraftCampaign"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/client-1.json",
+          "requestBody": {
+            "FromEmail": "sender@example.com",
+            "FromName": "Newsletter Team",
+            "HtmlUrl": "https://example.com/campaign.html",
+            "InlineCss": true,
+            "ListIDs": [
+              "list-1"
+            ],
+            "Name": "Autumn issue",
+            "ReplyTo": "reply@example.com",
+            "SegmentIDs": [
+              "segment-1"
+            ],
+            "Subject": "New issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "client-1",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-503",
+      "operation": "createDraftCampaign"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/client-1.json",
+          "requestBody": {
+            "FromEmail": "sender@example.com",
+            "FromName": "Newsletter Team",
+            "HtmlUrl": "https://example.com/campaign.html",
+            "InlineCss": true,
+            "ListIDs": [
+              "list-1"
+            ],
+            "Name": "Autumn issue",
+            "ReplyTo": "reply@example.com",
+            "SegmentIDs": [
+              "segment-1"
+            ],
+            "Subject": "New issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "client-1",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-500",
+      "operation": "createDraftCampaign"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/client-1.json",
+          "requestBody": {
+            "FromEmail": "sender@example.com",
+            "FromName": "Newsletter Team",
+            "HtmlUrl": "https://example.com/campaign.html",
+            "InlineCss": true,
+            "ListIDs": [
+              "list-1"
+            ],
+            "Name": "Autumn issue",
+            "ReplyTo": "reply@example.com",
+            "SegmentIDs": [
+              "segment-1"
+            ],
+            "Subject": "New issue"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "client-1",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-transportFailure",
+      "operation": "createDraftCampaign"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-defect",
+      "operation": "createDraftCampaign"
+    },
+    {
+      "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/drafts.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+      "input": {
+        "clientId": "client-1",
+        "fromEmail": "sender@example.com",
+        "fromName": "Newsletter Team",
+        "htmlUrl": "https://example.com/campaign.html",
+        "inlineCss": true,
+        "listIds": [
+          "list-1"
+        ],
+        "name": "Autumn issue",
+        "replyTo": "reply@example.com",
+        "segmentIds": [
+          "segment-1"
+        ],
+        "subject": "New issue"
+      },
+      "name": "createDraftCampaign-uncertainAfterSendCap",
+      "operation": "createDraftCampaign",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "2330e10e-a7f1-5d48-8ca6-fd4954be14c4",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/send.json",
+          "requestBody": {
+            "ConfirmationEmail": "sender@example.com",
+            "SendDate": "Immediately"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "campaign-1",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-success",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/send.json",
+          "requestBody": {
+            "ConfirmationEmail": "sender@example.com",
+            "SendDate": "Immediately"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-providerRejected",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/send.json",
+          "requestBody": {
+            "ConfirmationEmail": "sender@example.com",
+            "SendDate": "Immediately"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-429",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/send.json",
+          "requestBody": {
+            "ConfirmationEmail": "sender@example.com",
+            "SendDate": "Immediately"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-503",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/send.json",
+          "requestBody": {
+            "ConfirmationEmail": "sender@example.com",
+            "SendDate": "Immediately"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-500",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/campaign-1/send.json",
+          "requestBody": {
+            "ConfirmationEmail": "sender@example.com",
+            "SendDate": "Immediately"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-transportFailure",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-defect",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "exchanges": [
+        {
+          "body": "{\"Results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients/client-1/campaigns.json",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "pagesize": [
+              "1000"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+      "input": {
+        "campaignId": "campaign-1",
+        "clientId": "client-1",
+        "confirmationEmail": "sender@example.com"
+      },
+      "name": "sendCampaign-uncertainAfterSendCap",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "96605ee1-a57e-50f4-9ecb-a6c6b7a0e93e",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/campaigns/campaign-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "campaign-1",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "deleteCampaign-success",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/campaigns/campaign-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "deleteCampaign-providerRejected",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/campaigns/campaign-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "deleteCampaign-429",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/campaigns/campaign-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "deleteCampaign-503",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/campaigns/campaign-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "deleteCampaign-500",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/campaigns/campaign-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "deleteCampaign-transportFailure",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "input": {
+        "campaignId": ""
+      },
+      "name": "deleteCampaign-defect",
+      "operation": "deleteCampaign"
+    },
+    {
+      "callId": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "exchanges": [
+        {
+          "body": "unexpected",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/campaigns/campaign-1.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78792a0b-8c1a-5111-abc9-6d5ac3ac1d60",
+      "input": {
+        "campaignId": "campaign-1"
+      },
+      "name": "deleteCampaign-invalidResponse",
+      "operation": "deleteCampaign"
+    },
+    {
       "callId": "628843f6-6b82-54aa-aa6f-95475546caea",
       "exchanges": [
         {

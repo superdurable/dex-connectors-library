@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: campaignmonitor
   displayName: Campaign Monitor
-  description: Discover Campaign Monitor clients, lists, and subscribers and manage subscribers.
+  description: Discover Campaign Monitor clients, lists, subscribers, segments, and campaigns; manage marketing content.
   company: Campaign Monitor
   categories: [marketing]
   version: v0.2.0
@@ -55,6 +55,147 @@ spec:
         - Save the key in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Rotate it on the same page when access should end.
         - This key is for an account you control. Public integrations should use Campaign Monitor OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
   operations:
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: CampaignsPage
+      kind: query
+      description: List draft, scheduled, or sent campaigns for one client.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: listed, goName: Listed, description: Campaign Monitor returned the campaigns.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: Sample draft campaign.
+          output: {campaigns: [{id: campaign-1, name: Autumn newsletter, subject: New issue, status: draft}], pageNumber: 1, pageSize: 1, totalRecords: 1, numberOfPages: 1}
+    - name: getCampaignSummary
+      goName: GetCampaignSummary
+      inputType: GetCampaignSummaryInput
+      outputType: CampaignSummary
+      kind: query
+      description: Read sent campaign result counts.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: found, goName: Found, description: Campaign Monitor returned the summary.}
+        - {id: notFound, goName: NotFound, description: Campaign Monitor did not find the campaign., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned invalid JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Sample sent campaign metrics.
+          output: {name: Autumn newsletter, recipients: 100, totalOpened: 20, clicks: 5, unsubscribed: 1}
+    - name: createDraftCampaign
+      goName: CreateDraftCampaign
+      inputType: CreateDraftCampaignInput
+      outputType: CampaignIdentity
+      kind: mutation
+      description: Create a draft campaign with hosted HTML and selected recipients.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: created, goName: Created, description: Campaign Monitor created the draft.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected draft creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A draft may have been created but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: Sample draft campaign.
+          output: {id: campaign-2, name: Autumn issue}
+    - name: sendCampaign
+      goName: SendCampaign
+      inputType: SendCampaignInput
+      outputType: CampaignIdentity
+      kind: mutation
+      description: Send or schedule an existing draft campaign in the client's timezone.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Campaign Monitor accepted the campaign send.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The campaign may have sent but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample accepted campaign send.
+          output: {id: campaign-1, name: ""}
+    - name: sendCampaignPreview
+      goName: SendCampaignPreview
+      inputType: SendCampaignPreviewInput
+      outputType: CampaignIdentity
+      kind: mutation
+      description: Send a draft campaign preview to selected addresses.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      branches:
+        - {id: sent, goName: Sent, description: Campaign Monitor accepted the preview.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected the preview., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A preview may have sent but cannot be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Sample accepted preview.
+          output: {id: campaign-1, name: ""}
+    - name: unscheduleCampaign
+      goName: UnscheduleCampaign
+      inputType: UnscheduleCampaignInput
+      outputType: CampaignIdentity
+      kind: mutation
+      description: Move a scheduled campaign back to drafts.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: unscheduled, goName: Unscheduled, description: Campaign Monitor unscheduled the campaign.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected unscheduling., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: unscheduledDefault
+          branch: unscheduled
+          default: true
+          description: Sample unscheduled campaign.
+          output: {id: campaign-1, name: ""}
+    - name: deleteCampaign
+      goName: DeleteCampaign
+      inputType: DeleteCampaignInput
+      outputType: CampaignIdentity
+      kind: mutation
+      description: Delete a campaign by ID.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      branches:
+        - {id: deleted, goName: Deleted, description: Campaign Monitor deleted the campaign.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned an oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: deletedDefault
+          branch: deleted
+          default: true
+          description: Sample deleted campaign.
+          output: {id: campaign-1, name: ""}
     - name: listSegments
       goName: ListSegments
       inputType: ListSegmentsInput

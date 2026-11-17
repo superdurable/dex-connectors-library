@@ -60,6 +60,13 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
+		"listCampaigns":       newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListCampaigns(), reference),
+		"getCampaignSummary":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetCampaignSummary(), reference),
+		"createDraftCampaign": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateDraftCampaign(), reference, scenario.CallID),
+		"sendCampaign":        newConformanceMutationInvocation(t, scenario.Input, context, client.SendCampaign(), reference, scenario.CallID),
+		"sendCampaignPreview": newConformanceMutationInvocation(t, scenario.Input, context, client.SendCampaignPreview(), reference, scenario.CallID),
+		"unscheduleCampaign":  newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UnscheduleCampaign(), reference, scenario.CallID),
+		"deleteCampaign":      newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteCampaign(), reference, scenario.CallID),
 		"listSegments":        newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListSegments(), reference),
 		"getSegment":          newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetSegment(), reference),
 		"createSegment":       newConformanceMutationInvocation(t, scenario.Input, context, client.CreateSegment(), reference, scenario.CallID),

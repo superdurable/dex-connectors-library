@@ -16,6 +16,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listCampaigns/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.CampaignsPage](`{"campaigns":[{"id":"campaign-1","name":"Autumn newsletter","subject":"New issue","status":"draft"}],"pageNumber":1,"pageSize":1,"totalRecords":1,"numberOfPages":1}`)
+			return err
+		}},
+		{name: "getCampaignSummary/foundDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.CampaignSummary](`{"name":"Autumn newsletter","recipients":100,"totalOpened":20,"clicks":5,"unsubscribed":1}`)
+			return err
+		}},
+		{name: "createDraftCampaign/createdDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-2","name":"Autumn issue"}`)
+			return err
+		}},
+		{name: "sendCampaign/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-1","name":""}`)
+			return err
+		}},
+		{name: "sendCampaignPreview/sentDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-1","name":""}`)
+			return err
+		}},
+		{name: "unscheduleCampaign/unscheduledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-1","name":""}`)
+			return err
+		}},
+		{name: "deleteCampaign/deletedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[campaignmonitor.CampaignIdentity](`{"id":"campaign-1","name":""}`)
+			return err
+		}},
 		{name: "listSegments/listedDefault/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[campaignmonitor.SegmentsList](`{"segments":[{"id":"segment-1","listId":"list-1","title":"Recent readers"}]}`)
 			return err
@@ -90,6 +118,27 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListCampaigns().Definition().Operation.OperationID != "listCampaigns" {
+		t.Errorf("listCampaigns mock has another definition")
+	}
+	if mock.GetCampaignSummary().Definition().Operation.OperationID != "getCampaignSummary" {
+		t.Errorf("getCampaignSummary mock has another definition")
+	}
+	if mock.CreateDraftCampaign().Definition().Operation.OperationID != "createDraftCampaign" {
+		t.Errorf("createDraftCampaign mock has another definition")
+	}
+	if mock.SendCampaign().Definition().Operation.OperationID != "sendCampaign" {
+		t.Errorf("sendCampaign mock has another definition")
+	}
+	if mock.SendCampaignPreview().Definition().Operation.OperationID != "sendCampaignPreview" {
+		t.Errorf("sendCampaignPreview mock has another definition")
+	}
+	if mock.UnscheduleCampaign().Definition().Operation.OperationID != "unscheduleCampaign" {
+		t.Errorf("unscheduleCampaign mock has another definition")
+	}
+	if mock.DeleteCampaign().Definition().Operation.OperationID != "deleteCampaign" {
+		t.Errorf("deleteCampaign mock has another definition")
+	}
 	if mock.ListSegments().Definition().Operation.OperationID != "listSegments" {
 		t.Errorf("listSegments mock has another definition")
 	}
