@@ -26,7 +26,8 @@ func TestIdentityLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	flow := NewFlow(mock.Connection())
 	sendFlow := NewSendFlow(mock.Connection())
 	createFlow := NewCreateFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, sendFlow, createFlow})
+	templatedSendFlow := NewTemplatedSendFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, sendFlow, createFlow, templatedSendFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -79,4 +80,14 @@ func TestIdentityLookupUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, createResult.DecodeSingleOutput(&created))
 	require.Equal(t, "example.com", created.Name)
 	require.Len(t, mock.CreateEmailIdentity().Calls(), 1)
+	templatedSendID := "ses-template-send-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, templatedSendFlow, templatedSendID, ses.SendTemplatedEmailInput{
+		FromEmailAddress: "sender@example.com", ToEmailAddress: "reader@example.net",
+		TemplateName: "weekly-report", TemplateData: map[string]string{"name": "Ada"},
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	templatedResult, err := client.WaitForFlow(ctx, templatedSendID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, templatedResult.Status, templatedResult.ErrorMessage)
+	require.Len(t, mock.SendTemplatedEmail().Calls(), 1)
 }

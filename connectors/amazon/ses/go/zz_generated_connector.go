@@ -48,6 +48,12 @@ type Operations interface {
 	ListEmailIdentities() sdkgo.Query[ListEmailIdentitiesInput, EmailIdentityPage]
 	DeleteEmailIdentity() sdkgo.Mutation[DeleteEmailIdentityInput, DeletedEmailIdentity]
 	SendEmail() sdkgo.Mutation[SendEmailInput, SentEmail]
+	CreateEmailTemplate() sdkgo.Mutation[CreateEmailTemplateInput, EmailTemplate]
+	GetEmailTemplate() sdkgo.Query[GetEmailTemplateInput, EmailTemplate]
+	ListEmailTemplates() sdkgo.Query[ListEmailTemplatesInput, EmailTemplatePage]
+	UpdateEmailTemplate() sdkgo.Mutation[UpdateEmailTemplateInput, EmailTemplate]
+	DeleteEmailTemplate() sdkgo.Mutation[DeleteEmailTemplateInput, DeletedEmailTemplate]
+	SendTemplatedEmail() sdkgo.Mutation[SendTemplatedEmailInput, SentEmail]
 }
 
 type clientOperations struct{ client *Client }
@@ -66,6 +72,24 @@ func (operations clientOperations) DeleteEmailIdentity() sdkgo.Mutation[DeleteEm
 }
 func (operations clientOperations) SendEmail() sdkgo.Mutation[SendEmailInput, SentEmail] {
 	return operations.client.SendEmail()
+}
+func (operations clientOperations) CreateEmailTemplate() sdkgo.Mutation[CreateEmailTemplateInput, EmailTemplate] {
+	return operations.client.CreateEmailTemplate()
+}
+func (operations clientOperations) GetEmailTemplate() sdkgo.Query[GetEmailTemplateInput, EmailTemplate] {
+	return operations.client.GetEmailTemplate()
+}
+func (operations clientOperations) ListEmailTemplates() sdkgo.Query[ListEmailTemplatesInput, EmailTemplatePage] {
+	return operations.client.ListEmailTemplates()
+}
+func (operations clientOperations) UpdateEmailTemplate() sdkgo.Mutation[UpdateEmailTemplateInput, EmailTemplate] {
+	return operations.client.UpdateEmailTemplate()
+}
+func (operations clientOperations) DeleteEmailTemplate() sdkgo.Mutation[DeleteEmailTemplateInput, DeletedEmailTemplate] {
+	return operations.client.DeleteEmailTemplate()
+}
+func (operations clientOperations) SendTemplatedEmail() sdkgo.Mutation[SendTemplatedEmailInput, SentEmail] {
+	return operations.client.SendTemplatedEmail()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -569,6 +593,438 @@ func NewSendEmailStep[IN any](config SendEmailStepConfig[IN]) sdkgo.MutationStep
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(SendEmailBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const CreateEmailTemplateBranchCreated sdkgo.BranchID = "created"
+const CreateEmailTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreateEmailTemplateBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreateEmailTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreateEmailTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createEmailTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreateEmailTemplateBranchCreated, Description: "SES accepted or read-back confirmed the template."},
+		{ID: CreateEmailTemplateBranchProviderRejected, Description: "SES conclusively refused creation or the name has different content.", Optional: true},
+		{ID: CreateEmailTemplateBranchUncertain, Description: "The template might exist but read-back could not confirm it.", Optional: true},
+		{ID: CreateEmailTemplateBranchDefect, Description: "The template content or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type CreateEmailTemplateResult = sdkgo.MutationResult[EmailTemplate]
+
+type CreateEmailTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-ses"`
+	operationID                       struct{}                                            `connector:"operationId=createEmailTemplate"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreateEmailTemplateInput                   `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreateEmailTemplateResult]             `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreateEmailTemplateResult]             `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreateEmailTemplateResult]             `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreateEmailTemplateResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailTemplate]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewCreateEmailTemplateStep[IN any](config CreateEmailTemplateStepConfig[IN]) sdkgo.MutationStep[IN, CreateEmailTemplateInput, EmailTemplate] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-ses connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreateEmailTemplateInput, EmailTemplate]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreateEmailTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreateEmailTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[CreateEmailTemplateResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreateEmailTemplateBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreateEmailTemplateBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreateEmailTemplateBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreateEmailTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+		MaxSends:            config.MaxSends,
+	})
+}
+
+const GetEmailTemplateBranchFound sdkgo.BranchID = "found"
+const GetEmailTemplateBranchMissing sdkgo.BranchID = "missing"
+const GetEmailTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetEmailTemplateBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetEmailTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetEmailTemplateDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getEmailTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetEmailTemplateBranchFound, Description: "SES returned the complete template."},
+		{ID: GetEmailTemplateBranchMissing, Description: "The template does not exist.", Optional: true},
+		{ID: GetEmailTemplateBranchProviderRejected, Description: "SES conclusively refused the read.", Optional: true},
+		{ID: GetEmailTemplateBranchInvalidResponse, Description: "SES returned invalid or oversized template content.", Optional: true},
+		{ID: GetEmailTemplateBranchDefect, Description: "The name or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetEmailTemplateResult = sdkgo.QueryResult[EmailTemplate]
+
+type GetEmailTemplateStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                         `connector:"connectorId=amazon-ses"`
+	operationID                    struct{}                                         `connector:"operationId=getEmailTemplate"`
+	StepType                       string                                           `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                            `connector:"annotations"`
+	Connection                     Connection                                       `connector:"connection"`
+	ConnectionName                 string                                           `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetEmailTemplateInput                   `connector:"mapToOperationInput"`
+	Found                          sdkgo.Target[GetEmailTemplateResult]             `connector:"branch=found"`
+	Missing                        sdkgo.Target[GetEmailTemplateResult]             `connector:"branch=missing,optional"`
+	ProviderRejected               sdkgo.Target[GetEmailTemplateResult]             `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetEmailTemplateResult]             `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetEmailTemplateResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmailTemplate]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                 `connector:"stepOptionsOverride"`
+}
+
+func NewGetEmailTemplateStep[IN any](config GetEmailTemplateStepConfig[IN]) sdkgo.QueryStep[IN, GetEmailTemplateInput, EmailTemplate] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-ses connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetEmailTemplateInput, EmailTemplate]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.GetEmailTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetEmailTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[GetEmailTemplateResult], 0, 5)
+			if config.Found.HasStep() {
+				branches = append(branches, config.Found.BranchTarget(GetEmailTemplateBranchFound))
+			}
+			if config.Missing.HasStep() {
+				branches = append(branches, config.Missing.BranchTarget(GetEmailTemplateBranchMissing))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetEmailTemplateBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetEmailTemplateBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetEmailTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListEmailTemplatesBranchPage sdkgo.BranchID = "page"
+const ListEmailTemplatesBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListEmailTemplatesBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListEmailTemplatesBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListEmailTemplatesDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listEmailTemplates"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListEmailTemplatesBranchPage, Description: "SES returned one page of template names."},
+		{ID: ListEmailTemplatesBranchProviderRejected, Description: "SES conclusively refused the listing.", Optional: true},
+		{ID: ListEmailTemplatesBranchInvalidResponse, Description: "SES returned invalid or oversized metadata.", Optional: true},
+		{ID: ListEmailTemplatesBranchDefect, Description: "The page size or token is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListEmailTemplatesResult = sdkgo.QueryResult[EmailTemplatePage]
+
+type ListEmailTemplatesStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                             `connector:"connectorId=amazon-ses"`
+	operationID                    struct{}                                             `connector:"operationId=listEmailTemplates"`
+	StepType                       string                                               `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                `connector:"annotations"`
+	Connection                     Connection                                           `connector:"connection"`
+	ConnectionName                 string                                               `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListEmailTemplatesInput                     `connector:"mapToOperationInput"`
+	Page                           sdkgo.Target[ListEmailTemplatesResult]               `connector:"branch=page"`
+	ProviderRejected               sdkgo.Target[ListEmailTemplatesResult]               `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListEmailTemplatesResult]               `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListEmailTemplatesResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[EmailTemplatePage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                     `connector:"stepOptionsOverride"`
+}
+
+func NewListEmailTemplatesStep[IN any](config ListEmailTemplatesStepConfig[IN]) sdkgo.QueryStep[IN, ListEmailTemplatesInput, EmailTemplatePage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-ses connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListEmailTemplatesInput, EmailTemplatePage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListEmailTemplates(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListEmailTemplatesResult] {
+			branches := make([]sdkgo.BranchTarget[ListEmailTemplatesResult], 0, 4)
+			if config.Page.HasStep() {
+				branches = append(branches, config.Page.BranchTarget(ListEmailTemplatesBranchPage))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListEmailTemplatesBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListEmailTemplatesBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListEmailTemplatesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UpdateEmailTemplateBranchUpdated sdkgo.BranchID = "updated"
+const UpdateEmailTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UpdateEmailTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UpdateEmailTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateEmailTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UpdateEmailTemplateBranchUpdated, Description: "SES accepted the replacement."},
+		{ID: UpdateEmailTemplateBranchProviderRejected, Description: "SES conclusively refused the replacement.", Optional: true},
+		{ID: UpdateEmailTemplateBranchDefect, Description: "The name, content, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type UpdateEmailTemplateResult = sdkgo.MutationResult[EmailTemplate]
+
+type UpdateEmailTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=amazon-ses"`
+	operationID                       struct{}                                            `connector:"operationId=updateEmailTemplate"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) UpdateEmailTemplateInput                   `connector:"mapToOperationInput"`
+	Updated                           sdkgo.Target[UpdateEmailTemplateResult]             `connector:"branch=updated"`
+	ProviderRejected                  sdkgo.Target[UpdateEmailTemplateResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UpdateEmailTemplateResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[EmailTemplate]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewUpdateEmailTemplateStep[IN any](config UpdateEmailTemplateStepConfig[IN]) sdkgo.MutationStep[IN, UpdateEmailTemplateInput, EmailTemplate] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-ses connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UpdateEmailTemplateInput, EmailTemplate]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UpdateEmailTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UpdateEmailTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[UpdateEmailTemplateResult], 0, 3)
+			if config.Updated.HasStep() {
+				branches = append(branches, config.Updated.BranchTarget(UpdateEmailTemplateBranchUpdated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateEmailTemplateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UpdateEmailTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteEmailTemplateBranchDeleted sdkgo.BranchID = "deleted"
+const DeleteEmailTemplateBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteEmailTemplateBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteEmailTemplateDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteEmailTemplate"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteEmailTemplateBranchDeleted, Description: "The template is absent."},
+		{ID: DeleteEmailTemplateBranchProviderRejected, Description: "SES conclusively refused deletion.", Optional: true},
+		{ID: DeleteEmailTemplateBranchDefect, Description: "The name or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownSafe,
+}
+
+type DeleteEmailTemplateResult = sdkgo.MutationResult[DeletedEmailTemplate]
+
+type DeleteEmailTemplateStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=amazon-ses"`
+	operationID                       struct{}                                                   `connector:"operationId=deleteEmailTemplate"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteEmailTemplateInput                          `connector:"mapToOperationInput"`
+	Deleted                           sdkgo.Target[DeleteEmailTemplateResult]                    `connector:"branch=deleted"`
+	ProviderRejected                  sdkgo.Target[DeleteEmailTemplateResult]                    `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[DeleteEmailTemplateResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedEmailTemplate]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteEmailTemplateStep[IN any](config DeleteEmailTemplateStepConfig[IN]) sdkgo.MutationStep[IN, DeleteEmailTemplateInput, DeletedEmailTemplate] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-ses connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteEmailTemplateInput, DeletedEmailTemplate]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteEmailTemplate(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteEmailTemplateResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteEmailTemplateResult], 0, 3)
+			if config.Deleted.HasStep() {
+				branches = append(branches, config.Deleted.BranchTarget(DeleteEmailTemplateBranchDeleted))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteEmailTemplateBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteEmailTemplateBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendTemplatedEmailBranchSent sdkgo.BranchID = "sent"
+const SendTemplatedEmailBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendTemplatedEmailBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendTemplatedEmailBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendTemplatedEmailDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendTemplatedEmail"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendTemplatedEmailBranchSent, Description: "SES accepted the templated message."},
+		{ID: SendTemplatedEmailBranchProviderRejected, Description: "SES conclusively refused the sender, template, or recipient.", Optional: true},
+		{ID: SendTemplatedEmailBranchUncertain, Description: "The send cap was reached without confirmation.", Optional: true},
+		{ID: SendTemplatedEmailBranchDefect, Description: "The sender, recipient, data, or connection is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+	RepeatOnUnknown: sdkgo.RepeatOnUnknownLimited,
+	MaxSends:        3,
+}
+
+type SendTemplatedEmailResult = sdkgo.MutationResult[SentEmail]
+
+type SendTemplatedEmailStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                        `connector:"connectorId=amazon-ses"`
+	operationID                       struct{}                                        `connector:"operationId=sendTemplatedEmail"`
+	StepType                          string                                          `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                           `connector:"annotations"`
+	Connection                        Connection                                      `connector:"connection"`
+	ConnectionName                    string                                          `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendTemplatedEmailInput                `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendTemplatedEmailResult]          `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendTemplatedEmailResult]          `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendTemplatedEmailResult]          `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendTemplatedEmailResult]          `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentEmail]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                `connector:"stepOptionsOverride"`
+	// MaxSends overrides execution.maxSends for this Step, from 1 to sdkgo.MaxSendsCeiling; zero keeps it.
+	MaxSends int32 `connector:"maxSends"`
+}
+
+func NewSendTemplatedEmailStep[IN any](config SendTemplatedEmailStepConfig[IN]) sdkgo.MutationStep[IN, SendTemplatedEmailInput, SentEmail] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("amazon-ses connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendTemplatedEmailInput, SentEmail]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendTemplatedEmail(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendTemplatedEmailResult] {
+			branches := make([]sdkgo.BranchTarget[SendTemplatedEmailResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendTemplatedEmailBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendTemplatedEmailBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendTemplatedEmailBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendTemplatedEmailBranchDefect))
 			}
 			return branches
 		}(),

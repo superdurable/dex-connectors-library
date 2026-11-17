@@ -1930,6 +1930,2059 @@
           "state": "claimed"
         }
       }
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-created",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-rejected",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "BAD NAME"
+      },
+      "name": "template-create-defect",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-429",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-503",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-500",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-transport",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "attempts": 2,
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/templates",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            },
+            "TemplateName": "weekly-report"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=8b0a1e0137fc7a6ef3b126e4dde5ef16661fb118bab011fd1aeb98f3abe23d1f"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"TemplateContent\":{\"Subject\":\"Weekly report\",\"Text\":\"Hello {{name}}\",\"Html\":\"\u003cp\u003eHello {{name}}\u003c/p\u003e\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+            "sendCount": 1,
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "template-create-readback",
+      "operation": "createEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"TemplateContent\":{\"Subject\":\"Weekly report\",\"Text\":\"Hello {{name}}\",\"Html\":\"\u003cp\u003eHello {{name}}\u003c/p\u003e\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-found",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-missing",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-rejected",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-invalid",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "BAD NAME"
+      },
+      "name": "template-get-defect",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-429",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-500",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-get-transport",
+      "operation": "getEmailTemplate"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"TemplatesMetadata\":[{\"TemplateName\":\"weekly-report\",\"CreatedTimestamp\":1792918800}],\"NextToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "NextToken": [
+              "page-2"
+            ],
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=8e622fa02323cc13255a1b67e240c864ee4de56455de4b4ab78010741e7b8a91"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "nextToken": "next",
+          "templates": [
+            {
+              "createdAt": "2026-10-25T09:00:00Z",
+              "name": "weekly-report"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-2",
+        "pageSize": 2
+      },
+      "name": "template-list-page",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-rejected",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-invalid",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "templates": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101
+      },
+      "name": "template-list-defect",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-429",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-500",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "00000000-0000-5000-8000-000000000000",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates",
+          "query": {
+            "PageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=56ea0a56a26265da2c705c33809ceb3ebeb8b405c35a604c0b55beab1a7c88d7"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2
+      },
+      "name": "template-list-transport",
+      "operation": "listEmailTemplates"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-updated",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-rejected",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "subject": ""
+          },
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "BAD NAME"
+      },
+      "name": "template-update-defect",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-429",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-500",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/email/templates/weekly-report",
+          "requestBody": {
+            "TemplateContent": {
+              "Html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+              "Subject": "Weekly report",
+              "Text": "Hello {{name}}"
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=f99cfb456a41f30eb824c17b1417cfb137e5834f58b2330ec844a9ba344f96b7"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d74d5ebb-9a02-5fc0-8125-95c629bbbdb3",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-update-transport",
+      "operation": "updateEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-deleted",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-missing",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-rejected",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "BAD NAME"
+      },
+      "name": "template-delete-defect",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-429",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-500",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=079ad3aebe202f25fb91cf248032c0ae928c1ef407f5c4ec433ea88476b49342"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f07c3c0b-7d9a-59cd-8afe-dc3d126c4751",
+      "input": {
+        "templateName": "weekly-report"
+      },
+      "name": "template-delete-transport",
+      "operation": "deleteEmailTemplate"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{\"MessageId\":\"template-message-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "template-message-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-sent",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-rejected",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "BAD NAME",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-defect",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-429",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-503",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-500",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/email/outbound-emails",
+          "requestBody": {
+            "Content": {
+              "Template": {
+                "TemplateData": "{\"name\":\"Ada\"}",
+                "TemplateName": "weekly-report"
+              }
+            },
+            "Destination": {
+              "ToAddresses": [
+                "reader@example.net"
+              ]
+            },
+            "FromEmailAddress": "sender@example.com"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date, Signature=ee0a7fc2a86a1f325e96599c8a77b0aa5ee39f899406732ee1d4f547d6d778c1"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-transport",
+      "operation": "sendTemplatedEmail"
+    },
+    {
+      "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/email/templates/weekly-report",
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASESCONNECTOR/20261030/eu-west-1/ses/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb0f42eb3412f8f35d302794ebdf4a8941718b128e78962b947964ce95a7ba19"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "content": {
+            "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+            "subject": "Weekly report",
+            "text": "Hello {{name}}"
+          },
+          "name": "weekly-report"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+      "input": {
+        "content": {
+          "html": "\u003cp\u003eHello {{name}}\u003c/p\u003e",
+          "subject": "Weekly report",
+          "text": "Hello {{name}}"
+        },
+        "templateName": "weekly-report"
+      },
+      "name": "template-create-uncertain-cap",
+      "operation": "createEmailTemplate",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "05179404-31fa-53e6-9d5a-c16fbfce179f",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
+    },
+    {
+      "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e3d287a2-325e-52ce-a602-13827ebb331b",
+      "input": {
+        "fromEmailAddress": "sender@example.com",
+        "templateData": {
+          "name": "Ada"
+        },
+        "templateName": "weekly-report",
+        "toEmailAddress": "reader@example.net"
+      },
+      "name": "template-send-uncertain-cap",
+      "operation": "sendTemplatedEmail",
+      "priorHeartbeat": {
+        "attempt": 3,
+        "value": {
+          "attempt": 3,
+          "callId": "e3d287a2-325e-52ce-a602-13827ebb331b",
+          "sendCount": 3,
+          "state": "claimed"
+        }
+      }
     }
   ],
   "schemaVersion": 1

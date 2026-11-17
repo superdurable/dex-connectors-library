@@ -44,6 +44,38 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[ses.SentEmail](`{"messageId":"example-message-id"}`)
 			return err
 		}},
+		{name: "createEmailTemplate/createdTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Weekly report","text":"Hello {{name}}"}}`)
+			return err
+		}},
+		{name: "getEmailTemplate/foundTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Weekly report","text":"Hello {{name}}"}}`)
+			return err
+		}},
+		{name: "listEmailTemplates/templatePages/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"weekly-report","createdAt":"2026-10-25T09:00:00Z"}],"nextToken":"template-page-2"}`)
+			return err
+		}},
+		{name: "listEmailTemplates/templatePages/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"monthly-report","createdAt":"2026-10-24T09:00:00Z"}],"nextToken":"template-page-3"}`)
+			return err
+		}},
+		{name: "listEmailTemplates/templatePages/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"welcome","createdAt":"2026-10-23T09:00:00Z"}]}`)
+			return err
+		}},
+		{name: "updateEmailTemplate/updatedTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Updated report","text":"Hello {{name}}"}}`)
+			return err
+		}},
+		{name: "deleteEmailTemplate/deletedTemplate/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.DeletedEmailTemplate](`{"name":"weekly-report"}`)
+			return err
+		}},
+		{name: "sendTemplatedEmail/sentTemplatedEmail/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[ses.SentEmail](`{"messageId":"templated-example-message-id"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -68,5 +100,23 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.SendEmail().Definition().Operation.OperationID != "sendEmail" {
 		t.Errorf("sendEmail mock has another definition")
+	}
+	if mock.CreateEmailTemplate().Definition().Operation.OperationID != "createEmailTemplate" {
+		t.Errorf("createEmailTemplate mock has another definition")
+	}
+	if mock.GetEmailTemplate().Definition().Operation.OperationID != "getEmailTemplate" {
+		t.Errorf("getEmailTemplate mock has another definition")
+	}
+	if mock.ListEmailTemplates().Definition().Operation.OperationID != "listEmailTemplates" {
+		t.Errorf("listEmailTemplates mock has another definition")
+	}
+	if mock.UpdateEmailTemplate().Definition().Operation.OperationID != "updateEmailTemplate" {
+		t.Errorf("updateEmailTemplate mock has another definition")
+	}
+	if mock.DeleteEmailTemplate().Definition().Operation.OperationID != "deleteEmailTemplate" {
+		t.Errorf("deleteEmailTemplate mock has another definition")
+	}
+	if mock.SendTemplatedEmail().Definition().Operation.OperationID != "sendTemplatedEmail" {
+		t.Errorf("sendTemplatedEmail mock has another definition")
 	}
 }

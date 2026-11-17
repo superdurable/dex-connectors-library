@@ -23,6 +23,12 @@ type Mock struct {
 	listEmailIdentities *connectormock.Query[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage]
 	deleteEmailIdentity *connectormock.Mutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity]
 	sendEmail           *connectormock.Mutation[ses.SendEmailInput, ses.SentEmail]
+	createEmailTemplate *connectormock.Mutation[ses.CreateEmailTemplateInput, ses.EmailTemplate]
+	getEmailTemplate    *connectormock.Query[ses.GetEmailTemplateInput, ses.EmailTemplate]
+	listEmailTemplates  *connectormock.Query[ses.ListEmailTemplatesInput, ses.EmailTemplatePage]
+	updateEmailTemplate *connectormock.Mutation[ses.UpdateEmailTemplateInput, ses.EmailTemplate]
+	deleteEmailTemplate *connectormock.Mutation[ses.DeleteEmailTemplateInput, ses.DeletedEmailTemplate]
+	sendTemplatedEmail  *connectormock.Mutation[ses.SendTemplatedEmailInput, ses.SentEmail]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -35,12 +41,24 @@ func New(t testing.TB, connectionName string) *Mock {
 		listEmailIdentities: connectormock.NewQuery[ses.ListEmailIdentitiesInput, ses.EmailIdentityPage](t, ses.ListEmailIdentitiesDefinition),
 		deleteEmailIdentity: connectormock.NewMutation[ses.DeleteEmailIdentityInput, ses.DeletedEmailIdentity](t, ses.DeleteEmailIdentityDefinition),
 		sendEmail:           connectormock.NewMutation[ses.SendEmailInput, ses.SentEmail](t, ses.SendEmailDefinition),
+		createEmailTemplate: connectormock.NewMutation[ses.CreateEmailTemplateInput, ses.EmailTemplate](t, ses.CreateEmailTemplateDefinition),
+		getEmailTemplate:    connectormock.NewQuery[ses.GetEmailTemplateInput, ses.EmailTemplate](t, ses.GetEmailTemplateDefinition),
+		listEmailTemplates:  connectormock.NewQuery[ses.ListEmailTemplatesInput, ses.EmailTemplatePage](t, ses.ListEmailTemplatesDefinition),
+		updateEmailTemplate: connectormock.NewMutation[ses.UpdateEmailTemplateInput, ses.EmailTemplate](t, ses.UpdateEmailTemplateDefinition),
+		deleteEmailTemplate: connectormock.NewMutation[ses.DeleteEmailTemplateInput, ses.DeletedEmailTemplate](t, ses.DeleteEmailTemplateDefinition),
+		sendTemplatedEmail:  connectormock.NewMutation[ses.SendTemplatedEmailInput, ses.SentEmail](t, ses.SendTemplatedEmailDefinition),
 	}
 	mock.createEmailIdentity.Default(CreateEmailIdentityDefault())
 	mock.getEmailIdentity.Default(GetEmailIdentityDefault())
 	mock.listEmailIdentities.Default(ListEmailIdentitiesDefault())
 	mock.deleteEmailIdentity.Default(DeleteEmailIdentityDefault())
 	mock.sendEmail.Default(SendEmailDefault())
+	mock.createEmailTemplate.Default(CreateEmailTemplateDefault())
+	mock.getEmailTemplate.Default(GetEmailTemplateDefault())
+	mock.listEmailTemplates.Default(ListEmailTemplatesDefault())
+	mock.updateEmailTemplate.Default(UpdateEmailTemplateDefault())
+	mock.deleteEmailTemplate.Default(DeleteEmailTemplateDefault())
+	mock.sendTemplatedEmail.Default(SendTemplatedEmailDefault())
 	connection, err := ses.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "amazon-ses", Name: connectionName})
 	if err != nil {
 		t.Fatalf("amazon-ses mock connection: %v", err)
@@ -77,6 +95,36 @@ func (mock *Mock) SendEmail() *connectormock.Mutation[ses.SendEmailInput, ses.Se
 	return mock.sendEmail
 }
 
+// CreateEmailTemplate returns the createEmailTemplate script.
+func (mock *Mock) CreateEmailTemplate() *connectormock.Mutation[ses.CreateEmailTemplateInput, ses.EmailTemplate] {
+	return mock.createEmailTemplate
+}
+
+// GetEmailTemplate returns the getEmailTemplate script.
+func (mock *Mock) GetEmailTemplate() *connectormock.Query[ses.GetEmailTemplateInput, ses.EmailTemplate] {
+	return mock.getEmailTemplate
+}
+
+// ListEmailTemplates returns the listEmailTemplates script.
+func (mock *Mock) ListEmailTemplates() *connectormock.Query[ses.ListEmailTemplatesInput, ses.EmailTemplatePage] {
+	return mock.listEmailTemplates
+}
+
+// UpdateEmailTemplate returns the updateEmailTemplate script.
+func (mock *Mock) UpdateEmailTemplate() *connectormock.Mutation[ses.UpdateEmailTemplateInput, ses.EmailTemplate] {
+	return mock.updateEmailTemplate
+}
+
+// DeleteEmailTemplate returns the deleteEmailTemplate script.
+func (mock *Mock) DeleteEmailTemplate() *connectormock.Mutation[ses.DeleteEmailTemplateInput, ses.DeletedEmailTemplate] {
+	return mock.deleteEmailTemplate
+}
+
+// SendTemplatedEmail returns the sendTemplatedEmail script.
+func (mock *Mock) SendTemplatedEmail() *connectormock.Mutation[ses.SendTemplatedEmailInput, ses.SentEmail] {
+	return mock.sendTemplatedEmail
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) CreateEmailIdentity() sdkgo.Mutation[ses.CreateEmailIdentityInput, ses.CreatedEmailIdentity] {
@@ -93,6 +141,24 @@ func (operations mockOperations) DeleteEmailIdentity() sdkgo.Mutation[ses.Delete
 }
 func (operations mockOperations) SendEmail() sdkgo.Mutation[ses.SendEmailInput, ses.SentEmail] {
 	return operations.mock.sendEmail
+}
+func (operations mockOperations) CreateEmailTemplate() sdkgo.Mutation[ses.CreateEmailTemplateInput, ses.EmailTemplate] {
+	return operations.mock.createEmailTemplate
+}
+func (operations mockOperations) GetEmailTemplate() sdkgo.Query[ses.GetEmailTemplateInput, ses.EmailTemplate] {
+	return operations.mock.getEmailTemplate
+}
+func (operations mockOperations) ListEmailTemplates() sdkgo.Query[ses.ListEmailTemplatesInput, ses.EmailTemplatePage] {
+	return operations.mock.listEmailTemplates
+}
+func (operations mockOperations) UpdateEmailTemplate() sdkgo.Mutation[ses.UpdateEmailTemplateInput, ses.EmailTemplate] {
+	return operations.mock.updateEmailTemplate
+}
+func (operations mockOperations) DeleteEmailTemplate() sdkgo.Mutation[ses.DeleteEmailTemplateInput, ses.DeletedEmailTemplate] {
+	return operations.mock.deleteEmailTemplate
+}
+func (operations mockOperations) SendTemplatedEmail() sdkgo.Mutation[ses.SendTemplatedEmailInput, ses.SentEmail] {
+	return operations.mock.sendTemplatedEmail
 }
 
 // CreateEmailIdentityCreated selects the created branch: SES accepted the identity for verification.
@@ -277,3 +343,219 @@ func SendEmailSentEmail() connectormock.Case[ses.SentEmail] {
 
 // SendEmailDefault is the manifest default, sentEmail, which New installs.
 func SendEmailDefault() connectormock.Case[ses.SentEmail] { return SendEmailSentEmail() }
+
+// CreateEmailTemplateCreated selects the created branch: SES accepted or read-back confirmed the template.
+func CreateEmailTemplateCreated(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.CreateEmailTemplateBranchCreated, value, failure)
+}
+
+// CreateEmailTemplateProviderRejected selects the providerRejected branch: SES conclusively refused creation or the name has different content.
+func CreateEmailTemplateProviderRejected(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.CreateEmailTemplateBranchProviderRejected, value, failure)
+}
+
+// CreateEmailTemplateUncertain returns an uncertain createEmailTemplate outcome.
+func CreateEmailTemplateUncertain(value ses.EmailTemplate, failure sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateEmailTemplateDefect selects the defect branch: The template content or connection is invalid.
+func CreateEmailTemplateDefect(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.CreateEmailTemplateBranchDefect, value, failure)
+}
+
+// CreateEmailTemplateRetry asks Dex to retry the createEmailTemplate Step, after the delay when it is positive.
+func CreateEmailTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Retry[ses.EmailTemplate](failure, after)
+}
+
+// CreateEmailTemplateCreatedTemplate is the manifest mock createdTemplate: A weekly report email template was created.
+func CreateEmailTemplateCreatedTemplate() connectormock.Case[ses.EmailTemplate] {
+	value := connectormock.MustDecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Weekly report","text":"Hello {{name}}"}}`)
+	return connectormock.Branch(ses.CreateEmailTemplateBranchCreated, value, nil)
+}
+
+// CreateEmailTemplateDefault is the manifest default, createdTemplate, which New installs.
+func CreateEmailTemplateDefault() connectormock.Case[ses.EmailTemplate] {
+	return CreateEmailTemplateCreatedTemplate()
+}
+
+// GetEmailTemplateFound selects the found branch: SES returned the complete template.
+func GetEmailTemplateFound(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.GetEmailTemplateBranchFound, value, failure)
+}
+
+// GetEmailTemplateMissing selects the missing branch: The template does not exist.
+func GetEmailTemplateMissing(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.GetEmailTemplateBranchMissing, value, failure)
+}
+
+// GetEmailTemplateProviderRejected selects the providerRejected branch: SES conclusively refused the read.
+func GetEmailTemplateProviderRejected(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.GetEmailTemplateBranchProviderRejected, value, failure)
+}
+
+// GetEmailTemplateInvalidResponse selects the invalidResponse branch: SES returned invalid or oversized template content.
+func GetEmailTemplateInvalidResponse(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.GetEmailTemplateBranchInvalidResponse, value, failure)
+}
+
+// GetEmailTemplateDefect selects the defect branch: The name or connection is invalid.
+func GetEmailTemplateDefect(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.GetEmailTemplateBranchDefect, value, failure)
+}
+
+// GetEmailTemplateRetry asks Dex to retry the getEmailTemplate Step, after the delay when it is positive.
+func GetEmailTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Retry[ses.EmailTemplate](failure, after)
+}
+
+// GetEmailTemplateFoundTemplate is the manifest mock foundTemplate: The weekly report template is available.
+func GetEmailTemplateFoundTemplate() connectormock.Case[ses.EmailTemplate] {
+	value := connectormock.MustDecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Weekly report","text":"Hello {{name}}"}}`)
+	return connectormock.Branch(ses.GetEmailTemplateBranchFound, value, nil)
+}
+
+// GetEmailTemplateDefault is the manifest default, foundTemplate, which New installs.
+func GetEmailTemplateDefault() connectormock.Case[ses.EmailTemplate] {
+	return GetEmailTemplateFoundTemplate()
+}
+
+// ListEmailTemplatesPage selects the page branch: SES returned one page of template names.
+func ListEmailTemplatesPage(value ses.EmailTemplatePage, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplatePage] {
+	return connectormock.Branch(ses.ListEmailTemplatesBranchPage, value, failure)
+}
+
+// ListEmailTemplatesProviderRejected selects the providerRejected branch: SES conclusively refused the listing.
+func ListEmailTemplatesProviderRejected(value ses.EmailTemplatePage, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplatePage] {
+	return connectormock.Branch(ses.ListEmailTemplatesBranchProviderRejected, value, failure)
+}
+
+// ListEmailTemplatesInvalidResponse selects the invalidResponse branch: SES returned invalid or oversized metadata.
+func ListEmailTemplatesInvalidResponse(value ses.EmailTemplatePage, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplatePage] {
+	return connectormock.Branch(ses.ListEmailTemplatesBranchInvalidResponse, value, failure)
+}
+
+// ListEmailTemplatesDefect selects the defect branch: The page size or token is invalid.
+func ListEmailTemplatesDefect(value ses.EmailTemplatePage, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplatePage] {
+	return connectormock.Branch(ses.ListEmailTemplatesBranchDefect, value, failure)
+}
+
+// ListEmailTemplatesRetry asks Dex to retry the listEmailTemplates Step, after the delay when it is positive.
+func ListEmailTemplatesRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.EmailTemplatePage] {
+	return connectormock.Retry[ses.EmailTemplatePage](failure, after)
+}
+
+// ListEmailTemplatesTemplatePages is the manifest mock templatePages: Three pages of email templates are available.
+func ListEmailTemplatesTemplatePages() connectormock.Case[ses.EmailTemplatePage] {
+	pages := []ses.EmailTemplatePage{
+		connectormock.MustDecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"weekly-report","createdAt":"2026-10-25T09:00:00Z"}],"nextToken":"template-page-2"}`),
+		connectormock.MustDecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"monthly-report","createdAt":"2026-10-24T09:00:00Z"}],"nextToken":"template-page-3"}`),
+		connectormock.MustDecodeOutput[ses.EmailTemplatePage](`{"templates":[{"name":"welcome","createdAt":"2026-10-23T09:00:00Z"}]}`),
+	}
+	pageNumber := connectormock.CursorPageNumber[ses.ListEmailTemplatesInput]("nextToken", "nextToken", pages)
+	return connectormock.Paged(ses.ListEmailTemplatesBranchPage, pageNumber, pages...)
+}
+
+// ListEmailTemplatesDefault is the manifest default, templatePages, which New installs.
+func ListEmailTemplatesDefault() connectormock.Case[ses.EmailTemplatePage] {
+	return ListEmailTemplatesTemplatePages()
+}
+
+// UpdateEmailTemplateUpdated selects the updated branch: SES accepted the replacement.
+func UpdateEmailTemplateUpdated(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.UpdateEmailTemplateBranchUpdated, value, failure)
+}
+
+// UpdateEmailTemplateProviderRejected selects the providerRejected branch: SES conclusively refused the replacement.
+func UpdateEmailTemplateProviderRejected(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.UpdateEmailTemplateBranchProviderRejected, value, failure)
+}
+
+// UpdateEmailTemplateDefect selects the defect branch: The name, content, or connection is invalid.
+func UpdateEmailTemplateDefect(value ses.EmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Branch(ses.UpdateEmailTemplateBranchDefect, value, failure)
+}
+
+// UpdateEmailTemplateRetry asks Dex to retry the updateEmailTemplate Step, after the delay when it is positive.
+func UpdateEmailTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.EmailTemplate] {
+	return connectormock.Retry[ses.EmailTemplate](failure, after)
+}
+
+// UpdateEmailTemplateUpdatedTemplate is the manifest mock updatedTemplate: The weekly report template was replaced.
+func UpdateEmailTemplateUpdatedTemplate() connectormock.Case[ses.EmailTemplate] {
+	value := connectormock.MustDecodeOutput[ses.EmailTemplate](`{"name":"weekly-report","content":{"subject":"Updated report","text":"Hello {{name}}"}}`)
+	return connectormock.Branch(ses.UpdateEmailTemplateBranchUpdated, value, nil)
+}
+
+// UpdateEmailTemplateDefault is the manifest default, updatedTemplate, which New installs.
+func UpdateEmailTemplateDefault() connectormock.Case[ses.EmailTemplate] {
+	return UpdateEmailTemplateUpdatedTemplate()
+}
+
+// DeleteEmailTemplateDeleted selects the deleted branch: The template is absent.
+func DeleteEmailTemplateDeleted(value ses.DeletedEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailTemplate] {
+	return connectormock.Branch(ses.DeleteEmailTemplateBranchDeleted, value, failure)
+}
+
+// DeleteEmailTemplateProviderRejected selects the providerRejected branch: SES conclusively refused deletion.
+func DeleteEmailTemplateProviderRejected(value ses.DeletedEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailTemplate] {
+	return connectormock.Branch(ses.DeleteEmailTemplateBranchProviderRejected, value, failure)
+}
+
+// DeleteEmailTemplateDefect selects the defect branch: The name or connection is invalid.
+func DeleteEmailTemplateDefect(value ses.DeletedEmailTemplate, failure *sdkgo.Failure) connectormock.Case[ses.DeletedEmailTemplate] {
+	return connectormock.Branch(ses.DeleteEmailTemplateBranchDefect, value, failure)
+}
+
+// DeleteEmailTemplateRetry asks Dex to retry the deleteEmailTemplate Step, after the delay when it is positive.
+func DeleteEmailTemplateRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.DeletedEmailTemplate] {
+	return connectormock.Retry[ses.DeletedEmailTemplate](failure, after)
+}
+
+// DeleteEmailTemplateDeletedTemplate is the manifest mock deletedTemplate: The weekly report template was removed.
+func DeleteEmailTemplateDeletedTemplate() connectormock.Case[ses.DeletedEmailTemplate] {
+	value := connectormock.MustDecodeOutput[ses.DeletedEmailTemplate](`{"name":"weekly-report"}`)
+	return connectormock.Branch(ses.DeleteEmailTemplateBranchDeleted, value, nil)
+}
+
+// DeleteEmailTemplateDefault is the manifest default, deletedTemplate, which New installs.
+func DeleteEmailTemplateDefault() connectormock.Case[ses.DeletedEmailTemplate] {
+	return DeleteEmailTemplateDeletedTemplate()
+}
+
+// SendTemplatedEmailSent selects the sent branch: SES accepted the templated message.
+func SendTemplatedEmailSent(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendTemplatedEmailBranchSent, value, failure)
+}
+
+// SendTemplatedEmailProviderRejected selects the providerRejected branch: SES conclusively refused the sender, template, or recipient.
+func SendTemplatedEmailProviderRejected(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendTemplatedEmailBranchProviderRejected, value, failure)
+}
+
+// SendTemplatedEmailUncertain returns an uncertain sendTemplatedEmail outcome.
+func SendTemplatedEmailUncertain(value ses.SentEmail, failure sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendTemplatedEmailDefect selects the defect branch: The sender, recipient, data, or connection is invalid.
+func SendTemplatedEmailDefect(value ses.SentEmail, failure *sdkgo.Failure) connectormock.Case[ses.SentEmail] {
+	return connectormock.Branch(ses.SendTemplatedEmailBranchDefect, value, failure)
+}
+
+// SendTemplatedEmailRetry asks Dex to retry the sendTemplatedEmail Step, after the delay when it is positive.
+func SendTemplatedEmailRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[ses.SentEmail] {
+	return connectormock.Retry[ses.SentEmail](failure, after)
+}
+
+// SendTemplatedEmailSentTemplatedEmail is the manifest mock sentTemplatedEmail: SES accepted a weekly report template email.
+func SendTemplatedEmailSentTemplatedEmail() connectormock.Case[ses.SentEmail] {
+	value := connectormock.MustDecodeOutput[ses.SentEmail](`{"messageId":"templated-example-message-id"}`)
+	return connectormock.Branch(ses.SendTemplatedEmailBranchSent, value, nil)
+}
+
+// SendTemplatedEmailDefault is the manifest default, sentTemplatedEmail, which New installs.
+func SendTemplatedEmailDefault() connectormock.Case[ses.SentEmail] {
+	return SendTemplatedEmailSentTemplatedEmail()
+}

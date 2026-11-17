@@ -28,6 +28,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"listEmailIdentities": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEmailIdentities(), reference),
 		"deleteEmailIdentity": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEmailIdentity(), reference, scenario.CallID),
 		"sendEmail":           newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendEmail(), reference, scenario.CallID),
+		"createEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, sendContext, client.CreateEmailTemplate(), reference, scenario.CallID),
+		"getEmailTemplate": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetEmailTemplate(), reference),
+		"listEmailTemplates": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListEmailTemplates(), reference),
+		"updateEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.UpdateEmailTemplate(), reference, scenario.CallID),
+		"deleteEmailTemplate": newConformanceMutationInvocation(t, scenario.Input, queryContext{}, client.DeleteEmailTemplate(), reference, scenario.CallID),
+		"sendTemplatedEmail": newConformanceMutationInvocation(t, scenario.Input, sendContext, client.SendTemplatedEmail(), reference, scenario.CallID),
 	}}
 }
 
