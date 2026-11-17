@@ -1756,6 +1756,1472 @@
       },
       "name": "deleteContact-transport",
       "operation": "deleteContact"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"list-123\",\"name\":\"Customers\",\"contact_count\":3}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactCount": 3,
+          "id": "list-123",
+          "name": "Customers"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "list-123"
+      },
+      "name": "getList-found",
+      "operation": "getList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "list-123"
+      },
+      "name": "getList-not-found",
+      "operation": "getList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"PRIVATE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "list-123"
+      },
+      "name": "getList-rejected",
+      "operation": "getList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "list-123"
+      },
+      "name": "getList-invalid",
+      "operation": "getList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getList-defect",
+      "operation": "getList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "list-123"
+      },
+      "name": "getList-429",
+      "operation": "getList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "list-123"
+      },
+      "name": "getList-500",
+      "operation": "getList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "list-123"
+      },
+      "name": "getList-transport",
+      "operation": "getList"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"result\":[{\"id\":\"list-123\",\"name\":\"Customers\",\"contact_count\":3}],\"_metadata\":{\"count\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists",
+          "query": {
+            "page_size": [
+              "25"
+            ],
+            "page_token": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "count": 1,
+          "lists": [
+            {
+              "contactCount": 3,
+              "id": "list-123",
+              "name": "Customers"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 25,
+        "pageToken": "page-2"
+      },
+      "name": "listLists-listed",
+      "operation": "listLists"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"PRIVATE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists",
+          "query": {
+            "page_size": [
+              "25"
+            ],
+            "page_token": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "count": 0,
+          "lists": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 25,
+        "pageToken": "page-2"
+      },
+      "name": "listLists-rejected",
+      "operation": "listLists"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists",
+          "query": {
+            "page_size": [
+              "25"
+            ],
+            "page_token": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "count": 0,
+          "lists": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 25,
+        "pageToken": "page-2"
+      },
+      "name": "listLists-invalid",
+      "operation": "listLists"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "count": 0,
+          "lists": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": -1,
+        "pageToken": "page-2"
+      },
+      "name": "listLists-defect",
+      "operation": "listLists"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists",
+          "query": {
+            "page_size": [
+              "25"
+            ],
+            "page_token": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 25,
+        "pageToken": "page-2"
+      },
+      "name": "listLists-429",
+      "operation": "listLists"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists",
+          "query": {
+            "page_size": [
+              "25"
+            ],
+            "page_token": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 25,
+        "pageToken": "page-2"
+      },
+      "name": "listLists-500",
+      "operation": "listLists"
+    },
+    {
+      "callId": "11111111-1111-5111-8111-111111111111",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/marketing/lists",
+          "query": {
+            "page_size": [
+              "25"
+            ],
+            "page_token": [
+              "page-2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 25,
+        "pageToken": "page-2"
+      },
+      "name": "listLists-transport",
+      "operation": "listLists"
+    },
+    {
+      "callId": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"list-123\",\"name\":\"Active Customers\",\"contact_count\":3}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v3/marketing/lists/list-123",
+          "requestBody": {
+            "name": "Active Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "contactCount": 3,
+          "id": "list-123",
+          "name": "Active Customers"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "input": {
+        "id": "list-123",
+        "name": "Active Customers"
+      },
+      "name": "updateList-updated",
+      "operation": "updateList"
+    },
+    {
+      "callId": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v3/marketing/lists/list-123",
+          "requestBody": {
+            "name": "Active Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "input": {
+        "id": "list-123",
+        "name": "Active Customers"
+      },
+      "name": "updateList-not-found",
+      "operation": "updateList"
+    },
+    {
+      "callId": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"PRIVATE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v3/marketing/lists/list-123",
+          "requestBody": {
+            "name": "Active Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "input": {
+        "id": "list-123",
+        "name": "Active Customers"
+      },
+      "name": "updateList-rejected",
+      "operation": "updateList"
+    },
+    {
+      "callId": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v3/marketing/lists/list-123",
+          "requestBody": {
+            "name": "Active Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "input": {
+        "id": "list-123",
+        "name": "Active Customers"
+      },
+      "name": "updateList-invalid",
+      "operation": "updateList"
+    },
+    {
+      "callId": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "input": {
+        "id": "",
+        "name": "Active Customers"
+      },
+      "name": "updateList-defect",
+      "operation": "updateList"
+    },
+    {
+      "callId": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v3/marketing/lists/list-123",
+          "requestBody": {
+            "name": "Active Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "input": {
+        "id": "list-123",
+        "name": "Active Customers"
+      },
+      "name": "updateList-429",
+      "operation": "updateList"
+    },
+    {
+      "callId": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v3/marketing/lists/list-123",
+          "requestBody": {
+            "name": "Active Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "input": {
+        "id": "list-123",
+        "name": "Active Customers"
+      },
+      "name": "updateList-500",
+      "operation": "updateList"
+    },
+    {
+      "callId": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v3/marketing/lists/list-123",
+          "requestBody": {
+            "name": "Active Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "57e3daaa-15bf-5276-bcee-ac7712910082",
+      "input": {
+        "id": "list-123",
+        "name": "Active Customers"
+      },
+      "name": "updateList-transport",
+      "operation": "updateList"
+    },
+    {
+      "callId": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "id": "list-123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "input": {
+        "id": "list-123"
+      },
+      "name": "deleteList-deleted",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "input": {
+        "id": "list-123"
+      },
+      "name": "deleteList-not-found",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"PRIVATE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "input": {
+        "id": "list-123"
+      },
+      "name": "deleteList-rejected",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "input": {
+        "id": ""
+      },
+      "name": "deleteList-defect",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "input": {
+        "id": "list-123"
+      },
+      "name": "deleteList-429",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "input": {
+        "id": "list-123"
+      },
+      "name": "deleteList-500",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/v3/marketing/lists/list-123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3c6559b-69e1-5cc0-93f3-084f83eda1f4",
+      "input": {
+        "id": "list-123"
+      },
+      "name": "deleteList-transport",
+      "operation": "deleteList"
+    },
+    {
+      "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"list-123\",\"name\":\"Customers\",\"contact_count\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/marketing/lists",
+          "requestBody": {
+            "name": "Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+          "providerId": "list-123",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactCount": 0,
+          "id": "list-123",
+          "name": "Customers"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "input": {
+        "name": "Customers"
+      },
+      "name": "createList-created",
+      "operation": "createList"
+    },
+    {
+      "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"PRIVATE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/marketing/lists",
+          "requestBody": {
+            "name": "Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "input": {
+        "name": "Customers"
+      },
+      "name": "createList-rejected",
+      "operation": "createList"
+    },
+    {
+      "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "input": {
+        "name": ""
+      },
+      "name": "createList-defect",
+      "operation": "createList"
+    },
+    {
+      "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/marketing/lists",
+          "requestBody": {
+            "name": "Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "input": {
+        "name": "Customers"
+      },
+      "name": "createList-429",
+      "operation": "createList"
+    },
+    {
+      "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/marketing/lists",
+          "requestBody": {
+            "name": "Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "input": {
+        "name": "Customers"
+      },
+      "name": "createList-500",
+      "operation": "createList"
+    },
+    {
+      "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/marketing/lists",
+          "requestBody": {
+            "name": "Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "input": {
+        "name": "Customers"
+      },
+      "name": "createList-transport",
+      "operation": "createList"
+    },
+    {
+      "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/marketing/lists",
+          "requestBody": {
+            "name": "Customers"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-key-123"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "83c2802f-907e-5401-90b4-75f6c309d831",
+          "sendCount": 1,
+          "state": "claimed"
+        },
+        "output": {
+          "contactCount": 0,
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "83c2802f-907e-5401-90b4-75f6c309d831",
+      "input": {
+        "name": "Customers"
+      },
+      "name": "createList-uncertain",
+      "operation": "createList"
     }
   ],
   "schemaVersion": 1

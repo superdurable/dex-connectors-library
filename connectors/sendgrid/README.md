@@ -16,6 +16,11 @@ Read SendGrid global statistics and transactional templates, and manage marketin
 | `searchContacts` | Query | https://www.twilio.com/docs/sendgrid/api-reference/contacts/search-contacts |
 | `upsertContact` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/contacts/add-or-update-a-contact |
 | `deleteContact` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/contacts/delete-contacts |
+| `getList` | Query | https://www.twilio.com/docs/sendgrid/api-reference/lists/get-a-list-by-id |
+| `listLists` | Query | https://www.twilio.com/docs/sendgrid/api-reference/lists/get-all-lists |
+| `updateList` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/lists/update-list |
+| `deleteList` | Mutation, safe | https://www.twilio.com/docs/sendgrid/api-reference/lists/delete-a-list |
+| `createList` | Mutation, limited | https://www.twilio.com/docs/sendgrid/api-reference/lists/create-list |
 
 The examples use `sendgrid.NewGetStatsStep` and `sendgrid.NewListTemplatesStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `listTemplates` always sends `page_size`: zero in `PageSize` selects 100, and explicit values must be 1–200. Pass `NextPageToken` from one result as the next call's `PageToken`; blank starts at page one. SendGrid's exact `_metadata.count` meaning remains unverified.
 

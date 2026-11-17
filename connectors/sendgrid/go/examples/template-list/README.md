@@ -1,6 +1,6 @@
 # SendGrid template-list Flow
 
-The Worker also registers `SendGridContactLookupDemo`. Start it with a `ContactIDInput` containing a SendGrid Marketing > Contacts contact ID. Its `NewGetContactStep` reads the contact and saves the result for Dex Web. `TestContactLookupUsesMockWithRealDex` runs this path through a real Dex Worker and the connector mock.
+The Worker also registers `SendGridContactLookupDemo` and `SendGridMarketingListPageDemo`. Start contact lookup with a `ContactIDInput` containing a SendGrid Marketing > Contacts contact ID. Its `NewGetContactStep` reads the contact and saves the result for Dex Web. Start list paging with `ListListsInput`; `NewListListsStep` returns a bounded page and its next token. `TestContactAndListLookupUsesMockWithRealDex` runs both paths through a real Dex Worker and the connector mock.
 
 This runnable Flow calls `listTemplates` with the static `sendgrid` connection. Typed start input passes to the generated operation Step, and the template page completes the Flow. Dex Web summary and display RPCs show the persisted result. Optional provider branches are unwired and fail the Flow when selected.
 

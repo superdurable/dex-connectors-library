@@ -21,10 +21,11 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestContactLookupUsesMockWithRealDex(t *testing.T) {
+func TestContactAndListLookupUsesMockWithRealDex(t *testing.T) {
 	mock := sendgridmock.New(t, ConnectionName)
 	flow := NewContactFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	listFlow := NewMarketingListFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow, listFlow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -58,4 +59,15 @@ func TestContactLookupUsesMockWithRealDex(t *testing.T) {
 	calls := mock.GetContact().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, sendgrid.ContactIDInput{ID: "c-123"}, calls[0].Input)
+	listFlowID := "sendgrid-list-page-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err = client.StartFlow(ctx, listFlow, listFlowID, sendgrid.ListListsInput{PageSize: 25}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	listResult, err := client.WaitForFlow(ctx, listFlowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, listResult.Status, listResult.ErrorMessage)
+	var listPage sendgrid.ListListsOutput
+	require.NoError(t, listResult.DecodeSingleOutput(&listPage))
+	require.Len(t, listPage.Lists, 1)
+	require.Equal(t, "Customers", listPage.Lists[0].Name)
+	require.Len(t, mock.ListLists().Calls(), 1)
 }

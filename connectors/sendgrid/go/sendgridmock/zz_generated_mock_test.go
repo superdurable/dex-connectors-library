@@ -40,6 +40,34 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[sendgrid.ContactJobOutput](`{"jobId":"job-456"}`)
 			return err
 		}},
+		{name: "getList/foundList/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.MarketingList](`{"id":"list-123","name":"Customers","contactCount":3}`)
+			return err
+		}},
+		{name: "listLists/listedLists/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.ListListsOutput](`{"lists":[{"id":"list-123","name":"Customers","contactCount":3}],"count":3,"nextPageToken":"list-page-2"}`)
+			return err
+		}},
+		{name: "listLists/listedLists/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.ListListsOutput](`{"lists":[{"id":"list-456","name":"Partners","contactCount":2}],"count":3,"nextPageToken":"list-page-3"}`)
+			return err
+		}},
+		{name: "listLists/listedLists/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.ListListsOutput](`{"lists":[{"id":"list-789","name":"Alumni","contactCount":1}],"count":3}`)
+			return err
+		}},
+		{name: "updateList/renamedList/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.MarketingList](`{"id":"list-123","name":"Active Customers","contactCount":3}`)
+			return err
+		}},
+		{name: "deleteList/deletedList/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.DeletedListOutput](`{"id":"list-123"}`)
+			return err
+		}},
+		{name: "createList/createdList/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[sendgrid.MarketingList](`{"id":"list-123","name":"Customers","contactCount":0}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -67,5 +95,20 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.DeleteContact().Definition().Operation.OperationID != "deleteContact" {
 		t.Errorf("deleteContact mock has another definition")
+	}
+	if mock.GetList().Definition().Operation.OperationID != "getList" {
+		t.Errorf("getList mock has another definition")
+	}
+	if mock.ListLists().Definition().Operation.OperationID != "listLists" {
+		t.Errorf("listLists mock has another definition")
+	}
+	if mock.UpdateList().Definition().Operation.OperationID != "updateList" {
+		t.Errorf("updateList mock has another definition")
+	}
+	if mock.DeleteList().Definition().Operation.OperationID != "deleteList" {
+		t.Errorf("deleteList mock has another definition")
+	}
+	if mock.CreateList().Definition().Operation.OperationID != "createList" {
+		t.Errorf("createList mock has another definition")
 	}
 }

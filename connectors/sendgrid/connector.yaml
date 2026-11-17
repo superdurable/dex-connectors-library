@@ -160,3 +160,89 @@ spec:
       execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
       mocks:
         - {name: contactDeletionQueued, branch: queued, description: SendGrid queued one contact deletion., default: true, output: {jobId: job-456}}
+    - name: getList
+      goName: GetList
+      inputType: ListIDInput
+      outputType: MarketingList
+      kind: query
+      description: Read one static marketing list by ID.
+      idempotency: none
+      branches:
+        - {id: found, goName: Found, description: SendGrid returned the list.}
+        - {id: notFound, goName: NotFound, description: No list has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned invalid list data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: foundList, branch: found, description: A static marketing list was found., default: true, output: {id: list-123, name: Customers, contactCount: 3}}
+    - name: listLists
+      goName: ListLists
+      inputType: ListListsInput
+      outputType: ListListsOutput
+      kind: query
+      description: List one bounded page of static marketing lists.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: SendGrid returned the requested page.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned an invalid page., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: listedLists
+          branch: listed
+          description: Three static list pages demonstrate page token traversal.
+          default: true
+          pages:
+            - {lists: [{id: list-123, name: Customers, contactCount: 3}], count: 3, nextPageToken: list-page-2}
+            - {lists: [{id: list-456, name: Partners, contactCount: 2}], count: 3, nextPageToken: list-page-3}
+            - {lists: [{id: list-789, name: Alumni, contactCount: 1}], count: 3}
+    - name: updateList
+      goName: UpdateList
+      inputType: UpdateListInput
+      outputType: MarketingList
+      kind: mutation
+      description: Replace the display name of one static marketing list.
+      idempotency: required
+      branches:
+        - {id: updated, goName: Updated, description: SendGrid renamed the list.}
+        - {id: notFound, goName: NotFound, description: No list has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected the rename., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned invalid list data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: renamedList, branch: updated, description: A static list was renamed., default: true, output: {id: list-123, name: Active Customers, contactCount: 3}}
+    - name: deleteList
+      goName: DeleteList
+      inputType: ListIDInput
+      outputType: DeletedListOutput
+      kind: mutation
+      description: Delete one static list without deleting its contacts.
+      idempotency: required
+      branches:
+        - {id: deleted, goName: Deleted, description: SendGrid removed the list.}
+        - {id: notFound, goName: NotFound, description: The list is already absent., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SendGrid returned an invalid response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async, repeatOnUnknown: safe}
+      mocks:
+        - {name: deletedList, branch: deleted, description: A static list was removed., default: true, output: {id: list-123}}
+    - name: createList
+      goName: CreateList
+      inputType: CreateListInput
+      outputType: MarketingList
+      kind: mutation
+      description: Create one static marketing list, bounding ambiguous POST resends.
+      idempotency: required
+      branches:
+        - {id: created, goName: Created, description: SendGrid created or confirmed the list.}
+        - {id: providerRejected, goName: ProviderRejected, description: SendGrid denied or rejected creation., optional: true}
+        - {id: uncertain, goName: Uncertain, description: A list create may have succeeded but could not be confirmed., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: sync, repeatOnUnknown: limited, maxSends: 3}
+      mocks:
+        - {name: createdList, branch: created, description: SendGrid created a static list., default: true, output: {id: list-123, name: Customers, contactCount: 0}}
